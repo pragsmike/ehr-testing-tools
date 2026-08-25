@@ -53,7 +53,7 @@ only what a reader orienting to the *architecture* needs first.
 |---|---|---|
 | `sim-model` | Pure schemas and sampling: pathway IR, facility/ward allocation, `Persona`, provider config. No engine, no RNG threading of its own beyond what its sampling functions take as an argument. | `components/sim-model/src/ehrt/sim_model/interface.clj` |
 | `patient-simulator` | GMF module loading and interpretation: `load-closure` resolves a module (plus its `CallSubmodule` targets and lookup tables) into a closure; `run-module` walks it, RNG-driven, into a `Trajectory`; `compile-trajectory` reshapes that trajectory into pathway IR the engine can execute. This is "the GMF walk." | `components/patient-simulator/src/ehrt/patient_simulator/interface.clj` (`load-closure` → `gmf.clj:1580`; `run-module` → `gmf_interpreter.clj:2161`, driving `walk-module` → `gmf_interpreter.clj:2061`; `compile-trajectory` → `compile_trajectory.clj:1`) |
-| `sim-engine` | The discrete-event core: the `decide`/`evolve` multimethod pair (`sim/ADR-0008`), the `run` loop, `replay`, plus the churn and order-profiles catalytics. | `components/sim-engine/src/ehrt/sim_engine/interface.clj` (`run` → `engine.clj:1242`; `replay` → `engine.clj:1059`) |
+| `sim-engine` | The discrete-event core: the `decide`/`evolve` multimethod pair (`sim/ADR-0008`), the `run` loop, `replay`, plus the churn and order-profiles catalytics. | `components/sim-engine/src/ehrt/sim_engine/interface.clj` (`run` → `engine.clj`'s `defn run`; `replay` → its `defn replay`) |
 | `sim-emit-hl7` | Ground-truth log → HL7v2 ER7 messages (`emit`), plus the wire-side replay accumulator (`fold-message`, `v2_replay.clj`) a stranger's own paced stream can be folded through — the same accumulator the emitter-coherence property reasons about. | `components/sim-emit-hl7/src/ehrt/sim_emit_hl7/interface.clj` |
 | `sim-emit-fhir` | Folded state (never the log directly) → FHIR R4 Bundle (`bundle-run`, built on the pure `snapshot-at`/resource-builder functions). A rendering accent over state, sim-emit-hl7's sibling, not its dependent. | `components/sim-emit-fhir/src/ehrt/sim_emit_fhir/interface.clj` |
 | `sim-check` | The invariant catalog (`check-all`): internal-consistency claims over a ground-truth log, built on `sim-engine/replay` — the same fold `evolve` always was, reused rather than reimplemented. | `components/sim-check/src/ehrt/sim_check/interface.clj` |
@@ -73,29 +73,29 @@ depends on all of them plus `provenance`, and never the reverse.
 
 `sim/ADR-0008` (`notes/sim/ADRs.md`, frozen provenance, accepted
 2026-07-26) replaced a single fused `transition` function with a pair,
-stated verbatim in `engine.clj`'s own ns docstring (`engine.clj:10-23`,
-the primary citation — everything below restates that text, never
+stated verbatim in `engine.clj`'s own ns docstring (its
+"Event-sourcing doctrine" paragraph, the primary citation — everything below restates that text, never
 supersedes it):
 
 - **`decide`** — `(rng, t, world, patient-id, step) -> {:events [...]
-  :advance <seconds>}` (`engine.clj:259`, a `defmulti` dispatching on
+  :advance <seconds>}` (`engine.clj`'s `defmulti decide`, dispatching on
   `(:type step)`). Reads `world` — every patient's own state so far,
   plus static facility/provider config — read-only, and consumes the
   run's single seeded RNG, to decide what happens. **Never returns a
   new state.** This is where cross-patient coupling lives: a
   discharge's own `decide` call may emit a `:transfer` event for a
-  *different*, boarding patient (`engine.clj:424-460`, the
-  bed-ready-transfer coupling), and a merge names a survivor and a
-  merged patient in one call (`engine.clj:581-613`).
+  *different*, boarding patient (`defmethod decide :discharge` and its
+  `bed-ready-location` helper, the bed-ready-transfer coupling), and a merge names a survivor and a
+  merged patient in one call (`defmethod decide :merge`).
 - **`evolve`** — `(patient-state, event) -> patient-state'`
-  (`engine.clj:857`, a `defmulti` dispatching on `(:event event)`).
+  (`engine.clj`'s `defmulti evolve`, dispatching on `(:event event)`).
   Pure and total: no RNG, no knowledge of the step or decision that
   produced the event, no knowledge of `world` or of any patient but the
   one the event names. This is the **only** function that ever
   produces a new patient state.
 
 **Patient state exists only as the fold of `evolve` over events.**
-`replay` (`engine.clj:1059-1088`) is that fold, re-run: given a
+`replay` (`engine.clj`'s `defn replay`) is that fold, re-run: given a
 ground-truth log, it walks every event, folding each participant's own
 slice of state through `evolve`, and returns a parallel sequence of
 `{:event :patient-id :before :after :world-before :world-after}`
@@ -147,11 +147,11 @@ itself:**
    `evolve`, `run`, or `replay`.
 
 **The one deliberate impurity inside the simulation path itself is
-`java.util.Random`** (`engine.clj:67`, `(:import [java.util Random])`)
-— seeded once in `run` (`engine.clj:1413`, `(Random. ^long seed)`),
+`java.util.Random`** (`engine.clj`'s own `ns` form: `(:import [java.util Random])`)
+— seeded once in `run` (`defn run`'s own `(Random. ^long seed)`),
 explicitly **threaded** as `decide`'s own first argument rather than
 held in any var or atom, with **fixed consumption per draw site**
-(`engine.clj:48-56`, the Determinism doctrine paragraph: *"ALL
+(`engine.clj`'s ns docstring, the Determinism doctrine paragraph: *"ALL
 randomness flows from the single `java.util.Random` seeded in `run`...
 Same config + seed => identical output, byte for byte"*). This is the
 RNG-path law (`.agents/rulings.md`, "Measurements sample the claimed
@@ -159,7 +159,7 @@ population, standing," AR-RL2-2, `notes/ADRs.md` ADR-0092): a
 measurement or sweep claiming to characterize the simulator's own
 output must draw from this exact seeded, threaded path — never an
 independent synthetic RNG assumed equivalent to it. `assign-pathway`
-and `assign-module` (`engine.clj:1165-1217`) are the load-bearing
+and `assign-module` (`defn assign-pathway`, `defn assign-module`) are the load-bearing
 worked examples: each *always* consumes exactly one `.nextDouble`,
 whether or not the draw's own outcome is used, specifically so that
 adding one scripted override never shifts every other patient's
@@ -210,7 +210,7 @@ overall.
 **`engine` is not two independent parallel folds; it is ONE fold over
 a shared `World`.** A naive reading of `engine : RNG × Config → GT` as
 "fold each patient's own stream independently" is wrong: `run`'s own
-loop (`engine.clj:1534-1541`) folds every event's own participants into
+loop (inside `defn run`) folds every event's own participants into
 the *same* `world` value, one event at a time —
 
 ```clojure

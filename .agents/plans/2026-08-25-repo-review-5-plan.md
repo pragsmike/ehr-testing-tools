@@ -52,6 +52,8 @@ session **with its own tag**."
   than the point. Cheapest, and it weakens a rule that has held for
   fifteen arcs.
 
+**Closed by de-scaffold ruling 2026-08-25.**
+
 ### Q-B. Q4 — the host-side sample (the ruling L-3 was chartered to price)
 
 **Row it first.** `rulings.md#R-unregistered-request-gets-a-row` requires
@@ -91,6 +93,8 @@ baseline settles it: comparing like with like, the post-arc-0 suite is
 same record's figures give **−12 s**. **Naming the kind, not sampling the
 host, is what prevented the only sign error in the window** (L3-1, L3-7).
 
+**Closed by de-scaffold ruling 2026-08-25.**
+
 ### Q-C. `R-witness-population-is-counted` (L1-9)
 
 `R-empty-population-is-red` (ADR-0148) gates the **corpus**; it is
@@ -111,6 +115,8 @@ review from the ones that did not.
   docs-tooling test files and **zero** simulation-side ones, which is
   exactly the half of the tree where it failed.
 
+**Landed 2026-08-25 as a GATE, not a row** (de-scaffold ruling): the two ADR-0163 population-scale gates in `components/sim/test/ehrt/sim/run_test.clj` now pin a counted, non-zero cited-end witness. Every other Q here is closed by the same ruling.
+
 ### Q-D. The born-red / born-green bifurcation (W-1, D2-4)
 
 This window established two disciplines and wrote neither down: a
@@ -125,6 +131,8 @@ is witnessed passing before it has anything to catch).
 - **(c)** Leave as precedent. W-1 has now fired at two consecutive
   reviews on the same trigger.
 
+**Closed by de-scaffold ruling 2026-08-25.**
+
 ### Q-E. The second suite over the close commit (D2-6)
 
 `R-full-suite-before-push` binds a **push**; arc 0 pushed once and ran the
@@ -136,6 +144,8 @@ this session had to re-derive it to run its own close.
   close. States what is already practice and stops the re-derivation.
 - **(b)** Leave it. The rule as written is satisfied by one run and the
   second is a session's own judgement.
+
+**Closed by de-scaffold ruling 2026-08-25.**
 
 ### Q-F. Correcting a defect that has rotated into the append-only attic (D7-2)
 
@@ -152,6 +162,8 @@ says the defect is in `roadmap.md`.
   append-only for a cosmetic gain.
 - **(c)** Close `#register-gate-row-ownership`'s roadmap half as moot.
   Rejected: the `rulings.md` half (F-2) is untouched and still live.
+
+**Closed by de-scaffold ruling 2026-08-25.**
 
 ### Q-G. `R-premise-correction-is-a-finding` (L2-4)
 
@@ -170,6 +182,8 @@ shipped without one.
   example (JDK 21 / Temurin 17) **recurred verbatim inside the window**,
   in a prompt authored by the same channel.
 
+**Closed by de-scaffold ruling 2026-08-25.**
+
 ### Q-H. Amend-and-quote as the default landing for a correction (L2-15)
 
 ~29 of 40 corrections live only in a session record while the erring
@@ -183,6 +197,8 @@ twice: the traffic-scale plan's `:53-60`, which amends in place and
   Pair with an `## Errata` stub in `bin/close-scaffold`'s archive template
   (L2-8) so the archived prompt carries what its session found.
 - **(b)** Errata stub only. Half the value; the live plans keep drifting.
+
+**Closed by de-scaffold ruling 2026-08-25.**
 
 ### Q-I. Verification's home in an ADR (D1-7, L3-5)
 
@@ -199,6 +215,8 @@ no figures, and no pointer to the record that holds them.**
   substance is already being written under better-named headings.
 - **(c)** Leave it. Then `roadmap.md`'s 9.58× continues to resolve to an
   ADR that does not contain it.
+
+**Closed by de-scaffold ruling 2026-08-25.**
 
 ### Q-J. The early charter (L2-14) — the cadence rule itself
 
@@ -218,6 +236,8 @@ This review ran at **0170**, over a ten-ADR window.
   a ten-ADR window produced 88 rows and two red dimensions — but the
   window was unusually dense (one large refactor, one incident arc, one
   program), and nothing here argues the interval is wrong in general.
+
+**Closed by de-scaffold ruling 2026-08-25.**
 
 ---
 

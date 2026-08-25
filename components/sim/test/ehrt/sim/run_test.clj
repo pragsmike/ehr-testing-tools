@@ -784,6 +784,34 @@
                  (and (= :care-plan-end event) (nil? care-plan-citation))))
            ground-truth))
 
+(defn- end-events-of
+  "Every terminal event of `kind` in `ground-truth` -- the subset that can
+  EXHIBIT the unpaired-end failure, as a COUNTABLE population rather
+  than a hoped-for one.
+
+  `(empty? (unpaired-ends gt))` is satisfied by a `gt` carrying no
+  terminal event at all, and that is not a hypothetical: repo review 5
+  measured all four gated corpora and found the two clinic-decade runs
+  below carry ZERO `:medication-end` and ZERO `:care-plan-end`, so both
+  ADR-0163 gates were green over a candidate population of zero. The two
+  gates therefore pin a NON-ZERO count from the one gated run that does
+  produce both -- ADR-0169's arc-0 pattern (`cancel-decides-reinstate-
+  exactly-what-replay-would-hand-back`'s ten-cancel pin, and
+  `citation-resolution-matches-the-whole-log-scan`'s two-event pin) --
+  and disclose their own corpus's zero rather than leave it unstated."
+  [kind ground-truth]
+  (filterv #(= kind (:event %)) ground-truth))
+
+(defn- cited-end-witness
+  "The counted witness both ADR-0163 gates rest on: `:adhd-seed-2`'s
+  terminal events of `kind`, which carry their opening citation
+  (ADR-0165 step 5 chose that run precisely because it produces both
+  ends PAIRED, self-check clean, in ~25ms). Returned as a vector so a
+  caller can pin its SIZE and then run `unpaired-ends` over it -- an
+  emptiness claim made over a population known to be non-empty."
+  [kind]
+  (end-events-of kind (:ground-truth (:payload (corpus :adhd-seed-2)))))
+
 (deftest clinic-decade-seed-424242-self-checks-clean
   (testing "ADR-0163: the exact reproducing invocation --
             `ehrt corpus generate sim --seed 424242 --patients 200
@@ -806,7 +834,31 @@
             the walk that produced it."
     (let [r (corpus :seed-424242-clinic-decade)]
       (is (result/ok? r) (str "violations: " (pr-str (:payload r))))
-      (is (empty? (unpaired-ends (:ground-truth (:payload r))))))))
+      (is (empty? (unpaired-ends (:ground-truth (:payload r)))))
+      (testing "and the emptiness above is NOT vacuous by accident -- FINDING,
+                disclosed (repo review 5, L1-1): this corpus carries ZERO
+                :medication-end events of its own, because ADR-0163's drop
+                rule removed the only ones it had. The counted witness is
+                :adhd-seed-2's ONE cited :medication-end, pinned here, with
+                `unpaired-ends` run over it: the same assertion, over a
+                population that could have failed it."
+        (let [own (end-events-of :medication-end (:ground-truth (:payload r)))
+              witness (cited-end-witness :medication-end)]
+          (is (zero? (count own))
+              (str "this corpus's :medication-end population moved off the "
+                   "disclosed zero -- that is GOOD news, but re-read the "
+                   "disclosure and re-point the witness before adjusting: "
+                   (pr-str (mapv :t own))))
+          (is (= 1 (count witness))
+              (str "the counted witness population moved -- :adhd-seed-2 no "
+                   "longer produces exactly one :medication-end, so this gate "
+                   "is asserting emptiness over nothing: " (pr-str witness)))
+          (is (every? :order-citation witness)
+              (str "the witness :medication-end lost its :order-citation, so "
+                   "the population is no longer a CITED end: " (pr-str witness)))
+          (is (empty? (unpaired-ends witness))
+              (str "the counted witness itself carries an unpaired end: "
+                   (pr-str (unpaired-ends witness)))))))))
 
 (deftest clinic-decade-seed-5-carries-no-unpaired-care-plan-end
   (testing "ADR-0163's control, and the ONLY population-scale exercise of
@@ -822,7 +874,34 @@
             two events and nothing else (ADR-0163's own oracle sweep)."
     (let [r (corpus :seed-5-clinic-decade)]
       (is (result/ok? r) (str "violations: " (pr-str (:payload r))))
-      (is (empty? (unpaired-ends (:ground-truth (:payload r))))))))
+      (is (empty? (unpaired-ends (:ground-truth (:payload r)))))
+      (testing "and the emptiness above is NOT vacuous by accident -- FINDING,
+                disclosed (repo review 5, L1-1): the docstring above is now
+                HISTORY. It describes what this seed's log carried BEFORE
+                ADR-0163; the fixed log carries ZERO :care-plan-end events,
+                so the shape assertion has had nothing to judge since the fix
+                landed. The counted witness is :adhd-seed-2's ONE cited
+                :care-plan-end, pinned here, with `unpaired-ends` run over
+                it -- and it is the ONLY population-scale exercise of the
+                :care-plan-end half in the suite, which no invariant covers."
+        (let [own (end-events-of :care-plan-end (:ground-truth (:payload r)))
+              witness (cited-end-witness :care-plan-end)]
+          (is (zero? (count own))
+              (str "this corpus's :care-plan-end population moved off the "
+                   "disclosed zero -- that is GOOD news, but re-read the "
+                   "disclosure and re-point the witness before adjusting: "
+                   (pr-str (mapv :t own))))
+          (is (= 1 (count witness))
+              (str "the counted witness population moved -- :adhd-seed-2 no "
+                   "longer produces exactly one :care-plan-end, so this gate "
+                   "is asserting emptiness over nothing: " (pr-str witness)))
+          (is (every? :care-plan-citation witness)
+              (str "the witness :care-plan-end lost its :care-plan-citation, "
+                   "so the population is no longer a CITED end: "
+                   (pr-str witness)))
+          (is (empty? (unpaired-ends witness))
+              (str "the counted witness itself carries an unpaired end: "
+                   (pr-str (unpaired-ends witness)))))))))
 
 ;; --- ADR-0165: the generator-side event-type coverage gate ---------------
 ;; ADR-0160 gave the JUDGE side a coverage gate -- every oracle root is

@@ -210,15 +210,6 @@
           dupes (->> slugs frequencies (filter #(< 1 (val %))) (map key) sort)]
       (is (empty? dupes) (str "duplicate roadmap slug(s): " (vec dupes))))))
 
-(deftest no-row-exceeds-six-lines-test
-  (testing "Q3(a): token, slug, one clause of what remains and why, an ADR cite"
-    (let [bad (->> (all-rows (slurp roadmap-path))
-                   (filter #(< 6 (count (:lines %))))
-                   (mapv (fn [r] (str (count (:lines r)) " lines: " (abbrev r)))))]
-      (is (empty? bad)
-          (str (count bad) " roadmap row(s) over the six-line cap -- move the overflow "
-               "verbatim to the ADR that owns it")))))
-
 (deftest next-rows-carry-unique-ascending-priorities-test
   (testing "Q5(a): PRIORITY n on every ## Next row, unique, ascending, so head is what is next"
     (let [next-rows (filter #(next-section? (:heading %)) (all-rows (slurp roadmap-path)))

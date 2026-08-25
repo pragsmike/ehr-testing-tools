@@ -91,10 +91,10 @@ observed consistently across every session prompt from
      at commit time.
    - **Close-out** — what the final session record must contain (HEAD,
      shas, accounting tables, any budget deltas, post-push verification)
-     and how much gets echoed to chat. When the close step scaffolds via
-     `bin/close-scaffold` and this session paid a licensed tag, the
-     prompt names it so the close step passes `--expect-tag NAME@SHA`
-     (ADR-0128) rather than the bare form.
+     and how much gets echoed to chat. The record, the prompt archive and
+     both README index lines are written by hand — `bin/close-scaffold`
+     was deleted 2026-08-25 — and no tag is named, because no session
+     pays one any more.
 4. **Cite provenance for every "ruled" claim.** A claim that something
    was already decided should name the roadmap row, ADR number, or prior
    session record it comes from — "as discussed" is not a citation.

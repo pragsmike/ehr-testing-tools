@@ -35,8 +35,8 @@
 # FINDING:, a FAIL: or an UNKNOWN:, and 0 only when every check it ran
 # came back OK/DISCLOSED. It used to `exit 0` unconditionally, which made
 # it the ONE ceremony script in bin/ whose status said nothing while
-# every other one -- tag-ceremony, post-push-verify's checks 1-2,
-# verify-nist-lock, close-scaffold -- is fail-closed. An undeclared
+# every other one -- post-push-verify's checks 1-2 and
+# verify-nist-lock -- is fail-closed. An undeclared
 # always-zero exit invites a caller to trust $?.
 #
 # The OUTPUT is still the artifact a session discloses; the exit code is

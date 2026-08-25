@@ -13,6 +13,21 @@ work); nothing here applies if you're only running a built artifact.
 
 ## Session mode and ceremony: read this before your first git operation
 
+**De-scaffold ruling, 2026-08-25 — this paragraph overrides anything
+below it that says otherwise.** An ADR is written only for a
+payload-behaviour or contract decision; process, bookkeeping and
+register decisions get no ADR and no ruling row. There are no per-arc
+tags any more — CI green at the tip is the marker an arc closed, and a
+session verifies it with `gh run view <id>` rather than paying a tag. A
+docs-only diff pushes without a local `make test`; CI runs the suite.
+There is a **moratorium on scaffolding-only sessions** — sessions whose
+whole output is registers, rulings, skills, plans or review apparatus —
+until traffic-scale arc 1 (`roadmap.md#stream-partition-design`) and one
+guide chapter have landed. A finding a payload session turns up is one
+line in that session's record, not a roadmap row, not a rulings row, and
+not a register of its own. A law worth keeping is worth a test: laws land
+as gates or not at all (`.agents/rulings.md`, FROZEN 2026-08-25).
+
 **All git operations — especially `git commit` — must be run from WSL,
 never from native Windows**, enforced by `.githooks/pre-commit` once
 `git config core.hooksPath .githooks` has been run for a given clone
@@ -52,7 +67,9 @@ silently to the next one. One class of action stays the author's alone under eit
 exception: **repo-level `gh` mutations**
 (create/delete/settings/visibility — the `pragsmike/packs` precedent,
 `sim's AUTHORS-GUIDE.md` §2), **git surgery**, and **placing external
-documents**. **`stable-*` continuity tags are a SESSION ACT** (tag law,
+documents**. **RETIRED 2026-08-25 by the de-scaffold ruling — the whole tag-law
+passage that follows is history; no session pays a `stable-*` tag.**
+`stable-*` continuity tags were a SESSION ACT (tag law,
 `notes/ADRs.md` ADR-0057 AR-T-1, 2026-08-06 — the law restated once,
 canonically, after two dated amendments, ADR-0049's AR-AU-0 and
 ADR-0051's AR-F2-0, had left this surface and others out of sync with
@@ -85,11 +102,10 @@ Per-task-class reading sets (onboarding / corpus / sim / judge / docs,
 each a budgeted path list) live in
 [`.agents/reading-sets.edn`](.agents/reading-sets.edn) (charter R-D,
 `.agents/plans/2026-08-01-agent-ux-charter.md`, landed migration
-session 4, 2026-08-02) — `ehrt.docs-tooling.reading-set-budget-test`
-gates every path resolving and every set's real line count staying
-within its own `:budget-lines`. Budget numbers are the measured
-actuals of each set as composed, not yet author-ruled targets (charter
-§6). Also start from this file's own Structure section below,
+session 4, 2026-08-02). The budget gate over them,
+`ehrt.docs-tooling.reading-set-budget-test`, was deleted by the
+de-scaffold ruling of 2026-08-25: the sets are a reading aid now, and
+nothing enforces a line-count ceiling on them. Also start from this file's own Structure section below,
 `docs/dev/architecture.md` for the fuller workspace map, and
 `.agents/` (routing below) for durable session context.
 

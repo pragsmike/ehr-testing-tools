@@ -68,12 +68,12 @@ a step are in `HISTORY.md` beside this file (split out by ADR-0145).
    file:line, the ones correctly left untouched named too, and why (ADR-0117).
 10. **Run `bin/post-push-verify [<base-sha>] [<tip-sha>]` after every push** —
     remote tip, per-commit ASCII over the pushed range, CI run reported once (AR-RL2-5).
-11. **Take `stable-*` tags through `bin/tag-ceremony <tag> <sha> <msg-file>
-    [--push]`, under licence** (`rulings.md#R-tag-law`). A licence's CI condition is
-    met by THIS session's own `gh run view <id>` concluding success, id and
-    conclusion recorded — author relay sufficient, never required; pay the tag in
-    session if it concludes while you are still open
-    (`rulings.md#R-session-verifies-ci-via-gh`). Release `v*` tags,
+11. **Pay no tag.** `bin/tag-ceremony` and the per-arc `stable-*` tag were both
+    retired by the de-scaffold ruling of 2026-08-25
+    (`rulings.md#R-tag-law`, RETIRED). What survives is the CI check itself: the
+    session's own `gh run view <id>` concluding success at the pushed tip, id and
+    conclusion recorded in the record (`rulings.md#R-session-verifies-ci-via-gh`,
+    RETIRED as a tag condition, kept as the close marker). Release `v*` tags,
     repo-level `gh` mutations, git surgery and placing external documents stay
     AUTHOR ACTION — hand them to the author whatever the ceremony mode.
 12. **Stop and report on a premise mismatch.** A checkpoint whose stated premise does
@@ -81,18 +81,21 @@ a step are in `HISTORY.md` beside this file (split out by ADR-0145).
     (`docs/dev/way-of-working.md` §2). STOP-AND-REPORT binds where two readings are
     both defensible; a mechanical conflict with one defensible reading is fix-forward
     WITH DISCLOSURE (`rulings.md#R-stop-only-on-two-defensible-readings`).
-13. **Run `bin/close-scaffold <YYYY-MM-DD> <slug> <description>` before the final
-    push**, then fill in its stubs: it writes the session record, the prompt archive
-    and both README index lines the two index gates check (R-A).
+13. **Write the session record and archive the prompt by hand** before the final
+    push — `.agents/session-records/<YYYY-MM-DD>-<slug>.md`,
+    `.agents/prompts/<YYYY-MM-DD>-<slug>.md`, and one index line in each
+    directory's `README.md` (both index gates check those lines).
+    `bin/close-scaffold` used to do this and was deleted 2026-08-25.
 14. **Cite a suite figure where it LIVES, never where it was compared.** An ADR
     records its own BASELINE, so "reconciling exactly against ADR-NNNN's X/Y/Z"
     sends a reader to a document that does not carry X/Y/Z -- the close figure is
     in that session's RECORD. Name whichever one holds it (ADR-0158, D1-1).
-15. **Move this session's own closed rows to `Done`, rotate `## Done` back to 30 LINES
-    or under -- oldest WHOLE rows verbatim into the month's
-    `.agents/plans/roadmap-done-<yyyy-mm>.md`, which is append-only -- and re-measure
-    every reading set at the close** (`rulings.md#R-register-hygiene-at-close`,
-    `rulings.md#R-done-attic-rotation`).
+15. **Update the roadmap rows this session actually changed, and nothing else**
+    (`rulings.md#R-register-hygiene-at-close`). The `## Done` ledger, its 30-line cap
+    and its rotation into `.agents/plans/roadmap-done-<yyyy-mm>.md` were retired
+    2026-08-25 (`rulings.md#R-done-attic-rotation`, superseded in practice); closed
+    work is the ADR record. Reading sets are no longer budget-gated, so there is
+    nothing to re-measure (`rulings.md#R-budget-stop`).
 16. **Over a reading-set budget, compact or STOP-AND-REPORT — never bump**
     (`rulings.md#R-budget-stop`); the ratchet baseline makes the bump unavailable.
 17. **Push a red-first commit together with its green successor, never alone**
@@ -133,10 +136,11 @@ verified, ending in a session record and an archived prompt.
       enforcement test proved red-before-green with its own real output.
 - [ ] An "every occurrence" fix carries its sweep census.
 - [ ] `bin/post-push-verify` ran after every push, its three checks recorded.
-- [ ] Any `stable-*` tag went through `bin/tag-ceremony` under an explicit licence,
-      ending in peeled-ref verification; AUTHOR ACTION items were left to the author.
+- [ ] No tag was paid; CI green at the pushed tip was verified with `gh run view`
+      and recorded. AUTHOR ACTION items were left to the author.
 - [ ] Any regression-oracle claim names `bin/regression-oracle`'s own output.
-- [ ] `bin/close-scaffold` ran before the final push and its stubs are filled in.
-- [ ] Closed rows moved to `Done`, `## Done` rotated to 30 lines or under; all five
-      reading sets re-measured and recorded.
+- [ ] The session record, the prompt archive and both README index lines were written
+      before the final push.
+- [ ] The roadmap rows this session changed were updated; no `## Done` rotation and no
+      reading-set re-measurement were owed.
 - [ ] Every suite figure cited to the document that CARRIES it.

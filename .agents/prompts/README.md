@@ -28,8 +28,9 @@ naming anything the session did differently and why.
 
 Every non-trivial session, as its last pre-push act, archives its own
 driving prompt here alongside its record — R-A's other half.
-`bin/close-scaffold <date> <slug> <description>` writes both stubs and
-regenerates the two indexes.
+Both files are written by hand and `make state-derived` regenerates the
+two indexes; `bin/close-scaffold` did this until it was deleted
+2026-08-25.
 
 Annotations that used to ride the old per-file rows here are verbatim,
 dated, in [`../plans/state-history-2026-08.md`](../plans/state-history-2026-08.md).

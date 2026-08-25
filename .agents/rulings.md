@@ -1,5 +1,16 @@
 # Rulings register -- standing rules only
 
+**FROZEN 2026-08-25 -- laws now land as gates or not at all; rows are
+historical.** De-scaffold ruling: this register no longer grows. A rule
+worth keeping is worth a test; a rule with no test is a wish. Rows below
+stay because live surfaces cite them and because the reasoning in each
+row's ADR is still worth reading -- not because appending here is still
+a session's job. Thirteen rows whose text a surviving test already
+enforced were deleted in the same commit; the commit body names the test
+per row. Two more that qualified -- `R-io-result-or-loud` and
+`R-audience-has-entry-path` -- were kept, because live source and test
+files cite them by slug.
+
 **One row per standing rule, with the ADR that ruled it.** Verbatim from this file's
 founding header (ADR-0047 AR-C-2): *"It is NOT a history: the ADR files themselves
 (`notes/adr/`) are the narrative and execution record of record; this file exists so a
@@ -8,20 +19,23 @@ ADRs to separate standing rules from executed-once decisions."* Between ADR-0048
 ADR-0144 every block appended here was a history anyway; ADR-0145 moved all 56 of them,
 verbatim, into the ADRs that own them, and made the shape enforceable.
 
-Row contract, gated by `ehrt.docs-tooling.rulings-lint-test`:
+Row contract (its lint, `ehrt.docs-tooling.rulings-lint-test`, was deleted
+with the freeze -- nothing enforces the shape now):
 
     - **R-<slug>** -- <rule> -- ADR-NNNN [SUPERSEDED-BY R-<slug> (ADR-NNNN)]
 
 Slugs are unique file-wide; a rule is cited `rulings.md#R-<slug>`. Three lines a row,
-maximum. A superseded rule KEEPS its row and names its successor -- nothing here is
-deleted. A rule earns a row only if a FUTURE session must still follow it; a decision
-executed once belongs to its own ADR, which is also where every row's reasoning lives.
-Appended by the session that takes the ruling, not held to arc close.
+maximum. A superseded rule KEEPS its row and names its successor. A rule earns a row
+only if a FUTURE session must still follow it; a decision executed once belongs to its
+own ADR, which is also where every row's reasoning lives.
+
+The append-per-ruling half of that contract, and the "nothing here is deleted" half,
+both ended with the freeze above. A row now goes only two ways: **deleted**, when a
+surviving test enforces its text and the row was merely restating the test; or
+**RETIRED in place**, when the rule stops binding but a live surface still cites it.
 
 - **R-intake-front-door** -- a sim run enters `ehr corpus intake` as a foreign pipeline's
   output would, never as a privileged first-party producer -- ADR-0043
-- **R-provenance-leaf** -- `ehrt.provenance.*` depends on `malli` and nothing else; an
-  `ehrt.*` require inside it is itself the violation -- ADR-0043
 - **R-sim-facade-frozen** -- `ehrt.sim.interface`'s vars, names and arities stay
   byte-identical; thinning the facade is a separate author-ruled decision -- ADR-0043
 - **R-ledger-counting-definition** -- every parity or deftest ledger states which counting
@@ -31,8 +45,6 @@ Appended by the session that takes the ruling, not held to arc close.
   undeclared diff; a `:require`/`:import` change IS one (widened ADR-0156) -- ADR-0044
 - **R-move-not-improve** -- a relocation moves equipment and exercises it; a fix found
   mid-move is a FINDING, recorded, never taken. Prose included -- ADR-0044
-- **R-deferred-rows-live** -- `## Deferred` rows are LIVE; one that closes moves with its
-  notes intact, never a closure note left in place of the move -- ADR-0045
 - **R-adr-citation-continuity** -- `notes/ADRs.md` stays the citation target forever; ADR
   numbers are never renumbered -- ADR-0046
 - **R-session-narrative-hierarchy** -- the ADR is the sole session narrative, the session
@@ -48,6 +60,8 @@ Appended by the session that takes the ruling, not held to arc close.
   solely in a transcript is `[unverified]` until an artifact captures it -- ADR-0048
 - **R-stable-tag-author-only** -- tagging remains the author's act alone -- ADR-0048
   SUPERSEDED-BY R-tag-law (ADR-0057)
+  **RETIRED 2026-08-25** (de-scaffold ruling): tag rulings retired wholesale with
+  `R-tag-law`.
 - **R-dependency-review-cadence** -- `clojure -M:poly libs :outdated` is report-only, run at
   each arc close and before any publish; upgrades never ride along -- ADR-0055
 - **R-pairing-registry-home** -- `judge` is the accepted acyclic home for the
@@ -57,27 +71,27 @@ Appended by the session that takes the ruling, not held to arc close.
 - **R-tag-law** -- `stable-*` tags are SESSION acts, under a specific licence or for a
   verified predecessor point; deferring a licensed one is the deviation. `v*` tags stay
   AUTHOR ACTION -- ADR-0057
+  **RETIRED 2026-08-25** (de-scaffold ruling): no per-arc tags. `stable-*` is not
+  paid by a session at all; `v*` remains the author's. Row kept because
+  `ehrt.docs-tooling.process-law-citation-test` vouches for its citation in
+  `build-session/SKILL.md`.
 - **R-two-voices-two-homes** -- user surfaces speak operator language; maintainer content
   lives in source comments and dev docs, relocated never deleted -- ADR-0064
 - **R-errors-name-artifact** -- every operational error names the thing it could not find or
   parse, with a next step; unknown input is rejected by name -- ADR-0064
 - **R-audit-uses-mechanism** -- audit evidence uses the mechanism it recommends: resolve
   paths rather than parse grammar, walk the data the gate walks -- ADR-0064
-- **R-tests-build-own-dirs** -- a test builds the directories it needs; depending on a live
-  mutable repo directory is the violation, tracked fixtures are not -- ADR-0068
+- **R-io-result-or-loud** -- a production I/O call that can fail routes through
+  `ehrt.kernel.io` -- `list-files`/`rename!`, and from 2026-08-19 `mkdirs!`/`delete!` with
+  `delete-quietly!` the declared cleanup exception (ADR-0157) -- or handles failure by name; failure never impersonates an empty result -- ADR-0080
 - **R-folds-strict-sinks-lenient** -- a coherence fold rejects what it cannot reconstruct; a
   display sink absorbing foreign traffic skips-with-cue and counts the skips -- ADR-0068
-- **R-vendored-bytes-are-law** -- vendored content is byte-verbatim at its pin,
-  `-text`-protected, NOTICE-hashed, gate-verified; an edit is STOP-AND-REPORT -- ADR-0074
 - **R-population-scale-gate** -- a module joins on a witnessed content-producing round trip
   at population scale; a census verdict is never a vendoring licence -- ADR-0074
 - **R-multi-seed-once-flagged** -- a round trip that flags a module re-runs at 2-3
   well-mixed seeds at population scale before any verdict -- ADR-0080
 - **R-defspec-seed-policy** -- seeds stay unpinned repo-wide; a spec that has actually
   flaked pins or durably logs its seed -- ADR-0080
-- **R-io-result-or-loud** -- a production I/O call that can fail routes through
-  `ehrt.kernel.io` -- `list-files`/`rename!`, and from 2026-08-19 `mkdirs!`/`delete!` with
-  `delete-quietly!` the declared cleanup exception (ADR-0157) -- or handles failure by name; failure never impersonates an empty result -- ADR-0080
 - **R-ci-watched-not-awaited** -- preflight discloses the last five runs; watching to
   conclusion is for a session whose claim is about CI; no push carries a known-failing test
   -- ADR-0080
@@ -102,17 +116,8 @@ Appended by the session that takes the ruling, not held to arc close.
 - **R-permission-denied-category** -- a missing path and an unreadable one share ONE
   category, distinguished by a `:reason :permission-denied` key, never a second one --
   ADR-0098
-- **R-user-path-adr-footnoted** -- an ADR citation in the user path (`docs/` proper) becomes
-  a footnote marker linking the index, never stripped -- ADR-0101
-- **R-footnote-append-in-place** -- the visible `ADR-NNNN` token stays in the prose,
-  followed by its marker -- ADR-0101 SUPERSEDED-BY R-footnote-marker-only (ADR-0102)
 - **R-mllp-abandoned** -- the `:mllp` sink is abandoned, not deferred; no transport work
   follows from it without a fresh ruling -- ADR-0102
-- **R-footnote-marker-only** -- a footnoted citation drops the visible token and keeps the
-  marker alone -- ADR-0102
-- **R-footnote-scope-origin-qualified** -- an origin-qualified citation (`sim/ADR-NNNN`)
-  footnotes like a bare one, under a distinct marker targeting the index it names --
-  ADR-0102
 - **R-user-manual-deferral** -- the user manual waits on latency-realistic traffic plus a
   witnessed downstream-receiver demo -- ADR-0108 SUPERSEDED-BY R-user-manual-opened
   (ADR-0112)
@@ -130,8 +135,6 @@ Appended by the session that takes the ruling, not held to arc close.
 - **R-manual-shape** -- `docs/manual/` is a chaptered narrative layer over existing
   references, never duplicating them, with `ed-tuesday` as its one running scenario --
   ADR-0113
-- **R-demos-exercised** -- demos are exercised as documented: each scenario README's fenced
-  commands run in order, exit codes and named invariants asserted -- ADR-0113
 - **R-diagrams-derive-from-data** -- a manual diagram derives from data wherever derivable,
   committed as SVG with its source, so it cannot drift -- ADR-0113
 - **R-engine-flake-seed-licence** -- a session may pin seed `7844068501`, classify the
@@ -178,16 +181,22 @@ Appended by the session that takes the ruling, not held to arc close.
 - **R-unrelayed-tag-condition-stops** -- a tag licence conditioned on a relay the prompt
   does not carry STOPs and reports the run id; never substitute your own check -- ADR-0134
   SUPERSEDED-BY R-session-verifies-ci-via-gh (ADR-0148)
+  **RETIRED 2026-08-25** (de-scaffold ruling): tag rulings retired wholesale with
+  `R-tag-law`.
 - **R-unregistered-request-gets-a-row** -- an unregistered standing request gets a roadmap
   row before it gets a disposition -- visibility first -- ADR-0139
 - **R-severity-tracks-mechanism** -- a review dimension is scored on the gap its mechanism
   leaves open, not on what fell through it this time -- ADR-0139
 - **R-arc-closes-in-own-session** -- an arc closes in its own session with its own tag; the
   close is a probe, not an appendix to the last fix session -- ADR-0139
+  **RETIRED 2026-08-25** (de-scaffold ruling): arcs no longer close with a tag or a
+  close session of their own; CI green at the tip is the marker.
 - **R-lapsed-probe-standalone** -- a lapsed probe is chartered standalone, ahead of the
   review that would otherwise absorb it -- ADR-0139
 - **R-review-cadence-in-adrs** -- repo-review cadence is measured in ADRs, not days: the
   next review is chartered roughly 15 ADRs past the prior close -- ADR-0139
+  **RETIRED 2026-08-25** (de-scaffold ruling): no scheduled repo review; a review
+  happens when the author calls one.
 - **R-never-dodge-a-gate-by-population** -- a gate that fires is telling you something true
   about scope: widen the fence under a ruling, or stop -- never move outside it -- ADR-0139
 - **R-population-closure** -- enumerate the population from the tree, diff it against
@@ -212,20 +221,11 @@ Appended by the session that takes the ruling, not held to arc close.
   successor, never alone -- ADR-0143
 - **R-anchored-register-edits** -- a register of independent rows is edited by anchored
   insertion or replacement, never by slicing between two anchors -- ADR-0143
-- **R-adr-index-generated** -- `notes/ADRs.md` is generated from the ADR files' own headings
-  and Status lines, CI freshness-gated -- ADR-0143
 - **R-narratives-move-to-owning-adr** -- a register row's narrative moves VERBATIM into the
   ADR that owns it, under a dated heading -- ADR-0143
-- **R-roadmap-status-tokens** -- every roadmap row opens with `OPEN`, `CLOSED <date>
-  <ADR|sha>`, `DEFERRED (trigger: ...)` or `EXTERNAL`; `CLOSED` only under `## Done` --
-  ADR-0144
-- **R-roadmap-slug-anchors** -- every roadmap row carries a unique `**[slug]**` and is cited
-  `roadmap.md#<slug>`; a line-number cite from a live surface is red -- ADR-0144
 - **R-roadmap-six-line-cap** -- six lines a roadmap row, maximum -- ADR-0144
 - **R-roadmap-row-destinations** -- a closed roadmap row moves verbatim to the attic leaving
   one `## Done` line; a live row's overflow moves verbatim to its owning ADR -- ADR-0144
-- **R-roadmap-priority** -- `## Next` rows carry `PRIORITY n`, unique and ascending in file
-  order -- ADR-0144
 - **R-remainder-tokens-the-row** -- a closure leaving a live remainder keeps ONE row,
   retitled and retokened by what survives; splitting it is re-triage -- ADR-0144
 - **R-section-retriage-is-author-judgement** -- moving a row between `## Next`, `##
@@ -267,9 +267,14 @@ Appended by the session that takes the ruling, not held to arc close.
 - **R-session-verifies-ci-via-gh** -- a tag licence's CI condition is met by the executing
   session's own `gh run view <id>` concluding success, id and conclusion recorded; author
   relay sufficient, never required; pay in session if it concludes while open -- ADR-0148
+  **RETIRED 2026-08-25** (de-scaffold ruling): the tag licence it conditioned is gone;
+  the `gh run view` step survives as the CI-green-at-tip check, not as a tag
+  condition. Row kept because
+  `ehrt.docs-tooling.process-law-citation-test` vouches for its citation.
 - **R-full-suite-before-push** -- a push is preceded by full `make test` unpiped with
   MAKE_EXIT recorded, and a wrapper capturing it ENDS with `exit "$MAKE_EXIT"`; `poly test
-  brick:`/`project:` are aids, never the gate: tree-scanning gates live elsewhere -- ADR-0150
+  brick:`/`project:` are aids, never the gate: tree-scanning gates live elsewhere. Docs-only
+  diffs exempt; CI runs the suite -- ADR-0150, amended by the de-scaffold ruling 2026-08-25
 - **R-preflight-fail-closed** -- `bin/preflight` exits non-zero on any FINDING/FAIL/UNKNOWN,
   and a check that could not MEASURE reports UNKNOWN, never OK: its output is the artifact
   a session discloses and its exit code is a claim as well -- ADR-0155

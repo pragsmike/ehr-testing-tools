@@ -45,30 +45,30 @@ Oracle roots: `appendicitis`, `sore-throat`, `ear-infections`, `sinusitis`, `dea
 
 | fact | count |
 |---|---|
-| `*_test.clj` namespaces under any brick's own `test/` | 199 |
-| docs-tooling gate namespaces | 54 |
+| `*_test.clj` namespaces under any brick's own `test/` | 190 |
+| docs-tooling gate namespaces | 45 |
 
-Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `attic_rotation_test`, `audience_entry_path_test`, `citation_gate_test`, `cli_tombstone_test`, `demo_exerciser_fresh_test`, `docsgen_closure_test`, `docsgen_test`, `done_pointer_adr_test`, `event_log_doc_test`, `exercised_sources_coverage_test`, `exercised_sources_test`, `exit_truthfulness_test`, `front_door_fence_gate_test`, `hand_owned_asset_freshness_test`, `index_completeness_test`, `invocation_lint_test`, `io_vocabulary_lint_test`, `license_text_pointer_test`, `link_footnote_gate_test`, `lint_test`, `mermaid_render_test`, `notes_prompts_frozen_test`, `notice_verbatim_test`, `oracle_coverage_test`, `patient_simulator_charter_test`, `pipeline_test`, `post_push_verify_range_test`, `process_law_citation_test`, `project_classpath_test`, `prompt_record_pairing_test`, `provenance_leaf_law_test`, `quickstart_fresh_test`, `reading_set_budget_test`, `readme_presence_test`, `resource_nesting_test`, `roadmap_lint_test`, `root_alias_completeness_test`, `rulings_lint_test`, `sim_emit_hl7_dependency_test`, `sim_purity_lint_test`, `sim_theory_head_hop_test`, `skill_mirror_currency_test`, `stale_path_test`, `state_derived_test`, `state_residue_test`, `state_staleness_tripwire_test`, `strip_fresh_test`, `structure_currency_test`, `tag_law_test`, `test_source_live_path_lint_test`, `traces_fresh_test`, `usecases_test`
+Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entry_path_test`, `citation_gate_test`, `cli_tombstone_test`, `demo_exerciser_fresh_test`, `docsgen_closure_test`, `docsgen_test`, `event_log_doc_test`, `exercised_sources_coverage_test`, `exercised_sources_test`, `exit_truthfulness_test`, `front_door_fence_gate_test`, `hand_owned_asset_freshness_test`, `index_completeness_test`, `invocation_lint_test`, `io_vocabulary_lint_test`, `license_text_pointer_test`, `link_footnote_gate_test`, `lint_test`, `mermaid_render_test`, `notice_verbatim_test`, `oracle_coverage_test`, `patient_simulator_charter_test`, `pipeline_test`, `post_push_verify_range_test`, `process_law_citation_test`, `project_classpath_test`, `provenance_leaf_law_test`, `quickstart_fresh_test`, `readme_presence_test`, `resource_nesting_test`, `roadmap_lint_test`, `root_alias_completeness_test`, `sim_emit_hl7_dependency_test`, `sim_purity_lint_test`, `sim_theory_head_hop_test`, `skill_mirror_currency_test`, `stale_path_test`, `state_derived_test`, `strip_fresh_test`, `structure_currency_test`, `test_source_live_path_lint_test`, `traces_fresh_test`, `usecases_test`
 
 ## Registers
 
 | register | count |
 |---|---|
 | ADR files (`notes/adr/NNNN-*.md`) | 168 |
-| roadmap rows (all sections) | 64 |
-| rulings rows | 126 |
-| rulings rows superseded | 7 |
-| session records | 174 |
-| archived prompts | 167 |
+| roadmap rows (all sections) | 59 |
+| rulings rows | 113 |
+| rulings rows superseded | 6 |
+| session records | 175 |
+| archived prompts | 168 |
 
 ### Roadmap rows by section
 
 | section | rows | tokens in use |
 |---|---|---|
-| Next | 31 | `OPEN` |
+| Next | 6 | `OPEN` |
 | Externals | 8 | `EXTERNAL` |
 | Deferred | 20 | `DEFERRED` |
-| Done | 5 | `CLOSED` |
+| Done | 25 | `CLOSED` |
 
 ## Reading sets
 
@@ -76,11 +76,11 @@ Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `attic_rotatio
 
 | set | paths | actual | budget | baseline | headroom |
 |---|---|---|---|---|---|
-| :corpus | 7 | 1836 | 2045 | 2045 | 209 |
-| :docs | 5 | 743 | 785 | 785 | 42 |
-| :judge | 8 | 926 | 1000 | 1000 | 74 |
-| :onboarding | 10 | 1498 | 1530 | 1530 | 32 |
-| :sim | 6 | 1278 | 1405 | 1405 | 127 |
+| :corpus | 7 | 1856 | 2045 | 2045 | 189 |
+| :docs | 5 | 763 | 785 | 785 | 22 |
+| :judge | 8 | 946 | 1000 | 1000 | 54 |
+| :onboarding | 10 | 1345 | 1530 | 1530 | 185 |
+| :sim | 6 | 1298 | 1405 | 1405 | 107 |
 
 ## What this page reads
 

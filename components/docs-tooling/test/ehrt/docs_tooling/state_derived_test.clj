@@ -38,7 +38,7 @@
       (is (= (sd/render-index (assoc target :files (sd/index-files dir)))
              (slurp (io/file dir "INDEX.md")))
           (str dir "/INDEX.md is stale -- a file was added or removed without regenerating. "
-               "Run `make state-derived`. `bin/close-scaffold` does this for you.")))))
+               "Run `make state-derived`.")))))
 
 (deftest a-generated-index-never-indexes-itself-or-its-readme-test
   (testing "INDEX.md and README.md are not records and must never appear as rows"
