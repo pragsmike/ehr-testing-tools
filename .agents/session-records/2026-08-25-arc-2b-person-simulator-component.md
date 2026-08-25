@@ -17,6 +17,9 @@ Four commits, in the order the prompt names them.
 | `754315f` | the component skeleton and its charter gate, no behaviour |
 | `04b86bf` | RED -- eleven limitation gates, the referential invariants, fixed consumption, a counted witness |
 | `98099dc` | GREEN -- the fourteen kinds, drawn from the `:person` family alone |
+| `e1b478d` | this record, the prompt archive, and the roadmap row |
+| `e1462c8` | fix -- one household per parent, and no hash-order pick |
+| `b4f1115` | fix -- an event that reports no change is not an event |
 
 The author ruled **A1 B1 C1 D1 E1 F1 G1** -- the recommendation on all
 seven. F1 is the one that shaped the session: the component lands
@@ -34,15 +37,15 @@ emptied (ADR-0171's own lesson).
 
 | kind | count | | kind | count |
 |---|---|---|---|---|
-| `:coverage-change` | 186 | | `:occupational-injury` | 5 |
-| `:employment-change` | 174 | | `:identity-resolution` | 5 |
-| `:residence-move` | 144 | | `:identity-unavailable` | 5 |
-| `:household-join` | 52 | | `:person-death` | 17 |
-| `:household-form` | 47 | | `:household-leave` | 16 |
-| `:identity-correction` | 40 | | `:delivery` | 26 |
+| `:residence-move` | 163 | | `:person-death` | 17 |
+| `:coverage-change` | 147 | | `:household-leave` | 16 |
+| `:employment-change` | 135 | | `:identity-resolution` | 5 |
+| `:household-join` | 52 | | `:identity-unavailable` | 5 |
+| `:household-form` | 38 | | `:occupational-injury` | 5 |
+| `:identity-correction` | 36 | | `:delivery` | 26 |
 | `:pregnancy` | 26 | | `:person-registered` | 26 |
 
-769 events total. `:pregnancy` = `:delivery` = `:person-registered` = 26
+697 events total. `:pregnancy` = `:delivery` = `:person-registered` = 26
 is not a coincidence and not luck: it is limitations row 11's bijection
 and row 2's closure, both of which had to be built for rather than
 observed (see "what the tree contradicted", 5).
@@ -64,8 +67,8 @@ depends on whether the hazard fired.
 
 | gate | result |
 |---|---|
-| `make test` (unpiped, `MAKE_EXIT` captured) | recorded in the follow-up commit -- see "the gates on a clean tree" |
-| `make integration` (Makefile:52 -- the tier `make test` skips) | recorded in the follow-up commit -- see below |
+| `make test` (unpiped, `MAKE_EXIT` captured) | **MAKE_EXIT=0**, 0 failures, 0 errors, 15m08s |
+| `make integration` (Makefile:52 -- the tier `make test` skips) | **INT_EXIT=0**, 0 `FAIL:` lines, 1,502 tests / 4,813 assertions, 10m08s |
 | `bin/regression-oracle 9d64ae2 HEAD`, **no declaration** | **IDENTICAL**, exit 0, 35 roots per side, 70 digest lines |
 | four `arc0_gated_*` digests, `pinned_seed_42`, both conformance baselines | `git diff --stat 9d64ae2 HEAD` on those paths: **empty** |
 
@@ -91,7 +94,50 @@ equivalence-proof shape applied to a whole new component.
 **Suite reconciliation against `9d64ae2`**, measured by running the same
 target in a worktree at that commit, not estimated:
 
-Recorded in the follow-up commit, measured in a worktree at `9d64ae2`.
+| | tests | assertions | exit |
+|---|---|---|---|
+| `9d64ae2` (worktree) | 4,056 | 18,170 | 0 |
+| tip | 4,111 | 18,400 | 0 |
+| delta | **+55** | **+230** | 0 |
+
+**+55 reconciles exactly**, and every one is a new test:
+
+| namespace | runs | tests | assertions |
+|---|---|---|---|
+| `ehrt.docs-tooling.person-simulator-charter-test` | 2 (conformance, ehrt-cli) | 28 | 94 |
+| `ehrt.person-simulator.limitations-test` | 1 (conformance) | 10 | 36 |
+| `ehrt.person-simulator.invariants-test` | 1 | 9 | 21 |
+| `ehrt.person-simulator.consumption-test` | 1 | 7 | 29 |
+| `ehrt.person-simulator.witness-test` | 1 | 1 | 18 |
+| | | **55** | **198** |
+
+The charter gate runs TWICE because two projects compose `docs-tooling`;
+the component's own four run ONCE, because only `conformance` composes
+`person-simulator` -- which is the whole reason that entry exists (see
+"what the tree contradicted", 1).
+
+**+230 - 198 = +32 residue**, all of it accounted for, none of it a new
+test:
+
+| namespace | delta | why |
+|---|---|---|
+| `docs-tooling.io-vocabulary-lint-test` | +10 | one assertion per brick src file, x2 runs -- 5 new src files |
+| `docs-tooling.test-source-live-path-lint-test` | +8 | one per brick TEST file, x2 -- 4 new `*_test.clj` |
+| `docs-tooling.structure-currency-test` | +6 | per-brick, x2 -- the new brick in both structure surfaces |
+| `docs-tooling.invocation-lint-test` | +4 | per src file, x2 |
+| `docs-tooling.stale-path-test` | +2 | per scanned path, x2 |
+| `sim.version-test` | +2 | **a measurement artefact, not a change** |
+
+That last one is worth its own line. `ehrt.sim.version/git-sha` reads
+`.git/HEAD` as a FILE, and in a `git worktree` `.git` is a file
+containing `gitdir:`, not a directory -- so the baseline worktree got
+`nil` and
+`generator-sha256-is-not-the-all-zero-placeholder-when-git-is-present`
+skipped its one assertion, twice. The tip, a real clone, ran it. Nothing
+in this arc touched `sim`; the difference is between a worktree and a
+clone. Recorded rather than absorbed into the residue, because a
+baseline measured in a worktree is the method this repo uses and this
+is a standing property of it.
 
 ## What the tree contradicted
 
@@ -142,7 +188,7 @@ something only execution could find.
    `ehrt.docs-tooling.structure-currency-test`, and `.agents/state-derived.md`
    under its own freshness gate. None was on the prompt's wiring list.
 
-## Two bugs the gates caught
+## Bugs found, and by what
 
 Recorded because they are the reason the gates were written, and both
 were caught by a gate rather than by reading.
@@ -160,6 +206,44 @@ were caught by a gate rather than by reading.
    gate caught it: the newborn's draw count came out a multiple of
    eighteen instead of four more than one. The walk now continues on
    the already-positioned stream.
+
+Two more were found NOT by a gate but by asking the witness stream a
+question no gate was asking -- *which persons head more than one
+household* -- which is worth recording as a method: a green suite is
+evidence about the questions you asked it.
+
+3. **A parent's second and third children each constituted their own
+   household.** The births pass reads the parent's household state as
+   snapshotted by the WALK, which ran before the pass and could not see
+   what the pass had just created, so `p-034` headed
+   `hh-p-034-birth0`, `-birth1` and `-birth2`: three households, one
+   per child, siblings in none of each other's. Eight parents affected.
+   The pass now threads a `constituted` map.
+4. **A family move propagated to whichever household the hash offered.**
+   The head -> household lookup was a reverse `some` scan over a map,
+   returning ONE entry in iteration order -- a derivation through
+   nondeterminism (`rulings.md#R-no-derivation-through-nondeterminism`)
+   that silently dropped propagations. It is now an explicit head ->
+   SORTED vector index, and propagation reaches every household the
+   mover heads that was already formed.
+
+And three more of a different kind, found by reading the payloads: a
+`:residence-move` to the address already lived at, an
+`:employment-change` to the status already held, and an
+`:identity-correction` whose corrected `:dob` equalled the original.
+Each fired a hazard and then said nothing had happened. All three are
+now suppressed when the value does not change, and the dob correction
+got a real error to model -- `transposed-dob` swaps month and day, the
+transcription error a registrar makes on an international form, and
+only when the day is 12 or less so the result is always a REAL date.
+Digit transposition was tried first and rejected: it turns 1985-04-27
+into 1985-04-72, and an impossible date presented as ground truth is
+the fabricated-by-omission class this project may not ship.
+
+**Consumption is untouched by all five suppressions**, which is why
+they are suppressions and not resamplings: every variate is drawn
+either way, and the draw-count gate stayed green at 13 + 18x24 per t0
+person throughout.
 
 ## Fences
 
@@ -184,6 +268,14 @@ is a test-time rebinding, not a change to that component.
   (`rulings.md#R-amend-unpushed-message-only` for the first; the second
   was re-applied from its own `format-patch` output). No content
   changed; the RED/GREEN split is intact.
+* **One v1 artefact survives, stated in `persons`' own docstring rather
+  than left to be discovered.** A parent unhoused at their delivery who
+  later forms a household on their own hazard heads TWO -- the one the
+  birth constituted and the one they formed. Four such persons in the
+  witness population. Both have members and a move by the head reaches
+  both; household structure has no wire surface at all (limitations row
+  8). Fixing it needs a second walk pass or a feedback edge from the
+  births pass into the walk, and neither buys a message.
 * `:identity-unavailable` and `:identity-resolution` witness at 5 each
   and `:occupational-injury` at 5 -- thin. They are the knife-edge
   fixtures a future reshuffle would empty first, which is exactly why
