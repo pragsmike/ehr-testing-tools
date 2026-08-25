@@ -41,6 +41,12 @@ with them.
   `rulings.md#R-per-person-streams-before-generator-fixes`. ADR-0168 section 4.
   CHARTERED 2026-08-25 by ADR-0172 (front door, 14 event kinds, 11 gated
   limitations, seven rulings A-G open); arc 2b implements it once ruled.
+  COMPONENT LANDED 2026-08-25 by arc 2b under rulings A1 B1 C1 D1 E1 F1 G1:
+  all 14 kinds with a counted witness, 11 gated limitations, 18 draws per
+  person-year from the `:person` family alone, and the corpus provably
+  untouched (ruling F1). What is left on this row is the ENGINE'S FOLD --
+  nothing calls the component yet, and nothing may until
+  `roadmap.md#engine-fold-extensions` (arc 3) lands it.
 - OPEN **[engine-fold-extensions]** PRIORITY 4 -- traffic-scale arc 3. Demographic
   timeline, scheduling state (`rulings.md#R-mix-5`), bed-status cycle (`R-mix-6`),
   new invariant families. SCOPE NARROWED 2026-08-24 (ADR-0169, ruling S1): the
