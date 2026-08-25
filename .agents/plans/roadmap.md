@@ -8,6 +8,12 @@ cited from elsewhere as `roadmap.md#<slug>` and never by line number; `## Next`
 rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
 
 ## Next (backlog, no session scheduled)
+- OPEN **[performance-arc-0]** PRIORITY 1 -- traffic-scale arc 0 (ADR-0169),
+  commissioned by author ruling S2 AHEAD of arc 1 because ruling S1 exempts
+  output-identical refactors from the reshuffle era. Three site families the
+  08-24 spike measured: the six check-side occupancy/churn invariants (99.4% of
+  check), `replay`-per-cancel (35.3% of generate), the two ADR-0164 citation
+  scans (32.2%). Gated by byte-identical corpora + identical findings, co-landed.
 - OPEN **[repo-review-5]** PRIORITY 3 -- chartered roughly 15 ADRs past the
   review-4 close by ADR count, not calendar (`rulings.md#R-review-cadence-in-adrs`,
   measured from the prior CLOSE as ADR-0139 worked it): **approximately ADR-0174**.
@@ -144,10 +150,10 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   Blocked on `roadmap.md#stream-partition-design`. ADR-0168 section 4.
 - OPEN **[engine-fold-extensions]** PRIORITY 28 -- traffic-scale arc 3. Demographic
   timeline, scheduling state (`rulings.md#R-mix-5`), bed-status cycle (`R-mix-6`),
-  new invariant families, plus the quadratic removals. SCOPE AMENDED 2026-08-24 by
-  the throughput spike: a SECOND quadratic on the CHECK side (six of 29 invariants
-  = 99.4% of check, 69% of total at 10^5) joins the decide-time scans, whose worst
-  site is `replay` inside the cancel decides, not ADR-0164's. Plan + record 08-24.
+  new invariant families. SCOPE NARROWED 2026-08-24 (ADR-0169, ruling S1): the
+  quadratic removals the 08-24 spike measured are NOT draw-affecting and left for
+  `roadmap.md#performance-arc-0`, which lands ahead of arc 1. What remains here is
+  the draw-affecting half, which still waits on the stream migration.
 - OPEN **[emission-add-ons]** PRIORITY 29 -- traffic-scale arc 4
   (`rulings.md#R-mix-7`): order/result status ladders, DFT P03 charges,
   re-statement chatter under config ratios, fan-out/subscriber table; rides

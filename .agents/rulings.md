@@ -301,3 +301,6 @@ Appended by the session that takes the ruling, not held to arc close.
 - **R-per-person-streams-before-generator-fixes** -- Q3(b) is CALLED FOR, not deferred:
   per-patient/per-person RNG streams plus the from==to delay-draw skip precede the
   traffic-scale generator arcs; a generator fix landing first owes an author ruling -- ADR-0168
+- **R-output-identical-exempt-from-reshuffle-era** -- an OUTPUT-IDENTICAL refactor
+  (byte-identical corpus + identical findings at every gated seed, proven by co-landed
+  tests) is EXEMPT from the reshuffle era; only DRAW-AFFECTING changes wait -- ADR-0169

@@ -12,6 +12,14 @@ realism, not lifetime realism.
 
 ## Arcs, in dependency order
 
+**Arc 0 — quadratic removals under equivalence proof (ADR-0169).**
+Commissioned 2026-08-24 by author ruling S2, one session, AHEAD of arc 1.
+Scope: the three site families the throughput spike named — the six
+check-side occupancy/churn invariants, the `replay`-per-cancel read, and
+the two ADR-0164 citation scans. Nothing draw-affecting; gated by
+byte-identical corpora and identical findings at every gated seed,
+asserted by tests co-landed with the refactor.
+
 **Arc 1 — stream-partition design ADR (design session, no code).**
 Classify every existing draw site patient/world from the tree (churn's
 shared-RNG docstring is one named site); per-person stream derivation
@@ -37,10 +45,21 @@ fill-vs-merge identification weighting.
 
 **Arc 3 — engine fold extensions.** Demographic timeline on patient
 state; scheduling state (R-mix-5); bed-status cycle (R-mix-6); the new
-invariant families (traffic-model.md lists the shapes). Also the O(n^2)
-decide-time scan removals (carry order indexes in fold state, the
-:result-available pattern) — REQUIRED at 10^5 scale, and a generator
-change, so it lands within this era, never before arc 1.
+invariant families (traffic-model.md lists the shapes).
+
+AMENDED 2026-08-24 by author ruling S1 (ADR-0169). This row read,
+verbatim:
+
+> Also the O(n^2) decide-time scan removals (carry order indexes in fold
+> state, the :result-available pattern) — REQUIRED at 10^5 scale, and a
+> generator change, so it lands within this era, never before arc 1.
+
+That sentence conflated "generator change" with "draw-affecting change".
+S1 rules output-identical refactors EXEMPT from the reshuffle-era
+constraint; only draw-affecting changes wait for the stream migration.
+The quadratic removals are therefore **arc 0's, not arc 3's**, and land
+BEFORE arc 1 rather than never before it. What remains here is the
+draw-affecting half named above.
 
 Scope AMENDED 2026-08-24 by the throughput spike, which measured the
 sites rather than assuming them (session record
