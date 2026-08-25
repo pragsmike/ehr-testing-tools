@@ -463,56 +463,64 @@
   Also completes the household-form rows: `:member-person-ids` and
   `:participants` name every person who ever joined, which is what
   makes ADR-0172 section 3's same-subject law hold for a
-  `:household-join` referencing its form."
+  `:household-join` referencing its form.
+
+  The head -> households index is a map to a SORTED VECTOR, not a
+  reverse lookup over a map. One person can head more than one
+  household (they form one, every member leaves, and a later birth
+  constitutes another), and `(some (fn [[h p]] ...) head-of)` would
+  have picked whichever the hash order offered -- a derivation through
+  nondeterminism (`rulings.md#R-no-derivation-through-nondeterminism`)
+  that also silently propagated a move to only one of them."
   [events ordinals]
   (let [members (membership-intervals events)
         by-household (group-by :household-id members)
-        head-of (into {} (for [e events :when (= :household-form (:event e))]
-                           [(:household-id e) (:person-id e)]))
+        forms (filter #(= :household-form (:event %)) events)
+        households-headed-by (into {} (for [[pid es] (group-by :person-id forms)]
+                                        [pid (vec (sort (map :household-id es)))]))
+        formed-at (into {} (for [e forms] [(:household-id e) (:t e)]))
+        heads (set (keys households-headed-by))
         covers? (fn [m t] (and (<= (:join-t m) t)
                                (or (nil? (:leave-t m)) (< t (:leave-t m)))))
+        ;; the members of every household `pid` heads that was already
+        ;; formed at `t` -- sorted, so the order two members are minted in
+        ;; is a property of their ids and not of a hash
+        members-at (fn [pid t]
+                     (->> (get households-headed-by pid [])
+                          (filter #(<= (get formed-at % Long/MAX_VALUE) t))
+                          (mapcat #(get by-household % []))
+                          (filter #(covers? % t))
+                          (sort-by :person-id)))
         [ords extra]
         (reduce
          (fn [[ords extra] head-move]
-           (let [hid (some (fn [[h p]] (when (= p (:person-id head-move)) h)) head-of)]
-             (if-not hid
-               [ords extra]
-               (reduce (fn [[ords extra] m]
-                         (if (covers? m (:t head-move))
-                           (let [[ords e] (ev ords (:person-id m) :residence-move
-                                              (:t head-move)
-                                              {:address (:address head-move)
-                                               :prior-address (:prior-address head-move)
-                                               :household-move-event-id (:event-id head-move)
-                                               :participants [(:person-id m) (:person-id head-move)]})]
-                             [ords (conj extra e)])
-                           [ords extra]))
-                       [ords extra]
-                       (get by-household hid [])))))
+           (reduce (fn [[ords extra] m]
+                     (let [[ords e] (ev ords (:person-id m) :residence-move
+                                        (:t head-move)
+                                        {:address (:address head-move)
+                                         :prior-address (:prior-address head-move)
+                                         :household-move-event-id (:event-id head-move)
+                                         :participants [(:person-id m) (:person-id head-move)]})]
+                       [ords (conj extra e)]))
+                   [ords extra]
+                   (members-at (:person-id head-move) (:t head-move))))
          [ordinals []]
-         (filter #(and (= :residence-move (:event %))
-                       (contains? (set (vals head-of)) (:person-id %)))
-                 events))
+         (filter #(and (= :residence-move (:event %)) (heads (:person-id %))) events))
         member-ids (reduce (fn [acc m] (update acc (:household-id m) (fnil conj []) (:person-id m)))
                            {} members)
-        moves-by-id (into {} (for [e extra] [(:household-move-event-id e) true]))
+        propagated (set (map :household-move-event-id extra))
         events' (mapv (fn [e]
                         (cond
                           (= :household-form (:event e))
-                          (let [ms (distinct (concat [(:person-id e)]
-                                                     (get member-ids (:household-id e) [])))]
+                          (let [ms (distinct (cons (:person-id e)
+                                                   (sort (get member-ids (:household-id e) []))))]
                             (assoc e :member-person-ids (vec ms) :participants (vec ms)))
 
-                          (and (= :residence-move (:event e)) (moves-by-id (:event-id e)))
+                          (and (= :residence-move (:event e)) (propagated (:event-id e)))
                           (assoc e :participants
-                                 (vec (distinct (concat [(:person-id e)]
-                                                        (map :person-id
-                                                             (filter #(covers? % (:t e))
-                                                                     (get by-household
-                                                                          (some (fn [[h p]]
-                                                                                  (when (= p (:person-id e)) h))
-                                                                                head-of)
-                                                                          [])))))))
+                                 (vec (distinct (cons (:person-id e)
+                                                      (map :person-id
+                                                           (members-at (:person-id e) (:t e)))))))
                           :else e))
                       events)]
     [(into events' extra) ords]))
@@ -542,7 +550,20 @@
                      at that instant instead. The GMF death stays
                      authoritative for anything wire-visible, and this
                      component never requires `patient-simulator` to
-                     learn it."
+                     learn it.
+
+  ONE V1 ARTEFACT, said out loud. A parent who has no household at a
+  delivery gets one constituted BY the birth, so the newborn has
+  something to join; the walk that decides household transitions ran
+  before that pass and cannot see it. So a parent unhoused at their
+  delivery who later forms a household on their own hazard ends up
+  heading two: the one the birth constituted and the one they formed.
+  Four such persons in this component's own witness population. It is
+  coherent -- both households have members, and a move by the head
+  propagates into both -- and it reaches no wire surface, because
+  household structure has none (limitations row 8). Fixing it needs
+  either a second walk pass or a feedback edge from the births pass
+  into the walk, and neither buys a message."
   [config stream]
   (let [master (:master stream)
         {:keys [t0 years population deaths]} config
@@ -577,10 +598,15 @@
                            (assoc p :persona persona :start-year start-year
                                   :age-origin-year (long (or (:age-origin-year p) 0))
                                   :death-t (get deaths person-id)))
-              ;; every birth mints a full person (ruling A1)
-              [ords' acc' queue' roster']
+              ;; every birth mints a full person (ruling A1). `constituted`
+              ;; carries the households THIS pass created, parent -> household,
+              ;; so a parent's second and third children join the household
+              ;; their first constituted instead of each constituting another.
+              ;; The walk cannot supply it: `(:household b)` is the parent's
+              ;; state at the delivery year, snapshotted before this pass ran.
+              [ords' acc' queue' roster' _]
               (reduce
-               (fn [[ords acc queue roster] b]
+               (fn [[ords acc queue roster constituted] b]
                  (let [birth-year (quot (- (:delivery-t b) t0) clock/seconds-per-year)
                        ;; A newborn delivered in the run's LAST year still
                        ;; ENTERS -- it registers and joins its household -- it
@@ -594,10 +620,10 @@
                            nb-rng (engine/stream master :person nb-tag)
                            ;; the parent's household, or one constituted by
                            ;; the birth itself if the parent has none
-                           [ords acc roster hh]
-                           (if-let [h (:household b)]
-                             [ords acc roster h]
-                             (let [hid (str "hh-" (:parent-person-id b) "-birth" (:parity-index b))
+                           [ords acc roster constituted hh]
+                           (if-let [h (or (:household b) (get constituted (:parent-person-id b)))]
+                             [ords acc roster constituted h]
+                             (let [hid (str "hh-" (:parent-person-id b) "-birth")
                                    [ords e] (ev ords (:parent-person-id b) :household-form
                                                 (:delivery-t b)
                                                 {:household-id hid
@@ -608,6 +634,10 @@
                                               :head-person-id (:parent-person-id b)
                                               :event-id (:event-id e) :t (:delivery-t b)
                                               :address (:address b)})
+                                (assoc constituted (:parent-person-id b)
+                                       {:household-id hid
+                                        :head-person-id (:parent-person-id b)
+                                        :event-id (:event-id e)})
                                 {:household-id hid :head-person-id (:parent-person-id b)
                                  :event-id (:event-id e)}]))
                            nb-persona (pp/initial-persona
@@ -639,7 +669,7 @@
                                  ;; run's year 0.
                                  :age-origin-year birth-year
                                  :persona nb-persona}))
-                        roster])))
-               [ordinals (into acc events) (vec (rest queue)) (into roster households)]
+                        roster constituted])))
+               [ordinals (into acc events) (vec (rest queue)) (into roster households) {}]
                births)]
           (recur queue' roster' ords' acc'))))))

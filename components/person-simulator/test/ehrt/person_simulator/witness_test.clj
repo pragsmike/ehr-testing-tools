@@ -22,7 +22,7 @@
   {:coverage-change      186
    :delivery             26
    :employment-change    174
-   :household-form       47
+   :household-form       38
    :household-join       52
    :household-leave      16
    :identity-correction  40
@@ -32,9 +32,9 @@
    :person-death         17
    :person-registered    26
    :pregnancy            26
-   :residence-move       144})
+   :residence-move       168})
 
-(def expected-total 769)
+(def expected-total 784)
 
 (deftest every-one-of-the-fourteen-kinds-has-a-counted-witness-test
   (let [actual (frequencies (map :event (fx/evs)))]
