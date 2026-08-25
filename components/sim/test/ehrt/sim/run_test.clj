@@ -625,6 +625,64 @@
                    "what they were at ADR-0169's baseline. A red here is a STOP: "
                    "re-derive which invariant moved, do not re-pin.")))))))
 
+(def ^:private reinstating-cancel-fields
+  "Which reinstated fields each cancel class carries on the wire.
+  `:cancel-admit` carries none -- its decide reads no prior state -- so
+  it is absent here rather than mapped to an empty vector."
+  {:cancel-transfer  [:home-ward :location]
+   :cancel-discharge [:home-ward :location :attending]})
+
+(defn- cancel-reinstatement-mismatches
+  "Every emitted reinstating cancel in `ground-truth` whose reinstated
+  fields are NOT what `(:before (nth (replay ground-truth) idx))` hands
+  back for its own `:cancels-event-id` -- ADR-0169's post-hoc check on
+  the fold-carried `:reinstate-index`, recomputed against the `replay`
+  the decide no longer calls.
+
+  Post hoc, and deliberately NOT an assertion inside the decide: an
+  assertion in the decide would make the run pay the very replay this
+  arc removed, so the equivalence would be unfalsifiable in exactly the
+  configuration that matters."
+  [ground-truth]
+  (let [records (engine/replay ground-truth)]
+    (for [ev ground-truth
+          :let [fields (get reinstating-cancel-fields (:event ev))]
+          :when fields
+          :let [idx (:cancels-event-id ev)
+                before (:before (nth records idx))]
+          field fields
+          :when (not= (get ev field) (get before field))]
+      {:cancel (:event ev) :at (:t ev) :cancels-event-id idx :field field
+       :emitted (get ev field) :replay-says (get before field)})))
+
+(deftest cancel-decides-reinstate-exactly-what-replay-would-hand-back
+  (testing "ADR-0169 family (ii): the two reinstating cancel decides read
+            their prior state from `run`'s fold-carried `:reinstate-index`
+            instead of replaying the whole log per cancel. This is the
+            equivalence, checked against `replay` itself on every gated
+            corpus."
+    (doseq [{:keys [id]} gated-runs]
+      (testing (str "gated corpus " id)
+        (is (= [] (vec (cancel-reinstatement-mismatches (arc0-baseline id)))))))
+    (testing "and the check is not vacuous -- FINDING, disclosed: only ONE of
+              the four gated corpora carries reinstating cancels at all
+              (seed-202: 9 :cancel-transfer + 1 :cancel-discharge = TEN; the
+              two clinic-decade runs and adhd-seed-2 carry none, and
+              seed-202's own 2 :cancel-admit reinstate nothing). The
+              gated-corpus half of this gate therefore rests on ten events
+              in one run;
+              `cancel-reinstatement-survives-the-fold-carried-index` in
+              engine-test is what carries it at population scale."
+      (let [counted (into {} (map (fn [{:keys [id]}]
+                                    [id (count (filter #(contains? reinstating-cancel-fields (:event %))
+                                                       (arc0-baseline id)))]))
+                          gated-runs)]
+        (is (= 10 (get counted :seed-202-ed-tuesday))
+            (str "seed-202's reinstating-cancel count moved: " (pr-str counted)))
+        (is (pos? (reduce + (vals counted)))
+            (str "NO gated corpus carries a reinstating cancel -- this gate has "
+                 "gone vacuous: " (pr-str counted)))))))
+
 ;; --- ADR-0153: the seed-202 self-check failure, at the run level ----------
 
 (deftest ed-tuesday-churn-seed-202-self-checks-clean

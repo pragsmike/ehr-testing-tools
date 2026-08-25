@@ -1434,3 +1434,93 @@
       (and (result/ok? (check/check-all ground-truth (:facility result)))
            (not (contains? kinds :procedure))
            (some kinds #{:outpatient-visit :observation})))))
+
+;; --- ADR-0169 (arc 0), family (ii): the fold-carried reinstate index -----
+;;
+;; `decide :cancel-transfer` and `decide :cancel-discharge` used to
+;; evaluate `(:before (nth (replay ground-truth) idx))` -- a full
+;; `evolve` re-simulation of the whole log, allocating a vector of N
+;; maps, once per cancel, to read ONE element. 35.3% of the generate
+;; phase at 10^5 events, the largest single generator-side cost the
+;; 2026-08-24 throughput spike measured. They now read `run`'s
+;; fold-carried `:reinstate-index`.
+;;
+;; The equivalence is checked POST HOC against the `replay` the decide
+;; no longer calls -- never as an assertion inside the decide, which
+;; would reinstate the very cost the arc removed and make the claim
+;; unfalsifiable in the configuration that matters.
+;;
+;; `ehrt.sim.run-test/cancel-decides-reinstate-exactly-what-replay-would-
+;; hand-back` runs the same check over the four GATED corpora. It has to
+;; be here as well, because only ONE of those four carries a reinstating
+;; cancel at all, and ten events in one run is not a population.
+
+(def ^:private reinstating-cancel-fields
+  {:cancel-transfer  [:home-ward :location]
+   :cancel-discharge [:home-ward :location :attending]})
+
+(defn- reinstatement-mismatches [ground-truth]
+  (let [records (engine/replay ground-truth)]
+    (for [ev ground-truth
+          :let [fields (get reinstating-cancel-fields (:event ev))]
+          :when fields
+          :let [before (:before (nth records (:cancels-event-id ev)))]
+          field fields
+          :when (not= (get ev field) (get before field))]
+      {:cancel (:event ev) :at (:t ev) :field field
+       :emitted (get ev field) :replay-says (get before field)})))
+
+(defn- reinstating-cancel-count [ground-truth]
+  (count (filter #(contains? reinstating-cancel-fields (:event %)) ground-truth)))
+
+(defspec cancel-reinstatement-survives-the-fold-carried-index
+  {:num-tests 150 :seed 20260825}
+  (prop/for-all [seed (gen/large-integer* {:min 0})
+                 patients (gen/choose 8 40)]
+    (let [{:keys [ground-truth]} (engine/run {:seed seed :patients patients
+                                              :facility churn-facility :providers churn-providers
+                                              :churn-profile active-churn-profile})]
+      (empty? (reinstatement-mismatches ground-truth)))))
+
+(deftest the-reinstatement-defspec-actually-sees-reinstating-cancels
+  (testing "ADR-0169: a property that holds vacuously proves nothing. The
+            churn profile the defspec above drives has to actually PRODUCE
+            :cancel-transfer/:cancel-discharge events, or every trial is
+            `(empty? ())` and the index is never read."
+    (let [counts (for [seed (range 40)]
+                   (reinstating-cancel-count
+                    (:ground-truth (engine/run {:seed seed :patients 24
+                                                :facility churn-facility :providers churn-providers
+                                                :churn-profile active-churn-profile}))))
+          total (reduce + counts)]
+      (is (pos? total)
+          "the churn profile produced NO reinstating cancels in 40 runs -- the
+           defspec above is vacuous")
+      (is (< 1 (count (filter pos? counts)))
+          (str "reinstating cancels appear in fewer than two of 40 runs (" (pr-str counts)
+               ") -- too thin for a 150-trial property to mean anything")))))
+
+(deftest reinstate-index-covers-every-reinstatable-event-and-nothing-else
+  (testing "ADR-0169: the carrier's own contract -- `run` records the
+            pre-event state of every :transfer and :discharge in the log,
+            under that event's own index, and records nothing else. A
+            missing entry would make a later cancel read nil rather than
+            fall back to replay (the fallback is on the KEY's presence, not
+            on an entry's), so coverage is the property that keeps that
+            design safe."
+    (let [{:keys [ground-truth]} (engine/run {:seed 202 :patients 60
+                                              :facility churn-facility :providers churn-providers
+                                              :churn-profile active-churn-profile})
+          expected (into #{} (comp (map-indexed vector)
+                                   (filter (fn [[_ ev]] (#{:transfer :discharge} (:event ev))))
+                                   (map first))
+                         ground-truth)
+          ;; every reinstating cancel's target must be one of them
+          targets (into #{} (comp (filter #(contains? reinstating-cancel-fields (:event %)))
+                                  (map :cancels-event-id))
+                        ground-truth)]
+      (is (seq expected) "this run carries no :transfer or :discharge at all")
+      (is (every? expected targets)
+          (str "a reinstating cancel targets an index the index does not cover: "
+               (pr-str (remove expected targets))))
+      (is (empty? (reinstatement-mismatches ground-truth))))))

@@ -522,6 +522,22 @@
 ;; --- M2b: churn family (docs/patient-state-model.md's event-validity
 ;; table; docs/event-sourcing.md's shadow-field dissolution) ---------------
 
+(def ^:private reinstatable-event-types
+  "The event classes a cancel decide reinstates state FROM, and therefore
+  the only ones `run`'s `:reinstate-index` records (ADR-0169).
+
+  `:cancel-transfer` restores `:home-ward`/`:location`; `:cancel-discharge`
+  restores those plus `:attending`. `:cancel-admit` is deliberately
+  ABSENT: its own decide reads nothing but the live patient's
+  `:active-mrn`, so it never queried the log for prior state and has
+  nothing to carry. `:transfer-in-error` is absent for the opposite
+  reason -- it emits its transfer and that transfer's cancel in ONE
+  decide, off the live pre-transfer patient -- there is no intervening
+  event for anything to have queried yet, its own comment -- so it too
+  never replayed. Both were checked rather than assumed: the arc's scope
+  named them as candidates."
+  #{:transfer :discharge})
+
 (defn- last-uncancelled-index
   "Index into `ground-truth` of the most recent `event-type` event
   naming `patient-id` that is NOT already the target of an earlier
@@ -1191,6 +1207,50 @@
     (let [occupant (get (sim-model/occupancy-board (:patients world)) bed)]
       (and (some? occupant) (not= occupant patient-id)))))
 
+(defn- reinstated-state
+  "The state patient `patient-id` was in immediately BEFORE the log event
+  at `idx` -- the prior location/home-ward/attending a reinstating cancel
+  restores. Exactly `(:before (nth (replay ground-truth) idx))`, and
+  proven so post hoc, twice: `ehrt.sim.run-test/cancel-decides-reinstate-
+  exactly-what-replay-would-hand-back` recomputes it against `replay`
+  itself on every gated corpus, and `ehrt.sim-engine.engine-test/cancel-
+  reinstatement-survives-the-fold-carried-index` does the same over
+  churn-driven generated runs -- which it must, because only ONE of the
+  four gated corpora carries a reinstating cancel at all.
+
+  ADR-0169 (arc 0), the largest single generator-side cost the 2026-08-24
+  throughput spike measured -- 35.3% of the generate phase at 10^5
+  events, larger than both ADR-0164 citation scans combined. Both cancel
+  decides used to evaluate `(nth (replay ground-truth) idx)` literally:
+  a full `evolve` re-simulation of the ENTIRE log, materialising a vector
+  of N maps carrying `:world-before`/`:world-after`, in order to read ONE
+  element at an index the caller already held, and then discard the rest.
+  Once per cancel event, so O(N) with allocation per cancel and quadratic
+  in churn density.
+
+  The run loop already computes that state: it is the patient's entry in
+  `world` at the instant the event was appended, and `world`'s
+  `:patients` is folded through the SAME `evolve` over the SAME events in
+  the SAME order that `replay` folds. So `run` now records it, for
+  `:transfer` and `:discharge` events only (the two reinstatable classes
+  -- `:cancel-admit` reads no prior state at all, and
+  `:transfer-in-error` decides its own cancel atomically off the live
+  patient, neither of them touching the log), under the log index of the
+  event itself. The read is a map lookup.
+
+  FALLS BACK to the replay it replaces when `world` carries no
+  `:reinstate-index` KEY -- a world built by hand rather than by `run`,
+  which is how most of engine-test drives `decide` directly. The fallback
+  is on the key's presence, never on a missing entry: a world that `run`
+  built and an entry that is nevertheless absent is a DEFECT, and letting
+  it read nil (which changes the emitted event, which the byte-identity
+  gate then fails) is the behaviour that surfaces it. Silently replaying
+  instead would hide it."
+  [world ground-truth patient-id idx]
+  (if (contains? world :reinstate-index)
+    (get (:reinstate-index world) idx)
+    (:before (nth (replay ground-truth) idx))))
+
 (defmethod decide :cancel-transfer
   [_rng t world patient-id step]
   (let [ground-truth (:ground-truth world)
@@ -1198,7 +1258,7 @@
     (if (nil? idx)
       (rejected-outcome :illegal-cancel-transfer patient-id t step nil)
       (let [patient (get-in world [:patients patient-id])
-            {:keys [home-ward location]} (:before (nth (replay ground-truth) idx))]
+            {:keys [home-ward location]} (reinstated-state world ground-truth patient-id idx)]
         (if (bed-reoccupied-by-someone-else? world patient-id location)
           (rejected-outcome :illegal-cancel-transfer-bed-reoccupied patient-id t step {:location location})
           {:events [{:event :cancel-transfer :t t :active-mrn (:active-mrn patient)
@@ -1213,7 +1273,7 @@
     (if (nil? idx)
       (rejected-outcome :illegal-cancel-discharge patient-id t step nil)
       (let [patient (get-in world [:patients patient-id])
-            {:keys [home-ward location attending]} (:before (nth (replay ground-truth) idx))]
+            {:keys [home-ward location attending]} (reinstated-state world ground-truth patient-id idx)]
         (if (bed-reoccupied-by-someone-else? world patient-id location)
           (rejected-outcome :illegal-cancel-discharge-bed-reoccupied patient-id t step {:location location})
           {:events [{:event :cancel-discharge :t t :active-mrn (:active-mrn patient)
@@ -1575,7 +1635,20 @@
                     ;; transient `ground-truth` accumulator below so decide
                     ;; can `nth`/`filter`/`keep-indexed` over it (transients
                     ;; aren't seqable). Always a prefix of the final log.
-                    :ground-truth []}
+                    :ground-truth []
+                    ;; ADR-0169 (arc 0): log index -> the state that
+                    ;; event's subject was in immediately BEFORE it, for
+                    ;; the two REINSTATABLE classes only (:transfer,
+                    ;; :discharge). What `reinstated-state` reads instead
+                    ;; of replaying the whole log per cancel. Written
+                    ;; below, inside the same fold that produces `world'`,
+                    ;; because that fold is where the pre-event state
+                    ;; exists -- a second pass could not see it.
+                    ;;
+                    ;; The KEY's presence is what tells `reinstated-state`
+                    ;; this world came from `run`; a hand-built world has
+                    ;; no such key and keeps the replay path.
+                    :reinstate-index {}}
         mark-warmup (fn [ev] (assoc ev :warm-up (< (:t ev) warm-up-seconds)))
         final-result (fn [ground-truth state-history extra]
                        (merge {:ground-truth (persistent! ground-truth)
@@ -1623,12 +1696,32 @@
                 exhausted (final-result ground-truth state-history {:exhausted exhausted})
                 :else
             (let [events (mapv mark-warmup events)
-                  world' (reduce (fn [w ev]
-                                    (reduce (fn [w2 {:keys [patient-id]}]
-                                              (update-in w2 [:patients patient-id] evolve ev))
-                                            w (:participants ev)))
-                                  world events)
-                  world'' (assoc world' :ground-truth (into (:ground-truth world) events))
+                  base-idx (count (:ground-truth world))
+                  ;; ADR-0169: the patient-state fold and the reinstate
+                  ;; index are built in ONE pass, because the index's
+                  ;; value IS this fold's accumulator one step early --
+                  ;; `w` before `ev` is applied. A `:discharge` decide can
+                  ;; emit two events (the discharge, then a bed-ready
+                  ;; :transfer for a DIFFERENT patient), so the subject is
+                  ;; read off each event rather than assumed to be
+                  ;; `patient-id`, and the state is captured per event
+                  ;; rather than once for the batch.
+                  [world' reinstate']
+                  (reduce (fn [[w ridx] [offset ev]]
+                            (let [subject (:patient-id (first (:participants ev)))
+                                  ridx' (if (reinstatable-event-types (:event ev))
+                                          (assoc ridx (+ base-idx offset)
+                                                 (get-in w [:patients subject]))
+                                          ridx)]
+                              [(reduce (fn [w2 {:keys [patient-id]}]
+                                         (update-in w2 [:patients patient-id] evolve ev))
+                                       w (:participants ev))
+                               ridx']))
+                          [world (:reinstate-index world)]
+                          (map-indexed vector events))
+                  world'' (assoc world'
+                                 :ground-truth (into (:ground-truth world) events)
+                                 :reinstate-index reinstate')
                   ground-truth' (reduce conj! ground-truth events)
                   state-history' (reduce (fn [sh ev]
                                             (reduce (fn [sh2 {:keys [patient-id]}]
