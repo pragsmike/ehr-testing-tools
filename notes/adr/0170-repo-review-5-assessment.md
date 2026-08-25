@@ -201,3 +201,30 @@ within a second of each other, which is the whole of register row L3-1's
 recommendation demonstrated rather than argued. `make ci-parity` green
 from a real fresh clone with a cold artifact cache, at the same
 370 / 4,166 / 18,690.
+
+**A THIRD full run was owed and taken**, and the reason belongs in the
+reasoning-of-record rather than only in the ceremony log: the close-phase
+run was started while this session was still editing the register, the
+plan, this ADR and the record, so it did not cover the tree about to be
+pushed. `R-full-suite-before-push` says a push is *preceded by* a full
+`make test`; a run that predates the tree is not that run. The commit was
+made first to freeze the tree, the suite re-run over the **committed**
+state (`MAKE_EXIT=0`, 865 s wall / 825 s poly, the same 370 / 4,166 /
+18,690), and only then the push. **Every run agreed to the assertion,
+and wall and poly track each other to within a second in every one of
+them.**
+
+The rule this session held itself to is recorded as a **property, not a
+count**: *every push was licensed by a full `make test` over the tree
+that push carried, run after that tree was frozen by its commit.* A
+count would not survive its own recording — a session that writes "three
+runs" owes a fourth to record the fourth, and a fifth to record that.
+That regress is the sharpest argument for the plan's Q-E, and it reframes
+the question: not whether a close commit deserves its own suite run, but
+**over which tree the run that licenses the push actually executed**.
+
+**CI verified in session** (`R-session-verifies-ci-via-gh`): run
+**`32836518635`** at `754503d` concluded **`success`**. The run
+`bin/preflight` disclosed as pending at Step 0, `32828026389` at
+`f05f51a`, also concluded `success`, so the last five runs on `main` are
+green with nothing outstanding.
