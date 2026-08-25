@@ -234,3 +234,4 @@ append-only, never-reassigned rule stands.
 - **ADR-0169** — arc 0: quadratic removals under equivalence proof — [`0169-arc-0-quadratic-removals-under-equivalence-proof.md`](adr/0169-arc-0-quadratic-removals-under-equivalence-proof.md) — Accepted
 - **ADR-0170** — repo review 5: the assessment lands, nothing is fixed — [`0170-repo-review-5-assessment.md`](adr/0170-repo-review-5-assessment.md) — Accepted
 - **ADR-0171** — arc 1: the RNG stream partition, designed from the tree — [`0171-arc-1-rng-stream-partition-design.md`](adr/0171-arc-1-rng-stream-partition-design.md) — Accepted
+- **ADR-0172** — arc 2: the person-simulator, chartered from the tree — [`0172-person-simulator-charter.md`](adr/0172-person-simulator-charter.md) — Proposed

@@ -39,6 +39,8 @@ with them.
   Was blocked on traffic-scale arc 1; UNBLOCKED 2026-08-25, when ADR-0171's
   stream partition landed and discharged
   `rulings.md#R-per-person-streams-before-generator-fixes`. ADR-0168 section 4.
+  CHARTERED 2026-08-25 by ADR-0172 (front door, 14 event kinds, 11 gated
+  limitations, seven rulings A-G open); arc 2b implements it once ruled.
 - OPEN **[engine-fold-extensions]** PRIORITY 4 -- traffic-scale arc 3. Demographic
   timeline, scheduling state (`rulings.md#R-mix-5`), bed-status cycle (`R-mix-6`),
   new invariant families. SCOPE NARROWED 2026-08-24 (ADR-0169, ruling S1): the
