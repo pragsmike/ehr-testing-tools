@@ -347,6 +347,17 @@ together under the partition.
 | `e319760` | the custom-emitter's seed-42 encounter fixture re-pinned |
 | `HEAD` | this record's own gate results, written after both tiers came back green |
 
-Pushed as one range; the red-first commit rides with its green
-successor (`rulings.md#R-red-pushed-with-green`). No tag paid.
+Pushed as one range, `97f22fd..f392a11`; the red-first commit rides with
+its green successor (`rulings.md#R-red-pushed-with-green`). No tag paid.
+
+`bin/post-push-verify 97f22fd f392a11`, its three checks:
+`origin/main` matches the tip, every commit message in the range is
+pure ASCII, and the CI run at the tip was reported once
+(`32885636423`).
+
+**CI at the pushed tip: run `32885636423`, `completed` /
+`success`** — the close marker under the de-scaffold rules
+(`rulings.md#R-session-verifies-ci-via-gh`, retired as a TAG condition,
+kept as the marker), watched to conclusion rather than reported
+in-progress.
 
