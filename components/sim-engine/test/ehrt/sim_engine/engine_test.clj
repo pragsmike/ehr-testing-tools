@@ -1524,3 +1524,125 @@
           (str "a reinstating cancel targets an index the index does not cover: "
                (pr-str (remove expected targets))))
       (is (empty? (reinstatement-mismatches ground-truth))))))
+
+;; --- ADR-0169 (arc 0), family (iii): the fold-carried citation index ----
+;;
+;; ADR-0164's two decide-time scans -- `:medication-end` resolving its
+;; `:order-citation` and `:care-plan-end` its `:care-plan-citation`, each
+;; by a `keep-indexed` over the WHOLE log -- were 21.3% and 10.9% of the
+;; generate phase at 10^5 events. They now read a fold-carried
+;; `[opening-type patient-id citation] -> last-index` map.
+;;
+;; `ehrt.sim.run-test/citation-resolution-matches-the-whole-log-scan`
+;; runs the index-equality check over the gated corpora, and it MUST be
+;; joined here, because those corpora carry exactly two cited end events
+;; between them and BOTH resolve to nil (the pre-horizon straddle). They
+;; prove the index does not invent a resolution. These prove it finds
+;; one -- and finds the RIGHT one, which is the whole content of
+;; ADR-0164.
+
+(def ^:private other-citation {:module "sinusitis" :state :follow-up})
+
+(def ^:private cited-pathway
+  "Two medication orders and two care plans per patient, under TWO
+  distinct citations, each opened twice and closed once. The repeat is
+  the point: `last` is what both scans meant, so a citation opened more
+  than once by the SAME patient is the case that tells `last` from
+  `first`, and the index -- which resolves by overwriting -- has to agree
+  with it."
+  {:name "cited"
+   :steps [{:type :admission :location "Renal"}
+           {:type :medication-order :codes [a-concept] :citation a-citation}
+           {:type :care-plan-start :codes [a-concept] :citation a-citation}
+           {:type :medication-order :codes [a-concept] :citation other-citation}
+           {:type :delay :from 30 :to 90}
+           {:type :medication-order :codes [a-concept] :citation a-citation}
+           {:type :care-plan-start :codes [a-concept] :citation other-citation}
+           {:type :medication-end :order-citation a-citation}
+           {:type :care-plan-end :care-plan-citation a-citation}
+           {:type :medication-end :order-citation other-citation}
+           {:type :care-plan-end :care-plan-citation other-citation}
+           {:type :discharge}]})
+
+(def ^:private cited-end-resolution
+  {:medication-end [:order-citation     :medication-order :order-event-id]
+   :care-plan-end  [:care-plan-citation :care-plan-start  :start-event-id]})
+
+(defn- citation-index-mismatches
+  "Every cited end whose emitted resolved index differs from the scan's
+  own answer over the PREFIX the decide actually saw."
+  [ground-truth]
+  (let [log (vec ground-truth)]
+    (for [[idx ev] (map-indexed vector log)
+          :let [[citation-key opening-type resolved-key] (get cited-end-resolution (:event ev))]
+          :when citation-key
+          :let [citation (get ev citation-key)]
+          :when citation
+          :let [patient-id (:patient-id (first (:participants ev)))
+                scanned (last (keep-indexed
+                               (fn [i prior]
+                                 (when (and (= opening-type (:event prior))
+                                            (= citation (:citation prior))
+                                            (some #(= patient-id (:patient-id %)) (:participants prior)))
+                                   i))
+                               (subvec log 0 idx)))]
+          :when (not= (get ev resolved-key) scanned)]
+      {:end (:event ev) :at (:t ev) :key resolved-key
+       :emitted (get ev resolved-key) :scan-says scanned})))
+
+(defn- resolved-cited-ends [ground-truth]
+  (filter (fn [ev] (when-let [[ck _ rk] (get cited-end-resolution (:event ev))]
+                     (and (get ev ck) (some? (get ev rk)))))
+          ground-truth))
+
+(defspec citation-index-resolves-exactly-what-the-scan-resolved
+  {:num-tests 120 :seed 20260825}
+  (prop/for-all [seed (gen/large-integer* {:min 0})
+                 patients (gen/choose 2 20)]
+    (let [{:keys [ground-truth]} (engine/run {:seed seed :patients patients
+                                              :pathways [{:pathway cited-pathway :weight 1}]})]
+      (and (seq ground-truth)
+           (empty? (citation-index-mismatches ground-truth))))))
+
+(deftest the-citation-index-defspec-actually-resolves-something
+  (testing "ADR-0169: the gated-corpus half of this gate sees only nil
+            resolutions, so this half has to see NON-nil ones or the whole
+            claim is that the index correctly returns nothing."
+    (let [{:keys [ground-truth]} (engine/run {:seed 7 :patients 8
+                                              :pathways [{:pathway cited-pathway :weight 1}]})
+          resolved (resolved-cited-ends ground-truth)]
+      (is (seq resolved) "no cited end resolved to a real index -- gate is vacuous")
+      (is (= [] (vec (citation-index-mismatches ground-truth))))
+      (testing "ADR-0164's own case: two patients walking the same module cite
+                IDENTICALLY, so a resolution that ignored the participant would
+                hand one patient the other's order. Every resolved index must
+                name an event this patient participates in."
+        (let [log (vec ground-truth)]
+          (doseq [ev resolved]
+            (let [[_ _ rk] (get cited-end-resolution (:event ev))
+                  pid (:patient-id (first (:participants ev)))
+                  target (nth log (get ev rk))]
+              (is (some #(= pid (:patient-id %)) (:participants target))
+                  (str "cited end at t " (:t ev) " resolved to index " (get ev rk)
+                       ", an event that is not this patient's"))))))
+      (testing "`last`, not `first`: a-citation is opened TWICE per patient, so
+                each :medication-end must resolve to the SECOND order, never
+                the first"
+        (let [log (vec ground-truth)
+              med-ends (filter #(and (= :medication-end (:event %))
+                                     (= a-citation (:order-citation %))
+                                     (:order-event-id %))
+                               log)]
+          (is (seq med-ends))
+          (doseq [ev med-ends]
+            (let [pid (:patient-id (first (:participants ev)))
+                  own-orders (keep-indexed (fn [i p]
+                                             (when (and (= :medication-order (:event p))
+                                                        (= a-citation (:citation p))
+                                                        (some #(= pid (:patient-id %)) (:participants p)))
+                                               i))
+                                           log)]
+              (is (< 1 (count own-orders))
+                  "this patient opened a-citation only once -- the last/first
+                   distinction is not under test")
+              (is (= (last own-orders) (:order-event-id ev))))))))))

@@ -852,6 +852,57 @@
                      (citation-fields step))]
      :advance 0}))
 
+(def ^:private cited-opening-event-types
+  "The two event classes whose LAST citation-matching occurrence a
+  terminal step resolves against: a `:medication-end` resolves its
+  `:order-citation` to a `:medication-order`, a `:care-plan-end` its
+  `:care-plan-citation` to a `:care-plan-start`. ADR-0169's carrier
+  records these and nothing else."
+  #{:medication-order :care-plan-start})
+
+(defn- last-cited-index
+  "Index into the log of the LAST `opening-type` event carrying
+  `citation` and naming `patient-id` as a participant -- nil when there
+  is none, and nil when `citation` itself is nil.
+
+  Exactly what ADR-0164's two `keep-indexed` scans computed, and
+  therefore exactly what `:medication-end`'s `:order-event-id` and
+  `:care-plan-end`'s `:start-event-id` still are. ADR-0169 (arc 0)
+  replaces the scan with a lookup: the two were 21.3% and 10.9% of the
+  generate phase at 10^5 events, 32.2% combined, and each walked the
+  WHOLE log once per terminal step. ADR-0164 scoped them by patient --
+  it added the participant predicate INSIDE the same full-length
+  `keep-indexed` -- which made them correct without making them shorter;
+  this is the shortening, and it changes no answer.
+
+  `run` carries `{[opening-type patient-id citation] last-index}`,
+  written as events are appended, so a later occurrence simply
+  overwrites an earlier one and the stored value IS `last`'s answer.
+  Only events with a NON-NIL `:citation` are recorded: a nil citation
+  could never be returned anyway, since both call sites are already
+  guarded by `(when <citation> ...)`.
+
+  FALLS BACK to the scan it replaces when `world` carries no
+  `:citation-index` KEY -- a hand-built world, as most of engine-test
+  uses. Same fallback rule as `reinstated-state`, and for the same
+  reason: on the key, never on a missing entry, so a carrier that
+  `run` built but failed to populate shows up as a changed corpus rather
+  than as a silent replay.
+
+  Proven post hoc against the scan itself by
+  `ehrt.sim.run-test/citation-resolution-matches-the-whole-log-scan` on
+  every gated corpus, seed 424242 (ADR-0163's own run) included."
+  [world ground-truth opening-type patient-id citation]
+  (when citation
+    (if (contains? world :citation-index)
+      (get (:citation-index world) [opening-type patient-id citation])
+      (last (keep-indexed (fn [i ev] (when (and (= opening-type (:event ev))
+                                                (= citation (:citation ev))
+                                                (some #(= patient-id (:patient-id %))
+                                                      (:participants ev)))
+                                       i))
+                          ground-truth)))))
+
 (defmethod decide :medication-end
   [_rng t world patient-id {:keys [order-citation] :as step}]
   ;; Resolved by CITATION match against ground-truth, never a pathway-
@@ -869,13 +920,8 @@
         ;; one `last-uncancelled-index` (above) already uses for exactly
         ;; this reason, and the one check.clj's own medication-end
         ;; invariant tests the resolved target against.
-        order-event-id (when order-citation
-                         (last (keep-indexed (fn [i ev] (when (and (= :medication-order (:event ev))
-                                                                   (= order-citation (:citation ev))
-                                                                   (some #(= patient-id (:patient-id %))
-                                                                         (:participants ev)))
-                                                          i))
-                                             ground-truth)))]
+        order-event-id (last-cited-index world ground-truth :medication-order
+                                         patient-id order-citation)]
     ;; M6 Task 1: `:order-citation` now rides the event itself, alongside
     ;; the already-resolved `:order-event-id` -- `evolve`'s own fold-time
     ;; medication-orders match needs the CITATION (position-independent),
@@ -909,13 +955,8 @@
         patient (get patients patient-id)
         ;; ADR-0164: SAME PATIENT, too -- the twin of the scan
         ;; :medication-end already carries, for the identical reason.
-        start-event-id (when care-plan-citation
-                         (last (keep-indexed (fn [i ev] (when (and (= :care-plan-start (:event ev))
-                                                                   (= care-plan-citation (:citation ev))
-                                                                   (some #(= patient-id (:patient-id %))
-                                                                         (:participants ev)))
-                                                          i))
-                                             ground-truth)))]
+        start-event-id (last-cited-index world ground-truth :care-plan-start
+                                         patient-id care-plan-citation)]
     {:events [(merge {:event :care-plan-end :t t :active-mrn (:active-mrn patient)
                       :start-event-id start-event-id :care-plan-citation care-plan-citation
                       :participants [{:patient-id patient-id :role :subject}]}
@@ -1648,7 +1689,14 @@
                     ;; The KEY's presence is what tells `reinstated-state`
                     ;; this world came from `run`; a hand-built world has
                     ;; no such key and keeps the replay path.
-                    :reinstate-index {}}
+                    :reinstate-index {}
+                    ;; ADR-0169 (arc 0), the ADR-0164 scans' own carrier:
+                    ;; [opening-type patient-id citation] -> the LAST log
+                    ;; index carrying that combination. A later occurrence
+                    ;; overwrites an earlier one, which is precisely what
+                    ;; the `last` in the scan it replaces meant. Read by
+                    ;; `last-cited-index`.
+                    :citation-index {}}
         mark-warmup (fn [ev] (assoc ev :warm-up (< (:t ev) warm-up-seconds)))
         final-result (fn [ground-truth state-history extra]
                        (merge {:ground-truth (persistent! ground-truth)
@@ -1706,22 +1754,29 @@
                   ;; read off each event rather than assumed to be
                   ;; `patient-id`, and the state is captured per event
                   ;; rather than once for the batch.
-                  [world' reinstate']
-                  (reduce (fn [[w ridx] [offset ev]]
-                            (let [subject (:patient-id (first (:participants ev)))
+                  [world' reinstate' citations']
+                  (reduce (fn [[w ridx cidx] [offset ev]]
+                            (let [idx (+ base-idx offset)
+                                  subject (:patient-id (first (:participants ev)))
                                   ridx' (if (reinstatable-event-types (:event ev))
-                                          (assoc ridx (+ base-idx offset)
-                                                 (get-in w [:patients subject]))
-                                          ridx)]
+                                          (assoc ridx idx (get-in w [:patients subject]))
+                                          ridx)
+                                  cidx' (if (and (cited-opening-event-types (:event ev))
+                                                 (some? (:citation ev)))
+                                          (reduce (fn [ci {:keys [patient-id]}]
+                                                    (assoc ci [(:event ev) patient-id (:citation ev)] idx))
+                                                  cidx (:participants ev))
+                                          cidx)]
                               [(reduce (fn [w2 {:keys [patient-id]}]
                                          (update-in w2 [:patients patient-id] evolve ev))
                                        w (:participants ev))
-                               ridx']))
-                          [world (:reinstate-index world)]
+                               ridx' cidx']))
+                          [world (:reinstate-index world) (:citation-index world)]
                           (map-indexed vector events))
                   world'' (assoc world'
                                  :ground-truth (into (:ground-truth world) events)
-                                 :reinstate-index reinstate')
+                                 :reinstate-index reinstate'
+                                 :citation-index citations')
                   ground-truth' (reduce conj! ground-truth events)
                   state-history' (reduce (fn [sh ev]
                                             (reduce (fn [sh2 {:keys [patient-id]}]

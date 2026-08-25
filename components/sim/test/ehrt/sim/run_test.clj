@@ -683,6 +683,73 @@
             (str "NO gated corpus carries a reinstating cancel -- this gate has "
                  "gone vacuous: " (pr-str counted)))))))
 
+(def ^:private cited-end-resolution
+  "Terminal event type -> [the citation key it carries, the opening event
+  type it resolves against, the resolved-index key it emits]."
+  {:medication-end [:order-citation     :medication-order :order-event-id]
+   :care-plan-end  [:care-plan-citation :care-plan-start  :start-event-id]})
+
+(defn- citation-index-mismatches
+  "Every cited end event in `ground-truth` whose emitted resolved index is
+  NOT what ADR-0164's whole-log scan would have answered -- ADR-0169's
+  post-hoc check on the fold-carried `:citation-index`.
+
+  Scanned over the PREFIX `(subvec log 0 idx)`, not the whole log, because
+  that is what the decide saw: `decide` reads `(:ground-truth world)`,
+  which run.clj's own comment calls a persistent mirror of the log SO
+  FAR. A later matching order would change `last`'s answer over the full
+  log and change nothing about what the decide could legitimately have
+  resolved, so a whole-log recomputation would be a DIFFERENT claim --
+  and a wrong one."
+  [ground-truth]
+  (let [log (vec ground-truth)]
+    (for [[idx ev] (map-indexed vector log)
+          :let [[citation-key opening-type resolved-key] (get cited-end-resolution (:event ev))]
+          :when citation-key
+          :let [citation (get ev citation-key)]
+          :when citation
+          :let [patient-id (:patient-id (first (:participants ev)))
+                scanned (last (keep-indexed
+                               (fn [i prior]
+                                 (when (and (= opening-type (:event prior))
+                                            (= citation (:citation prior))
+                                            (some #(= patient-id (:patient-id %)) (:participants prior)))
+                                   i))
+                               (subvec log 0 idx)))]
+          :when (not= (get ev resolved-key) scanned)]
+      {:end (:event ev) :at (:t ev) :key resolved-key
+       :emitted (get ev resolved-key) :scan-says scanned})))
+
+(deftest citation-resolution-matches-the-whole-log-scan
+  (testing "ADR-0169 family (iii): the two ADR-0164 decide-time scans are
+            retired for a fold-carried [opening-type patient-id citation]
+            index. This is the INDEX equality, recomputed post hoc by the
+            scan itself, on every gated corpus -- including seed 424242,
+            ADR-0163's own run."
+    (doseq [{:keys [id]} gated-runs]
+      (testing (str "gated corpus " id)
+        (is (= [] (vec (citation-index-mismatches (arc0-baseline id)))))))
+    (testing "FINDING, disclosed: the gated corpora exercise only the NIL arm.
+              Exactly two cited end events exist across all four corpora, both
+              in adhd-seed-2, and BOTH resolve to nil -- their opening
+              :medication-order and :care-plan-start fall in the history phase
+              and never enter the log, which is the designed pre-horizon
+              straddle ADR-0165 chose that run for. The two clinic-decade runs
+              carry 20 and 21 :medication-order events and NO cited end at
+              all. So this gate proves the index does not INVENT a resolution;
+              `ehrt.sim-engine.engine-test/citation-index-resolves-exactly-what-
+              the-scan-resolved` is what proves it FINDS one."
+      (let [ends (for [{:keys [id]} gated-runs
+                       ev (arc0-baseline id)
+                       :let [[ck _ rk] (get cited-end-resolution (:event ev))]
+                       :when (and ck (get ev ck))]
+                   [id (:event ev) (get ev rk)])]
+        (is (= [[:adhd-seed-2 :care-plan-end nil]
+                [:adhd-seed-2 :medication-end nil]]
+               (vec ends))
+            (str "the gated corpora's cited-end population moved -- re-read the "
+                 "disclosure above before adjusting: " (pr-str (vec ends))))))))
+
 ;; --- ADR-0153: the seed-202 self-check failure, at the run level ----------
 
 (deftest ed-tuesday-churn-seed-202-self-checks-clean
