@@ -139,6 +139,28 @@ clone. Recorded rather than absorbed into the residue, because a
 baseline measured in a worktree is the method this repo uses and this
 is a standing property of it.
 
+## Close marker
+
+No tag was paid (`rulings.md#R-tag-law`, RETIRED by the de-scaffold
+ruling of 2026-08-25). What marks the arc closed is CI green at the
+pushed tip, verified in-session:
+
+| | |
+|---|---|
+| pushed range | `9d64ae2..8e139b4` |
+| `bin/post-push-verify 9d64ae2 8e139b4` | remote tip matches; every commit message in range pure ASCII; CI reported once |
+| CI run | [`32910643515`](https://github.com/pragsmike/ehr-testing-tools/actions/runs/32910643515) -- **status=completed conclusion=success** |
+
+`bin/preflight` before the push reported exactly one FINDING -- local
+HEAD differs from `origin/main`, which is what pushing is for -- and
+one DISCLOSED line, HEAD not tagged `stable-*`, which is now the
+permanent state. Its exit code is worth a sentence: read through a pipe
+to `tail` it came back **0** while the script itself printed `exit 1`,
+because a pipeline returns its LAST command's status. Re-run
+unpiped it is 1, as it should be. That is ADR-0152's own mask and
+ADR-0155's law -- a check that could not MEASURE is not a check that
+passed -- caught here in the small.
+
 ## What the tree contradicted
 
 Eight premises, one line each. None is a defect in the charter; each is
