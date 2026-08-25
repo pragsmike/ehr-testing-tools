@@ -36,7 +36,9 @@ with them.
   processes (`rulings.md#R-mix-1`), households and pregnancy->delivery
   (`R-mix-2`), identification flows (`R-mix-4`), producing the demographic-delta
   stream the engine folds. Four open questions carried for its charter ADR.
-  Blocked on `roadmap.md#stream-partition-design`. ADR-0168 section 4.
+  Was blocked on traffic-scale arc 1; UNBLOCKED 2026-08-25, when ADR-0171's
+  stream partition landed and discharged
+  `rulings.md#R-per-person-streams-before-generator-fixes`. ADR-0168 section 4.
 - OPEN **[engine-fold-extensions]** PRIORITY 4 -- traffic-scale arc 3. Demographic
   timeline, scheduling state (`rulings.md#R-mix-5`), bed-status cycle (`R-mix-6`),
   new invariant families. SCOPE NARROWED 2026-08-24 (ADR-0169, ruling S1): the

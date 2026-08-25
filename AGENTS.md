@@ -22,8 +22,8 @@ session verifies it with `gh run view <id>` rather than paying a tag. A
 docs-only diff pushes without a local `make test`; CI runs the suite.
 There is a **moratorium on scaffolding-only sessions** — sessions whose
 whole output is registers, rulings, skills, plans or review apparatus —
-until traffic-scale arc 1 (`roadmap.md#stream-partition-design`) and one
-guide chapter have landed. A finding a payload session turns up is one
+until traffic-scale arc 1 (ADR-0171, LANDED 2026-08-25) and one
+guide chapter have landed -- so half of that condition is now met. A finding a payload session turns up is one
 line in that session's record, not a roadmap row, not a rulings row, and
 not a register of its own. A law worth keeping is worth a test: laws land
 as gates or not at all (`.agents/rulings.md`, FROZEN 2026-08-25).
