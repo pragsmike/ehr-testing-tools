@@ -12,7 +12,10 @@ realism, not lifetime realism.
 
 ## Arcs, in dependency order
 
-**Arc 0 — quadratic removals under equivalence proof (ADR-0169).**
+**Arc 0 — quadratic removals under equivalence proof (ADR-0169). DONE
+2026-08-25** (session record `2026-08-25-arc-0-performance-under-
+equivalence.md`): 10^5 cell 17.3 min → 1.81 min, corpus byte-identical at
+104,851 events, oracle IDENTICAL and undeclared.
 Commissioned 2026-08-24 by author ruling S2, one session, AHEAD of arc 1.
 Scope: the three site families the throughput spike named — the six
 check-side occupancy/churn invariants, the `replay`-per-cancel read, and
@@ -188,6 +191,38 @@ session record `2026-08-24-throughput-spike.md`.
   identical 10^5 runs (the 1.7× spread is GC scheduling, not workload).
   **At 10^5 the live set is 190 MB, 4.8% of the shipped 3.88 GB ceiling —
   memory is not a constraint at the program's skeleton target.**
+
+- **MEASURED (2026-08-25, ADR-0169) — the same 10^5 cell AFTER arc 0.**
+  Same driver, same config, same seed 20260824, same machine; warm-up plus
+  two timed. **104,851 events, byte-identical to the pre-arc-0 corpus**
+  (51,680,494 bytes, same SHA-256, generated in two worktrees and
+  digested — session record 2026-08-25).
+
+  | phase | before (`d49f1c6`) | after (arc 0) | speedup |
+  | --- | --- | --- | --- |
+  | generate | 324.1 s | **101.2 s** | 3.20× |
+  | check | 711.1 s | **7.26 s** | 97.9× |
+  | total | 17.3 min | **1.81 min** | **9.58×** |
+
+  Throughput: generate 324 → **1,036 ev/s**, check 147 → **14,442 ev/s**.
+  Retained memory unchanged (109.0 → 109.3 MB); generate's peak heap
+  halves (845–941 → 425–439 MB) with the per-cancel `replay` vector gone;
+  check's peak heap is unchanged, because its allocation is the 14
+  independent `replay` calls arc 0 deliberately did not touch. Disclosed:
+  taken at Windows host load 21–30% against the baseline's 4/3/3, which
+  biases against the speedup, not for it.
+
+  **The two phases have swapped places.** Check was 69% of this cell and
+  the larger of the two quadratics; it is now 6.7%. Further work at this
+  scale is generator-side.
+
+  This row does NOT convert either projection below to MEASURED — both are
+  10^6 figures and remain projections (per F3, nothing extrapolated is
+  promoted). What it does say about the second one: its "10^6 with the
+  quadratics removed" arithmetic assumed the linear terms alone, and at
+  10^5 the measured post-arc-0 residual came in within 4% of the profile's
+  own prediction on the generate side, so the projection's method is now
+  corroborated at one decade below its target.
 
 - **PROJECTED, not measured — 10^6 events on today's generator.** One
   decade's extrapolation of the two-term fit above: generate 7.7 h +

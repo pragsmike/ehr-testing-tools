@@ -8,12 +8,18 @@ cited from elsewhere as `roadmap.md#<slug>` and never by line number; `## Next`
 rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
 
 ## Next (backlog, no session scheduled)
-- OPEN **[performance-arc-0]** PRIORITY 1 -- traffic-scale arc 0 (ADR-0169),
-  commissioned by author ruling S2 AHEAD of arc 1 because ruling S1 exempts
-  output-identical refactors from the reshuffle era. Three site families the
-  08-24 spike measured: the six check-side occupancy/churn invariants (99.4% of
-  check), `replay`-per-cancel (35.3% of generate), the two ADR-0164 citation
-  scans (32.2%). Gated by byte-identical corpora + identical findings, co-landed.
+- OPEN **[performance-residual-sites]** PRIORITY 1 -- what ADR-0169 saw and left
+  (`rulings.md#R-move-not-improve`): the **14 independent `engine/replay` calls**
+  in `check.clj` (~40% of the post-arc-0 7.26 s check phase), `occupancy-board`
+  folding every patient ever created, `decide :discharge`'s boarder `sort-by`, and
+  `last-uncancelled-index` (cannot ride either arc-0 carrier without a second code
+  path, ADR-0169 F-3). Site ranking within generate NOT re-profiled.
+- OPEN **[gated-corpus-churn-and-citation-depth]** PRIORITY 2 -- ADR-0169 F-1/F-2,
+  measured while building arc 0's gates. Of the four `gated-runs` corpora only
+  seed-202 carries a reinstating cancel (ten events), and the ONLY two cited end
+  events across all four resolve to nil -- so no gated corpus witnesses ADR-0164's
+  resolution SUCCEEDING. Covered by co-landed defspecs, counts asserted so a drift
+  to zero goes red; the gated population itself stays one run deep.
 - OPEN **[repo-review-5]** PRIORITY 3 -- chartered roughly 15 ADRs past the
   review-4 close by ADR count, not calendar (`rulings.md#R-review-cadence-in-adrs`,
   measured from the prior CLOSE as ADR-0139 worked it): **approximately ADR-0174**.
@@ -313,6 +319,12 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
   one-module-per-patient assignment never produces. ADR-0037 AR-4.
 
 ## Done (at most 30 LINES; the close ceremony rotates oldest whole rows verbatim to `.agents/plans/roadmap-done-<yyyy-mm>.md`, ADR-0161)
+- CLOSED 2026-08-25 ADR-0169 **[performance-arc-0]** -- three quadratic families
+  removed under EQUIVALENCE PROOF, not red-before-green: byte + value identity on
+  four gated corpora, byte identity on the whole **104,851-event** corpus (same
+  SHA-256 across two worktrees), oracle IDENTICAL and undeclared. 10^5 cell
+  **17.3 min -> 1.81 min (9.58x)**; check alone 711.1 s -> 7.26 s. Suite 14m35s,
+  MAKE_EXIT=0, 370/4,166/18,690. Residual sites rowed, not taken.
 - CLOSED 2026-08-24 ADR-0167 **[suite-time-residual]** -- the 1.32x that survived the
   orphan kill did NOT survive a REBOOT. One clean run on a verified-quiet penny:
   **13m59s**, `MAKE_EXIT=0`, 370/4,142/18,450 reconciling exactly -- inside the
