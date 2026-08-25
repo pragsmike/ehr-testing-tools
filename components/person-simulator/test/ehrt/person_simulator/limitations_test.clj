@@ -1,0 +1,219 @@
+(ns ehrt.person-simulator.limitations-test
+  "One test per row of `docs/limitations.md`, named as the row names
+  it, each asserting that the limitation HOLDS -- a guard that goes RED
+  the day the decline is silently lifted. That is the whole point of
+  ADR-0172 section 4's last column: a limitation with a prose row and
+  no gate is a limitation that drifts, which is ADR-0162's own lesson
+  and ADR-0170's own species (a claim true when written that nothing
+  keeps true).
+
+  Ten of the eleven live here. Row 9's gate --
+  `every-provisional-rate-is-tabled-test` -- lives in
+  `ehrt.docs-tooling.person-simulator-charter-test` beside the
+  citation machinery it needs, and the charter gate asserts that all
+  eleven named gates exist somewhere, so neither file can drop one
+  quietly."
+  (:require [clojure.test :refer [deftest is testing]]
+            [clojure.set :as set]
+            [clojure.java.io :as io]
+            [clojure.string :as str]
+            [clojure.edn :as edn]
+            [ehrt.person-simulator.clock :as clock]
+            [ehrt.person-simulator.fixture :as fx]
+            [ehrt.person-simulator.process :as process]))
+
+;; --- row 1: twins and multiples are excluded ------------------------------
+
+(deftest every-delivery-is-a-singleton-test
+  (let [ds (fx/of-kind :delivery)]
+    (testing "population is non-empty (R-empty-population-is-red)"
+      (is (seq ds) "the witness stream carries no :delivery at all"))
+    (is (every? #(and (string? (:newborn-person-id %))
+                      (= 0 (:within-delivery-index %)))
+                ds)
+        "a :delivery names something other than exactly one newborn at index 0")
+    (testing "one newborn per delivery, counted -- a second is red"
+      (is (= (count ds) (count (distinct (map :newborn-person-id ds))))))
+    (testing "and the newborn stream key reserves the pair, unwidened"
+      (is (= (count ds)
+             (count (filter #(= 0 (:within-delivery-index %)) ds)))))))
+
+;; --- row 2: immigration and emigration are excluded -----------------------
+
+(deftest the-person-population-is-closed-test
+  (let [t0-ids (set (map :person-id fx/population))
+        born (set (map :newborn-person-id (fx/of-kind :delivery)))
+        seen (set (mapcat #(cons (:person-id %) (:participants %)) (fx/evs)))]
+    (testing "population is non-empty (R-empty-population-is-red)"
+      (is (seq seen)))
+    (let [strays (remove #(or (t0-ids %) (born %)) seen)]
+      (is (empty? strays)
+          (str (count strays) " person-id(s) appear in the stream that neither"
+               " started in the t0 population nor were born into it: " (vec (take 5 strays)))))
+    (testing "and every newborn actually enters, so the closure is not vacuous"
+      (is (= born (set (map :person-id (fx/of-kind :person-registered))))))))
+
+;; --- row 3: foster placement and adoption are excluded --------------------
+
+(deftest minors-join-households-only-by-birth-or-formation-test
+  (let [births (into {} (for [e (fx/of-kind :person-registered)] [(:person-id e) (:t e)]))
+        personas (fx/personas)
+        joins (fx/of-kind :household-join)
+        minor-joins (filter (fn [j]
+                              (when-let [p (personas (:person-id j))]
+                                (< (quot (- (:t j) (get births (:person-id j) 0))
+                                         clock/seconds-per-year)
+                                   (- 18 (:age p)))))
+                            joins)]
+    (testing "population is non-empty (R-empty-population-is-red)"
+      (is (seq joins) "the witness stream carries no :household-join at all")
+      (is (seq minor-joins) "no minor joins any household -- the gate would pass vacuously"))
+    (testing "every minor's join is their own birth, and references a :household-form"
+      (let [bad (remove (fn [j] (= (:t j) (get births (:person-id j)))) minor-joins)]
+        (is (empty? bad)
+            (str (count bad) " household join(s) by a minor at a time other than their own"
+                 " birth -- foster placement or adoption has been added without a row: "
+                 (vec (take 3 bad)))))
+      (is (every? (fn [j] (= :household-form (:event (get @fx/by-id (:household-event-id j)))))
+                  minor-joins)))))
+
+;; --- row 4: a death outside care mints no wire event ----------------------
+
+(deftest person-death-emits-no-ground-truth-event-test
+  (let [engine-kinds (-> (edn/read-string
+                          (slurp "components/sim-engine/resources/sim-engine/event-schema.edn"))
+                         :schema (->> (drop 2) (map first) set))
+        person-kinds (set (map :event (fx/evs)))]
+    (testing "the engine's vocabulary parsed, non-empty (R-empty-population-is-red)"
+      (is (= 21 (count engine-kinds))
+          (str "expected the CLOSED 21-kind engine vocabulary, parsed " (count engine-kinds))))
+    (testing "the witness stream carries deaths at all"
+      (is (seq (fx/of-kind :person-death))))
+    (testing "no person event is a ground-truth event kind -- a :person-death cannot
+              become a :discharge with :disposition :expired, because this component
+              mints no engine kind at all"
+      (is (empty? (set/intersection engine-kinds person-kinds))
+          (str "person events overlap the engine's closed vocabulary: "
+               (set/intersection engine-kinds person-kinds))))
+    (is (empty? (filter :disposition (fx/evs)))
+        "a person event carries a :disposition -- the expired-discharge surface is
+         the GMF death's alone (ruling C1)")))
+
+;; --- row 5: name change and data-entry correction are collapsed -----------
+
+(deftest identity-correction-carries-no-cause-test
+  (let [cs (fx/of-kind :identity-correction)]
+    (testing "population is non-empty (R-empty-population-is-red)"
+      (is (seq cs)))
+    (is (= #{:name :dob} (set (map :field cs)))
+        "the :field vocabulary is not exactly the closed set {:name :dob}")
+    (is (empty? (filter :cause cs))
+        "an :identity-correction carries a :cause -- the A08-versus-A31 distinction
+         has been added without a row")))
+
+;; --- row 6: demographics reach the wire through ONE per-run lookup --------
+
+(deftest personas-are-keyed-by-patient-id-alone-test
+  (let [src (slurp "components/sim-emit-hl7/src/ehrt/sim_emit_hl7/emit_hl7.clj")]
+    (testing "the builder is still there to check (R-empty-population-is-red)"
+      (is (str/includes? src "personas-by-patient-id")))
+    (is (str/includes? src "[(:patient-id (first (:participants ev))) (:persona ev)]")
+        "emit-hl7's persona map no longer keys on patient-id alone -- if it is now
+         keyed (patient-id, t), arc 3 has landed and limitations row 6 should be
+         STRUCK, not repaired")))
+
+;; --- row 7: geography stays the 24-row places.edn pool --------------------
+
+(deftest every-residence-address-is-a-places-row-test
+  (let [pool (set (map #(select-keys % [:street :city :state :zip]) process/places))
+        moves (fx/of-kind :residence-move)]
+    (testing "population is non-empty (R-empty-population-is-red)"
+      (is (seq moves) "the witness stream carries no :residence-move at all")
+      (is (= 24 (count pool)) (str "expected the 24-row places pool, read " (count pool))))
+    (let [bad (remove #(pool (:address %)) moves)]
+      (is (empty? bad)
+          (str (count bad) " residence move(s) carry an address that is not a places.edn"
+               " row -- a synthesized address is red: " (vec (take 3 (map :address bad))))))))
+
+;; --- row 8: household structure has no wire surface -----------------------
+
+(defn- src-clj-files []
+  (->> (concat (file-seq (io/file "components")) (file-seq (io/file "bases")))
+       (filter #(.isFile %))
+       (map #(str/replace (.getPath %) "\\" "/"))
+       (filter #(str/ends-with? % ".clj"))
+       (filter #(re-find #"/(src)/" %))))
+
+(deftest no-emitter-writes-nk1-test
+  (let [files (src-clj-files)]
+    (testing "the scan sees a real tree (R-empty-population-is-red)"
+      (is (< 50 (count files)) (str "only " (count files) " src .clj files scanned"))
+      (is (some #(str/includes? (slurp %) "PID") files)
+          "no src file mentions PID -- the scan is not reaching the emitters"))
+    (let [hits (filter #(str/includes? (slurp %) "NK1") files)]
+      (is (empty? hits)
+          (str "NK1 now occurs in " (count hits) " src file(s) " (vec hits)
+               " -- an emitter writes next-of-kin, which is the day households owe"
+               " a rendering row rather than this gate")))))
+
+;; --- row 10: the engine tells the person process nothing ------------------
+
+(defn- component-src-files []
+  (->> (file-seq (io/file "components/person-simulator/src"))
+       (filter #(.isFile %))
+       (map #(str/replace (.getPath %) "\\" "/"))
+       (filter #(str/ends-with? % ".clj"))))
+
+(deftest person-simulator-requires-no-engine-namespace-test
+  (let [files (component-src-files)]
+    (testing "the scan sees this component's src (R-empty-population-is-red)"
+      (is (seq files)))
+    (testing "the ONLY sim-engine namespace named anywhere in this component's src
+              is the interface, and only for the stream-partition surface"
+      (let [required (set (mapcat #(map second (re-seq #"\[(ehrt\.[a-z0-9.-]+)\s+:as" (slurp %)))
+                                  files))
+            named (filter #(str/starts-with? % "ehrt.sim-engine.") required)]
+        (is (seq required) "no :require form parsed out of this component's src at all")
+        (is (= #{"ehrt.sim-engine.interface"} (set named))
+            (str "this component REQUIRES sim-engine namespace(s) beyond the interface: "
+                 (set named))))
+      ;; call POSITION only -- `(engine/foo`. A docstring naming
+      ;; `engine/stream-seed` in prose is a citation, not a dependency, and a
+      ;; gate that cannot tell them apart punishes the documentation this
+      ;; component is otherwise asked to carry.
+      (let [used (set (mapcat #(map second (re-seq #"\(engine/([a-z0-9-]+)" (slurp %))) files))]
+        (is (= #{"stream" "newborn-id-tag"} used)
+            (str "this component uses sim-engine vars beyond the stream-partition"
+                 " surface: " used))))
+    (testing "and NO sim-engine namespace requires this component -- the edge is
+              structural, one-way, not a discipline"
+      (let [engine-src (->> (file-seq (io/file "components/sim-engine/src"))
+                            (filter #(.isFile %))
+                            (map #(.getPath %))
+                            (filter #(str/ends-with? % ".clj")))
+            back-edges (filter #(str/includes? (slurp %) "person-simulator") engine-src)]
+        (is (seq engine-src))
+        (is (empty? back-edges)
+            (str "sim-engine now names person-simulator in " (vec back-edges)
+                 " -- a feedback edge v1 forbids"))))))
+
+;; --- row 11: every pregnancy reaches a delivery ---------------------------
+
+(deftest pregnancy-and-delivery-are-in-bijection-test
+  (let [ps (group-by :person-id (fx/of-kind :pregnancy))
+        ds (group-by :person-id (fx/of-kind :delivery))]
+    (testing "population is non-empty (R-empty-population-is-red)"
+      (is (seq ps) "the witness stream carries no :pregnancy at all"))
+    (testing "per person, the counts are equal"
+      (let [bad (for [pid (distinct (concat (keys ps) (keys ds)))
+                      :let [np (count (get ps pid)) nd (count (get ds pid))]
+                      :when (not= np nd)]
+                  (str pid ": " np " pregnancies, " nd " deliveries"))]
+        (is (empty? bad)
+            (str (count bad) " person(s) whose pregnancies and deliveries are not in"
+                 " bijection -- a loss, termination or non-delivery outcome has been"
+                 " added without a row: " (vec bad)))))
+    (testing "and each delivery's :pregnancy-event-id is distinct"
+      (let [ids (map :pregnancy-event-id (fx/of-kind :delivery))]
+        (is (= (count ids) (count (distinct ids))))
+        (is (every? some? ids))))))

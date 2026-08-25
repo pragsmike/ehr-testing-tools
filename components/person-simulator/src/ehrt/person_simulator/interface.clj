@@ -46,13 +46,14 @@
   `not-implemented`. Step 2's limitation tests are born RED against
   exactly this, for exactly one reason, which is the only kind of red
   worth capturing."
-  (:require [ehrt.person-simulator.not-implemented :as ni]))
+  (:require [ehrt.person-simulator.not-implemented :as ni]
+            [ehrt.person-simulator.process :as process]))
 
 (defn persons
   "The run's person-event stream: a t-ascending vector of person
   events, drawn entirely from the `:person` stream family."
   [config stream]
-  (ni/not-implemented `persons {:config config :stream stream}))
+  (process/persons config stream))
 
 (defn initial-persona
   "The t0 Persona for one person. The 3-arity is ruling A1's newborn
