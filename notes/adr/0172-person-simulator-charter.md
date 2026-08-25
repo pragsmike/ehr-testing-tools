@@ -1,9 +1,12 @@
 ## ADR-0172 — arc 2: the person-simulator, chartered from the tree
 
-**Status:** Proposed (design session 2026-08-25, HEAD `41081dd`, seven
-rulings open). Payload session under the de-scaffold moratorium; no
-component code lands with this ADR, and none may until the rulings in
-section 5 are answered. Arc 2b implements what is ruled here.
+**Status:** Accepted (design session 2026-08-25, HEAD `41081dd`;
+**RULED 2026-08-25: A1 B1 C1 D1 E1 F1 G1** -- the recommendation on
+every one of the seven). Payload session under the de-scaffold
+moratorium; no component code lands with this ADR. Section 5 records
+each ruling where it lands, and arc 2b implements them: the component
+lands ALONE, the engine does not call it (F1), so the corpus is
+provably untouched.
 
 Sibling to ADR-0162, deliberately and in the same shape: a mission
 sentence at the front door, a dependency-direction paragraph, and one
@@ -419,35 +422,53 @@ and call it done.
 
 ### 5. Rulings needed
 
-Lettered, with a recommendation on each. None is executed here.
+Lettered, with a recommendation on each. **All seven were ruled by the
+author on 2026-08-25, and every one took the recommendation: A1 B1 C1
+D1 E1 F1 G1.** Each ruling is quoted below at the option it selected;
+the rejected options are kept verbatim, unstruck, because what was
+declined is the reason the selection means anything.
 
 **A. Are newborns full persons from birth?**
+**RULED A1** (author, 2026-08-25): *"a newborn is a full person with its own `:person` stream, its own Persona, and its own ADT."* Arc 2b derives the newborn Persona from the household and draws fewer than 13.
+
 * **A1 — yes: a newborn is a full person with its own `:person` stream, its own Persona, and its own ADT. RECOMMENDED** (and the channel's lean). `traffic-model.md` already classifies the mother-baby link and the newborn's first encounter as skeleton, and ADR-0171 already minted the key. The design consequence to accept: a newborn's Persona is **derived, not sampled** — surname and address from the household, `:dob` from the delivery `:t`, `:payer` from the parent's current coverage — so `initial-persona` needs the three-arity in section 2, and the newborn's own stream draws only `:sex` and the fields the household does not determine. Fewer than 13 draws, deliberately: a newborn is not a sampled adult.
 * A2 — a newborn is an attribute of `:delivery` and not a person. Cheaper, and it forbids the mother-baby link, the newborn's own ADT and every downstream birth-traffic defect surface — i.e. it declines the reason the delivery hook exists.
 
 **B. Household propagation: whose stream draws a family move?**
+**RULED B1** (author, 2026-08-25): *"the HEAD of household's stream draws once; every member gets a `:residence-move` referencing the head's."*
+
 * **B1 — the HEAD of household's stream draws once; every member gets a `:residence-move` referencing the head's. RECOMMENDED.** One draw per household move regardless of household size, so a member joining or leaving does not change the head's draw sequence, and a non-member's stream is untouched. The cost, stated: a member's address becomes a function of another person's stream — the same coupling ADR-0171 section 2(a) named for the WORLD family, but confined to one household and keyed on a stable id rather than on population state.
 * B2 — every member draws their own move from their own stream, correlated by a shared household hazard. Keeps each person's address a function of their own stream; makes a household move non-atomic (members can disagree) unless the head's variate is threaded in as a parameter anyway, at which point B1 is the same design with more draws.
 * B3 — a sixth `:household` stream family. Rejected: ADR-0171 fixed five families and a sixth is a scheme change owing its own `:stream-scheme` bump and migration, to buy a key the head's id already provides.
 
 **C. Mortality: person-process death versus GMF `:death`.**
+**RULED C1** (author, 2026-08-25): *"the GMF death is authoritative for anything wire-visible, always."* `initial-persona` takes the compiled death instant as a t0 PARAMETER -- as data, never a require on `patient-simulator`.
+
 * **C1 — the GMF death is authoritative for anything wire-visible, always. RECOMMENDED.** `initial-persona` receives the compiled trajectory's death instant, if any, as a **t0 parameter** — not a runtime feedback edge, since the compile and the persona construction already happen in the same instant at `engine.clj:493`. The person process then draws its death hazard as always (fixed consumption) and **discards its own draw for any person whose trajectory carries a death**, truncating its other hazards at that instant instead. `:person-death` is minted only for persons with no compiled death: those who never became patients, and those whose trajectory has none. What the engine sees: exactly what it sees today — a `:discharge` with `:disposition :expired` — plus, for the second class, a person whose processes simply stop. **Cost: none to any corpus**; no death fixture moves, which matters because the oracle's rung-3 capacity coverage is entirely death-fixture.
 * C2 — the person process wins: its death suppresses the GMF `:death` step. Blanks or reshuffles every death fixture in the gated corpora and the oracle's only capacity-pressure coverage, to buy a death v1 can render no differently.
 * C3 — earliest wins, both processes live. Requires knowing at draw time which is earlier, i.e. the runtime engine->person edge v1 forbids. Available only if that ban is lifted, which is a different ruling.
 
 **D. Fill-versus-merge weighting (R-mix-4).**
+**RULED D1** (author, 2026-08-25): *"a config ratio with an authored default: `:identification {:merge-fraction 0.35}`."*
+
 * **D1 — a config ratio with an authored default: `:identification {:merge-fraction 0.35}`. RECOMMENDED.** The merge branch is what composes with `churn`'s `:merge` into the post-merge-shadow surface `traffic-model.md` calls the highest-value injectable class for MPI-consumer testing, and a tester generating a corpus to exercise exactly that needs to dial it up. Consumption is unaffected: one draw, compared against the threshold, whichever branch is taken. The default value is authored-provisional and inherits limitations row 9's marker.
 * D2 — a fixed constant in `src`. One fewer config key; makes the corpus a tester most wants unreachable without a code change.
 
 **E. Hazard-rate sources: authored-provisional now, or sourced before 2b?**
+**RULED E1** (author, 2026-08-25): *"land 2b with authored-provisional rates, each carrying an in-source `PROVISIONAL` marker covered by limitations row 9."*
+
 * **E1 — land 2b with authored-provisional rates, each carrying an in-source `PROVISIONAL` marker covered by limitations row 9. RECOMMENDED.** The mission sentence is the argument: these rates exist to make traffic realistic, and traffic realism is insensitive to whether the move rate is 0.11 or 0.13, while it is very sensitive to whether moves happen at all. The marker-and-row mechanism means an unsourced rate stays visible forever instead of silently becoming folklore — which is precisely the ADR-0170 species this repo has already been bitten by: a claim true when written that nothing keeps true.
 * E2 — source the rates before 2b lands. Buys real numbers; costs a research session ahead of a component that would otherwise be corpus-neutral and shippable, and licenses nothing that E1 forbids later (a sourced rate replacing a provisional one is a draw-affecting change only after arc 3 folds the stream, which is exactly when it is cheapest).
 
 **F. Does arc 2b land the component alone, or with arc 3's first fold hook?**
+**RULED F1** (author, 2026-08-25): *"the component alone; the engine does not call it."* This is arc 2b's proof obligation, not merely its shape: `bin/regression-oracle` must report IDENTICAL with no declaration.
+
 * **F1 — the component alone; the engine does not call it. RECOMMENDED, and provable.** The `:person` family has zero draw sites (`engine.clj:309`), so a component drawing only from it moves nothing — and with the engine not calling it at all, `make test` and `bin/regression-oracle` must be **IDENTICAL**, the equivalence-proof shape ADR-0169 established for a whole arc. That turns 2b's green into evidence rather than an absence of red, and it leaves arc 3's first fold as the single change whose reshuffle is expected and can therefore be judged.
 * F2 — 2b lands the component plus arc 3's first fold hook. One fewer session boundary; forfeits the identical-corpus proof, and mixes a new component's own defects with a deliberate reshuffle in one commit, so a surprise in the diff has two possible causes.
 
 **G. Where the identification flow's three wire events are minted.**
+**RULED G1** (author, 2026-08-25): *"person-side disposition, engine-side minting."* Arc 2b mints `:identity-unavailable` and `:identity-resolution` only; no placeholder, fill or merge event is minted in this component.
+
 * **G1 — person-side disposition, engine-side minting** (section 2's `:identity-unavailable` / `:identity-resolution`, with the engine minting placeholder-register, fill-in-place and merge-with-existing). **RECOMMENDED.** It is the only shape that keeps person->engine one-way, because a placeholder registration is conditioned on an arrival the person process cannot see. Both R-mix-4 branches stay in scope, as ruled; only the seam moved.
 * G2 — the person stream emits all three directly, and the engine schedules an arrival to match. Matches the prompt's literal vocabulary; makes the person process drive engine control flow, which is strictly stronger than the feedback edge v1 forbids, and makes an arrival's existence depend on a `:person`-family draw.
 
@@ -455,8 +476,8 @@ Lettered, with a recommendation on each. None is executed here.
 
 * Arc 2b has a front door, a closed event vocabulary, a stream key it
   inherits rather than chooses, and eleven limitations each with a test
-  that can be born red. It has no code, and may not have any until
-  section 5 is ruled.
+  that can be born red. This ADR still carries no code; arc 2b's own
+  commits carry it, under the seven rulings above.
 * Arc 3's fold work is sized: nineteen time-varying read sites, of
   which the emitter's six collapse to one lookup shape and the
   patient-simulator's twelve collapse to two.
