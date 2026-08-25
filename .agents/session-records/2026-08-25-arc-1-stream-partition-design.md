@@ -119,5 +119,16 @@ roster (above). `scenarios/SKILL.md`'s `/committee` and `/review` rows
 remain dangling and were left alone — out of this session's scope,
 named here.
 
-HEAD landed: see the push at close. No tag (de-scaffold ruling); CI
-green at the tip is the marker.
+**One in-session correction to my own arithmetic, caught after the ADR
+commit and fixed in a follow-up.** §2(b)'s collision figure read
+~2.7e-7 where the stated formula (n^2/2^65 at n = 10^6) gives
+**~2.7e-8** -- a wrong exponent under a right method. Both figures now
+carry their arithmetic inline (10^12 / 3.689e19, and 10^12 / 8.590e9 for
+the rejected 32-bit `hash` alternative's ~116) so the number cannot be
+read without the check that produces it. The comparison the paragraph
+rests on is unchanged and was never in doubt: the 32-bit alternative is
+worse by a factor of 4.3 billion.
+
+HEAD landed: `c1b996e` (probe deletion), `906dd72` (ADR-0171), plus the
+erratum commit above. No tag (de-scaffold ruling); CI green at the tip is
+the marker.

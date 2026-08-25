@@ -250,17 +250,18 @@ uses), and `0` for the run-scoped families.
 would mean two patients sharing a draw sequence, which is a *duplicate*
 trajectory, not a corrupt one — the corpus stays valid, one patient's
 clinical story merely rhymes with another's. At 10^6 ids over a 64-bit
-mixed space the expected number of colliding pairs is ~2.7e-7
-(birthday approximation n²/2^65). The failure mode is cosmetic and its
-probability is negligible; engineering around it would cost a
-uniqueness check on every stream construction for nothing.
+mixed space the expected number of colliding pairs is ~2.7e-8
+(birthday approximation n²/2^65 = 10^12 / 3.689e19). The failure mode
+is cosmetic and its probability is negligible; engineering around it
+would cost a uniqueness check on every stream construction for nothing.
 
 **Rejected: `(Random. (hash [family id]))`.** Clojure's `hash` on a
 vector is a 32-bit value, so the seed space is 2^32 and the expected
-colliding pairs at 10^6 rise to ~116 — from cosmetic to routine. It
-also makes the derivation depend on a hash implementation this repo
-does not own, against `rulings.md#R-no-derivation-through-nondeterminism`'s
-spirit and against `gmf.clj:1465`'s own hash-order caution.
+colliding pairs at 10^6 rise to ~116 (n²/2^33 = 10^12 / 8.590e9) — from
+cosmetic to routine, a factor of 4.3 billion. It also makes the
+derivation depend on a hash implementation this repo does not own,
+against `rulings.md#R-no-derivation-through-nondeterminism`'s spirit
+and against `gmf.clj:1465`'s own hash-order caution.
 
 **Rejected: `SplittableRandom`/`splits`.** Java's `SplittableRandom`
 gives a genuine split operation, but split streams are keyed by *split
