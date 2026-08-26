@@ -57,7 +57,15 @@ with them.
   identification flow) is DESIGNED by ADR-0173, ACCEPTED 2026-08-25 with all five
   rulings taking the recommendation (A1 B1 C1 D1 E1) and `:residence-loss` landing
   first; arc 3b (scheduling state, bed-status cycle) is untouched and inherits its
-  seams.
+  seams. PART 1 LANDED 2026-08-25 (`67270dd`): `:residence-loss`, the person-side
+  half of the residence sum, plus limitations row 13 the design did not price --
+  oracle IDENTICAL, so ADR-0172 ruling F1 still holds and the engine still has no
+  caller. THE FOLD ITSELF IS STILL OPEN: `:persons` is not a config key, and every
+  piece of ADR-0173 section 2 (C1's compile-at-run-start reordering, the
+  queue-seeding pass, the emitter re-key, the two new event kinds and the 1.3.0
+  bump, the two hooks, the identification minting, the six invariants, the
+  provenance stamp) is unstarted and sized row by row in
+  `.agents/session-records/2026-08-25-arc-3a-residence-loss.md`.
 - OPEN **[emission-add-ons]** PRIORITY 5 -- traffic-scale arc 4
   (`rulings.md#R-mix-7`): order/result status ladders, DFT P03 charges,
   re-statement chatter under config ratios, fan-out/subscriber table; rides
