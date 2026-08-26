@@ -48,9 +48,16 @@
 ;; INDEPENDENT of when that patient arrives. Exported with no caller
 ;; today, deliberately: arc 3a part 3 has `ehrt.sim.run` call it to
 ;; obtain each patient's compiled DEATH instant before the run, which is
-;; what `person-simulator/persons` needs as its `:deaths` parameter --
-;; the engine owns the stream positioning, so a caller outside this
-;; component never reimplements it.
+;; what the person component's own `persons` front door needs as its
+;; `:deaths` parameter -- the engine owns the stream positioning, so a
+;; caller outside this component never reimplements it.
+;;
+;; Named that way, and not by namespace, ON PURPOSE: ADR-0172
+;; limitations row 10's reverse-edge half is a bare token scan over this
+;; component's whole src, so even a prose citation of that component's
+;; name here reads as a feedback edge. The forward half of the same gate
+;; distinguishes a citation from a dependency; the reverse half does
+;; not, and this arc may not widen it (arc 3a part 2's own fence).
 (def compile-patient engine/compile-patient)
 (def default-churn-profile churn/default-churn-profile)
 (def sample-profile churn/sample-profile)

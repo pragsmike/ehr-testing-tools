@@ -559,10 +559,12 @@
   ARRIVAL-TIME INDEPENDENT, and that is the whole reason this is a
   function rather than a `let` inside `decide :registered` (ADR-0173
   ruling C1: `ehrt.sim.run` must be able to obtain every patient's
-  compiled death instant BEFORE the run, because
-  `person-simulator/persons` is a whole-population front door). There is
-  no `t` parameter here because nothing below could read one. Every
-  input, enumerated:
+  compiled death instant BEFORE the run, because the person component's
+  own `persons` front door takes the whole population at once -- named
+  in prose rather than by namespace, because ADR-0172 limitations row
+  10's reverse-edge half is a bare token scan over this component's
+  src). There is no `t` parameter here because nothing below could read
+  one. Every input, enumerated:
 
   | input | why it cannot differ between run start and arrival |
   |---|---|
