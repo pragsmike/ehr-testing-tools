@@ -614,7 +614,7 @@
 
     [:demographic-update
      (kind :demographic-update
-           {:doc "One demographic fact about a patient changed between encounters: an address, a legal name, a corrected date of birth."
+           {:doc "One demographic fact about a patient changed between encounters: an address, a legal name, a corrected date of birth. Deliberately renders no HL7 message of its own in 1.3.0 -- the change is visible in the PID of every message the patient receives after it."
             :transition "Writes one field of :demographics; :persona (the t0 sample) is untouched."}
            [:active-mrn :string]
            ;; Which person-side fact caused it. `:identity-fill` is
@@ -639,7 +639,7 @@
 
     [:coverage-change
      (kind :coverage-change
-           {:doc "A patient's insurance coverage changed: a new payer, with the payer they held before it."
+           {:doc "A patient's insurance coverage changed: a new payer, with the payer they held before it. Deliberately renders no HL7 message of its own in 1.3.0 -- the change is visible in the IN1 of the next admission message the patient receives."
             :transition "Writes :payer in :demographics; :persona (the t0 sample) is untouched."}
            [:active-mrn :string]
            [:cause [:enum :employment :age-65 :loss :eligibility]]

@@ -71,8 +71,16 @@
     (let [declared (into #{} (map first) (rest (rest engine/Event)))
           rendered (set (keys emit-hl7/message-type-registry))
           silent (clojure.set/difference declared rendered)]
+      ;; 1.3.0 (ADR-0173, arc 3a part 3) adds TWO, and the addition is
+      ;; recorded in all three places this gate's own message demands:
+      ;; each kind's `:doc` (which is what `docs/formats.md`'s generated
+      ;; section renders), `message-type-registry`'s own comment, and
+      ;; here. Their silence is unlike the other eight's: the change
+      ;; still reaches the wire, in the PID and IN1 of every message the
+      ;; patient receives after it.
       (is (= #{:registered :step-rejected :outpatient-visit-end :procedure
-               :medication-order :medication-end :care-plan-start :care-plan-end}
+               :medication-order :medication-end :care-plan-start :care-plan-end
+               :demographic-update :coverage-change}
              silent)
           (str "the set of contract kinds this emitter renders no message for "
                "changed to " (sort silent) " -- that is a real change in what "

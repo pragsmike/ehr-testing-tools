@@ -743,10 +743,22 @@
                      "; the byte gate above carries the diagnostic."))))))))
 
 (def ^:private arc0-invariant-catalog
-  "The 29 invariant names `check-all` reports, in reporting order --
+  "The 35 invariant names `check-all` reports, in reporting order --
   pinned so the findings assertion below is a full-value `=` rather than
   a check of one key. Catalog drift is itself a change in what \"identical
-  findings\" means, so it belongs inside the gate, not outside it."
+  findings\" means, so it belongs inside the gate, not outside it.
+
+  RE-PINNED 2026-08-26, 29 -> 35, and the re-pin is disclosed because
+  this gate's own failure message says a red here is a STOP and not a
+  re-pin. WHICH INVARIANT MOVED: none. `:status` is `:ok` on both sides
+  and `:events` is unchanged on all four corpora, so not one FINDING
+  moved -- what grew is the ROSTER, by exactly the six ADR-0173 section
+  2(e) adds (the person-fold family, appended after
+  `expired-patient-retains-location` and before the facility catalog,
+  which is where `catalog` itself puts them). That is the case this
+  def's own docstring anticipates: catalog drift belongs inside the
+  gate, so the gate moves with the catalog and keeps asserting a
+  full-value `=` rather than being weakened to a subset check."
   '[timestamps-monotone discharge-follows-admission every-event-has-participants
     participant-ids-exist-in-run admission-only-when-new transfer-only-when-admitted
     transfer-from-matches-state no-double-occupancy admitted-occupies-one-slot
@@ -759,7 +771,14 @@
     outpatient-patients-occupy-no-bed clinical-content-only-when-admitted
     medication-end-references-existing-order-and-follows-it-in-time
     care-plan-end-references-existing-start-and-follows-it-in-time
-    expired-patient-retains-location occupancy-within-capacity
+    expired-patient-retains-location
+    identity-fill-references-its-placeholder-registration
+    identification-merge-survivor-is-the-persons-prior-patient
+    every-placeholder-registration-is-resolved-or-still-open
+    demographic-update-reports-a-real-change
+    no-demographic-event-after-a-patient-expires
+    person-scoped-provenance-is-a-stamp-not-a-reference
+    occupancy-within-capacity
     surge-only-when-earlier-rungs-exhausted warm-up-mark-matches-window
     result-analytes-match-order-profile])
 

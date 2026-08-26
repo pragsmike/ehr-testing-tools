@@ -86,21 +86,44 @@
         person-kinds (set (map :event (fx/evs)))]
     (testing "the engine's vocabulary parsed, non-empty (R-empty-population-is-red)"
       ;; 23 since contract 1.3.0 (ADR-0173, arc 3a part 3): the fold's
-      ;; own `:demographic-update` and `:coverage-change`. Row 4 is
-      ;; UNTOUCHED by that -- it says a person event is never itself a
-      ;; ground-truth event, and the intersection below is what says so.
-      ;; The two new kinds are minted BY the engine, from person events,
-      ;; and neither shares a name with one.
+      ;; own `:demographic-update` and `:coverage-change`.
       (is (= 23 (count engine-kinds))
           (str "expected the CLOSED 23-kind engine vocabulary, parsed " (count engine-kinds))))
     (testing "the witness stream carries deaths at all"
       (is (seq (fx/of-kind :person-death))))
-    (testing "no person event is a ground-truth event kind -- a :person-death cannot
-              become a :discharge with :disposition :expired, because this component
-              mints no engine kind at all"
-      (is (empty? (set/intersection engine-kinds person-kinds))
-          (str "person events overlap the engine's closed vocabulary: "
-               (set/intersection engine-kinds person-kinds))))
+    ;; REWRITTEN 2026-08-26 (arc 3a part 3). This assertion used to be
+    ;; NAME-disjointness -- no person-event kind may share a name with a
+    ;; ground-truth kind -- and it went RED on `:coverage-change`, which
+    ;; ADR-0173 section 2(b)'s own fold table names on BOTH sides
+    ;; deliberately. The name is shared by design; what row 4 actually
+    ;; says is not about names.
+    ;;
+    ;; It says a person event is never ITSELF a log event, and the
+    ;; structural fact behind that is the one now asserted: a person
+    ;; event carries no `:patient-id` and no log-shaped `:participants`
+    ;; (the engine's are `{:patient-id .. :role ..}` maps; this
+    ;; component's are bare person-id strings), so it could not satisfy
+    ;; `every-event-has-participants` or `participant-ids-exist-in-run`
+    ;; without inventing a second participant vocabulary -- ADR-0173
+    ;; section 2(b)'s own words. The engine mints `:coverage-change`
+    ;; FROM a person event of the same name; the two are different
+    ;; events, and the row is about the second one not being the first.
+    (testing "no person event is ITSELF a ground-truth event -- a :person-death
+              cannot become a :discharge with :disposition :expired, because
+              nothing this component emits has a patient in it at all"
+      (is (empty? (filter :patient-id (fx/evs)))
+          "a person event carries a :patient-id -- it is claiming to be a log event")
+      (is (empty? (remove #(every? string? (:participants %)) (fx/evs)))
+          "a person event carries log-shaped :participants -- the engine's are
+           {:patient-id .. :role ..} maps and this component's are bare person ids")
+      (is (empty? (filter :active-mrn (fx/evs)))
+          "a person event carries an :active-mrn -- only a log event has one"))
+    (testing "and the kind names the two vocabularies share are exactly the ones
+              ADR-0173 section 2(b) designed them to share, no more"
+      (is (= #{:coverage-change} (set/intersection engine-kinds person-kinds))
+          (str "the shared-name set moved: " (set/intersection engine-kinds person-kinds)
+               " -- a NEW overlap is a person kind that has quietly become an"
+               " engine kind, which is what row 4 forbids")))
     (is (empty? (filter :disposition (fx/evs)))
         "a person event carries a :disposition -- the expired-discharge surface is
          the GMF death's alone (ruling C1)")))

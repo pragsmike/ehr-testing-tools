@@ -814,6 +814,21 @@ consequence.
      renders the changed values, gated by
      `demographics-at-answers-state-at-t-test`. The A08 is a candidate
      for a later arc, named here rather than assumed.
+  6. **ROW 4's GATE ASSERTED THE WRONG THING, and `:coverage-change`
+     is what found it.** `person-death-emits-no-ground-truth-event-test`
+     asserted that no person-event kind SHARES A NAME with a
+     ground-truth kind, and section 2(b)'s own fold table names
+     `:coverage-change` on both sides deliberately -- so the gate went
+     red on a name this ADR chose. Found by `make test`, in a brick
+     other than any this session had touched, which is
+     `rulings.md#R-full-suite-before-push` paid for again. The
+     assertion is rewritten to the STRUCTURAL claim row 4 was always
+     making: a person event carries no `:patient-id`, no `:active-mrn`
+     and no log-shaped `:participants`, so it could not satisfy
+     `every-event-has-participants` without inventing a second
+     participant vocabulary -- this ADR's own sentence. The shared-name
+     set is pinned at exactly `#{:coverage-change}`, so a NEW overlap
+     still goes red.
 
 * `rulings.md` is FROZEN (de-scaffold ruling, 2026-08-25). Nothing
   here becomes a rulings row; section 2(e)'s six invariants land as

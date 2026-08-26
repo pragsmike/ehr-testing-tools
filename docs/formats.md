@@ -620,7 +620,7 @@ A care plan is opened, optionally listing its planned activities.
 
 #### `:coverage-change`
 
-A patient's insurance coverage changed: a new payer, with the payer they held before it.
+A patient's insurance coverage changed: a new payer, with the payer they held before it. Deliberately renders no HL7 message of its own in 1.3.0 -- the change is visible in the IN1 of the next admission message the patient receives.
 
 **State transition:** Writes `:payer` in `:demographics`; `:persona` (the t0 sample) is untouched.
 
@@ -651,7 +651,7 @@ A patient's insurance coverage changed: a new payer, with the payer they held be
 
 #### `:demographic-update`
 
-One demographic fact about a patient changed between encounters: an address, a legal name, a corrected date of birth.
+One demographic fact about a patient changed between encounters: an address, a legal name, a corrected date of birth. Deliberately renders no HL7 message of its own in 1.3.0 -- the change is visible in the PID of every message the patient receives after it.
 
 **State transition:** Writes one field of `:demographics`; `:persona` (the t0 sample) is untouched.
 

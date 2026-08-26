@@ -94,7 +94,22 @@
    ;; DiagnosticReport panel IS an ORU^R01 with ORC+OBR present (unlike
    ;; :observation's own order-less shape) -- the same trigger
    ;; :result-available/:observation already use.
-   :diagnostic-report {:type "ORU" :trigger "R01"}})
+   :diagnostic-report {:type "ORU" :trigger "R01"}
+   ;; ARC 3A PART 3 (ADR-0173, contract 1.3.0): `:demographic-update`
+   ;; and `:coverage-change` deliberately get NO entry here, the same
+   ;; truth-only treatment `:procedure`/`:medication-order`/the CarePlan
+   ;; pair already get -- and, unlike those, with the change still
+   ;; REACHING the wire: `demographics-timeline` folds both, so every
+   ;; message the patient receives after one renders the new PID (or the
+   ;; new IN1). That is what lifted ADR-0172 limitations row 6.
+   ;;
+   ;; The A08 (and the A31, and an IN1-only update) that would give them
+   ;; messages of their OWN is real work this arc does not do and does
+   ;; not sketch: a registry entry is also a control-id derivation, a
+   ;; derivability-property row, and a `witnessed-message-types` claim.
+   ;; ADR-0173's own Consequences name it as a candidate for a later
+   ;; arc rather than leaving it as a silence a reader has to notice.
+   })
 
 (def ^:private hl7-timestamp-formatter
   (java.time.format.DateTimeFormatter/ofPattern "yyyyMMddHHmmss"))
