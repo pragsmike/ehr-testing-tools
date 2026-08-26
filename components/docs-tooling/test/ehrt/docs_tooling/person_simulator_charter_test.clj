@@ -59,17 +59,22 @@
   "The person process exists so that demographic and identity traffic is realistic; a person's life is relevant only inasmuch as it changes a message.")
 
 (def ^:private expected-row-count
-  "ADR-0172 section 4 tables THIRTEEN limitations -- eleven at
-  2026-08-25, plus row 12 (a parent may head more than one household),
-  the v1 artefact arc 2b stated in `persons`' own docstring and arc 3a
-  tabled, plus row 13 (a household never loses its housing), which arc
-  3a's own `:residence-loss` forced and ADR-0173 did not anticipate.
-  Pinned, so that a row
-  quietly dropped from ONE of the two tables is caught by the mirror
-  below while a row dropped from BOTH is caught here
-  (`rulings.md#R-empty-population-is-red`, one step further: a mirror
-  gate over two empty tables agrees perfectly)."
-  13)
+  "ADR-0172 section 4 tables TWELVE limitations. Eleven at 2026-08-25,
+  plus row 12 (a parent may head more than one household), the v1
+  artefact arc 2b stated in `persons`' own docstring and arc 3a tabled,
+  plus row 13 (a household never loses its housing), which arc 3a's own
+  `:residence-loss` forced and ADR-0173 did not anticipate, MINUS row 6
+  (demographics reach the wire through one per-run lookup), STRUCK
+  2026-08-26 when arc 3a part 3's fold made its substance false by
+  design. Thirteen numbers, twelve rows: the survivors keep the numbers
+  they had, because renumbering would re-point every citation of \"row
+  N\" in three documents at a different limitation.
+
+  Pinned, so that a row quietly dropped from ONE of the two tables is
+  caught by the mirror below while a row dropped from BOTH is caught
+  here (`rulings.md#R-empty-population-is-red`, one step further: a
+  mirror gate over two empty tables agrees perfectly)."
+  12)
 
 ;; `\`path\` "quoted snippet"` -- the citation form the Citation column
 ;; uses, one or more per row. Identical to the sibling gate's.

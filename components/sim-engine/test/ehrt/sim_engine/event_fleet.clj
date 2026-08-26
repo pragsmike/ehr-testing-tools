@@ -1,6 +1,6 @@
 (ns ehrt.sim-engine.event-fleet
-  "The deterministic fixture fleet: four small engine runs whose union
-  produces EXACTLY the 21 kinds `ehrt.sim-engine.event-schema` declares.
+  "The deterministic fixture fleet: five small engine runs whose union
+  produces EXACTLY the 23 kinds `ehrt.sim-engine.event-schema` declares.
 
   Lives on the test path, and is shared by two consumers that must not
   be allowed to disagree:
@@ -30,6 +30,7 @@
   whole state vocabulary in a single encounter."
   (:require [ehrt.sim-engine.engine :as engine]
             [ehrt.patient-simulator.interface :as patient-simulator]
+            [ehrt.sim-model.interface :as sim-model]
             [clojure.pprint]))
 
 ;; --- fixtures -------------------------------------------------------------
@@ -177,12 +178,83 @@
                                               :codes [{:system :snomed :code "410429000"
                                                        :display "Cardiac arrest"}]}]}}]}))
 
+(def person-pool
+  "Two people, and their t0 Personas drawn the way `ehrt.sim.run` draws
+  them: off the `:person` family, one stream per id-tag, through
+  `sim-model/persona` -- which is what the person component's own
+  `initial-persona` is, at its adult arity."
+  (let [ids [["fixture-person-a" 1] ["fixture-person-b" 2]]]
+    {:population (vec (for [[person-id id-tag] ids] {:person-id person-id :id-tag id-tag}))
+     :personas (into {} (for [[person-id id-tag] ids]
+                          [person-id (sim-model/persona (engine/stream 15 :person id-tag) {})]))
+     :alive {}}))
+
+(def person-events
+  "The person stream this fixture hands the engine, HAND-AUTHORED rather
+  than drawn from the person component, and the reason is the same one
+  that put the churn family in this file as explicit IR: a fixture whose
+  coverage depends on a hazard firing is a fixture that can silently
+  stop covering. Reaching all three `:demographic-update` causes plus a
+  `:coverage-change` out of a real person walk took a fourteen-person,
+  thirty-year population in this session's own probing, which is
+  per-push-hostile and seed-fragile besides.
+
+  Nothing is lost by authoring them. The engine's OWN contract is that
+  person events arrive as data (`engine/run`'s `:persons` docstring):
+  it folds a vector of maps and never learns whose they are, so a
+  hand-authored vector exercises exactly the code a drawn one does. The
+  events below are shaped field-for-field on what the process emits --
+  `:residence-move` carries `:address` and a `:prior-address`,
+  `:residence-loss` carries `:prior-address` and NO address at all,
+  `:identity-correction` carries `:field`/`:value`/`:prior-value`, and
+  `:coverage-change` carries `:cause`/`:payer`/`:prior-payer`. That the
+  REAL stream composes with this engine is gated separately and against
+  the real component, in `ehrt.sim.persons-run-test`.
+
+  `fixture-person-b` opens with an `:at-t0` `:residence-loss`, which is
+  what makes one `:registered` in this fleet carry a `:residence` -- the
+  1.3.0 optional key, and ruling E1's PID-11-absent registration."
+  (let [addr-1 {:street "1 Fixture Way" :city "Springfield" :state "IL" :zip "62701"}
+        addr-2 {:street "2 Fixture Way" :city "Shelbyville" :state "IL" :zip "62565"}
+        persona-a (get-in person-pool [:personas "fixture-person-a"])]
+    [{:event :residence-loss :person-id "fixture-person-b" :t 0 :event-id "fixture-person-b#0"
+      :at-t0 true :prior-address addr-1}
+     {:event :residence-move :person-id "fixture-person-a" :t 3600 :event-id "fixture-person-a#0"
+      :address addr-2 :prior-address (:address persona-a)}
+     {:event :coverage-change :person-id "fixture-person-a" :t 7200 :event-id "fixture-person-a#1"
+      :cause :employment
+      :payer {:id "fixture-payer" :name "Fixture Health" :type :commercial}
+      :prior-payer (:payer persona-a)}
+     {:event :identity-correction :person-id "fixture-person-a" :t 10800
+      :event-id "fixture-person-a#2" :field :name
+      :value {:family (get-in persona-a [:name :family]) :given "Corrected"}
+      :prior-value (:name persona-a)}
+     {:event :residence-loss :person-id "fixture-person-a" :t 14400
+      :event-id "fixture-person-a#3" :prior-address addr-2}
+     ;; Mints nothing, and that is the point: ADR-0172 limitations row 4,
+     ;; confirmed by ADR-0173 ruling C1. A death outside care has no
+     ;; HL7v2 trigger this emitter writes.
+     {:event :person-death :person-id "fixture-person-b" :t 18000
+      :event-id "fixture-person-b#1"}]))
+
+(defn person-run
+  "The demographic fold (ADR-0173, contract 1.3.0): three arrivals over a
+  two-person pool, so one person is selected twice and the repeat
+  resolves to the patient the first arrival already minted."
+  []
+  (engine/run {:seed 15 :patients 3 :arrival-gap 0
+               :pathway {:name "brief" :steps [{:type :admission :location "Renal"}
+                                               {:type :discharge}]}
+               :facility crowded-facility
+               :persons (assoc person-pool :events person-events)}))
+
 (defn fleet
   []
   [["clinical" (clinical-run)]
    ["operational" (operational-run)]
    ["churn" (churn-run)]
-   ["death" (death-run)]])
+   ["death" (death-run)]
+   ["person" (person-run)]])
 
 ;; --- examples for docs/formats.md -----------------------------------------
 

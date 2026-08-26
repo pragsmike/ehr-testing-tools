@@ -37,7 +37,7 @@
   (let [s (schema)
         block (doc/render s (examples))
         kinds (map first (filter vector? (rest (:schema s))))]
-    (is (= 21 (count kinds)))
+    (is (= 23 (count kinds)))
     (doseq [k kinds]
       (is (str/includes? block (str "#### `" k "`"))
           (str "no section rendered for " k))

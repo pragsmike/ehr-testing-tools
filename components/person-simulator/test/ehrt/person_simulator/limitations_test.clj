@@ -85,8 +85,14 @@
                          :schema (->> (drop 2) (map first) set))
         person-kinds (set (map :event (fx/evs)))]
     (testing "the engine's vocabulary parsed, non-empty (R-empty-population-is-red)"
-      (is (= 21 (count engine-kinds))
-          (str "expected the CLOSED 21-kind engine vocabulary, parsed " (count engine-kinds))))
+      ;; 23 since contract 1.3.0 (ADR-0173, arc 3a part 3): the fold's
+      ;; own `:demographic-update` and `:coverage-change`. Row 4 is
+      ;; UNTOUCHED by that -- it says a person event is never itself a
+      ;; ground-truth event, and the intersection below is what says so.
+      ;; The two new kinds are minted BY the engine, from person events,
+      ;; and neither shares a name with one.
+      (is (= 23 (count engine-kinds))
+          (str "expected the CLOSED 23-kind engine vocabulary, parsed " (count engine-kinds))))
     (testing "the witness stream carries deaths at all"
       (is (seq (fx/of-kind :person-death))))
     (testing "no person event is a ground-truth event kind -- a :person-death cannot
@@ -111,35 +117,23 @@
         "an :identity-correction carries a :cause -- the A08-versus-A31 distinction
          has been added without a row")))
 
-;; --- row 6: demographics reach the wire through ONE per-run lookup --------
-
-(deftest personas-are-keyed-by-patient-id-alone-test
-  ;; RE-POINTED 2026-08-26, arc 3a part 2. `personas-by-patient-id`
-  ;; became `demographics-timeline` and the LOOKUP became
-  ;; `(demographics-at demographics patient-id t)` -- twelve threading
-  ;; signatures, one lookup shape, output-identical.
-  ;;
-  ;; The row did NOT go red on that change, and the prediction that it
-  ;; would (ADR-0173 section 2(b), which assumed the re-key and the fold
-  ;; land together) is what is corrected here. What row 6 states is that
-  ;; a delta folded onto patient state is INVISIBLE to every message,
-  ;; and that is still true: the re-key moved the lookup's SHAPE while
-  ;; the builder's body still folds nothing but the `:registered`
-  ;; event's own t0 `:persona`, so every `t` still answers with the same
-  ;; value. The row stands and the STRIKE is owed by part 3, which is
-  ;; where the fold arrives.
-  ;;
-  ;; The first assertion was re-pointed at the new symbol for a second
-  ;; reason: left naming the old one, it would have kept passing on a
-  ;; PROSE MENTION of `personas-by-patient-id` in the new builder's own
-  ;; docstring -- a guard green on a comment, which is no guard.
-  (let [src (slurp "components/sim-emit-hl7/src/ehrt/sim_emit_hl7/emit_hl7.clj")]
-    (testing "the builder is still there to check (R-empty-population-is-red)"
-      (is (str/includes? src "(defn- demographics-timeline")))
-    (is (str/includes? src "[(:patient-id (first (:participants ev))) (:persona ev)]")
-        "emit-hl7's demographic lookup no longer folds the t0 :persona alone -- if
-         its VALUE is now state-at-t, arc 3's fold has landed and limitations row 6
-         should be STRUCK, not repaired")))
+;; --- row 6: STRUCK 2026-08-26 (arc 3a part 3, ADR-0173) -------------------
+;;
+;; "Demographics reach the wire through ONE per-run lookup keyed by
+;; patient-id alone; until arc 3 re-keys it, a delta folded onto patient
+;; state is invisible to every message." The fold landed, and the row's
+;; substance is now FALSE BY DESIGN: `emit_hl7.clj`'s
+;; `demographics-timeline` folds `:demographic-update` and
+;; `:coverage-change` into a t-ascending per-patient timeline, and
+;; `demographics-at` answers state-at-t. Its gate,
+;; `personas-are-keyed-by-patient-id-alone-test`, is DELETED with it
+;; rather than repaired: a gate whose limitation no longer exists can
+;; only ever assert something untrue or something vacuous. The row is
+;; gone from both tables and ADR-0172 section 4 says so where it stood.
+;;
+;; What replaced it as a gate is
+;; `demographics-at-answers-state-at-t-test` (sim-emit-hl7), which is
+;; the positive law rather than the negative one.
 
 ;; --- row 7: geography stays the 24-row places.edn pool --------------------
 

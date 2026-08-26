@@ -11,7 +11,7 @@
       docstring gets a third of the population (L1-5).
 
   (b) Nothing anywhere states what no root can move. 13 of the event
-      contract's 21 closed kinds are witnessed; 8 are not, and the
+      contract's 23 closed kinds are witnessed; 8 are not, and the
       capacity witness is ONE ROOT DEEP -- lose `death-fixture` and
       `:transfer`, `ADT^A02`, `:bed-ready` and ladder rung 3 all go dark
       together (L1-1, L1-2).
@@ -79,7 +79,7 @@
 (defn- digest-source [] (slurp digest-path))
 
 (defn- closed-event-kinds
-  "The 21-kind closed vocabulary, read from the committed schema export's
+  "The 23-kind closed vocabulary, read from the committed schema export's
   own `:multi` dispatch rather than retyped here."
   []
   (let [schema (edn/read-string (slurp schema-path))
@@ -142,9 +142,9 @@
           "an empty witnessed set would make every membership assertion below vacuously true")
       (is (seq types) "likewise for the message-type half"))
     (testing "every committed kind is a real event kind"
-      (is (= 21 (count closed))
+      (is (= 23 (count closed))
           (str "sanity on this test's own population source: the committed export must still "
-               "hold the 21-kind closed vocabulary. Found " (count closed) "."))
+               "hold the 23-kind closed vocabulary. Found " (count closed) "."))
       (is (every? closed kinds)
           (str "a committed kind outside the closed vocabulary is a typo or a stale claim. "
                "Offenders: " (pr-str (remove closed kinds)))))

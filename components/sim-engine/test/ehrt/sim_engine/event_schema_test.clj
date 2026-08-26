@@ -19,7 +19,7 @@
   and `:step-rejected` -- minutes of work, per-push-hostile, and
   seed-fragile besides (a scenario retune could silently stop producing
   a kind and this gate would quietly stop checking it). The fleet below
-  reaches all 21 kinds DETERMINISTICALLY: the churn family is authored
+  reaches all 23 kinds DETERMINISTICALLY: the churn family is authored
   as explicit IR steps rather than hunted for across seeds (the same
   technique `ehrt.sim-engine.churn-scenarios-test` already uses), and
   the clinical family comes from one in-test GMF fixture module that
@@ -57,8 +57,9 @@
       (is (empty? (set/difference produced declared))
           (str "produced but not declared in the Event schema: "
                (sort (set/difference produced declared))))
-      (is (= 21 (count declared))
-          "the census reconciled source and corpora at exactly 21 kinds"))))
+      (is (= 23 (count declared))
+          (str "the census reconciled source and corpora at exactly 21 kinds, and"
+               " contract 1.3.0 (ADR-0173) added the two the person stream mints")))))
 
 (deftest every-event-of-every-fixture-run-validates
   (doseq [[label {:keys [ground-truth]}] (fleet/fleet)]

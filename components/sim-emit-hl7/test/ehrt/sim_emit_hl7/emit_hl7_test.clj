@@ -1014,3 +1014,113 @@
       (is (not (contains? first-entry :units))))
     (testing "OBX-6 renders exactly that value"
       (is (= (:unit first-entry) (message/get-field-first-value parsed "OBX" 6))))))
+
+;; --- arc 3a part 3: the demographic fold reaches the wire -----------------
+;;
+;; This is what REPLACED ADR-0172 limitations row 6, struck 2026-08-26.
+;; That row said a delta folded onto patient state was invisible to every
+;; message, and its gate asserted the lookup's key shape -- a NEGATIVE
+;; law, red the day the limitation was lifted. Here is the positive one
+;; it was standing in for.
+
+(def ^:private folded-persona (sim-model/persona (Random. 99) {}))
+(def ^:private folded-pid "PID-000000-abcdef01")
+(def ^:private folded-addr {:street "77 Cedar Ln" :city "Portland" :state "OR" :zip "97201"})
+
+(defn- folded-log
+  "One patient, admitted, whose address then changes, who is then
+  transferred. Hand-built because the engine's own single-encounter
+  horizon (sim/ADR-0007 point 3) gives a demographic delta no MESSAGE to
+  land in front of: a run's person events fall after its discharge. What
+  is asserted here is the emitter's law, not the engine's scheduling."
+  [& {:keys [residence]}]
+  (let [subject [{:patient-id folded-pid :role :subject}]
+        loc {:ward "Renal" :bed "RENAL-01" :placement :licensed}]
+    [(cond-> {:event :registered :t 0 :active-mrn "MRN000001" :persona folded-persona
+              :participants subject :warm-up false}
+       residence (assoc :residence residence))
+     {:event :admission :t 10 :active-mrn "MRN000001" :attending "1234567890"
+      :home-ward "Renal" :location loc :forced false :participants subject :warm-up false}
+     {:event :demographic-update :t 20 :active-mrn "MRN000001" :cause :residence-move
+      :field :residence :value {:status :housed :address folded-addr}
+      :prior-value {:status :housed :address (:address folded-persona)}
+      :person-event-id "PERSON-000000#0" :participants subject :warm-up false}
+     {:event :transfer :t 30 :active-mrn "MRN000001" :attending "1234567890"
+      :home-ward "Renal" :from loc
+      :location {:ward "Renal" :bed "RENAL-02" :placement :licensed}
+      :participants subject :warm-up false}]))
+
+(defn- pid-11-of [msg]
+  (message/get-field-first-value (parser/parse msg) "PID" 11))
+
+(defn- xad-of
+  "The five-component XAD `xad-field` renders for one places row --
+  street^^city^state^zip, other-designation always empty."
+  [{:keys [street city state zip]}]
+  (str street "^^" city "^" state "^" zip))
+
+(deftest demographics-at-answers-state-at-t-test
+  (let [msgs (emit-hl7/emit (folded-log) ref-date utc-offset)]
+    (testing "the fold produced the two messages it should have (A01, then A02)"
+      (is (= 2 (count msgs)) "a :demographic-update rendered a message of its own"))
+    (let [[admit transfer] msgs]
+      (testing "the admission, BEFORE the delta, renders the t0 address"
+        (is (= (xad-of (:address folded-persona)) (pid-11-of admit))))
+      (testing "the transfer, AFTER it, renders the NEW one -- which is exactly
+                what ADR-0172 limitations row 6 said could not happen"
+        (is (= (xad-of folded-addr) (pid-11-of transfer)))
+        (is (not= (pid-11-of admit) (pid-11-of transfer)))))))
+
+(deftest an-unhoused-patient-renders-pid-11-absent-test
+  ;; ADR-0173 ruling E1: PID-11 ABSENT on the wire, with the distinction
+  ;; carried in ground truth. No sentinel -- HL7 v2 offers no code for it
+  ;; and every literal is one site's local convention, which belongs in a
+  ;; site profile.
+  (let [housed (emit-hl7/emit (folded-log) ref-date utc-offset)
+        unhoused (emit-hl7/emit (folded-log :residence {:status :unhoused
+                                                        :last-known-address folded-addr})
+                                ref-date utc-offset)]
+    (testing "the housed control renders a street"
+      (is (seq (pid-11-of (first housed)))))
+    (testing "the unhoused registration renders nothing there"
+      (is (str/blank? (str (pid-11-of (first unhoused))))))
+    (testing "and it is ABSENT rather than five empty components"
+      (is (not (str/includes? (first unhoused) "|^^^^|"))
+          "PID-11 rendered as an empty XAD rather than an empty field"))
+    (testing "everything else about the message is unchanged, so the absence is
+              the ONLY difference the residence sum makes on the wire"
+      (is (= (str/replace (first housed) (xad-of (:address folded-persona)) "")
+             (first unhoused))))))
+
+(deftest a-later-message-still-renders-a-persons-corrected-name-and-payer-test
+  (let [subject [{:patient-id folded-pid :role :subject}]
+        loc {:ward "Renal" :bed "RENAL-01" :placement :licensed}
+        payer {:id "x" :name "X Health" :type :commercial}
+        log [{:event :registered :t 0 :active-mrn "MRN000001" :persona folded-persona
+              :participants subject :warm-up false}
+             {:event :admission :t 10 :active-mrn "MRN000001" :attending "1234567890"
+              :home-ward "Renal" :location loc :forced false :participants subject
+              :warm-up false}
+             {:event :demographic-update :t 20 :active-mrn "MRN000001"
+              :cause :identity-correction :field :name
+              :value {:family "Corrected" :given "Name"}
+              :prior-value (:name folded-persona)
+              :person-event-id "PERSON-000000#1" :participants subject :warm-up false}
+             {:event :coverage-change :t 25 :active-mrn "MRN000001" :cause :employment
+              :payer payer :prior-payer (:payer folded-persona)
+              :person-event-id "PERSON-000000#2" :participants subject :warm-up false}
+             {:event :transfer :t 30 :active-mrn "MRN000001" :attending "1234567890"
+              :home-ward "Renal" :from loc
+              :location {:ward "Renal" :bed "RENAL-02" :placement :licensed}
+              :participants subject :warm-up false}]
+        msgs (emit-hl7/emit log ref-date utc-offset)
+        [admit transfer] msgs]
+    (is (= 2 (count msgs)))
+    (testing "PID-5 follows the correction"
+      (is (= (str (:family (:name folded-persona)) "^" (:given (:name folded-persona)))
+             (message/get-field-first-value (parser/parse admit) "PID" 5)))
+      (is (= "Corrected^Name"
+             (message/get-field-first-value (parser/parse transfer) "PID" 5))))
+    (testing "and the payer the admission's IN1 carried is the t0 one, because the
+              coverage change had not happened yet"
+      (is (str/includes? admit (:name (:payer folded-persona)))))))
