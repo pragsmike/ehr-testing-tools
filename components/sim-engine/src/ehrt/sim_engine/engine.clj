@@ -1126,6 +1126,24 @@
                                        i))
                           ground-truth)))))
 
+(defn person-entry
+  "What `world`'s `:person-index` holds for one person -- the patient a
+  returning person resolves to, and what has been minted for them so far
+  (`init-world`'s own comment carries the entry shape). nil when this
+  person has not been seen before.
+
+  ADR-0173 section 2(a) (arc 3a). Lands AHEAD of its caller,
+  deliberately, and it is the reader that makes the carried index's
+  hand-built-world contract real: FALLS BACK to nil when `world` carries
+  no `:person-index` KEY -- on the KEY, never on a missing entry, the
+  same rule `reinstated-state` and `last-cited-index` already follow, so
+  a carrier `run` built but failed to populate shows up as a changed
+  corpus rather than as a silent miss. `run` seeds the key EMPTY today;
+  nothing writes it until part 3's arrival selection does."
+  [world person-id]
+  (when (contains? world :person-index)
+    (get (:person-index world) person-id)))
+
 (defmethod decide :medication-end
   [_streams t world patient-id {:keys [order-citation] :as step}]
   ;; Resolved by CITATION match against ground-truth, never a pathway-
@@ -2018,7 +2036,26 @@
                     ;; back to compiling in place when this KEY is absent
                     ;; -- the hand-built-world tolerance `:reinstate-index`
                     ;; and `:citation-index` already establish.
-                    :compiled-patients compiled-patients}
+                    :compiled-patients compiled-patients
+                    ;; ADR-0173 section 2(a) (arc 3a): person-id -> the
+                    ;; patient that person resolves to, and what has been
+                    ;; minted for them so far:
+                    ;;
+                    ;;   {person-id {:patient-id .. :first-ordinal ..
+                    ;;               :active-mrn .. :placeholders #{..}}}
+                    ;;
+                    ;; The engine mints a patient id from an ARRIVAL
+                    ;; ORDINAL (`patient-id-for`), so nothing in the tree
+                    ;; can make a returning PERSON resolve to the same
+                    ;; patient without a carried index. This is that
+                    ;; index, and it lands EMPTY here: `:persons` is not
+                    ;; yet a config key and no `decide` writes or reads
+                    ;; this yet (arc 3a part 3). Same carried-state
+                    ;; precedent -- and the same hand-built-world
+                    ;; tolerance, on the KEY and never on a missing entry
+                    ;; -- as `:reinstate-index`, `:citation-index` and
+                    ;; `:compiled-patients` above.
+                    :person-index {}}
         mark-warmup (fn [ev] (assoc ev :warm-up (< (:t ev) warm-up-seconds)))
         ;; ADR-0171: what `decide` receives. The two run-scoped families
         ;; are fixed for the whole loop; `:patient` is swapped per queue

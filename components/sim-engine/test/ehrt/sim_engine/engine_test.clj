@@ -1392,6 +1392,46 @@
       (is (some? persona))
       (is (nil? compiled)))))
 
+;; --- ADR-0173 section 2(a) (arc 3a, 2026-08-26): the carried person
+;; index -----------------------------------------------------------------
+;;
+;; `run` seeds `:person-index` EMPTY and nothing writes it yet; part 3's
+;; arrival selection is what fills it. What can be gated today is the
+;; contract that makes carrying it safe -- the hand-built-world tolerance
+;; is on the KEY, never on a missing entry -- and that is exactly what
+;; `person-entry` is, so it lands with the key and is gated here.
+;;
+;; That the key moved no byte is NOT asserted here: it is asserted where
+;; byte identity already lives -- `pinned-seed-survives-decide-evolve-
+;; refactor` below, `ehrt.sim.run-test/arc0-gated-corpora-are-byte-and-
+;; value-identical-to-the-pinned-baseline`, and `bin/regression-oracle`.
+
+(deftest the-person-index-falls-back-on-the-key-never-on-a-missing-entry
+  (testing "ADR-0173 2(a): a world `run` built carries the KEY, so a
+            person it has never seen reads nil FROM the index. A world
+            that carries no key at all -- a hand-built world, as most of
+            this namespace uses -- also reads nil, but by the fallback."
+    (let [built {:person-index {"P-1" {:patient-id "PID-000000-deadbeef"
+                                       :first-ordinal 0
+                                       :active-mrn "MRN000001"
+                                       :placeholders #{}}}}]
+      (is (= {:patient-id "PID-000000-deadbeef" :first-ordinal 0
+              :active-mrn "MRN000001" :placeholders #{}}
+             (engine/person-entry built "P-1")))
+      (is (nil? (engine/person-entry built "P-2"))
+          "a person the index does not carry must read nil, not throw")
+      (is (nil? (engine/person-entry {:person-index {}} "P-1"))
+          "an EMPTY index -- what `run` seeds today -- reads nil for everyone")
+      (is (nil? (engine/person-entry {} "P-1"))
+          "a world with no :person-index KEY at all reads nil by the fallback")
+      (is (nil? (engine/person-entry {:person-index nil} "P-1"))
+          "a nil index is still a present key, and still reads nil")))
+  (testing "the entry shape ADR-0173 2(a) fixes is what the reader returns
+            verbatim -- the index is a carrier, not a projection"
+    (let [entry {:patient-id "PID-000000-deadbeef" :first-ordinal 3
+                 :active-mrn "MRN000004" :placeholders #{"PID-000009-cafe"}}]
+      (is (= entry (engine/person-entry {:person-index {"P-9" entry}} "P-9"))))))
+
 ;; --- GMF coverage Wave C (2026-08-02, ADR-0028, C6): the full engine/check
 ;; round trip for a real Death-bearing walk -- interpreter -> compile-
 ;; trajectory -> :registered's own module wiring -> a real run -> the full
