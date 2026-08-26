@@ -204,6 +204,14 @@
                                 ;; patient-simulator (sim split S2): sim's own
                                 ;; src requires ehrt.patient-simulator.interface.
                                 poly/patient-simulator {:local/root "components/patient-simulator"}
+                                ;; person-simulator (traffic-scale arc 3a part
+                                ;; 3, ADR-0173 section 2(a)): sim's own src
+                                ;; requires ehrt.person-simulator.interface --
+                                ;; `ehrt.sim.run` builds the person stream and
+                                ;; hands it to the engine as data, because the
+                                ;; engine may not require that component at all
+                                ;; (ADR-0172 limitations row 10).
+                                poly/person-simulator {:local/root "components/person-simulator"}
                                 ;; sim-emit-hl7 (sim split S3 / Wave D stage
                                 ;; D0): sim's own src requires
                                 ;; ehrt.sim-emit-hl7.interface.
