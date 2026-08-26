@@ -93,10 +93,30 @@
  {:asset "docs/manual/assets/straddle-timeline.svg"
   :source "demos/scenarios/ed-tuesday/README.md"
   :trigger "regenerate by hand if the cited section's own witnessed values change"
-  :reviewed-at "3efe23fd"
+  :reviewed-at "7e06eb5"
   :verdict :fresh
   :note
-  "Reviewed 2026-08-25 (arc 1b, ADR-0171's stream-partition migration),
+  "Reviewed 2026-08-26 (arc 3a part 4, ADR-0173 ruling D1's commit 2),
+   and the trigger DID fire again, for the same reason and with the same
+   remedy. The ed-tuesday scenario opted into the demographic fold,
+   which reshuffles every draw: MRN000002 -- the same ORDINAL a third
+   time -- is now Hernandez, Sandra, still admitting at 00:37:39Z and
+   now discharging at 01:59:02Z rather than 01:33:03Z. batch-000 still
+   carries exactly 2 messages, batch-001 is still the very next batch,
+   and the cited WINDOW boundaries are untouched again (:interval-ms
+   3600000, batch-000 :start-ms 1786406400000 / :end-ms 1786410000000).
+   REDRAWN by hand rather than marked :stale: three text values moved
+   and the depicted fact -- one encounter crossing the 01:00Z boundary,
+   both adjacent files individually clean -- did not.
+
+   THIS ROW IS BUMPED ONE COMMIT BEHIND ITS OWN REDRAW, and that is
+   structural rather than sloppy: the tripwire compares :reviewed-at
+   against `git log -1` on the SOURCE, so the commit that changes the
+   source cannot carry the sha that names itself. 7e06eb5 is that
+   commit; this row is the next one, pushed with it
+   (`rulings.md#R-red-pushed-with-green`).
+
+   Prior review, 2026-08-25 (arc 1b, ADR-0171's stream-partition migration),
    and this time the trigger DID fire: the cited section's own witnessed
    values moved. batch-000 went 3 messages to 2, and MRN000002 -- the
    same ordinal, a different persona and different transmit times -- is
