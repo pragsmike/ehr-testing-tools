@@ -90,16 +90,56 @@ with them.
   one-way edge is untouched. Six ADR premises the tree contradicted are
   tabled as dated deviations in ADR-0173's own Consequences and named in
   `.agents/session-records/2026-08-26-arc-3a-fold-part-3.md`.
-  STILL OPEN: part 4 (the two clinical hooks, the identification flow and
-  the placeholder MRN) and ruling D1's COMMIT 2, the single declared
-  sweep that turns `:persons` on in a gated corpus and re-pins.
+  PART 4 LANDED 2026-08-26 and ARC 3A IS CLOSED. Two commits: the hooks
+  and the identification flow DARK (oracle IDENTICAL over 35 roots, no
+  declaration, a fourth time), then ruling D1's COMMIT 2 -- `:persons`
+  ON in six corpora, one declared sweep, all four `arc0_gated_*`
+  fixtures and digests re-pinned together, and a 36th oracle root
+  (`demographic-fold`) that is the first to carry the payload and the
+  first to exercise `run-command` at all. Contract 1.3.0 -> 1.4.0, and
+  THIS bump is owed: `classify-change` reports four widenings on
+  `:demographic-update`.
+  Three defects were found by probing real corpora, none reachable from
+  any pre-existing fixture, and each is gated as a unit: a placeholder
+  whose person DIED inside their own identity window was promised a
+  close instant the run could never keep (`:self-check-failed` at
+  population scale); the resolution step sat on the survivor, where the
+  run loop's `:merged` short-circuit silently ate it; and
+  `v2-replay/hl7-date->iso` threw on the John Doe's own empty PID-7, so
+  `ehrt play` died mid-stream on a real corpus. A fourth finding was an
+  interface gap arc 2b had RECORDED rather than closed: no scenario
+  names the payer pools, so `:coverage-change` -- a kind contract 1.3.0
+  declares -- was produced ZERO times by any gated corpus; `sim-model`'s
+  real pools are now on its interface and defaulted to, rather than
+  forked into a config. ADR-0173's own placeholder rule turned out to be
+  unreachable as written and the measurement is in
+  `.agents/session-records/2026-08-26-arc-3a-fold-part-4.md`.
+  ARC 3B (scheduling state `rulings.md#R-mix-5`, bed-status cycle
+  `R-mix-6`) is what remains on this row, and it inherits the fold
+  index, the `:demographics` field and the queue-seeding pass.
 - OPEN **[emission-add-ons]** PRIORITY 5 -- traffic-scale arc 4
   (`rulings.md#R-mix-7`): order/result status ladders, DFT P03 charges,
   re-statement chatter under config ratios, fan-out/subscriber table; rides
   `roadmap.md#corpus-player-slices`. Reshuffles NOTHING and needs no stream work,
   so it is the one arc that may proceed independently once arc 3's skeleton
   contract is stable. Gating policy at scale owes a ruling here.
-- OPEN **[corpus-player-slices]** PRIORITY 6 -- the corpus-player slices
+- OPEN **[multi-encounter-horizon]** PRIORITY 6 -- a repeat arrival queues no
+  steps. `check.clj`'s `admission-only-when-new` is this project's
+  single-encounter horizon (sim/ADR-0007 point 3) expressed as an invariant, and
+  `evolve :discharge` never returns a patient to `:new`, so a returning patient
+  produces NO second encounter -- the person resolves to the patient they
+  already are and their later demographic events land there, which is what a
+  repeat arrival is for, but the encounter itself does not happen. It is the
+  same wall both arc 3a hooks meet: a delivery or an occupational injury may
+  only put an encounter on a patient whose own queue is otherwise empty, which
+  is why `demos/scenarios/ed-tuesday` witnesses ZERO parent-delivery encounters
+  while `clinic-decade` witnesses 23. Tabled as ADR-0173's first deviation
+  (2026-08-26) and counted by `repeat-arrivals-resolve-and-queue-nothing-test`
+  so it is visible rather than silent. OWNER UNASSIGNED and this PRIORITY is
+  provisional -- for the author to place. Candidates: arc 3b
+  (`rulings.md#R-mix-5`, where a scheduled return IS a second encounter) or an
+  arc of its own.
+- OPEN **[corpus-player-slices]** PRIORITY 7 -- the corpus-player slices
   chartered by ADR-0014 (bed-board sink, `:mllp`, accumulator wiring) have never
   had a row in any register. UNPRICED and unscheduled: they need their own author
   ruling before a session takes them. Rowed rather than retired because

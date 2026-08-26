@@ -409,14 +409,14 @@ deterministic field set ADR-0111 rules for v1 (no creation-time field
 populated at all, so the determinism law -- no wall clock anywhere --
 holds trivially rather than by threading one through).
 
-**A straddling encounter.** MRN000002 (bed ED-H07): admitted (A01,
-MSH-7 transmit time `2026-08-11T00:37:39Z`) lands in `batch-000.hl7`;
-discharged (A03, MSH-7 transmit time `2026-08-11T01:33:03Z`) lands in
-`batch-001.hl7` -- one clock-hour later, the very next batch. A
-downstream receiver holding only `batch-000.hl7` has that admission and
-nothing else for that patient: by every transport-level measure the
-receiver is looking at a complete, BTS-verified batch (2 of 2 messages
-present, exactly as declared) --
+**A straddling encounter.** MRN000002 (Hernandez, Sandra, bed ED-H09):
+admitted (A01, MSH-7 transmit time `2026-08-11T00:37:39Z`) lands in
+`batch-000.hl7`; discharged (A03, MSH-7 transmit time
+`2026-08-11T01:59:02Z`) lands in `batch-001.hl7` -- one clock-hour
+later, the very next batch. A downstream receiver holding only
+`batch-000.hl7` has that admission and nothing else for that patient:
+by every transport-level measure the receiver is looking at a complete,
+BTS-verified batch (2 of 2 messages present, exactly as declared) --
 and yet, clinically, the encounter is half there. Nothing in the batch
 protocol itself says otherwise; `batch-000.hl7`'s own `BTS-1` checks
 out whether or not any of the encounters it carries are clinically

@@ -5,34 +5,44 @@
   (interval-ms 3600000; batch-000 start-ms 1786406400000 / end-ms
   1786410000000 = [2026-08-11T00:00Z, 01:00Z); batch-001 start-ms
   1786410000000 / end-ms 1786413600000 = [01:00Z, 02:00Z)) plus the
-  same section's own "A straddling encounter" prose: O'Malley, Emily
+  same section's own "A straddling encounter" prose: Hernandez, Sandra
   (MRN000002)'s admission (A01) transmits at 2026-08-11T00:37:39Z,
   landing in batch-000; her discharge (A03) transmits at
-  2026-08-11T01:33:03Z, landing in batch-001. Both timestamps
-  re-verified by fresh regeneration this session (seed 20260811,
+  2026-08-11T01:59:02Z, landing in batch-001. Both timestamps
+  re-verified by fresh regeneration (seed 20260811,
   config-latency.edn), byte-identical to the README's own witnessed
   run.
 
   REDRAWN 2026-08-25 for ADR-0171's RNG stream partition, which moved
   every draw in this run: batch-000 went 3 messages to 2, and MRN000002
   (the same ORDINAL, a different persona and different transmit times)
-  is now O'Malley, Emily, admitting at 00:37:39Z and discharging at
+  became O'Malley, Emily, admitting at 00:37:39Z and discharging at
   01:33:03Z. The DEPICTED FACT is unchanged and is why the ordinal was
   kept rather than the name: one encounter still crosses the 01:00Z
   boundary, and both adjacent files are still individually clean. The
   cited window boundaries (interval-ms 3600000, batch-000/001 start and
-  end) did not move at all. Hand-authored, not mechanically generated (contrast
+  end) did not move at all.
+
+  REDRAWN AGAIN 2026-08-26 (arc 3a part 4, ADR-0173 ruling D1's commit
+  2), and the tripwire fired for the same reason a second time: the
+  ed-tuesday scenario opted into the demographic fold, which reshuffles
+  every draw. MRN000002 -- the same ORDINAL once more -- is now
+  Hernandez, Sandra, still admitting at 00:37:39Z (unchanged) and now
+  discharging at 01:59:02Z. batch-000 still carries exactly 2 messages
+  and batch-001 is still the very next batch. The depicted fact, the
+  window boundaries and the drawing's whole geometry are again
+  untouched; three text values moved. Hand-authored, not mechanically generated (contrast
   docs/dev/pipeline.md's own docsgen-regenerated diagrams) --
   regenerate by hand if the cited section's own witnessed values
   change. ADR-0121.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 280" width="640" height="280"
      font-family="Helvetica, Arial, sans-serif" role="img"
-     aria-label="One encounter bar for O'Malley, Emily (MRN000002) crossing the 01:00Z batch boundary, both adjacent batch windows drawn individually clean">
+     aria-label="One encounter bar for Hernandez, Sandra (MRN000002) crossing the 01:00Z batch boundary, both adjacent batch windows drawn individually clean">
 
   <rect x="0" y="0" width="640" height="280" fill="#ffffff" />
 
-  <text x="40" y="30" font-size="15" font-weight="600" fill="#22314f">O&#39;Malley, Emily (MRN000002) — one encounter, two clean files</text>
+  <text x="40" y="30" font-size="15" font-weight="600" fill="#22314f">Hernandez, Sandra (MRN000002) — one encounter, two clean files</text>
 
   <!-- Batch window boxes -->
   <rect x="40" y="170" width="280" height="60" rx="6" fill="#eaf3ea" stroke="#22492a" stroke-width="2" />
@@ -53,7 +63,7 @@
   <text x="182" y="105" text-anchor="middle" font-size="12" fill="#22314f">admitted A01</text>
   <text x="182" y="145" text-anchor="middle" font-size="11" fill="#44506b">00:37:39Z</text>
   <text x="480" y="105" text-anchor="middle" font-size="12" fill="#22314f">discharged A03</text>
-  <text x="480" y="145" text-anchor="middle" font-size="11" fill="#44506b">01:33:03Z</text>
+  <text x="480" y="145" text-anchor="middle" font-size="11" fill="#44506b">01:59:02Z</text>
 
   <!-- Ties from encounter-bar endpoints down into their own batch window -->
   <line x1="182" y1="127" x2="182" y2="170" stroke="#22314f" stroke-width="1" stroke-dasharray="2 2" />
