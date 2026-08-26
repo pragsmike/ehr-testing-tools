@@ -27,8 +27,10 @@
   them is exactly the mistake this gate exists to make impossible.
 
   Same reader-based extraction as its sibling: each project's own
-  `deps.edn` is read with `clojure.edn`, never grepped
-  (`.agents/memory` -- parse EDN, never grep it)."
+  `deps.edn` is read with `clojure.edn`, never grepped -- for the
+  reason `ehrt.docs-tooling.project-classpath-test`'s own docstring
+  states, that a regex over raw file text trips on a `poly/`-shaped
+  token appearing only in a comment."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
             [clojure.edn :as edn]
