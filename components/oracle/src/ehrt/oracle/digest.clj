@@ -669,19 +669,26 @@
 ;;     that no root reaches. ORM^O01 is emitted zero times.
 ;;   * `bed-swap-message`, the Z-segment pair,
 ;;     `plan-latency`/`emit-wire` (the second clock),
-;;     `v2-replay/fold-message`, `churn/inject`+`strip`, `engine/replay`,
-;;     and `sim-check` in its entirety. `merge-message` and
-;;     `mrg-segment` LEFT this list on 2026-08-26, by the same root and
-;;     the same A40.
+;;     `v2-replay/fold-message`, `churn/inject`+`strip` and
+;;     `engine/replay`. `merge-message` and `mrg-segment` LEFT this list
+;;     on 2026-08-26, by the same root and the same A40.
+;;   * `sim-check` was on this list "in its entirety" and is NO LONGER,
+;;     with a precision that matters: `demographic-fold` goes through
+;;     `ehrt.sim.run/run-command`, which SELF-CHECKS, so `check-all`
+;;     runs over that root's log inside the bracket and a firing
+;;     invariant would make the root throw rather than write a file.
+;;     What is still outside is its FINDINGS -- no digest here captures
+;;     a check result -- so an IDENTICAL verdict says the catalog passed
+;;     on one root, never what it reported.
 ;;
 ;; THE STRUCTURAL CAUSE, re-derived rather than inferred from the
 ;; instrumentation: all 36 roots pass `:pathway {:name "module-only"
-;; :steps []}`, and 10 of 19 components plus `bases/cli` are off the
+;; :steps []}`, and 8 of 19 components plus `bases/cli` are off the
 ;; oracle classpath entirely (`bin/regression-oracle`'s own deps block).
-;; `components/person-simulator` joined that classpath on 2026-08-26 --
-;; not because `digest.clj` requires it, but because `ehrt.sim.run`
-;; does, and `demographic-fold` reaches the person stream through
-;; `ehrt.sim.interface`.
+;; THREE components joined that classpath on 2026-08-26 -- person-
+;; simulator, sim-check and sim-emit-fhir -- none because `digest.clj`
+;; requires them, all because `ehrt.sim.run/run-command` does, and
+;; `demographic-fold` goes through it.
 ;;
 ;; SITE PROFILES -- generalising ADR-0150 (a), which named only the
 ;; Z-segment quarter of this surface. The sole emitter call below is the

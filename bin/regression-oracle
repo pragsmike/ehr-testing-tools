@@ -116,6 +116,17 @@ sim_brick_dir_for() {
 #
 # RETIREMENT CONDITION: delete this function and inline the dep once no
 # bracket this repo runs still needs a pre-2026-08-25 baseline.
+#
+# `poly/sim-check` and `poly/sim-emit-fhir` join the deps block below at
+# the same time and unguarded (both components long predate any baseline
+# this repo brackets). They are there because arc 3a part 4's own
+# `demographic-fold` root goes through `ehrt.sim.run/run-command` rather
+# than `engine/run` -- the only way to reach the translated `:persons`
+# payload without widening `ehrt.sim.interface`, whose frozen-surface
+# gate exists for `components/corpus`'s sake -- and `run-command`'s own
+# require closure names both. The side effect is recorded in
+# digest.clj's COVERAGE block: `sim-check` stops being entirely vacuous,
+# because the new root SELF-CHECKS inside the bracket.
 person_sim_dep_for() {
   local wt="$1"
   if [ -d "$wt/components/person-simulator" ]; then
@@ -222,7 +233,9 @@ run_one() {
         poly/sim-engine {:local/root "$wt/components/sim-engine"}
         poly/sim-model {:local/root "$wt/components/sim-model"}
         poly/$sim_brick {:local/root "$wt/components/$sim_brick"}
-        poly/sim-emit-hl7 {:local/root "$wt/components/sim-emit-hl7"}}
+        poly/sim-emit-hl7 {:local/root "$wt/components/sim-emit-hl7"}
+        poly/sim-check {:local/root "$wt/components/sim-check"}
+        poly/sim-emit-fhir {:local/root "$wt/components/sim-emit-fhir"}}
  :aliases {:oracle-run {:extra-paths ["$wt/components/$sim_brick/test"]}}}
 EOF
 )
