@@ -206,14 +206,37 @@
                  " surface: " used))))
     (testing "and NO sim-engine namespace requires this component -- the edge is
               structural, one-way, not a discipline"
+      ;; POSITION-MATCHED, both halves, since arc 3a part 3. This half used
+      ;; to be a bare `str/includes?` over the whole of sim-engine's src, so
+      ;; the same PROSE the forward half deliberately protects ("a docstring
+      ;; naming `engine/stream-seed` in prose is a citation, not a
+      ;; dependency") this half forbade -- and it went red twice in part 2 on
+      ;; a docstring and a comment, neither a `:require` and neither a call.
+      ;; A dependency is a REQUIRE or a fully-qualified CALL; nothing else
+      ;; is, and the gate now says exactly that.
       (let [engine-src (->> (file-seq (io/file "components/sim-engine/src"))
                             (filter #(.isFile %))
-                            (map #(.getPath %))
+                            (map #(str/replace (.getPath %) "\\" "/"))
                             (filter #(str/ends-with? % ".clj")))
-            back-edges (filter #(str/includes? (slurp %) "person-simulator") engine-src)]
+            sources (into {} (map (juxt identity slurp)) engine-src)
+            ;; require position: `[ehrt.person-simulator... :as x]` or
+            ;; `[ehrt.person-simulator...]`, the same `:require`-vector scan
+            ;; the forward half already runs, read the other way round.
+            required (for [[f src] sources
+                           ns- (map second (re-seq #"\[(ehrt\.[a-z0-9.-]+)[\s\]]" src))
+                           :when (str/starts-with? ns- "ehrt.person-simulator")]
+                       (str f ": (:require " ns- ")"))
+            ;; call position: a fully-qualified `(ehrt.person-simulator.../x`
+            ;; needs no alias and no require form, so the require scan alone
+            ;; would miss it.
+            called (for [[f src] sources
+                         v (map second (re-seq #"\((ehrt\.person-simulator[a-z0-9.-]*)/" src))]
+                     (str f ": (" v "/...)"))
+            back-edges (vec (concat required called))]
         (is (seq engine-src))
+        (is (seq sources) "no sim-engine src file was read (R-empty-population-is-red)")
         (is (empty? back-edges)
-            (str "sim-engine now names person-simulator in " (vec back-edges)
+            (str "sim-engine now DEPENDS on this component at " back-edges
                  " -- a feedback edge v1 forbids"))))))
 
 ;; --- row 11: every pregnancy reaches a delivery ---------------------------
