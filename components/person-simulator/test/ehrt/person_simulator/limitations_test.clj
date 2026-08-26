@@ -238,8 +238,12 @@
                " fixed (strike row 12) or the witness went empty, and this gate"
                " must not pass by going empty")))
     (testing "the witness count is pinned, counted from the filter's own input"
-      (is (= 4 (count multi))
-          (str "expected 4 multi-household heads out of " (count by-head)
+      ;; RE-PINNED 4 -> 3 at arc 3a's green: the nineteenth variate
+      ;; reshuffled every person's second year onward, and one of the
+      ;; four parents no longer forms a second household. Still `pos?`,
+      ;; so the artefact this row asserts is still there.
+      (is (= 3 (count multi))
+          (str "expected 3 multi-household heads out of " (count by-head)
                " distinct heads over " (count forms) " :household-form events, read "
                (count multi) ": " (vec (keys multi)))))
     (testing "and every extra household is the one the BIRTH constituted"
@@ -250,3 +254,69 @@
             (str (count bad) " multi-household head(s) whose second household is NOT"
                  " birth-constituted -- that is a different artefact from row 12's: "
                  (vec bad)))))))
+
+;; --- row 13: a household never loses its housing --------------------------
+
+(deftest only-household-less-persons-become-unhoused-test
+  ;; Row 13 (ADR-0173 section 2(b)). The residence sum is a PERSON's
+  ;; state, and a household is this component's address-correlation
+  ;; device: coupling them is what keeps ruling B1's propagation pass
+  ;; honest, because a head's move is copied to every member verbatim
+  ;; and a copy that said "housing gained" to a member who never lost
+  ;; it would report a change that did not happen.
+  ;;
+  ;; So the walk mints a `:residence-loss` only for a person in NO
+  ;; household, and suppresses the household hazard entirely while a
+  ;; person is unhoused. The one way a household member is unhoused is
+  ;; ruling A1's newborn, delivered to a parent who was unhoused at
+  ;; that instant -- and that household is deliberately kept off the
+  ;; join roster so nobody housed can join it.
+  (let [evs (fx/evs)
+        by-person (group-by :person-id evs)
+        residence (fn [pid] (->> (get by-person pid)
+                                 (filter #(#{:residence-move :residence-loss} (:event %)))
+                                 (sort-by (juxt :t :event-id))
+                                 vec))
+        unhoused-at? (fn [pid t]
+                       (= :residence-loss
+                          (:event (last (filter #(<= (:t %) t) (residence pid))))))
+        ;; [person-id household-id join-t leave-t-or-nil] for every membership,
+        ;; read off the events exactly as the propagation pass reads them
+        ;; the WALK's own household transitions. A household constituted BY a
+        ;; birth is row 12's artefact and not this row's: the births pass runs
+        ;; after the walk and cannot see the parent's housing, which is exactly
+        ;; why rule 4 keeps such a household off the join roster instead.
+        memberships (remove #(str/ends-with? (str (:household-id %)) "-birth")
+                            (concat
+                             (for [e evs :when (= :household-form (:event e))]
+                               {:person-id (:head-person-id e) :t (:t e)
+                                :household-id (:household-id e)})
+                             (for [e evs :when (= :household-join (:event e))]
+                               {:person-id (:person-id e) :t (:t e)
+                                :household-id (:household-id e)})))
+        newborns (set (map :newborn-person-id (fx/of-kind :delivery)))]
+    (testing "population is non-empty (R-empty-population-is-red)"
+      (is (seq (fx/of-kind :residence-loss))
+          "the witness stream carries no :residence-loss at all")
+      (is (seq memberships) "the witness stream carries no household membership"))
+    (testing "nobody forms or joins a household while unhoused"
+      (let [bad (remove #(or (newborns (:person-id %))
+                             (not (unhoused-at? (:person-id %) (:t %))))
+                        memberships)]
+        (is (empty? bad)
+            (str (count bad) " household transition(s) by a person unhoused at that"
+                 " instant: " (vec (take 3 bad))))))
+    (testing "and no person in a household ever loses housing -- a newborn born
+              into an unhoused household is the one exception, and it is ruling
+              A1's, not this row's"
+      (let [in-household-at (fn [pid t]
+                              (some #(and (= pid (:person-id %)) (<= (:t %) t))
+                                    memberships))
+            bad (for [l (fx/of-kind :residence-loss)
+                      :when (and (not (:at-t0 l))
+                                 (not (newborns (:person-id l)))
+                                 (in-household-at (:person-id l) (:t l)))]
+                  (select-keys l [:person-id :event-id :t]))]
+        (is (empty? bad)
+            (str (count bad) " :residence-loss event(s) for a person already in a"
+                 " household: " (vec (take 3 bad))))))))

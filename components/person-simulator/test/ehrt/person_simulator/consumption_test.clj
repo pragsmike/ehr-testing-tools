@@ -61,11 +61,14 @@
         t0-tags (set (map :id-tag fx/population))
         t0-counts (select-keys counts t0-tags)
         expected (+ sim-model-persona-draws
+                    process/draws-per-t0-person
                     (* (:years fx/config) process/draws-per-person-year))]
     (testing "population is non-empty (R-empty-population-is-red)"
       (is (= (count fx/population) (count t0-counts))
           "not every t0 person drew from their own :person stream"))
-    (testing "every t0 person consumes 13 + 18*24, whatever happened to them"
+    (testing "every t0 person consumes 13 + 1 + 19*24, whatever happened to them --
+              the Persona's thirteen, arc 3a's ONE t0 residence variate, and the
+              nineteen-variate year block"
       (is (= #{expected} (set (vals t0-counts)))
           (str "t0 draw counts are not uniform: "
                (sort (frequencies (vals t0-counts))) ", expected " expected)))))
@@ -107,7 +110,9 @@
       (is (seq newborn-tags) "no newborn drew from its own stream"))
     (testing "ruling A1: a newborn's Persona is DERIVED from the household, not
               sampled -- four draws (sex, given name, SSN group, SSN serial), and
-              deliberately fewer than the thirteen a sampled adult costs"
+              deliberately fewer than the thirteen a sampled adult costs. A
+              newborn draws no t0 residence variate either: its housing is its
+              household's, which is why the modulus below is 4 and not 5"
       (is (= #{4} (set (map persona-draws newborn-tags)))
           (str "newborn persona draw counts: " (sort (distinct (map persona-draws newborn-tags)))))
       (is (< 4 sim-model-persona-draws)))))

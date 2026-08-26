@@ -215,13 +215,16 @@ consumes no events is byte-identical to today (ruling F).
 
 #### The event vocabulary
 
-Fourteen kinds. Every one carries `:person-id` and `:t`; the
+Fourteen kinds at arc 2b; **FIFTEEN since arc 3a** (ADR-0173 section
+2(b) adds `:residence-loss`, the person-side half of the residence
+sum). Every one carries `:person-id` and `:t`; the
 `:reference` column is the field that names its antecedent, and section
 3 states the invariant those fields must satisfy.
 
 | kind | payload | reference |
 |---|---|---|
-| `:residence-move` | `:address` (a `places.edn` row), `:prior-address` | `:household-move-event-id` when propagated (ruling B) |
+| `:residence-move` | `:address` (a `places.edn` row), `:prior-address` -- ABSENT when the move is a RETURN to housing, because the prior state was nowhere and not a row | `:household-move-event-id` when propagated (ruling B) |
+| `:residence-loss` (arc 3a) | `:prior-address` and **no `:address` at all**; `:at-t0` for a person who entered the run with no residence rather than losing one | — |
 | `:employment-change` | `:status` in `{:employed :unemployed :retired :student}`, `:occupation-class` | — |
 | `:coverage-change` | `:payer` (a `Payer`), `:prior-payer`, `:cause` in `{:employment :age-65 :loss :eligibility}` | `:employment-event-id` when `:cause` is `:employment` |
 | `:identity-correction` | `:field` in `{:name :dob}`, `:value`, `:prior-value` | `:corrects-event-id`, or ABSENT when it corrects the t0 persona |
@@ -286,6 +289,8 @@ below is a rate per person-year.
 | death | age-conditioned, Gompertz-shaped | ~0.0009 at 30, ~0.02 at 70, ~0.15 at 90 |
 | occupational injury | ~0.028 | employed person-years only; zero otherwise |
 | identity unavailable | ~0.004 | a defect-surface knob, not a world rate |
+| residence loss (arc 3a) | ~0.006 | HOUSED person-years only, and only for a person in NO household (limitations row 13) |
+| rehousing (arc 3a) | ~1.2 | UNHOUSED person-years only; read off the SAME variate the move hazard uses, so the return to housing costs no second draw |
 
 **Fixed consumption applies unchanged.** Every hazard draws its
 per-interval variate whether or not the event fires, and every branch
@@ -418,7 +423,18 @@ can be born red, which is the only kind worth writing.
 | 9 | **Every hazard rate is authored-provisional.** No cited table stands behind any number in section 2. | `every-provisional-rate-is-tabled-test` — each rate constant in `src` carries a `PROVISIONAL` marker and every marker is covered by a citation into its own comment block. The ADR-0162 drift mechanism, with a fourth token. |
 | 10 | **The engine tells the person process nothing.** No feedback edge in v1; the four consequences are named in section 2. | `person-simulator-requires-no-engine-namespace-test` — the component's `ns` forms name no `sim-engine` namespace but the stream-partition surface, and no `sim-engine` namespace requires `person-simulator`. A structural fact, not a discipline. |
 | 11 | **Every pregnancy reaches a delivery.** No loss, no termination, no non-delivery outcome. | `pregnancy-and-delivery-are-in-bijection-test` — per person, `:pregnancy` and `:delivery` counts are equal and each delivery's `:pregnancy-event-id` is distinct. |
-| 12 | **A parent may head more than one household.** A parent with no household at their delivery gets one constituted BY the birth; if their own household hazard fires later, they head TWO. | `a-parent-may-head-more-than-one-household-test` -- red the day the artefact is fixed, which is the day this row should be struck. Four such parents in the component's own witness population, pinned, with `pos?` asserted separately so the gate cannot pass by going empty. |
+| 12 | **A parent may head more than one household.** A parent with no household at their delivery gets one constituted BY the birth; if their own household hazard fires later, they head TWO. | `a-parent-may-head-more-than-one-household-test` -- red the day the artefact is fixed, which is the day this row should be struck. Three such parents in the component's own witness population, pinned, with `pos?` asserted separately so the gate cannot pass by going empty. |
+| 13 | **A household never loses its housing.** Only a person in NO household becomes unhoused, and an unhoused person forms or joins none. | `only-household-less-persons-become-unhoused-test` -- every `:residence-loss` belongs to a person outside any household at that instant, and no household transition is minted for a person unhoused at that instant. Ruling A1's newborn, delivered to a parent unhoused at that instant, is the one exception and is named as such. |
+
+Row 13 arrived with arc 3a and was NOT anticipated here: ADR-0173
+section 2(b) designed `:residence-loss` as a person-side kind and said
+nothing about households, and the tree answered that ruling B1's
+propagation pass copies a head's move to every member verbatim -- so a
+member who could lose housing on their own would receive copies
+reporting a change they never had. Coupling the two is what keeps that
+copy honest. Recorded here rather than absorbed
+(`rulings.md#R-stop-only-on-two-defensible-readings`: one defensible
+reading, so the tree wins and this is the record).
 
 Row 6 is the one to read twice. It is a limitation of the **engine and
 emitter**, not of this component, and it is tabled here because this

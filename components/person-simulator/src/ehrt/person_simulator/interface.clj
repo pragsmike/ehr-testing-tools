@@ -48,7 +48,7 @@
   "The run's person-event stream: a t-ascending vector of person
   events, drawn entirely from the `:person` stream family. See
   `ehrt.person-simulator.process/persons` for the config keys and for
-  the eighteen-variate-per-person-year draw block."
+  the nineteen-variate-per-person-year draw block."
   [config stream]
   (process/persons config stream))
 

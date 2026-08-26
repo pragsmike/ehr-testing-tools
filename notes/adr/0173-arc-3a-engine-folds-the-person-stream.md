@@ -722,6 +722,22 @@ consequence.
   engine arc, and it moves that component's own charter table, its
   counted witness and ADR-0172 section 2 -- all in the same commit or
   not at all.
+* **DEVIATION, execution session 2026-08-25.** `:residence-loss` cost
+  one thing this design did not price: a THIRTEENTH limitations row,
+  *a household never loses its housing*. The tree forced it. Ruling
+  B1's propagation pass copies a head's `:residence-move` to every
+  member VERBATIM, so a member who could lose housing on their own
+  would receive copies reporting a change they never had -- a
+  housing-gained move naming no `:prior-address`, delivered to
+  somebody who never stopped having one. Coupling housing to household
+  membership is what keeps the copy honest, and it costs no draw. Two
+  other consequences fell out of the same coupling and are recorded in
+  the row: ruling A1's newborn, delivered into an unhoused household,
+  is the one member who CAN be unhoused (it is delivered into the
+  state rather than losing anything), and a household constituted by
+  such a birth is kept off the join roster so nobody housed can join
+  it. One defensible reading, so the tree wins and this is the record
+  (`rulings.md#R-stop-only-on-two-defensible-readings`).
 * `rulings.md` is FROZEN (de-scaffold ruling, 2026-08-25). Nothing
   here becomes a rulings row; section 2(e)'s six invariants land as
   gates in arc 3a's own commits or not at all.

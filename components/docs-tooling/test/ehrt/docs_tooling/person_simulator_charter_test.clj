@@ -16,9 +16,8 @@
      section -- so a reader who never opens the docs still meets the
      scope statement at the component's one public namespace.
 
-  2. MIRROR: the charter's eleven rows and ADR-0172 section 4's eleven
-     rows carry the same bolded limitation titles and name the same
-     eleven gates. This is the obligation the sibling has no need of,
+  2. MIRROR: the charter's rows and ADR-0172 section 4's rows carry
+     the same bolded limitation titles and name the same gates. This is the obligation the sibling has no need of,
      and it exists because two tables of the same eleven facts in two
      files is exactly the drift this gate family was built for.
 
@@ -60,15 +59,17 @@
   "The person process exists so that demographic and identity traffic is realistic; a person's life is relevant only inasmuch as it changes a message.")
 
 (def ^:private expected-row-count
-  "ADR-0172 section 4 tables TWELVE limitations -- eleven at 2026-08-25,
-  plus row 12 (a parent may head more than one household), the v1
-  artefact arc 2b stated in `persons`' own docstring and arc 3a tabled.
+  "ADR-0172 section 4 tables THIRTEEN limitations -- eleven at
+  2026-08-25, plus row 12 (a parent may head more than one household),
+  the v1 artefact arc 2b stated in `persons`' own docstring and arc 3a
+  tabled, plus row 13 (a household never loses its housing), which arc
+  3a's own `:residence-loss` forced and ADR-0173 did not anticipate.
   Pinned, so that a row
   quietly dropped from ONE of the two tables is caught by the mirror
   below while a row dropped from BOTH is caught here
   (`rulings.md#R-empty-population-is-red`, one step further: a mirror
   gate over two empty tables agrees perfectly)."
-  12)
+  13)
 
 ;; `\`path\` "quoted snippet"` -- the citation form the Citation column
 ;; uses, one or more per row. Identical to the sibling gate's.
@@ -168,9 +169,9 @@
              (set (map second (re-seq #"(?m)^\(defn ([a-z][a-z-]*)" t))))
           (str interface-path " exposes a public var ADR-0172 section 2 does not charter")))))
 
-;; --- 2. the mirror: two tables, eleven rows, same titles, same gates -------
+;; --- 2. the mirror: two tables, same rows, same titles, same gates --------
 
-(deftest the-charter-and-the-adr-table-the-same-eleven-limitations-test
+(deftest the-charter-and-the-adr-table-the-same-limitations-test
   (let [adr-rows (rows (section-4 (text adr-path)))
         charter-rows (rows (text charter-path))]
     (testing "population is non-empty and pinned (R-empty-population-is-red)"
@@ -190,7 +191,7 @@
             (str (count bad) " limitation row(s) drifted between the two tables: "
                  (vec bad)))))))
 
-(deftest the-charter-and-the-adr-name-the-same-eleven-gates-test
+(deftest the-charter-and-the-adr-name-the-same-gates-test
   (let [adr-gates (gate-names (section-4 (text adr-path)))
         charter-gates (gate-names (text charter-path))]
     (is (= expected-row-count (count adr-gates))
@@ -199,7 +200,7 @@
     (is (= adr-gates charter-gates)
         (str "the two tables do not name the same gates -- ADR: " adr-gates
              ", charter: " charter-gates))
-    (testing "every gate name is distinct -- eleven rows owe eleven tests"
+    (testing "every gate name is distinct -- every row owes its own test"
       (is (= expected-row-count (count (set (vals charter-gates))))))))
 
 ;; --- 3. every citation resolves, and anchors exactly one place -------------

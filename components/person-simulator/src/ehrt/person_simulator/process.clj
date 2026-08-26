@@ -7,24 +7,33 @@
   t-ascending vector the engine may one day fold. Ruling F1: nothing
   folds it today, which is what makes arc 2b's corpus proof possible.
 
-  THE DRAW BLOCK. Eighteen variates per person-year, in this exact
+  THE DRAW BLOCK. Nineteen variates per person-year, in this exact
   order, ALWAYS -- fired or not, branch taken or not:
 
-     1. residence-move hazard          10. household branch
-     2. residence-address pick         11. pregnancy hazard
-     3. employment-change hazard       12. gestation jitter
-     4. employment-status branch       13. death hazard
-     5. occupation-class branch        14. occupational-injury hazard
-     6. coverage-payer pick            15. injury-class branch
-     7. name-change hazard             16. identity-unavailable hazard
-     8. identity-correction hazard     17. unavailable-window length
-     9. household hazard               18. identity-resolution branch
+     1. residence-move hazard          11. pregnancy hazard
+     2. residence-address pick         12. gestation jitter
+     3. employment-change hazard       13. death hazard
+     4. employment-status branch       14. occupational-injury hazard
+     5. occupation-class branch        15. injury-class branch
+     6. coverage-payer pick            16. identity-unavailable hazard
+     7. name-change hazard             17. unavailable-window length
+     8. identity-correction hazard     18. identity-resolution branch
+     9. household hazard               19. residence-loss hazard
+    10. household branch
 
-  A person walked for N years consumes exactly 18N draws, whatever
+  Nineteen and not eighteen since arc 3a (ADR-0173 section 2(b)): the
+  residence-loss hazard is APPENDED, so positions 1-18 keep the names
+  and the order arc 2b gave them. Nothing calls this component yet, so
+  the shift the nineteenth variate causes moves no corpus -- but the
+  witness counts move, and the diff is the evidence.
+
+  A person walked for N years consumes exactly 19N draws, whatever
   happens to them -- including dying in year 1, which stops EMISSION
   and not consumption (ruling C1's own phrasing: the person process
   draws its death hazard as always and discards the draw). A newborn
-  costs FOUR more, from its own stream, for its derived Persona.
+  costs FOUR more, from its own stream, for its derived Persona; a t0
+  adult costs THIRTEEN for theirs plus ONE more, the t0 residence
+  variate `:unhoused {:t0-fraction ..}` is compared against.
 
   Within-year instants are derived from the firing variate itself
   (`hazards/within-year-offset`), never drawn: a separately-drawn
@@ -150,10 +159,15 @@
 ;; --- one person's walk ----------------------------------------------------
 
 (defn- year-variates
-  "The eighteen variates of one person-year, drawn in the fixed order
+  "The nineteen variates of one person-year, drawn in the fixed order
   the namespace docstring tables. Drawn ALL AT ONCE, ahead of any
   emission, which is what makes the fixed-consumption law structural
-  rather than a property every branch has to remember to preserve."
+  rather than a property every branch has to remember to preserve.
+
+  `:residence-loss` is LAST because it was added last (arc 3a): a
+  variate inserted in the middle would renumber every draw after it
+  for no gain, and the block's order is a contract this namespace's
+  own docstring states."
   [^java.util.Random rng]
   {:move (.nextDouble rng)            :address (.nextDouble rng)
    :employment (.nextDouble rng)      :status (.nextDouble rng)
@@ -163,13 +177,31 @@
    :pregnancy (.nextDouble rng)       :gestation (.nextDouble rng)
    :death (.nextDouble rng)           :injury (.nextDouble rng)
    :injury-class (.nextDouble rng)    :unavailable (.nextDouble rng)
-   :unavailable-window (.nextDouble rng) :resolution (.nextDouble rng)})
+   :unavailable-window (.nextDouble rng) :resolution (.nextDouble rng)
+   :residence-loss (.nextDouble rng)})
 
 (def draws-per-person-year
-  "Eighteen. Asserted by `year-variates` above and by this component's
+  "Nineteen. Asserted by `year-variates` above and by this component's
   own consumption gate, and stated here so a reader does not have to
   count the `.nextDouble` calls."
-  18)
+  19)
+
+(def draws-per-t0-person
+  "The ONE variate a t0 adult draws outside the year blocks and outside
+  `sim-model/persona`'s own thirteen: the t0 residence variate, compared
+  against `:unhoused {:t0-fraction ..}` (ADR-0173 section 2(a)). A
+  newborn does not draw it -- ruling A1 derives a newborn's state from
+  its household, and its housing is the household's."
+  1)
+
+(def default-unhoused-t0-fraction
+  "ADR-0173 section 2(a)'s own literal: the share of the t0 population
+  that enters the run with no residence at all. `:unhoused` ABSENT
+  takes this value rather than zero, because the author statement that
+  binds this arc -- *\"our population does include unhoused people
+  showing up at, say, ED\"* -- is about the population and not about
+  one config's opt-in."
+  0.02)
 
 (defn- death-instant
   "The instant this person's own death hazard lands, or nil. Computed
@@ -203,7 +235,7 @@
   later-walked person may join an earlier-formed household; `households`
   is what THIS walk added to it."
   [config rng roster ordinals
-   {:keys [person-id id-tag start-year age-origin-year persona death-t]}]
+   {:keys [person-id id-tag start-year age-origin-year persona death-t unhoused?]}]
   (let [{:keys [t0 years]} config
         t0 (long t0)
         years (long years)
@@ -218,7 +250,15 @@
         own-death? (and dead-at (nil? death-t))
         alive? (fn [t] (and (or (nil? dead-at) (<= t dead-at)) (< t horizon-end)))]
     (loop [y start-year
+           ;; `:address` is the row the person lives at, or -- once
+           ;; `:housed?` is false -- the LAST one they lived at, which is
+           ;; what a `:residence-loss` names as its `:prior-address` and
+           ;; what a newborn inherits. The sum lives in the pair, never in
+           ;; a nil address: `sim-model/Persona`'s `:address` is required
+           ;; and non-nilable, and widening it would move every
+           ;; `:registered` event in every corpus (ADR-0173 section 2(b)).
            st {:address (:address persona) :payer (:payer persona)
+               :housed? (not unhoused?)
                :employment {:status :unemployed :occupation-class nil}
                :household nil :open-unavailable nil :pending-pregnancy nil
                :parity 0}
@@ -237,7 +277,6 @@
               emit (fn [[ords acc] kind t payload]
                      (let [[ords' e] (ev ords person-id kind t payload)]
                        [ords' (conj acc e)]))
-              move-rate (hz/residence-move-rate age)
               emp-rate (hz/employment-change-rate age)
               preg-rate (if (and (= :female (:sex persona))
                                  (<= (first hz/pregnancy-age-band) age
@@ -245,9 +284,14 @@
                           hz/pregnancy-rate 0.0)
               injury-rate (if (= :employed (get-in st [:employment :status]))
                             hz/occupational-injury-rate 0.0)
-              hh-rate (if (adult? age) hz/household-rate 0.0)
               name-rate (if (adult? age) hz/name-change-rate 0.0)
               member-not-head? (and (:household st) (not (:head? (:household st))))
+              ;; housing as it stood at YEAR START. Every rate below that
+              ;; depends on it is computed from THIS value and not from the
+              ;; state after the residence block, so a household transition
+              ;; can never land inside the part of a year the person spent
+              ;; unhoused (limitations row 13).
+              housed-at-year-start? (boolean (:housed? st))
 
               ;; 1. a delivery already due this year
               [ords acc births st]
@@ -265,6 +309,10 @@
                      (conj births {:parent-person-id person-id
                                    :parent-id-tag id-tag
                                    :parent-payer (:payer st)
+                                   ;; ruling A1: a newborn's state is DERIVED
+                                   ;; from the household, and its housing is
+                                   ;; the household's.
+                                   :housed? (boolean (:housed? st))
                                    :parity-index parity
                                    :newborn-person-id newborn-id
                                    :delivery-t (:due-t pg)
@@ -276,13 +324,44 @@
                      (-> st (assoc :pending-pregnancy nil) (update :parity inc))])
                   [ords acc births st]))
 
-              ;; 2. residence move -- suppressed for a non-head member, whose
-              ;;    address follows the head's (ruling B1)
+              ;; 2a. residence LOSS -- the fifteenth kind (ADR-0173 section
+              ;;     2(b)). It carries no `:address` AT ALL, which is what
+              ;;     keeps limitations row 7's gate green verbatim rather
+              ;;     than repaired: a places row cannot express "no
+              ;;     residence", and an absent `:address` read through
+              ;;     `(pool (:address %))` is `nil`, i.e. red.
+              ;;
+              ;;     Suppressed for anyone IN a household -- head or member,
+              ;;     limitations row 13. A head who could lose housing would
+              ;;     have that loss copied to every member by ruling B1's
+              ;;     propagation pass, or worse, not copied.
+              loss-rate (if (and housed-at-year-start? (nil? (:household st)))
+                          hz/residence-loss-rate 0.0)
+              loss-t (at (:residence-loss v) loss-rate)
+              lost? (and (hz/fires? (:residence-loss v) loss-rate) (alive? loss-t))
+              [ords acc st]
+              (if lost?
+                (let [[ords acc] (emit [ords acc] :residence-loss loss-t
+                                       {:prior-address (:address st)})]
+                  [ords acc (assoc st :housed? false)])
+                [ords acc st])
+
+              ;; 2b. residence move -- suppressed for a non-head member, whose
+              ;;     address follows the head's (ruling B1), and for the year a
+              ;;     loss already fired: at most ONE residence transition a
+              ;;     person-year, which is what the single `:move` variate
+              ;;     already gave arc 2b. While unhoused the SAME variate is
+              ;;     read against the rehousing rate instead, so the return to
+              ;;     housing costs no second draw.
+              move-rate (if housed-at-year-start?
+                          (hz/residence-move-rate age)
+                          hz/rehousing-rate)
               move-t (at (:move v) move-rate)
               new-address (select-keys (pp/weighted-pick places (:address v))
                                        [:street :city :state :zip])
               [ords acc st]
-              (if (and (hz/fires? (:move v) move-rate) (not member-not-head?) (alive? move-t)
+              (if (and (not lost?)
+                       (hz/fires? (:move v) move-rate) (not member-not-head?) (alive? move-t)
                        ;; AN EVENT THAT REPORTS NO CHANGE IS NOT AN EVENT. The
                        ;; flat 24-row pool can hand back the row already lived
                        ;; at (limitations row 7: no adjacency, no distance), and
@@ -290,10 +369,19 @@
                        ;; `:prior-address` would render an A08 that changes no
                        ;; PID-11 -- traffic with no message in it. The variates
                        ;; are drawn either way, so consumption is untouched.
-                       (not= new-address (:address st)))
+                       ;;
+                       ;; A RETURN TO HOUSING is exempt: the prior state is
+                       ;; nowhere, not a row, so landing back on the last row
+                       ;; lived at is still a change and still an A08.
+                       (or (not housed-at-year-start?)
+                           (not= new-address (:address st))))
                 (let [[ords acc] (emit [ords acc] :residence-move move-t
-                                       {:address new-address :prior-address (:address st)})]
-                  [ords acc (assoc st :address new-address)])
+                                       (cond-> {:address new-address}
+                                         ;; ABSENT, not nil: housing gained
+                                         ;; names no prior address.
+                                         housed-at-year-start?
+                                         (assoc :prior-address (:address st))))]
+                  [ords acc (assoc st :address new-address :housed? true)])
                 [ords acc st])
 
               ;; 3. employment change, and the coverage change it causes
@@ -367,7 +455,14 @@
                       {:field :dob :value corrected-dob :prior-value (:dob persona)})
                 [ords acc])
 
-              ;; 6. household: form, join or leave
+              ;; 6. household: form, join or leave. Suppressed for any year
+              ;;    the person was not housed THROUGHOUT -- unhoused at the
+              ;;    year's start, or made unhoused inside it. Limitations
+              ;;    row 13's other half: an unhoused person forms and joins
+              ;;    nothing, so a household's members share one housing
+              ;;    status and B1's propagation is a copy that always holds.
+              hh-rate (if (and (adult? age) housed-at-year-start? (not lost?))
+                        hz/household-rate 0.0)
               hh-t (at (:household v) hh-rate)
               [ords acc added st]
               (if (and (hz/fires? (:household v) hh-rate) (alive? hh-t))
@@ -583,6 +678,10 @@
                      from; absent means no `:coverage-change` (see
                      `payer-pool`)
     :identification  {:merge-fraction 0.35}   (ruling D1)
+    :unhoused        {:t0-fraction 0.02} -- the share of the t0
+                     population entering the run with no residence at
+                     all (ADR-0173 section 2(a)). ABSENT takes
+                     `default-unhoused-t0-fraction`, not zero.
     :deaths          {person-id -> instant} -- the COMPILED trajectory's
                      death instants, as DATA (ruling C1). A person named
                      here mints no `:person-death`; their processes stop
@@ -597,7 +696,7 @@
   before that pass and cannot see it. So a parent unhoused at their
   delivery who later forms a household on their own hazard ends up
   heading two: the one the birth constituted and the one they formed.
-  Four such persons in this component's own witness population. It is
+  Three such persons in this component's own witness population. It is
   coherent -- both households have members, and a move by the head
   propagates into both -- and it reaches no wire surface, because
   household structure has none (limitations row 8). Fixing it needs
@@ -616,6 +715,11 @@
         (let [[events _] (propagate-household-moves acc ords)]
           (vec (sort-by (juxt :t :person-id :event-id) events)))
         (let [{:keys [person-id id-tag start-year persona] :as p} (first queue)
+              ;; A newborn arrives with its Persona already derived; a t0
+              ;; adult does not. That is also what decides who draws the t0
+              ;; residence variate: ruling A1 derives a newborn's housing
+              ;; from its household, so it costs no draw.
+              t0-person? (nil? persona)
               ;; A newborn arrives with its stream ALREADY POSITIONED: its
               ;; derived Persona drew four from it in the births pass, and the
               ;; walk must continue where those left off. Building a second
@@ -631,10 +735,31 @@
                                               {:rng rng :t t0 :master master :id-tag id-tag
                                                :death-t (get deaths person-id)
                                                :persona (:persona config)}))
+              ;; ADR-0173 section 2(a), and the ONE draw a t0 adult makes
+              ;; outside the Persona and the year blocks. AFTER the Persona,
+              ;; so `initial-persona`'s own thirteen keep their positions and
+              ;; its contract is untouched.
+              unhoused? (if t0-person?
+                          (< (.nextDouble ^java.util.Random rng)
+                             (double (get-in config [:unhoused :t0-fraction]
+                                             default-unhoused-t0-fraction)))
+                          (boolean (:unhoused? p)))
+              ;; A t0 STATE reaches the engine as an event at t0, because the
+              ;; engine folds a stream and has nowhere else to read an initial
+              ;; condition from. `:at-t0` is what tells the two apart: this is
+              ;; not a person who lost housing at the stroke of t0, it is a
+              ;; person who entered the run without any.
+              [ords t0-loss] (if (and t0-person? unhoused?)
+                               (let [[o e] (ev ords person-id :residence-loss t0
+                                               {:prior-address (:address persona)
+                                                :at-t0 true})]
+                                 [o [e]])
+                               [ords []])
               start-year (long (or start-year 0))
               {:keys [events births households ordinals]}
               (walk-person config rng roster ords
                            (assoc p :persona persona :start-year start-year
+                                  :unhoused? unhoused?
                                   :age-origin-year (long (or (:age-origin-year p) 0))
                                   :death-t (get deaths person-id)))
               ;; every birth mints a full person (ruling A1). `constituted`
@@ -669,10 +794,20 @@
                                                  :head-person-id (:parent-person-id b)
                                                  :member-person-ids [(:parent-person-id b)]})]
                                [ords (conj acc e)
-                                (conj roster {:household-id hid
-                                              :head-person-id (:parent-person-id b)
-                                              :event-id (:event-id e) :t (:delivery-t b)
-                                              :address (:address b)})
+                                ;; ROW 13, rule 4: a household constituted by a
+                                ;; birth to an UNHOUSED parent is deliberately
+                                ;; kept OFF the join roster. The walk cannot see
+                                ;; this pass (row 12), so a later-walked housed
+                                ;; person could otherwise join a household whose
+                                ;; head has no residence -- and would then
+                                ;; receive that head's housing-gained move as a
+                                ;; copy reporting a change they never had.
+                                (cond-> roster
+                                  (:housed? b)
+                                  (conj {:household-id hid
+                                         :head-person-id (:parent-person-id b)
+                                         :event-id (:event-id e) :t (:delivery-t b)
+                                         :address (:address b)}))
                                 (assoc constituted (:parent-person-id b)
                                        {:household-id hid
                                         :head-person-id (:parent-person-id b)
@@ -696,12 +831,28 @@
                            [ords join] (ev ords nb-id :household-join (:delivery-t b)
                                            {:household-id (:household-id hh)
                                             :household-event-id (:event-id hh)
-                                            :participants [nb-id (:head-person-id hh)]})]
-                       [ords (conj acc reg join)
+                                            :participants [nb-id (:head-person-id hh)]})
+                           ;; The newborn's derived Persona carries the
+                           ;; household's LAST KNOWN address, because
+                           ;; `sim-model/Persona` requires one. If the household
+                           ;; has no residence, that address is corrected at the
+                           ;; birth instant rather than left standing -- a
+                           ;; newborn entering the run housed at an address
+                           ;; nobody lives at is the fabricated-by-omission
+                           ;; class this project may not ship. Derived from the
+                           ;; parent's state, so it costs no draw.
+                           [ords nb-loss]
+                           (if (:housed? b)
+                             [ords []]
+                             (let [[o e] (ev ords nb-id :residence-loss (:delivery-t b)
+                                             {:prior-address (:address b)})]
+                               [o [e]]))]
+                       [ords (into (conj acc reg join) nb-loss)
                         (cond-> queue
                           walkable?
                           (conj {:person-id nb-id :id-tag nb-tag
                                  :rng nb-rng
+                                 :unhoused? (not (:housed? b))
                                  :start-year (inc birth-year)
                                  ;; ruling A1: the newborn's Persona carries
                                  ;; :age 0 as of ITS OWN birth year, not the
@@ -709,6 +860,7 @@
                                  :age-origin-year birth-year
                                  :persona nb-persona}))
                         roster constituted])))
-               [ordinals (into acc events) (vec (rest queue)) (into roster households) {}]
+               [ordinals (into (into acc t0-loss) events) (vec (rest queue))
+                (into roster households) {}]
                births)]
           (recur queue' roster' ords' acc'))))))

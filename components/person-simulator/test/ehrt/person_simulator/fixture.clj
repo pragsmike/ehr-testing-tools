@@ -4,7 +4,7 @@
 
   It is a fixture and not a per-test config on purpose. The counted
   witness (`ehrt.person-simulator.witness-test`) pins how many of each
-  of ADR-0172's fourteen event kinds this exact config+seed produces,
+  of ADR-0172's fifteen event kinds this exact config+seed produces,
   and every other gate here asserts a law over the SAME stream -- so a
   law that holds only because its population was empty is caught by
   the witness rather than passing quietly
@@ -42,6 +42,14 @@
    :payers-under-65 payers-under-65
    :payers-65-plus payers-65-plus
    :identification {:merge-fraction 0.35}
+   ;; DELIBERATELY not `default-unhoused-t0-fraction` (0.02). At 60
+   ;; persons that default draws 1.2 t0-unhoused people in expectation
+   ;; and drew ZERO at this seed -- a witness that proves the t0 path
+   ;; by going empty, which is the knife-edge ADR-0171 paid to learn
+   ;; about (`rulings.md#R-empty-population-is-red`). The DEFAULT is
+   ;; asserted separately, on its own config, by
+   ;; `the-t0-unhoused-fraction-is-honoured-at-t0-test`.
+   :unhoused {:t0-fraction 0.08}
    :deaths {}})
 
 (def events (delay (ps/persons config stream)))

@@ -112,6 +112,29 @@
 ;; person's own state contradicts.
 (def occupational-injury-rate 0.028)
 
+;; PROVISIONAL residence-loss rate, ~0.006 per HOUSED person-year, and
+;; zero for a person already unhoused or in a household. Both halves of
+;; the conditioning carry more than the number does. Zero-when-unhoused
+;; is what makes the residence sum a two-state process rather than a
+;; ratchet; zero-when-in-a-household is limitations row 13, and it is
+;; what keeps ruling B1's propagation honest -- a head's move is copied
+;; to every member verbatim, so a member who could lose housing on
+;; their own would receive copies that report a change they did not
+;; have. The rate itself is a defect-surface knob dressed as a world
+;; rate, and is labelled as neither more nor less.
+(def residence-loss-rate 0.006)
+
+;; PROVISIONAL rehousing rate, ~1.2 per UNHOUSED person-year -- the
+;; hazard that returns an unhoused person to a `places.edn` row. It is
+;; drawn from the SAME variate a housed person's move uses, with only
+;; the RATE conditioned on the state: one variate, two rates. A second
+;; hazard would be a draw whose count depended on the person's housing
+;; status, which the fixed-consumption law forbids. Deliberately much
+;; larger than the move rate and still an order of magnitude, not a
+;; measurement: most spells are short, and a spell measured in years
+;; would put a corpus's unhoused registrations all in one place.
+(def rehousing-rate 1.2)
+
 ;; PROVISIONAL identity-unavailable rate, ~0.004 per person-year, and a
 ;; window of 1-30 days. A defect-surface knob, not a world rate: it
 ;; sets how much of a corpus exercises the unidentified-arrival path,
