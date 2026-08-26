@@ -273,6 +273,13 @@ event of that encounter.**
    the emitter, the checks and the board is untouched by the field
    move. What changes is that `evolve :discharge` now has somewhere to
    put them instead of throwing them away.
+
+   **One reader does break, and it is the right one.** `:admitted-at`/
+   `:discharged-at` now describe the LATEST encounter rather than the
+   only one, so `encounter-resource` (`emit_fhir.clj:136`), which reads
+   that single pair, would render visit 2's period under visit 1's id.
+   That is precisely the defect the next paragraph fixes; it is named
+   here so the field move is not read as invisible.
 3. **The guard becomes structural.** `admission-only-when-new` becomes
    `admission-only-when-no-open-encounter`: legal iff `(nil?
    (:encounter before))` **and** `(not (#{:merged :expired} (:status
