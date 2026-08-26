@@ -195,5 +195,18 @@ edit by two docstrings.
 
 ## Close
 
-CI at the pushed tip is the close marker (no tag). Its run id and
-conclusion are recorded by the follow-up commit.
+CI at the pushed tip is the close marker (no tag was paid -- the
+de-scaffold ruling of 2026-08-25 retired the per-arc `stable-*` tag).
+
+```
+gh run view 32915571939
+status=completed  conclusion=success
+sha=b11e377bc8058eca965172ac356f5c4335115056
+title=design: ADR-0173 -- arc 3a, the engine folds the person stream
+```
+
+Two commits pushed: `667d1a0` (the ride-alongs) and `b11e377` (the
+design). `bin/post-push-verify ee573c4 b11e377` ran with all three
+checks clean -- remote tip matches, every commit message in range pure
+ASCII, and the CI run reported once at queue time and now concluded
+above.
