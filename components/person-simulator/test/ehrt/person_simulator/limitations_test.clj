@@ -114,13 +114,32 @@
 ;; --- row 6: demographics reach the wire through ONE per-run lookup --------
 
 (deftest personas-are-keyed-by-patient-id-alone-test
+  ;; RE-POINTED 2026-08-26, arc 3a part 2. `personas-by-patient-id`
+  ;; became `demographics-timeline` and the LOOKUP became
+  ;; `(demographics-at demographics patient-id t)` -- twelve threading
+  ;; signatures, one lookup shape, output-identical.
+  ;;
+  ;; The row did NOT go red on that change, and the prediction that it
+  ;; would (ADR-0173 section 2(b), which assumed the re-key and the fold
+  ;; land together) is what is corrected here. What row 6 states is that
+  ;; a delta folded onto patient state is INVISIBLE to every message,
+  ;; and that is still true: the re-key moved the lookup's SHAPE while
+  ;; the builder's body still folds nothing but the `:registered`
+  ;; event's own t0 `:persona`, so every `t` still answers with the same
+  ;; value. The row stands and the STRIKE is owed by part 3, which is
+  ;; where the fold arrives.
+  ;;
+  ;; The first assertion was re-pointed at the new symbol for a second
+  ;; reason: left naming the old one, it would have kept passing on a
+  ;; PROSE MENTION of `personas-by-patient-id` in the new builder's own
+  ;; docstring -- a guard green on a comment, which is no guard.
   (let [src (slurp "components/sim-emit-hl7/src/ehrt/sim_emit_hl7/emit_hl7.clj")]
     (testing "the builder is still there to check (R-empty-population-is-red)"
-      (is (str/includes? src "personas-by-patient-id")))
+      (is (str/includes? src "(defn- demographics-timeline")))
     (is (str/includes? src "[(:patient-id (first (:participants ev))) (:persona ev)]")
-        "emit-hl7's persona map no longer keys on patient-id alone -- if it is now
-         keyed (patient-id, t), arc 3 has landed and limitations row 6 should be
-         STRUCK, not repaired")))
+        "emit-hl7's demographic lookup no longer folds the t0 :persona alone -- if
+         its VALUE is now state-at-t, arc 3's fold has landed and limitations row 6
+         should be STRUCK, not repaired")))
 
 ;; --- row 7: geography stays the 24-row places.edn pool --------------------
 

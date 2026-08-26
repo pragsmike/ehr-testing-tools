@@ -299,18 +299,50 @@
    (parser/create-field [payer-id])
    (parser/create-field [(escape-er7 payer-name)])))
 
-(defn- personas-by-patient-id
-  "patient-id -> persona, derived directly from the log's own
-  :registered events (sim/ADR-0012's own precedent: a stage's own state is
-  recoverable by scanning the log, no second input needed). Computed
-  once per `emit` call and threaded down to every segment builder that
-  needs it -- pid-segment enrichment applies uniformly across every
-  message type, not just admission."
+(defn- demographics-timeline
+  "The demographic state this emitter renders from, derived directly
+  from the log's own events (sim/ADR-0012's own precedent: a stage's own
+  state is recoverable by scanning the log, no second input needed).
+  Computed once per `emit`
+  call and threaded down to every segment builder that needs it, so PID
+  enrichment applies uniformly across every message type, not just
+  admission. Read ONLY through `demographics-at`.
+
+  The odd line wrap above is load-bearing: ADR-0172 limitations row 6
+  cites this docstring by a literal snippet that must occur exactly once
+  in this file, on one line (`every-charter-citation-resolves-test`).
+
+  ADR-0173 section 2(b) (arc 3a): this replaces `personas-by-patient-id`,
+  whose value was a patient's t0 Persona and nothing else. Demographics
+  are state-at-t -- an address changes, a payer changes, a name is
+  corrected -- so the LOOKUP is `(patient-id, t)` and no longer
+  patient-id alone. TODAY the fold is empty and every `t` answers with
+  the same t0 Persona, which is why this change is output-identical and
+  the emitter tier does not move a byte. Part 3 is where
+  `:demographic-update` and `:coverage-change` start folding onto it,
+  and the shape is already the shape that can carry them.
+
+  ADR-0172 limitations row 6 -- `personas-are-keyed-by-patient-id-alone-
+  test` -- went red on exactly this change, which is what it was written
+  to do. It is re-pointed at the new shape rather than struck: the row is
+  STRUCK when the fold actually lands, in part 3."
   [ground-truth]
   (into {}
         (comp (filter #(= :registered (:event %)))
               (map (fn [ev] [(:patient-id (first (:participants ev))) (:persona ev)])))
         ground-truth))
+
+(defn- demographics-at
+  "One patient's demographic state AS IT STOOD AT `t` -- the single
+  lookup shape every PID-rendering site in this namespace goes through.
+
+  `_t` is unused TODAY and the parameter is not decoration: it is the
+  key that makes the call sites correct in advance of the fold. Every
+  caller already had the event in hand, so threading it costs no
+  signature change beyond the rename, and part 3 fills the body in one
+  place instead of re-visiting twelve."
+  [demographics patient-id _t]
+  (get demographics patient-id))
 
 (defn- location-field
   "Renders a location map as ward^^bed^facility (PV1-3/PV1-6's shared
@@ -392,12 +424,14 @@
   resolve against (get-in): the event map itself (so [:location :ward],
   [:attending], [:t], etc. all resolve directly, the same paths
   docs/site-profiles.md's own examples name) plus :persona -- looked up
-  off the SAME `personas` map `emit` computes once per call, the primary
+  off the SAME `demographics` map `emit` computes once per call, the primary
   (first) participant's persona for a genuinely multi-participant event
   (bed-swap, merge), the same simplification `ehrt.sim-engine.engine/
   replay`'s own :patient-id convenience view already makes."
-  [personas event]
-  (assoc event :persona (get personas (:patient-id (first (:participants event))))))
+  [demographics event]
+  (assoc event :persona (demographics-at demographics
+                                         (:patient-id (first (:participants event)))
+                                         (:t event))))
 
 (defn- render-z-field
   "One Z-segment field: `:path` looked up (get-in -- nil-safe through a
@@ -436,8 +470,8 @@
   template resolves against is now the same map on every family, which
   is the only shape `docs/site-profiles.md`'s own path examples can be
   read literally against."
-  [site-profile personas event]
-  (let [context (context-for-event personas event)]
+  [site-profile demographics event]
+  (let [context (context-for-event demographics event)]
     (into []
           (comp (filter #(contains? (:trigger %) (:event event)))
                 (map (partial z-segment-for context)))
@@ -465,7 +499,7 @@
   the log (docs/patient-state-model.md), so this renderer needs no
   event-type-specific branching to show the reinstated facts. M4: IN1
   rides ONLY :admission (`in1-segment`'s own docstring); every type
-  here gets PID enrichment uniformly via `personas`. Milestone
+  here gets PID enrichment uniformly via `demographics`. Milestone
   site-profiles: PV1-36 disposition rides ONLY :discharge (the same
   single-event-type gate IN1 already established for admission), and
   every segment renders through `site-profile`'s own dialect/code-table/
@@ -478,7 +512,7 @@
   fields this builder ever renders. `offsets` is {} at every plain-
   `emit` call site, so `transmit-ts` = `clinical-ts` always there,
   byte-identical to this builder's pre-ADR-0109 shape."
-  [reference-date utc-offset facility providers personas site-profile offsets
+  [reference-date utc-offset facility providers demographics site-profile offsets
    {:keys [event t active-mrn location from attending participants] :as ev}]
   (when-let [type+trigger (message-type-registry event)]
     (let [control-id (control-id-for ev)
@@ -486,7 +520,7 @@
           transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
           facility-name (name (:id facility))
           provider (provider-by-id providers attending)
-          persona (get personas (:patient-id (first participants)))
+          persona (demographics-at demographics (:patient-id (first participants)) t)
           disposition-state (when (= :discharge event) :discharged-to-home)
           ;; M5b: the only two event types this project ever renders
           ;; :outpatient for -- every other type here is still :inpatient
@@ -500,7 +534,7 @@
         (pid-segment active-mrn persona)
         (pv1-segment site-profile patient-class facility-name location from provider disposition-state)
         (concat (when (and (= :admission event) persona) [(in1-segment (:payer persona))])
-                (z-segments-for site-profile personas ev)))))))
+                (z-segments-for site-profile demographics ev)))))))
 
 (defn- bed-swap-message
   "A17 (swap patients): ONE message per ground-truth event, carrying
@@ -511,7 +545,7 @@
   ONE `control-id` covers the whole event (`control-id-for`'s own
   :bed-swap arm), so both patients' PID/PV1 pairs ride the SAME
   transmit-shifted MSH-7 and the SAME unshifted EVN-2."
-  [reference-date utc-offset facility providers personas site-profile offsets
+  [reference-date utc-offset facility providers demographics site-profile offsets
    {:keys [t participants swap] :as ev}]
   (let [type+trigger (message-type-registry :bed-swap)
         control-id (control-id-for ev)
@@ -526,11 +560,11 @@
       parser/DEFAULT-DELIMITERS
       (msh-segment site-profile type+trigger control-id transmit-ts)
       (evn-segment (:trigger type+trigger) clinical-ts)
-      (pid-segment mrn1 (get personas p1))
+      (pid-segment mrn1 (demographics-at demographics p1 t))
       (pv1-segment site-profile :inpatient facility-name to1 from1 (provider-by-id providers att1) nil)
-      (pid-segment mrn2 (get personas p2))
+      (pid-segment mrn2 (demographics-at demographics p2 t))
       (pv1-segment site-profile :inpatient facility-name to2 from2 (provider-by-id providers att2) nil)
-      (z-segments-for site-profile personas ev)))))
+      (z-segments-for site-profile demographics ev)))))
 
 (defn- merge-message
   "A40 (merge patient): PID carries the SURVIVING mrn, MRG-1 carries the
@@ -538,7 +572,7 @@
   payoff) -- ONE message per merge event. ADR-0109's split clock (see
   `single-subject-message`'s own docstring): `control-id-for`'s own
   :merge arm keys on the surviving mrn."
-  [reference-date utc-offset facility _providers personas site-profile offsets
+  [reference-date utc-offset facility _providers demographics site-profile offsets
    {:keys [t surviving-mrn merged-mrn participants] :as ev}]
   (let [type+trigger (message-type-registry :merge)
         control-id (control-id-for ev)
@@ -551,10 +585,10 @@
       parser/DEFAULT-DELIMITERS
       (msh-segment site-profile type+trigger control-id transmit-ts)
       (evn-segment (:trigger type+trigger) clinical-ts)
-      (pid-segment surviving-mrn (get personas survivor-id))
+      (pid-segment surviving-mrn (demographics-at demographics survivor-id t))
       (pv1-segment site-profile :inpatient facility-name nil nil nil nil)
       (mrg-segment merged-mrn)
-      (z-segments-for site-profile personas ev)))))
+      (z-segments-for site-profile demographics ev)))))
 
 ;; --- M3: ORM^O01 + ORU^R01 (docs/sim-theory.edn's order-profiles
 ;; catalytic, docs/operational-models.md) -----------------------------------
@@ -689,7 +723,7 @@
   yet, and ORC-9 (transaction time) is the field that would actually
   be owed -- and it is a named revisit, not a silent ride-along.
   Author ruling Q3, 2026-08-16: \"Results only; ORM byte-frozen.\""
-  [reference-date utc-offset facility providers personas site-profile offsets
+  [reference-date utc-offset facility providers demographics site-profile offsets
    {:keys [t active-mrn location attending concept participants] :as ev}]
   (let [type+trigger (message-type-registry :order-placed)
         control-id (control-id-for ev)
@@ -700,11 +734,11 @@
      (apply parser/create-message
       parser/DEFAULT-DELIMITERS
       (msh-segment site-profile type+trigger control-id transmit-ts)
-      (pid-segment active-mrn (get personas (:patient-id (first participants))))
+      (pid-segment active-mrn (demographics-at demographics (:patient-id (first participants)) t))
       (pv1-segment site-profile :inpatient facility-name location nil provider nil)
       (orc-segment control-id)
       (obr-segment 1 concept)
-      (z-segments-for site-profile personas ev)))))
+      (z-segments-for site-profile demographics ev)))))
 
 (defn- oru-message
   "ORU^R01: result available -- OBR (order context) plus one OBX per
@@ -721,7 +755,7 @@
   own `:t`, never shifted) -- the same two-clock split
   `single-subject-message` has always had via EVN-2, now on the result
   wire, so a downstream receiver handed a late result can back-date it."
-  [reference-date utc-offset facility providers personas site-profile offsets
+  [reference-date utc-offset facility providers demographics site-profile offsets
    {:keys [t active-mrn location attending concept results participants] :as ev}]
   (let [type+trigger (message-type-registry :result-available)
         control-id (control-id-for ev)
@@ -734,11 +768,11 @@
      (apply parser/create-message
       parser/DEFAULT-DELIMITERS
       (msh-segment site-profile type+trigger control-id transmit-ts)
-      (pid-segment active-mrn (get personas (:patient-id (first participants))))
+      (pid-segment active-mrn (demographics-at demographics (:patient-id (first participants)) t))
       (pv1-segment site-profile :inpatient facility-name location nil provider nil)
       (orc-segment control-id)
       (obr-segment 1 concept clinical-ts)
-      (concat obx-segments (z-segments-for site-profile personas ev))))))
+      (concat obx-segments (z-segments-for site-profile demographics ev))))))
 
 ;; --- M5b: :observation -> ORU^R01, OBX only (components/patient-simulator/docs/gmf-interpreter.md
 ;; section 1's table) -------------------------------------------------------
@@ -815,7 +849,7 @@
   CLINICAL time (this event's own `:t`, never shifted). There is no
   OBR here at all -- this shape carries no ORC/OBR -- so OBR-7 is not
   owed and not rendered."
-  [reference-date utc-offset facility providers personas site-profile offsets
+  [reference-date utc-offset facility providers demographics site-profile offsets
    {:keys [t active-mrn location attending participants] :as ev}]
   (let [type+trigger (message-type-registry :observation)
         control-id (control-id-for ev)
@@ -827,10 +861,10 @@
      (apply parser/create-message
       parser/DEFAULT-DELIMITERS
       (msh-segment site-profile type+trigger control-id transmit-ts)
-      (pid-segment active-mrn (get personas (:patient-id (first participants))))
+      (pid-segment active-mrn (demographics-at demographics (:patient-id (first participants)) t))
       (pv1-segment site-profile :inpatient facility-name location nil provider nil)
       (observation-obx-segment 1 clinical-ts ev)
-      (z-segments-for site-profile personas ev)))))
+      (z-segments-for site-profile demographics ev)))))
 
 ;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 P6): ORC+OBR
 ;; present (unlike :observation's own order-less shape) -- a real
@@ -849,7 +883,7 @@
   embedded child's own OBX-14 are CLINICAL time (this event's own `:t`,
   never shifted). `orm-message` is the one of that list that does NOT
   change -- author ruling Q3, \"Results only; ORM byte-frozen\"."
-  [reference-date utc-offset facility providers personas site-profile offsets
+  [reference-date utc-offset facility providers demographics site-profile offsets
    {:keys [t active-mrn location attending codes observations participants] :as ev}]
   (let [type+trigger (message-type-registry :diagnostic-report)
         control-id (control-id-for ev)
@@ -862,11 +896,11 @@
      (apply parser/create-message
       parser/DEFAULT-DELIMITERS
       (msh-segment site-profile type+trigger control-id transmit-ts)
-      (pid-segment active-mrn (get personas (:patient-id (first participants))))
+      (pid-segment active-mrn (demographics-at demographics (:patient-id (first participants)) t))
       (pv1-segment site-profile :inpatient facility-name location nil provider nil)
       (orc-segment control-id)
       (obr-segment 1 (first codes) clinical-ts)
-      (concat obx-segments (z-segments-for site-profile personas ev))))))
+      (concat obx-segments (z-segments-for site-profile demographics ev))))))
 
 (defn event->messages
   "Renders one ground-truth event to a vector of 0+ ER7 message strings
@@ -886,18 +920,18 @@
   offset for any control-id absent from the map."
   ([reference-date utc-offset facility providers ev]
    (event->messages reference-date utc-offset facility providers {} nil {} ev))
-  ([reference-date utc-offset facility providers personas ev]
-   (event->messages reference-date utc-offset facility providers personas nil {} ev))
-  ([reference-date utc-offset facility providers personas site-profile offsets {:keys [event] :as ev}]
+  ([reference-date utc-offset facility providers demographics ev]
+   (event->messages reference-date utc-offset facility providers demographics nil {} ev))
+  ([reference-date utc-offset facility providers demographics site-profile offsets {:keys [event] :as ev}]
    (cond
      (not (message-type-registry event)) []
-     (= :bed-swap event) [(bed-swap-message reference-date utc-offset facility providers personas site-profile offsets ev)]
-     (= :merge event) [(merge-message reference-date utc-offset facility providers personas site-profile offsets ev)]
-     (= :order-placed event) [(orm-message reference-date utc-offset facility providers personas site-profile offsets ev)]
-     (= :result-available event) [(oru-message reference-date utc-offset facility providers personas site-profile offsets ev)]
-     (= :observation event) [(observation-message reference-date utc-offset facility providers personas site-profile offsets ev)]
-     (= :diagnostic-report event) [(diagnostic-report-message reference-date utc-offset facility providers personas site-profile offsets ev)]
-     :else [(single-subject-message reference-date utc-offset facility providers personas site-profile offsets ev)])))
+     (= :bed-swap event) [(bed-swap-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
+     (= :merge event) [(merge-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
+     (= :order-placed event) [(orm-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
+     (= :result-available event) [(oru-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
+     (= :observation event) [(observation-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
+     (= :diagnostic-report event) [(diagnostic-report-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
+     :else [(single-subject-message reference-date utc-offset facility providers demographics site-profile offsets ev)])))
 
 (def ^:private default-providers
   "A fixed, arbitrary reference-seed provider pool -- purely a fallback
@@ -937,8 +971,8 @@
   ([ground-truth reference-date utc-offset facility providers]
    (emit ground-truth reference-date utc-offset facility providers nil))
   ([ground-truth reference-date utc-offset facility providers site-profile]
-   (let [personas (personas-by-patient-id ground-truth)]
-     (into [] (mapcat (partial event->messages reference-date utc-offset facility providers personas site-profile {}))
+   (let [demographics (demographics-timeline ground-truth)]
+     (into [] (mapcat (partial event->messages reference-date utc-offset facility providers demographics site-profile {}))
            ground-truth))))
 
 ;; --- ADR-0109: the second clock -- GT x LatencyParams -> TimedWire -------
@@ -1013,7 +1047,7 @@
   -- this function takes no RNG at all, per this namespace's own
   renders-only doctrine."
   [ground-truth reference-date utc-offset facility providers site-profile offsets]
-  (let [personas (personas-by-patient-id ground-truth)
+  (let [demographics (demographics-timeline ground-truth)
         offsets (or offsets {})]
     (->> ground-truth
          (map-indexed
@@ -1021,7 +1055,7 @@
             (let [control-id (control-id-for ev)
                   transmit-t (transmit-seconds offsets control-id (:t ev))]
               (map (fn [message] [transmit-t i message])
-                   (event->messages reference-date utc-offset facility providers personas site-profile offsets ev)))))
+                   (event->messages reference-date utc-offset facility providers demographics site-profile offsets ev)))))
          (apply concat)
          (sort-by (fn [[transmit-t i _]] [transmit-t i]))
          (mapv peek))))
