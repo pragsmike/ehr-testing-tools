@@ -1,8 +1,12 @@
 ## ADR-0173 — arc 3a: the engine folds the person stream (the demographic half)
 
-**Status:** Proposed (design session 2026-08-25, HEAD `667d1a0`).
-Payload session under the de-scaffold moratorium; no engine code lands
-with this ADR. Arc 3's roadmap row bundles three folds -- the
+**Status:** Accepted (design session 2026-08-25, HEAD `667d1a0`;
+**RULED 2026-08-25: A1 B1 C1 D1 E1** -- the recommendation on every
+one of the five, and `:residence-loss` lands FIRST, before the fold).
+The design session was a payload session under the de-scaffold
+moratorium and no engine code landed with this ADR; the fold itself
+lands in the execution session that follows, which is where section
+2's every subsection becomes code. Arc 3's roadmap row bundles three folds -- the
 demographic timeline, scheduling state (`rulings.md#R-mix-5`) and the
 bed-status cycle (`R-mix-6`). **This ADR designs the FIRST only**, plus
 the two clinical hooks and the identification flow. Scheduling and
@@ -480,10 +484,25 @@ consumer.
 ### 3. Rulings needed
 
 Lettered, with a recommendation on each, in ADR-0172's shape --
-recommended option first, declined options kept unstruck.
+recommended option first, declined options kept unstruck. **All five
+were ruled by the author on 2026-08-25, and every one took the
+recommendation: A1 B1 C1 D1 E1.** Each ruling is quoted below at the
+option it selected; the rejected options are kept verbatim, unstruck,
+because what was declined is the reason the selection means anything.
+The author added one sequencing instruction that is not a lettered
+ruling and binds the execution session anyway: **`:residence-loss`
+lands FIRST**, as its own commit, before any engine code -- so the
+person-side half of the residence sum (section 2(b)) is a landed,
+gated fact by the time the fold reads it.
 
 **A. Arrival selection: uniform from the pool via WORLD, or a
 person-side arrival propensity?**
+
+**RULED A1** (author, 2026-08-25): uniform from the pool, one
+`:world` draw per arrival ordinal, over the persons alive at that
+instant. The frequent-flyer that A2 would have bought is declined for
+v1 rather than lost -- A2 stays available, and cheaply, precisely
+because A1 landed first. Section 2(a) is where this lands.
 
 * **A1 -- uniform from the pool, one `:world` draw per arrival
   ordinal, over the persons alive at that instant. RECOMMENDED.** It
@@ -504,6 +523,10 @@ person-side arrival propensity?**
 **B. The placeholder's MRN: fresh and merged, or provisional and
 overwritten?**
 
+**RULED B1** (author, 2026-08-25): a FRESH MRN, merged later. The
+post-merge shadow is the point; section 2(d)'s `:identification-merge`
+step type is what mints it, riding churn's own `:merge` event shape.
+
 * **B1 -- a FRESH MRN, merged later. RECOMMENDED.** It composes with
   `churn`'s `:merge` into the post-merge-shadow surface
   `traffic-model.md` calls the highest-value injectable class for
@@ -518,6 +541,12 @@ overwritten?**
 
 **C. Does `:person-death` for a person with no compiled death ever
 reach the wire?**
+
+**RULED C1** (author, 2026-08-25): no -- ADR-0172 limitations row 4
+is confirmed as it stands. `person-death-emits-no-ground-truth-event-test`
+stays green, and what the fold owes instead is behavioural: a dead
+person is not in section 2(a)'s arrival candidate set, gated by section
+2(e) invariant 5.
 
 * **C1 -- no. CONFIRM ADR-0172 limitations row 4 as it stands.
   RECOMMENDED.** A death outside care has no HL7v2 trigger this
@@ -535,6 +564,13 @@ reach the wire?**
   gain no message can show.
 
 **D. One declared sweep, or land dark and turn it on?**
+
+**RULED D1** (author, 2026-08-25): two commits. Commit 1 lands the
+entire fold with `:persons` absent from every gated corpus and
+`bin/regression-oracle` reporting IDENTICAL with no declaration;
+commit 2 turns `:persons` on and re-pins in ONE declared sweep. The
+dual-path `decide :registered` is accepted as a named cost that lives
+until arc 3b.
 
 * **D1 -- two commits. RECOMMENDED.** Commit 1 lands the entire fold
   -- config key, index, decide/evolve methods, the emitter re-key,
@@ -555,6 +591,11 @@ reach the wire?**
   ADR-0172 ruling F1 made for arc 2b, and it has not weakened.
 
 **E. Unhoused rendering: PID-11 absent, or a sentinel string?**
+
+**RULED E1** (author, 2026-08-25): PID-11 ABSENT on the wire in v1,
+with the distinction carried in ground truth as `:residence {:status
+:unhoused}` versus `:unknown`. A sentinel belongs in a site profile,
+not in `xad-field`'s body.
 
 The evidence, since this ruling asked for it. Real registration
 systems do NOT converge, and none of the three conventions in the

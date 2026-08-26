@@ -54,8 +54,10 @@ with them.
   by arc 0 (ADR-0169), which landed ahead of arc 1. What remains here is
   the draw-affecting half, which still waits on the stream migration.
   SPLIT 2026-08-25: arc 3a (the demographic fold, the two clinical hooks and the
-  identification flow) is DESIGNED by ADR-0173, Proposed, five rulings A-E open;
-  arc 3b (scheduling state, bed-status cycle) is untouched and inherits its seams.
+  identification flow) is DESIGNED by ADR-0173, ACCEPTED 2026-08-25 with all five
+  rulings taking the recommendation (A1 B1 C1 D1 E1) and `:residence-loss` landing
+  first; arc 3b (scheduling state, bed-status cycle) is untouched and inherits its
+  seams.
 - OPEN **[emission-add-ons]** PRIORITY 5 -- traffic-scale arc 4
   (`rulings.md#R-mix-7`): order/result status ladders, DFT P03 charges,
   re-statement chatter under config ratios, fan-out/subscriber table; rides
