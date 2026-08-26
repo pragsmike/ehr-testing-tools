@@ -66,6 +66,18 @@ with them.
   bump, the two hooks, the identification minting, the six invariants, the
   provenance stamp) is unstarted and sized row by row in
   `.agents/session-records/2026-08-25-arc-3a-residence-loss.md`.
+  PART 2 LANDED 2026-08-26 (`dd4f9f7`): the REFACTOR half -- C1's
+  compile-at-run-start move (with `compile-patient` exported for part 3's
+  `:deaths`), `:person-index` carried and empty, `PatientState`'s
+  `:demographics`, and the emitter re-key to `demographics-at` -- all
+  output-identical, oracle IDENTICAL at four separate points, every
+  pinned fixture and both conformance baselines byte-equal. `:persons` is
+  STILL not a config key and no person event reaches the engine. Two
+  corrections to ADR-0173 from the tree, both in
+  `.agents/session-records/2026-08-26-arc-3a-fold-refactors.md`: the
+  re-key is thirteen signatures and not twelve, and limitations row 6 did
+  NOT go red (the re-key without the fold leaves its substance intact),
+  so row 6's STRIKE is still owed by part 3.
 - OPEN **[emission-add-ons]** PRIORITY 5 -- traffic-scale arc 4
   (`rulings.md#R-mix-7`): order/result status ladders, DFT P03 charges,
   re-statement chatter under config ratios, fan-out/subscriber table; rides
