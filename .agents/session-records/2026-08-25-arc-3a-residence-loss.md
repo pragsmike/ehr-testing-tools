@@ -203,6 +203,7 @@ value.
 | `make test` | **MAKE_EXIT=0**, 4,120 tests / 18,447 assertions, 0 failures, 0 errors |
 | `make integration` | **INT_EXIT=0**, 0 `FAIL:` lines, 1,502 tests / 4,813 assertions -- byte-for-byte the same counts arc 2b's record closed at, so no integration test moved. Run because W-1 stands: `make test` skips this tier, so a gate can land unexecuted |
 | `bin/regression-oracle e9bc65b HEAD` | **IDENTICAL**, exit 0, no declaration |
+| CI at the pushed tip `f85d9cc` | **run 32928517913, conclusion success** -- the close marker (`rulings.md#R-session-verifies-ci-via-gh`, kept as the marker after the tag was retired) |
 
 **The suite delta reconciles exactly.** The design session's own record
 (`.agents/session-records/2026-08-25-arc-3a-demographic-fold-design.md`,

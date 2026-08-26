@@ -261,7 +261,8 @@ Which person events reach the wire, and as what:
 | person event | engine mints | fold effect |
 |---|---|---|
 | `:person-registered` (newborn) | `:registered` at the delivery `:t`, on a NEW patient | mints the newborn patient |
-| `:residence-move` | `:demographic-update` `:cause :residence-move` | `:address` in state-at-t |
+| `:residence-move` | `:demographic-update` `:cause :residence-move` | `:address` in state-at-t; a move with NO `:prior-address` is a RETURN to housing and sets `:residence {:status :housed}` |
+| `:residence-loss` (added 2026-08-25, part 1) | `:demographic-update` `:cause :residence-loss` | `:residence {:status :unhoused :last-known-address ..}` in state-at-t. An `:at-t0` one is the person's INITIAL condition and lands before any arrival, so a placeholder-free registration for an unhoused person renders PID-11 absent from its first message (ruling E1) |
 | `:identity-correction` | `:demographic-update` `:cause :identity-correction` | `:name` or `:dob` in state-at-t |
 | `:coverage-change` | `:coverage-change` | `:payer` in state-at-t |
 | `:identity-unavailable` | nothing at its own `:t` -- it opens a window (section (d)) | window state |
@@ -273,8 +274,10 @@ Which person events reach the wire, and as what:
 
 So the CLOSED 21-kind vocabulary (`event_schema.clj:263`) grows by
 **two**: `:demographic-update` and `:coverage-change`. Deliberately
-two and not fourteen -- the person process's fourteen kinds are the
-engine's INPUT, in the same relation to ground truth that pathway IR
+two and not fifteen -- the person process's fifteen kinds (fourteen
+when this table was first written; `:residence-loss` landed 2026-08-25
+and folds onto the SAME `:demographic-update`, so the vocabulary still
+grows by exactly two) are the engine's INPUT, in the same relation to ground truth that pathway IR
 and a compiled trajectory already have. **Person events are never
 themselves log events.** They carry no `:patient-id` and could not
 satisfy `every-event-has-participants` (`check.clj:76`) or
