@@ -424,6 +424,35 @@ would be indistinguishable, and the whole point of carrying the sum in
 ground truth is that a consumer testing an MPI can tell "we do not
 know where they live" from "they have nowhere to live."
 
+**DEVIATION, execution session 2026-08-26 (part 4). THE RULE ABOVE
+WAS UNREACHABLE AS WRITTEN, and the tree measured it rather than
+argued it.** The antecedent -- *an arrival landing inside an open
+`:identity-unavailable` window* -- asks two independent processes to
+coincide, and at the person process's own rates they do not. Over a
+200-person, ten-year walk at seed 424242 the process opens **9
+windows covering 11,491,200 of 63,072,000,000 person-seconds --
+0.018% of the horizon** -- and the EARLIEST opens at **t 36,118,094
+(day 418)**, while every t0 arrival of a scenario at `:arrival-gap`
+5 has happened inside the first 60,000 seconds (~17 h). The two
+intervals cannot meet, so the coincidence alone mints nothing.
+
+**Ruled (a), 2026-08-26: an `:identity-unavailable` window is itself
+an unidentified ED presentation and MINTS the arrival.** It is not a
+state somebody is quietly in waiting to be arrived at; it is the
+presentation -- which is what the author's *"unhoused unresponsive
+John Does"* describes -- so it mints an ED arrival the same way
+`:occupational-injury` does. The coincidence rule above STANDS,
+implemented exactly as written, and is JOINED by its own antecedent
+rather than replaced by it; everything downstream in this subsection
+(the placeholder `:registered`, the fresh MRN, the `:fill`/`:merge`
+fork at the window's close, `:identification-merge`, the
+degenerate-to-fill case) is unchanged and now actually reachable.
+`person-fold/hook-kinds` carries the measurement. One defensible
+reading once the numbers were in, so fix-forward with disclosure
+(`rulings.md#R-stop-only-on-two-defensible-readings`); the full
+figures are in
+`.agents/session-records/2026-08-26-arc-3a-fold-part-4.md`.
+
 #### (e) The new invariant family in `check.clj`
 
 `check.clj`'s referential family -- ADR-0163/0166's
