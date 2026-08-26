@@ -45,10 +45,10 @@ Oracle roots: `appendicitis`, `sore-throat`, `ear-infections`, `sinusitis`, `dea
 
 | fact | count |
 |---|---|
-| `*_test.clj` namespaces under any brick's own `test/` | 195 |
-| docs-tooling gate namespaces | 46 |
+| `*_test.clj` namespaces under any brick's own `test/` | 196 |
+| docs-tooling gate namespaces | 47 |
 
-Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entry_path_test`, `citation_gate_test`, `cli_tombstone_test`, `demo_exerciser_fresh_test`, `docsgen_closure_test`, `docsgen_test`, `event_log_doc_test`, `exercised_sources_coverage_test`, `exercised_sources_test`, `exit_truthfulness_test`, `front_door_fence_gate_test`, `hand_owned_asset_freshness_test`, `index_completeness_test`, `invocation_lint_test`, `io_vocabulary_lint_test`, `license_text_pointer_test`, `link_footnote_gate_test`, `lint_test`, `mermaid_render_test`, `notice_verbatim_test`, `oracle_coverage_test`, `patient_simulator_charter_test`, `person_simulator_charter_test`, `pipeline_test`, `post_push_verify_range_test`, `process_law_citation_test`, `project_classpath_test`, `provenance_leaf_law_test`, `quickstart_fresh_test`, `readme_presence_test`, `resource_nesting_test`, `roadmap_lint_test`, `root_alias_completeness_test`, `sim_emit_hl7_dependency_test`, `sim_purity_lint_test`, `sim_theory_head_hop_test`, `skill_mirror_currency_test`, `stale_path_test`, `state_derived_test`, `strip_fresh_test`, `structure_currency_test`, `test_source_live_path_lint_test`, `traces_fresh_test`, `usecases_test`
+Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entry_path_test`, `brick_test_composition_test`, `citation_gate_test`, `cli_tombstone_test`, `demo_exerciser_fresh_test`, `docsgen_closure_test`, `docsgen_test`, `event_log_doc_test`, `exercised_sources_coverage_test`, `exercised_sources_test`, `exit_truthfulness_test`, `front_door_fence_gate_test`, `hand_owned_asset_freshness_test`, `index_completeness_test`, `invocation_lint_test`, `io_vocabulary_lint_test`, `license_text_pointer_test`, `link_footnote_gate_test`, `lint_test`, `mermaid_render_test`, `notice_verbatim_test`, `oracle_coverage_test`, `patient_simulator_charter_test`, `person_simulator_charter_test`, `pipeline_test`, `post_push_verify_range_test`, `process_law_citation_test`, `project_classpath_test`, `provenance_leaf_law_test`, `quickstart_fresh_test`, `readme_presence_test`, `resource_nesting_test`, `roadmap_lint_test`, `root_alias_completeness_test`, `sim_emit_hl7_dependency_test`, `sim_purity_lint_test`, `sim_theory_head_hop_test`, `skill_mirror_currency_test`, `stale_path_test`, `state_derived_test`, `strip_fresh_test`, `structure_currency_test`, `test_source_live_path_lint_test`, `traces_fresh_test`, `usecases_test`
 
 ## Registers
 

@@ -60,12 +60,15 @@
   "The person process exists so that demographic and identity traffic is realistic; a person's life is relevant only inasmuch as it changes a message.")
 
 (def ^:private expected-row-count
-  "ADR-0172 section 4 tables ELEVEN limitations. Pinned, so that a row
+  "ADR-0172 section 4 tables TWELVE limitations -- eleven at 2026-08-25,
+  plus row 12 (a parent may head more than one household), the v1
+  artefact arc 2b stated in `persons`' own docstring and arc 3a tabled.
+  Pinned, so that a row
   quietly dropped from ONE of the two tables is caught by the mirror
   below while a row dropped from BOTH is caught here
   (`rulings.md#R-empty-population-is-red`, one step further: a mirror
   gate over two empty tables agrees perfectly)."
-  11)
+  12)
 
 ;; `\`path\` "quoted snippet"` -- the citation form the Citation column
 ;; uses, one or more per row. Identical to the sibling gate's.

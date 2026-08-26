@@ -217,3 +217,36 @@
       (let [ids (map :pregnancy-event-id (fx/of-kind :delivery))]
         (is (= (count ids) (count (distinct ids))))
         (is (every? some? ids))))))
+
+;; --- row 12: a parent may head more than one household --------------------
+
+(deftest a-parent-may-head-more-than-one-household-test
+  ;; Row 12 is a v1 ARTEFACT declined on purpose, not a law, so this
+  ;; gate asserts the artefact is STILL THERE: red the day it is fixed,
+  ;; which is the day the row should be struck. The births pass runs
+  ;; after the walk that decides household transitions and cannot be
+  ;; seen by it, so a parent with no household at their delivery gets
+  ;; one constituted BY the birth and may form a second on their own
+  ;; hazard later.
+  (let [forms (fx/of-kind :household-form)
+        by-head (group-by :head-person-id forms)
+        multi (into (sorted-map) (filter (fn [[_ v]] (> (count v) 1)) by-head))]
+    (testing "population is non-empty (R-empty-population-is-red)"
+      (is (seq forms) "the witness stream carries no :household-form at all")
+      (is (pos? (count multi))
+          (str "no parent heads more than one household -- either the artefact was"
+               " fixed (strike row 12) or the witness went empty, and this gate"
+               " must not pass by going empty")))
+    (testing "the witness count is pinned, counted from the filter's own input"
+      (is (= 4 (count multi))
+          (str "expected 4 multi-household heads out of " (count by-head)
+               " distinct heads over " (count forms) " :household-form events, read "
+               (count multi) ": " (vec (keys multi)))))
+    (testing "and every extra household is the one the BIRTH constituted"
+      (let [bad (for [[head hs] multi
+                      :when (not= 1 (count (filter #(str/ends-with? (:household-id %) "-birth") hs)))]
+                  (str head ": " (mapv :household-id hs)))]
+        (is (empty? bad)
+            (str (count bad) " multi-household head(s) whose second household is NOT"
+                 " birth-constituted -- that is a different artefact from row 12's: "
+                 (vec bad)))))))

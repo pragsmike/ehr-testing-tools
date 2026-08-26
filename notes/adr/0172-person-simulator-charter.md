@@ -3,7 +3,12 @@
 **Status:** Accepted (design session 2026-08-25, HEAD `41081dd`;
 **RULED 2026-08-25: A1 B1 C1 D1 E1 F1 G1** -- the recommendation on
 every one of the seven). Payload session under the de-scaffold
-moratorium; no component code lands with this ADR. Section 5 records
+moratorium; no component code lands with this ADR. **Clarified
+2026-08-25 (arc 3a, ADR-0173):** `t0` in section 2's `initial-persona`
+signature is the t0 CONTEXT map (`:master`/`:rng`, `:id-tag`,
+`:death-t`, the persona config), not an instant -- ruling C1's "as a t0
+parameter" read literally, which is what a two-argument function that
+must DRAW requires. Section 5 records
 each ruling where it lands, and arc 2b implements them: the component
 lands ALONE, the engine does not call it (F1), so the corpus is
 provably untouched.
@@ -413,6 +418,7 @@ can be born red, which is the only kind worth writing.
 | 9 | **Every hazard rate is authored-provisional.** No cited table stands behind any number in section 2. | `every-provisional-rate-is-tabled-test` — each rate constant in `src` carries a `PROVISIONAL` marker and every marker is covered by a citation into its own comment block. The ADR-0162 drift mechanism, with a fourth token. |
 | 10 | **The engine tells the person process nothing.** No feedback edge in v1; the four consequences are named in section 2. | `person-simulator-requires-no-engine-namespace-test` — the component's `ns` forms name no `sim-engine` namespace but the stream-partition surface, and no `sim-engine` namespace requires `person-simulator`. A structural fact, not a discipline. |
 | 11 | **Every pregnancy reaches a delivery.** No loss, no termination, no non-delivery outcome. | `pregnancy-and-delivery-are-in-bijection-test` — per person, `:pregnancy` and `:delivery` counts are equal and each delivery's `:pregnancy-event-id` is distinct. |
+| 12 | **A parent may head more than one household.** A parent with no household at their delivery gets one constituted BY the birth; if their own household hazard fires later, they head TWO. | `a-parent-may-head-more-than-one-household-test` -- red the day the artefact is fixed, which is the day this row should be struck. Four such parents in the component's own witness population, pinned, with `pos?` asserted separately so the gate cannot pass by going empty. |
 
 Row 6 is the one to read twice. It is a limitation of the **engine and
 emitter**, not of this component, and it is tabled here because this
