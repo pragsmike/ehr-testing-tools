@@ -84,7 +84,8 @@
             [ehrt.sim-engine.churn :as churn]
             [ehrt.sim-engine.order-profiles :as order-profiles]
             [ehrt.kernel.interface :as result]
-            [malli.core :as m])
+            [malli.core :as m]
+            [malli.util :as mu])
   (:import [java.util Random]))
 
 ;; --- M6 Task 1: the clinical-content accumulator -------------------------
@@ -163,6 +164,69 @@
    [:status [:enum :active :completed]]
    [:ended-t {:optional true} :int]])
 
+(def Demographics
+  "STATE-AT-T demographics -- what a patient's demographic facts are AT
+  ONE INSTANT, as opposed to `:persona`, which is and stays the t0
+  sample (ADR-0173 section 2(b)). Seeded at `:registered` from that
+  patient's own Persona; from arc 3a part 3 on, the person stream's
+  `:demographic-update` and `:coverage-change` siblings fold onto it.
+
+  Persona-shaped, field for field, and the field schemas are taken FROM
+  `sim-model/Persona` rather than restated, so the two cannot drift.
+  Three deliberate differences, each from ADR-0173 section 2(b):
+
+  * `:address` becomes `:residence`, a SUM. A places row cannot express
+    the absence of a residence at all, and `sim-model/Persona`'s own
+    `:address` is required and non-nilable -- widening it would move every `:registered` event
+    in every corpus for a fact that belongs to state-at-t and not to a
+    t0 sample. `:unknown` is the placeholder-registration case (section
+    2(d)), distinct from `:unhoused`: not knowing where somebody lives
+    is not the same fact as their having nowhere to live, and ruling E1
+    keeps that distinction in ground truth even though both render
+    PID-11 absent on the wire.
+  * `:identity` marks a placeholder registration -- an arrival landing
+    inside an open `:identity-unavailable` window.
+  * `:age` is NOT carried. It is a t0 derivation of `:dob` against a
+    fixed calendar anchor, so it is not state-at-t at all."
+  [:map
+   [:name (mu/get sim-model/Persona :name)]
+   [:sex (mu/get sim-model/Persona :sex)]
+   [:dob (mu/get sim-model/Persona :dob)]
+   [:phone (mu/get sim-model/Persona :phone)]
+   [:ssn (mu/get sim-model/Persona :ssn)]
+   [:payer (mu/get sim-model/Persona :payer)]
+   [:residence [:multi {:dispatch :status}
+                [:housed [:map
+                          [:status [:= :housed]]
+                          [:address (mu/get sim-model/Persona :address)]]]
+                [:unhoused [:map
+                            [:status [:= :unhoused]]
+                            [:last-known-address {:optional true}
+                             (mu/get sim-model/Persona :address)]]]
+                [:unknown [:map [:status [:= :unknown]]]]]]
+   [:identity [:enum :known :placeholder]]])
+
+(defn demographics-from-persona
+  "A patient's INITIAL state-at-t demographics, read off their t0
+  Persona. Every housed field copies straight across; `:address` becomes
+  a `:housed` residence; `:identity` is `:known`, because a patient with
+  a Persona is by definition not a placeholder (ADR-0173 section 2(d) is
+  what mints the `:placeholder` ones, in part 3).
+
+  nil in, nil out: `evolve :registered` is total over hand-authored logs
+  too, and a `:registered` event with no `:persona` at all already folds
+  to `:persona nil` today."
+  [persona]
+  (when persona
+    {:name (:name persona)
+     :sex (:sex persona)
+     :dob (:dob persona)
+     :phone (:phone persona)
+     :ssn (:ssn persona)
+     :payer (:payer persona)
+     :residence {:status :housed :address (:address persona)}
+     :identity :known}))
+
 (def PatientState
   "The engine's per-patient accumulator -- what folding `evolve` over a
   patient's own event subsequence produces (docs/patient-state-model.md
@@ -213,6 +277,13 @@
                                          [:placement [:enum :licensed :surge]]]]]
    [:attending {:optional true} [:maybe :string]]
    [:persona {:optional true} [:maybe sim-model/Persona]]
+   ;; ADR-0173 section 2(b) (arc 3a): state-at-t, seeded at :registered
+   ;; from :persona and folded on by the person stream's own siblings
+   ;; from part 3 on. `:persona` above is NOT mutated -- it stays the t0
+   ;; record, so all fourteen t0-only census sites are untouched and
+   ;; `registered-persona-is-schema-valid` keeps asserting exactly what
+   ;; it asserts today. Nothing READS this field yet.
+   [:demographics {:optional true} [:maybe Demographics]]
    [:admitted-at {:optional true} [:maybe :int]]
    [:discharged-at {:optional true} [:maybe :int]]
    [:conditions {:optional true} [:vector ConditionRecord]]
@@ -1247,8 +1318,15 @@
   (fn [_patient event] (:event event)))
 
 (defmethod evolve :registered
+  ;; ADR-0173 section 2(b): `:demographics` is seeded HERE, from the same
+  ;; Persona, and `:persona` keeps its t0 meaning untouched. Nothing
+  ;; reads `:demographics` yet -- no `:persona` reader is re-pointed at
+  ;; it, and the emitter's own lookup is still built from the log's
+  ;; `:persona` (arc 3a part 3 is where a reader arrives).
   [patient {:keys [persona]}]
-  (assoc patient :persona persona))
+  (assoc patient
+         :persona persona
+         :demographics (demographics-from-persona persona)))
 
 (defmethod evolve :admission
   [patient {:keys [location home-ward attending t conditions]}]

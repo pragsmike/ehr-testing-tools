@@ -24,7 +24,8 @@
             [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim-engine.order-profiles :as order-profiles]
             [ehrt.sim-check.check :as check]
-            [ehrt.kernel.interface :as result])
+            [ehrt.kernel.interface :as result]
+            [malli.core :as m])
   (:import [java.util Random]))
 
 (deftest same-seed-same-output
@@ -1431,6 +1432,91 @@
     (let [entry {:patient-id "PID-000000-deadbeef" :first-ordinal 3
                  :active-mrn "MRN000004" :placeholders #{"PID-000009-cafe"}}]
       (is (= entry (engine/person-entry {:person-index {"P-9" entry}} "P-9"))))))
+
+;; --- ADR-0173 section 2(b) (arc 3a, 2026-08-26): :demographics, seeded
+;; and read by nothing yet ------------------------------------------------
+;;
+;; `PatientState` gains the state-at-t map. It is seeded at `:registered`
+;; from that patient's own t0 Persona and READ nowhere in src: no
+;; `:persona` reader is re-pointed, the emitter still builds its lookup
+;; off the log's `:persona`, and `event-schema` is untouched (no wire
+;; change, no contract bump). So the only thing that can be gated today
+;; is the seeding itself, and the t0-record-stays-t0 law beside it.
+
+(deftest registered-seeds-demographics-from-the-persona-and-leaves-persona-alone
+  (testing "ADR-0173 2(b): every housed field copies across, `:address`
+            becomes a `:housed` residence, `:identity` is `:known`, and
+            `:age` is deliberately NOT carried (a t0 derivation of :dob
+            against a fixed anchor, not state-at-t)."
+    (let [persona (sim-model/persona (engine/stream 42 :patient 0) {})
+          state (engine/evolve (engine/initial-patient "PID-000000-deadbeef" "MRN000001")
+                               {:event :registered :t 0 :persona persona
+                                :active-mrn "MRN000001"
+                                :participants [{:patient-id "PID-000000-deadbeef" :role :subject}]})
+          demo (:demographics state)]
+      (is (= persona (:persona state))
+          "the t0 record was mutated -- ADR-0173 2(b) requires :persona untouched")
+      (is (= (select-keys persona [:name :sex :dob :phone :ssn :payer])
+             (select-keys demo [:name :sex :dob :phone :ssn :payer])))
+      (is (= {:status :housed :address (:address persona)} (:residence demo)))
+      (is (= :known (:identity demo)))
+      (is (nil? (:age demo)) ":age is a t0 derivation and does not belong to state-at-t")
+      (is (nil? (:address demo)) "the flat :address must not survive beside :residence")
+      (testing "the schema accepts what the seeding produces, and the whole
+                patient state still validates"
+        (is (m/validate engine/Demographics demo)
+            (str "seeded demographics fail Demographics: "
+                 (pr-str (m/explain engine/Demographics demo))))
+        (is (engine/valid-patient? state)
+            (str "the folded patient state fails PatientState: "
+                 (pr-str (m/explain engine/PatientState state)))))))
+  (testing "nil in, nil out -- `evolve :registered` stays total over a
+            hand-authored log whose :registered carries no persona"
+    (let [state (engine/evolve (engine/initial-patient "PID-1" "MRN000001")
+                               {:event :registered :t 0 :active-mrn "MRN000001"
+                                :participants [{:patient-id "PID-1" :role :subject}]})]
+      (is (nil? (:persona state)))
+      (is (nil? (:demographics state)))
+      (is (engine/valid-patient? state))))
+  (testing "every patient in a real run carries a valid state-at-t map,
+            and it is the seeding and nothing else"
+    (let [{:keys [ground-truth state-history]} (engine/run {:seed 42 :patients 5})
+          personas (into {} (comp (filter #(= :registered (:event %)))
+                                  (map (fn [ev] [(:patient-id (first (:participants ev))) (:persona ev)])))
+                         ground-truth)]
+      (testing "population is non-empty (R-empty-population-is-red)"
+        (is (= 5 (count personas))))
+      (doseq [[pid states] state-history]
+        (let [final (last states)]
+          (is (= (engine/demographics-from-persona (get personas pid)) (:demographics final))
+              (str pid ": state-at-t drifted from the seeding, but nothing folds onto it yet"))
+          (is (m/validate engine/Demographics (:demographics final))))))))
+
+(deftest demographics-schema-carries-the-residence-sum
+  (testing "ADR-0173 2(b): a places row cannot express \"no residence\", so
+            `:residence` is a SUM and all three arms validate -- the shape
+            part 3's :residence-loss and :residence-move siblings fold
+            onto, and the shape section 2(d)'s placeholder registration
+            needs for its :unknown."
+    (let [base (dissoc (engine/demographics-from-persona
+                        (sim-model/persona (engine/stream 7 :patient 0) {}))
+                       :residence)
+          addr {:street "702 Crestwood Ave" :city "Tucson" :state "AZ" :zip "85701"}]
+      (is (m/validate engine/Demographics (assoc base :residence {:status :housed :address addr})))
+      (is (m/validate engine/Demographics (assoc base :residence {:status :unhoused})))
+      (is (m/validate engine/Demographics
+                      (assoc base :residence {:status :unhoused :last-known-address addr})))
+      (is (m/validate engine/Demographics
+                      (assoc (assoc base :identity :placeholder)
+                             :residence {:status :unknown})))
+      (testing "and the sum is closed where it must be"
+        (is (not (m/validate engine/Demographics (assoc base :residence {:status :housed})))
+            "a :housed residence with no address validated -- the sum is not carrying its address")
+        (is (not (m/validate engine/Demographics (assoc base :residence {:status :nowhere})))
+            "an unknown :status validated -- the residence sum is not closed")
+        (is (not (m/validate engine/Demographics (assoc base :identity :made-up
+                                                        :residence {:status :unhoused})))
+            "an unknown :identity validated -- the identity enum is not closed")))))
 
 ;; --- GMF coverage Wave C (2026-08-02, ADR-0028, C6): the full engine/check
 ;; round trip for a real Death-bearing walk -- interpreter -> compile-
