@@ -60,7 +60,16 @@
        "        poly/sim-engine {:local/root \"" root "/components/sim-engine\"}\n"
        "        poly/sim-model {:local/root \"" root "/components/sim-model\"}\n"
        "        poly/patient-simulator {:local/root \"" root "/components/patient-simulator\"}\n"
-       "        poly/sim-emit-hl7 {:local/root \"" root "/components/sim-emit-hl7\"}}\n"
+       "        poly/sim-emit-hl7 {:local/root \"" root "/components/sim-emit-hl7\"}\n"
+       ;; ARC 3A PART 4: `demographic-fold`, the 36th root, goes through
+       ;; `ehrt.sim.run/run-command` rather than `engine/run`, and these
+       ;; three are its require closure. `bin/regression-oracle` carries
+       ;; the same three for the same reason -- two harnesses build this
+       ;; classpath by hand and BOTH had to learn it, which the
+       ;; integration tier is what caught.
+       "        poly/person-simulator {:local/root \"" root "/components/person-simulator\"}\n"
+       "        poly/sim-check {:local/root \"" root "/components/sim-check\"}\n"
+       "        poly/sim-emit-fhir {:local/root \"" root "/components/sim-emit-fhir\"}}\n"
        " :aliases {:oracle-run {:extra-paths [\"" root "/components/patient-simulator/test\"]}}}"))
 
 (defn- run-digest!
@@ -72,7 +81,7 @@
               :dir root)))
 
 (defn- engine-roots
-  "The 32 engine-layer roots, keyed by name. The other three are
+  "The 33 engine-layer roots, keyed by name. The other three are
   interpreter batches whose facts are a DIFFERENT vocabulary -- see the
   nested-`:event` hazard in `ehrt.sim-engine.event-schema`, which is
   exactly the mistake a naive tree-walk for `:event` makes."
@@ -141,8 +150,8 @@
           (is (= 36 (count edns))
               (str "36 roots today. A root added or removed lands here first. Found "
                    (count edns) "."))
-          (is (= 32 (count roots))
-              (str "32 engine-layer roots produce `{:ground-truth :hl7}`; the other three are "
+          (is (= 33 (count roots))
+              (str "33 engine-layer roots produce `{:ground-truth :hl7}`; the other three are "
                    "interpreter batches. Found " (count roots) ".")))
         (let [kinds (witnessed-event-kinds roots)
               types (witnessed-message-types roots)]
