@@ -720,6 +720,21 @@ consequence.
   written to do. Row 7's gate stays green because the residence sum
   lands as a new kind rather than as a nil `:address`. Rows 1, 2, 3,
   5, 8, 9, 10, 11 and 12 are untouched. Row 4 is ruling C.
+
+  **CORRECTED 2026-08-26, twice, both by the tree.** (a) The row did
+  NOT go red at the re-key (part 2, `2393b48`), and should not have:
+  split as ruling D1 requires, the re-key moved the lookup's SHAPE
+  while its VALUE was still the t0 Persona, so what the row STATES --
+  a delta folded onto patient state is invisible to every message --
+  survived the change that was supposed to falsify it. This bullet was
+  written assuming the re-key and the fold land together. (b) The
+  strike was therefore paid in PART 3, and paid by DELETING the gate
+  rather than watching it go red: with the fold landed the row's
+  substance is false by design, and a gate over a limitation that no
+  longer exists can only assert something untrue or something vacuous.
+  Its successor is a positive law, `demographics-at-answers-state-at-t-
+  test` in `sim-emit-hl7`. ADR-0172 section 4 carries the strike where
+  the row stood, and the surviving rows keep their numbers.
 * The person process owes one change: `:residence-loss`, a fifteenth
   kind. It is a `components/person-simulator/src` change riding an
   engine arc, and it moves that component's own charter table, its
@@ -741,6 +756,65 @@ consequence.
   such a birth is kept off the join roster so nobody housed can join
   it. One defensible reading, so the tree wins and this is the record
   (`rulings.md#R-stop-only-on-two-defensible-readings`).
+* **DEVIATIONS, execution session 2026-08-26 (part 3, the fold).** Five,
+  each with one defensible reading and so fix-forward with disclosure
+  (`rulings.md#R-stop-only-on-two-defensible-readings`).
+
+  1. **A REPEAT ARRIVAL QUEUES NO STEPS.** Section 2(a) reads *"the
+     second encounter's steps simply continue that patient's log"*. The
+     tree refuses: a second `:admission` for a patient whose status is
+     `:discharged` violates `check.clj`'s `admission-only-when-new`,
+     which is this project's single-encounter horizon (sim/ADR-0007
+     point 3) expressed as an invariant. Lifting that horizon is not an
+     arc-3a change. What a repeat arrival is FOR survives untouched --
+     the person resolves to the patient they already are, and every
+     later demographic event of theirs lands on that one patient. Its
+     `:patient`-stream draws are still taken, so consumption stays a
+     function of `:patients` alone.
+  2. **`:persons` IS A TWO-LAYER KEY, and section 2(a)'s block is the
+     CONFIG side.** `ehrt.sim.run`'s `:persons` is the authored
+     `{:count :years :identification :unhoused}` map; `engine/run`'s is
+     `{:population :personas :alive :events}`. Exactly the treatment
+     `:modules` already has (names there, loaded closures here), and
+     forced: the engine may not require the component that draws the
+     stream, so somebody has to translate, and `run` cannot be that
+     somebody.
+  3. **RULING C1's ORDERING NEEDED A THIRD PASS, and the cycle is
+     broken at the ALIVE FILTER.** As written, aliveness depends on
+     deaths, deaths depend on the person-to-arrival binding, and the
+     binding depends on aliveness. `ehrt.sim.run` therefore calls
+     `persons` TWICE: pass one with no compiled deaths, whose
+     `:person-death` events -- each person's OWN drawn death, a
+     function of nothing but their own `:person` stream -- become the
+     `:alive` map; `engine/person-plan` then answers the binding from
+     fixed data; and pass two runs with the real `:deaths`. What the
+     filter is conservative about is stated in that function's own
+     docstring: a person whose drawn death precedes an arrival is not
+     selectable for it even though binding them would have replaced
+     that death with a later compiled one. The direction the filter
+     exists to forbid is closed absolutely, because a compiled death is
+     by construction at or after the arrival that produced it.
+  4. **THE 1.2.0 -> 1.3.0 BUMP WAS NOT OWED.** Section 2(f) says
+     `classify-change` is what decides, and it does: against the frozen
+     1.2.0 baseline it returns `{:additive? true :breaking []}`, so the
+     policy's own rule is PATCH/none. The bump is taken anyway and
+     deliberately, because `:event-schema-version` is a consumer's only
+     handle on what a log they hold can contain, and a 1.3.0 log may
+     carry two kinds a 1.2.0-era consumer has never seen. The version
+     note in `event_schema.clj` carries the reasoning and the
+     validates-unchanged argument.
+  5. **THE TWO KINDS REACH GROUND TRUTH, NOT A NEW MESSAGE TYPE.**
+     Section 2 specifies the emitter's work as the re-key and nothing
+     more, and an ADT^A08 for `:demographic-update` (or an A31, or an
+     IN1 update for `:coverage-change`) is a message-type registration,
+     a control-id derivation, a derivability property and a
+     `witnessed-message-types` claim -- none of which this ADR
+     designs. What row 6's strike actually rests on is
+     `demographics-at`: every message a patient receives AFTER a delta
+     renders the changed values, gated by
+     `demographics-at-answers-state-at-t-test`. The A08 is a candidate
+     for a later arc, named here rather than assumed.
+
 * `rulings.md` is FROZEN (de-scaffold ruling, 2026-08-25). Nothing
   here becomes a rulings row; section 2(e)'s six invariants land as
   gates in arc 3a's own commits or not at all.

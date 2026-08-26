@@ -279,7 +279,17 @@
      (parser/create-field [(case (:sex persona) :female "F" :male "M")])
      (parser/create-field [])
      (parser/create-field [])
-     (xad-field (:address persona))
+     ;; ADR-0173 ruling E1: an ABSENT `:address` renders an EMPTY
+     ;; PID-11, not a five-empty-component XAD and not a sentinel. It
+     ;; reaches here only through `demographics-timeline`'s own fold,
+     ;; for a patient with nowhere to live; every persona this emitter
+     ;; has ever been handed carries one, so no existing message moves.
+     ;; A literal -- HOMELESS, UNDOMICILED, a shelter row -- is one
+     ;; site's local convention and belongs in a site profile, which is
+     ;; a seam this project already has.
+     (if (:address persona)
+       (xad-field (:address persona))
+       (parser/create-field []))
      (parser/create-field [])
      (parser/create-field [(:phone persona)]))))
 
@@ -303,46 +313,80 @@
   "The demographic state this emitter renders from, derived directly
   from the log's own events (sim/ADR-0012's own precedent: a stage's own
   state is recoverable by scanning the log, no second input needed).
-  Computed once per `emit`
-  call and threaded down to every segment builder that needs it, so PID
-  enrichment applies uniformly across every message type, not just
-  admission. Read ONLY through `demographics-at`.
+  Computed once per `emit` call and threaded down to every segment
+  builder that needs it, so PID enrichment applies uniformly across
+  every message type, not just admission. Read ONLY through
+  `demographics-at`.
 
-  The odd line wrap above is load-bearing: ADR-0172 limitations row 6
-  cites this docstring by a literal snippet that must occur exactly once
-  in this file, on one line (`every-charter-citation-resolves-test`).
+  `{patient-id [[t state] ...]}`, t-ascending, one entry per event that
+  MOVED that patient's demographics. `:registered` seeds it; ADR-0173
+  section 2(b)'s two kinds fold onto it.
 
-  ADR-0173 section 2(b) (arc 3a): this replaces `personas-by-patient-id`,
-  whose value was a patient's t0 Persona and nothing else. Demographics
-  are state-at-t -- an address changes, a payer changes, a name is
-  corrected -- so the LOOKUP is `(patient-id, t)` and no longer
-  patient-id alone. TODAY the fold is empty and every `t` answers with
-  the same t0 Persona, which is why this change is output-identical and
-  the emitter tier does not move a byte. Part 3 is where
-  `:demographic-update` and `:coverage-change` start folding onto it,
-  and the shape is already the shape that can carry them.
+  THE VALUE IS PERSONA-SHAPED, deliberately, and this is the one design
+  choice here worth stating. `ehrt.sim-engine.engine/Demographics` is the
+  ENGINE's state-at-t shape, and it carries a residence SUM where a
+  Persona carries an `:address`. This namespace may not depend on
+  sim-engine at all (`components/sim-emit-hl7` depends on
+  `components/sim-model` and nothing else, AGENTS.md's own dependency
+  constraint), and -- more to the point -- a site profile's Z-segment
+  templates bind `[:persona ...]` paths against this exact value
+  (`context-for-event`), so changing its SHAPE would silently break
+  every authored site profile in the field. So the fold writes back into
+  a Persona: `:address` is ABSENT, not nil-valued and not sentinel-
+  valued, for a patient who has nowhere to live. `pid-segment` renders
+  an absent address as an empty PID-11, which is ruling E1 on the wire.
 
-  ADR-0172 limitations row 6 -- `personas-are-keyed-by-patient-id-alone-
-  test` -- went red on exactly this change, which is what it was written
-  to do. It is re-pointed at the new shape rather than struck: the row is
-  STRUCK when the fold actually lands, in part 3."
+  ARC 3A PART 3 IS WHERE THE FOLD ARRIVED. Before it, this function
+  returned `{patient-id persona}` and every `t` answered with the t0
+  sample -- the shape ADR-0172 limitations row 6 was written about. That
+  row is STRUCK by this change, not repaired, and its gate is deleted:
+  a delta folded onto patient state is no longer invisible to a message."
   [ground-truth]
-  (into {}
-        (comp (filter #(= :registered (:event %)))
-              (map (fn [ev] [(:patient-id (first (:participants ev))) (:persona ev)])))
-        ground-truth))
+  (letfn [(seed [ev]
+            (let [persona (:persona ev)
+                  residence (:residence ev)]
+              (cond-> persona
+                (and persona residence (not= :housed (:status residence)))
+                (dissoc :address))))
+          (fold [state ev]
+            (case (:event ev)
+              :demographic-update
+              (case (:field ev)
+                :residence (let [address (:address (:value ev))]
+                             (if address (assoc state :address address) (dissoc state :address)))
+                :name (assoc state :name (:value ev))
+                :dob (assoc state :dob (:value ev))
+                state)
+              :coverage-change (assoc state :payer (:payer ev))
+              state))]
+    (reduce (fn [acc ev]
+              (let [patient-id (:patient-id (first (:participants ev)))]
+                (case (:event ev)
+                  :registered (assoc acc patient-id [[(:t ev) (seed ev)]])
+                  (:demographic-update :coverage-change)
+                  (if-let [timeline (get acc patient-id)]
+                    (assoc acc patient-id
+                           (conj timeline [(:t ev) (fold (second (peek timeline)) ev)]))
+                    acc)
+                  acc)))
+            {}
+            ground-truth)))
 
 (defn- demographics-at
   "One patient's demographic state AS IT STOOD AT `t` -- the single
   lookup shape every PID-rendering site in this namespace goes through.
 
-  `_t` is unused TODAY and the parameter is not decoration: it is the
-  key that makes the call sites correct in advance of the fold. Every
-  caller already had the event in hand, so threading it costs no
-  signature change beyond the rename, and part 3 fills the body in one
-  place instead of re-visiting twelve."
-  [demographics patient-id _t]
-  (get demographics patient-id))
+  The LAST entry at or before `t`, which is what makes a message render
+  the demographics the patient had when the event happened rather than
+  the ones they ended the run with. A patient with no `:registered` in
+  this log at all -- a hand-built fixture, a sliced log -- answers nil,
+  and `pid-segment` falls back to its pre-M4 three-field segment."
+  [demographics patient-id t]
+  (when-let [timeline (get demographics patient-id)]
+    (loop [entries timeline state nil]
+      (if-let [[et estate] (first entries)]
+        (if (<= et t) (recur (rest entries) estate) state)
+        state))))
 
 (defn- location-field
   "Renders a location map as ward^^bed^facility (PV1-3/PV1-6's shared

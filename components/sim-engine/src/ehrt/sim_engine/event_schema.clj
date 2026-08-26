@@ -68,7 +68,8 @@
             [clojure.set :as set]
             [clojure.pprint :as pp]
             [clojure.walk]
-            [malli.core :as m]))
+            [malli.core :as m]
+            [malli.util :as mu]))
 
 (def schema-version
   "The event contract's own version, semver-shaped, stamped into every
@@ -127,8 +128,36 @@
   has no consumer outside this repository. Note also that a 1.1.0-era
   log VALIDATES UNCHANGED against 1.2.0: `[:maybe ...]` is retained, so
   only the writer changed and the breaking direction is
-  producer-side."
-  "1.2.0")
+  producer-side.
+
+  1.3.0 (2026-08-26, ADR-0173 section 2(f), arc 3a part 3) is the
+  demographic fold: TWO new kinds, `:demographic-update` and
+  `:coverage-change`, plus one new OPTIONAL key, `:residence`, on
+  `:registered`. `classify-change` calls all three ADDITIVE and is
+  what says so rather than the ADR -- a new kind and a new optional key
+  are the two shapes its own docstring names as non-breaking, and
+  running it against the frozen 1.2.0 baseline returns
+  `{:additive? true :breaking []}` (`event-schema-test`'s own
+  assertion). So NO bump was OWED; this one is TAKEN, deliberately, and
+  the reason is that `:event-schema-version` is a consumer's only
+  handle on what a log it is holding can contain. A 1.2.0 log and a
+  1.3.0 log are not interchangeable in the direction that matters to a
+  reader -- a 1.3.0 log may carry two kinds a 1.2.0-era consumer has
+  never seen and will dispatch on `:event` for. The policy above makes
+  the bump optional for an additive change; it does not make it wrong,
+  and MINOR is the semver level for new, backward-compatible
+  functionality.
+
+  A 1.2.0-ERA LOG VALIDATES UNCHANGED AGAINST 1.3.0, and here is how:
+  the two kinds are new BRANCHES of the `:event` multi, so no existing
+  branch's key set, optionality or value schema moves at all, and
+  `:residence` is `{:optional true}` on `:registered`, so a
+  `:registered` event that omits it validates exactly as before. The
+  direction that breaks is the other one -- a 1.2.0 schema meeting a
+  1.3.0 log fails to dispatch on two kinds -- which is what a version
+  is FOR. MADE UNDER THE WAIVER, disclosed: no deprecation release was
+  run, and none is owed here in any case, since nothing was removed."
+  "1.3.0")
 
 ;; --- shared leaf schemas --------------------------------------------------
 ;;
@@ -217,6 +246,43 @@
    [:to Location]
    [:attending :string]])
 
+(def Residence
+  "WHERE A PATIENT LIVES, AS A SUM (ADR-0173 section 2(b), arc 3a). A
+  places row cannot express the absence of a residence at all, and
+  `sim-model/Persona`'s own `:address` is required and non-nilable --
+  widening it would move every `:registered` event in every corpus for
+  a fact that belongs to state-at-t and not to a t0 sample. So the
+  distinction lives here, in a three-armed sum, and NOT in the Persona.
+
+  `:unhoused` and `:unknown` are deliberately different facts. Not
+  knowing where somebody lives is not the same as their having nowhere
+  to live, and ruling E1 keeps the distinction in GROUND TRUTH even
+  though the wire renders PID-11 absent for both: HL7 v2 offers no code
+  for either (Table 0190 has no no-fixed-address type, and the v3
+  `Homeless` value set is a LIVING ARRANGEMENT concept, not an
+  address), so any literal would be one site's local convention, which
+  belongs in a site profile and not in the emitter's body.
+
+  `:last-known-address` is optional on the `:unhoused` arm because a
+  person can enter a run with no residence at all (`:at-t0`), having
+  lost nothing."
+  [:multi {:dispatch :status}
+   [:housed [:map {:closed true}
+             [:status [:= :housed]]
+             [:address (mu/get sim-model/Persona :address)]]]
+   [:unhoused [:map {:closed true}
+               [:status [:= :unhoused]]
+               [:last-known-address {:optional true} (mu/get sim-model/Persona :address)]]]
+   [:unknown [:map {:closed true} [:status [:= :unknown]]]]])
+
+(def DemographicValue
+  "What a `:demographic-update` carries as its `:value` (and, when it
+  reports one, its `:prior-value`): whichever of the three
+  `engine/Demographics` fields a person event can move. The field is
+  named alongside it, so a consumer dispatches on `:field` rather than
+  on the value's own shape."
+  [:or Residence (mu/get sim-model/Persona :name) (mu/get sim-model/Persona :dob)])
+
 (def AttemptedStep
   "The pathway-IR step a `:step-rejected` event declined to perform,
   carried verbatim. Deliberately OPEN and typed only on `:type`: it is
@@ -260,8 +326,10 @@
         entries))
 
 (def Event
-  "One ground-truth event. Dispatches on `:event`; the 21 kinds below
-  are the CLOSED vocabulary, source and census agreed.
+  "One ground-truth event. Dispatches on `:event`; the 23 kinds below
+  are the CLOSED vocabulary. Twenty-one are the census's own, source
+  and corpora agreed; two more landed with the demographic fold
+  (1.3.0, ADR-0173) and are declared here beside their producers.
 
   `:t` monotonicity is deliberately NOT expressed here. It is a
   RUN-level property -- true within a run, meaningless across a
@@ -279,7 +347,13 @@
            [:persona sim-model/Persona]
            ;; Present only when the patient's compiled module produced
            ;; registration facts -- `engine.clj`'s own `cond->`.
-           [:pre-horizon-facts {:optional true} [:vector PreHorizonFact]])]
+           [:pre-horizon-facts {:optional true} [:vector PreHorizonFact]]
+           ;; 1.3.0 (ADR-0173 ruling E1, arc 3a part 3): present ONLY for
+           ;; an arrival bound to a person who is not HOUSED at their own
+           ;; registration instant. Absent -- every event of every run
+           ;; with no `:persons` key -- means housed at the Persona's own
+           ;; `:address`, which is what `:persona` has always meant.
+           [:residence {:optional true} Residence])]
 
     [:admission
      (kind :admission
@@ -525,7 +599,53 @@
            ;; churn seeds (census S-4), and a schema narrowed to what
            ;; happened to occur would reject a legal log.
            [:reason (into [:enum] (sort engine/documented-step-rejection-reasons))]
-           [:attempted-step AttemptedStep])]]))
+           [:attempted-step AttemptedStep])]
+
+    ;; --- 1.3.0: the two kinds the person stream mints ------------------
+    ;;
+    ;; ADR-0173 section 2(b). The person process has FIFTEEN event kinds;
+    ;; this vocabulary grows by exactly TWO, and the gap is the design.
+    ;; Person events are the engine's INPUT, in the same relation to
+    ;; ground truth that pathway IR and a compiled trajectory already
+    ;; have -- they carry no `:patient-id` and could not satisfy
+    ;; `every-event-has-participants` or `participant-ids-exist-in-run`
+    ;; without inventing a second participant vocabulary. Eleven of the
+    ;; fifteen mint nothing at all; four fold onto these two.
+
+    [:demographic-update
+     (kind :demographic-update
+           {:doc "One demographic fact about a patient changed between encounters: an address, a legal name, a corrected date of birth."
+            :transition "Writes one field of :demographics; :persona (the t0 sample) is untouched."}
+           [:active-mrn :string]
+           ;; Which person-side fact caused it. `:identity-fill` is
+           ;; declared and not yet produced: arc 3a part 4's
+           ;; identification flow mints it, and declaring it here would
+           ;; be a schema that describes a future -- so it is NOT
+           ;; declared, and part 4 adds it with its producer.
+           [:cause [:enum :residence-move :residence-loss :identity-correction]]
+           [:field [:enum :residence :name :dob]]
+           [:value DemographicValue]
+           ;; The folded state immediately before this event. OPTIONAL
+           ;; because a hand-authored log may carry none, and because a
+           ;; correction of a field never previously set has no prior.
+           ;; `check.clj`'s `demographic-update-reports-a-real-change` is
+           ;; what makes it honest when it IS present.
+           [:prior-value {:optional true} DemographicValue]
+           ;; A PROVENANCE STAMP, not a log reference: the person
+           ;; stream's own "<person-id>#<n>" string. `check.clj`'s
+           ;; `person-scoped-provenance-is-a-stamp-not-a-reference` is
+           ;; the gate that keeps it one.
+           [:person-event-id :string])]
+
+    [:coverage-change
+     (kind :coverage-change
+           {:doc "A patient's insurance coverage changed: a new payer, with the payer they held before it."
+            :transition "Writes :payer in :demographics; :persona (the t0 sample) is untouched."}
+           [:active-mrn :string]
+           [:cause [:enum :employment :age-65 :loss :eligibility]]
+           [:payer (mu/get sim-model/Persona :payer)]
+           [:prior-payer {:optional true} (mu/get sim-model/Persona :payer)]
+           [:person-event-id :string])]]))
 
 (def GroundTruth
   "A whole run's log. `:t` monotonicity is asserted separately, by

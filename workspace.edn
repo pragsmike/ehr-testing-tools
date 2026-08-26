@@ -18,15 +18,16 @@
                            ;; one dev REPL, oracle no exception), not a
                            ;; missed wiring. History: ADR-0050, register
                            ;; row A-1.
-                           ;; person-simulator, same class, for a
-                           ;; DIFFERENT and temporary reason (ADR-0172
-                           ;; ruling F1): arc 2b lands the component
-                           ;; ALONE and the engine does not call it, so
-                           ;; nothing in the workspace requires it and
-                           ;; nothing may until arc 3's fold. Strike
-                           ;; this entry the day that fold lands -- the
-                           ;; real :require edge replaces it.
-                           :necessary ["oracle" "person-simulator"]}
+                           ;; person-simulator's entry here was STRUCK
+                           ;; 2026-08-26 (arc 3a part 3, ADR-0173
+                           ;; section 2(a)), exactly as its own comment
+                           ;; instructed: the fold landed, `ehrt.sim.run`
+                           ;; requires `ehrt.person-simulator.interface`
+                           ;; for real, and the real edge replaced the
+                           ;; override. ADR-0172 ruling F1 -- "the
+                           ;; component lands ALONE" -- is lifted with
+                           ;; it.
+                           :necessary ["oracle"]}
             ;; :necessary overrides warning 207 (poly's own brick-graph
             ;; reachability check). Full re-derivation narrative (five
             ;; dated events) relocated verbatim to ADR-0050 (alignment
@@ -36,14 +37,13 @@
             ;; current entry below is here.
             "ehrt-cli" {:alias "ehrt-cli"}
             "conformance" {:alias "conformance"
-                           ;; person-simulator: composed here so its own
-                           ;; tests EXECUTE, not because anything in this
-                           ;; project requires it (ADR-0172 ruling F1 --
-                           ;; nothing may, until arc 3's fold). See
-                           ;; projects/conformance/deps.edn's own comment
-                           ;; for the probe that proved a dev-only brick's
-                           ;; tests never run.
-                           :necessary ["docs-tooling" "judge-fhir-official" "judge-v2-nist"
-                                       "person-simulator"]}
+                           ;; person-simulator's entry here was STRUCK
+                           ;; 2026-08-26 (arc 3a part 3): this project
+                           ;; composes `poly/sim`, whose src now requires
+                           ;; `ehrt.person-simulator.interface`, so the
+                           ;; brick is reachable on its own and the
+                           ;; override is no longer what keeps its tests
+                           ;; executing.
+                           :necessary ["docs-tooling" "judge-fhir-official" "judge-v2-nist"]}
             "integration" {:alias "integration"
                            :necessary ["judge-fhir-official"]}}}

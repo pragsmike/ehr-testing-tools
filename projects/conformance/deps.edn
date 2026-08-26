@@ -66,21 +66,16 @@
         ;; poly/patient-simulator (sim split S2): sim's own src now requires
         ;; ehrt.patient-simulator.interface directly.
         poly/patient-simulator {:local/root "../../components/patient-simulator"}
-        ;; poly/person-simulator (traffic-scale arc 2b, ADR-0172): NOT
-        ;; here because anything in this project requires it -- nothing
-        ;; does, and ruling F1 is that nothing may until arc 3's fold.
-        ;; It is here so its OWN tests EXECUTE. `poly test` runs a
-        ;; brick's tests in the projects that COMPOSE it, and the
-        ;; development project is not one of those: a brick present
-        ;; only in root `deps.edn`'s `:dev`/`:test` aliases has its
-        ;; test namespaces on the REPL classpath and never runs them
-        ;; under `make test`. Proven, not assumed -- a deliberately
-        ;; failing probe test under `components/person-simulator/test`
-        ;; left `clojure -M:poly test project:development` at exit 0
-        ;; (arc 2b, 2026-08-25). This is review 4's own W-1 finding
-        ;; ("`make test` skips a tier, so gates can land unexecuted")
-        ;; in a second shape. Strike this entry only when a real
-        ;; :require edge composes the brick here on its own.
+        ;; poly/person-simulator: here since arc 2b so its OWN tests
+        ;; EXECUTE (`poly test` runs a brick's tests in the projects that
+        ;; COMPOSE it, and the development project is not one of those --
+        ;; proven by a deliberately failing probe that left `clojure
+        ;; -M:poly test project:development` at exit 0, arc 2b
+        ;; 2026-08-25, review 4's own W-1 finding in a second shape).
+        ;; SINCE ARC 3A PART 3 (ADR-0173) it is also a real `:require`
+        ;; edge: `ehrt.sim.run` builds the person stream, and this
+        ;; project composes `poly/sim`. Both reasons now hold, so the
+        ;; entry stands on its own.
         poly/person-simulator {:local/root "../../components/person-simulator"}
         ;; poly/sim-emit-hl7 (sim split S3 / Wave D stage D0): sim's own
         ;; src now requires ehrt.sim-emit-hl7.interface directly.

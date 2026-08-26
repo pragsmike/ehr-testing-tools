@@ -776,6 +776,202 @@
       {:invariant :care-plan-end-references-existing-start-and-follows-it-in-time
        :patient-id patient-id :at (:t event)})))
 
+;; --- arc 3a part 3: the person-fold family (ADR-0173 section 2(e)) --------
+;;
+;; SIX, and they land TOGETHER even though only three of them can fire
+;; on anything this arc's own commits produce. Three are over the
+;; identification flow, which is part 4's -- and a gate written after
+;; the code it constrains is a gate written to agree with it. Each of
+;; the three is proved red by MUTATION instead (`ehrt.sim-check.person-
+;; invariants-test`), which is the only honest proof available for an
+;; invariant whose producer has not landed.
+;;
+;; The first is `medication-end-references-existing-order-and-follows-
+;; it-in-time`'s own body, verbatim in shape: resolve an index into this
+;; same log, require the right kind, the same patient, and a `:t` at or
+;; before the referring event's. The pre-horizon escape is inherited
+;; too, and for the same reason it exists there: a reference that is
+;; ABSENT is not a reference that DANGLES.
+
+(defn- registrations-by-patient
+  "patient-id -> that patient's own `:registered` event. One scan, shared
+  by the three identification invariants below, none of which can say
+  anything without it."
+  [ground-truth]
+  (into {}
+        (keep (fn [ev]
+                (when (= :registered (:event ev))
+                  [(:patient-id (first (:participants ev))) ev])))
+        ground-truth))
+
+(defn identity-fill-references-its-placeholder-registration
+  "Every `:demographic-update` with `:cause :identity-fill` carries a
+  `:placeholder-event-id` indexing a real `:registered` event in this
+  same log, for the SAME patient, carrying `:identity :placeholder`, at
+  or before the fill's own `:t`.
+
+  Verbatim the `:medication-end` shape, one level of vocabulary across.
+  ADR-0173 section 2(d) is what mints the reference: an arrival landing
+  inside an open identity-unavailable window registers on a FRESH
+  patient-id and MRN with a placeholder name and no address, and the
+  window's close fills every field in. `:identity-fill` is arc 3a part
+  4's cause, declared by nothing this arc produces -- so this invariant
+  is born green over a corpus with no fills in it, and its own red is a
+  mutation."
+  [ground-truth]
+  (let [indexed (vec ground-truth)]
+    (for [event ground-truth
+          :when (and (= :demographic-update (:event event))
+                     (= :identity-fill (:cause event)))
+          :let [target (get indexed (:placeholder-event-id event))
+                patient-id (:patient-id (first (:participants event)))]
+          :when (or (nil? target)
+                    (not= :registered (:event target))
+                    (not= :placeholder (:identity target))
+                    (not (some #(= patient-id (:patient-id %)) (:participants target)))
+                    (> (:t target) (:t event)))]
+      {:invariant :identity-fill-references-its-placeholder-registration
+       :patient-id patient-id :at (:t event)})))
+
+(defn identification-merge-survivor-is-the-persons-prior-patient
+  "A `:merge` with `:cause :identification` names as `:merged` a patient
+  whose own `:registered` carries `:identity :placeholder`, and as
+  `:survivor` a patient whose own `:registered` carries the SAME
+  `:person-id`.
+
+  The merge itself composes with churn's and does not duplicate it --
+  same kind, same participant roles, same MRN payload, so
+  `merge-survivor-absorbs-merged-mrns`, `no-events-after-merged-
+  terminal` and the run loop's own `:merged` short-circuit all apply
+  unchanged. `:cause :identification` is the ONE thing that
+  distinguishes it, and this invariant is what makes that marker mean
+  something. Arc 3a part 4 mints both `:cause :identification` and the
+  `:person-id` stamp this reads; a churn merge carries neither and is
+  not examined."
+  [ground-truth]
+  (let [registrations (registrations-by-patient ground-truth)]
+    (for [event ground-truth
+          :when (and (= :merge (:event event)) (= :identification (:cause event)))
+          :let [by-role (into {} (map (juxt :role :patient-id)) (:participants event))
+                merged (get registrations (:merged by-role))
+                survivor (get registrations (:survivor by-role))]
+          :when (or (nil? merged) (nil? survivor)
+                    (not= :placeholder (:identity merged))
+                    (nil? (:person-id merged))
+                    (not= (:person-id merged) (:person-id survivor)))]
+      {:invariant :identification-merge-survivor-is-the-persons-prior-patient
+       :patient-id (:merged by-role) :at (:t event)})))
+
+(defn every-placeholder-registration-is-resolved-or-still-open
+  "A placeholder registration either gets its fill or its identification
+  merge, or the run ENDED before its window was due to close.
+
+  NEVER \"or not at all\": a placeholder left dangling by a horizon is
+  real traffic -- an unidentified patient whose identity nobody had
+  established by the time the simulated feed stopped -- and an invariant
+  that forbade it would be wrong about the world rather than about the
+  log. `:window-close-t` is what carries the second clause; part 4's
+  placeholder registration mints it, and a placeholder carrying none
+  cannot be judged either way, so it is left alone."
+  [ground-truth]
+  (let [last-t (:t (last ground-truth))
+        resolved (into #{}
+                       (concat
+                        (for [ev ground-truth
+                              :when (and (= :demographic-update (:event ev))
+                                         (= :identity-fill (:cause ev)))]
+                          (:patient-id (first (:participants ev))))
+                        (for [ev ground-truth
+                              :when (and (= :merge (:event ev)) (= :identification (:cause ev)))
+                              p (:participants ev)
+                              :when (= :merged (:role p))]
+                          (:patient-id p))))]
+    (for [ev ground-truth
+          :when (and (= :registered (:event ev)) (= :placeholder (:identity ev)))
+          :let [patient-id (:patient-id (first (:participants ev)))
+                close-t (:window-close-t ev)]
+          :when (and (not (resolved patient-id))
+                     (some? close-t) (some? last-t) (<= close-t last-t))]
+      {:invariant :every-placeholder-registration-is-resolved-or-still-open
+       :patient-id patient-id :at (:t ev)})))
+
+(defn demographic-update-reports-a-real-change
+  "The prior values a demographic event carries equal the folded state
+  IMMEDIATELY BEFORE it, and differ from the values it reports.
+
+  Arc 2b's own lesson promoted from the person side to the wire side --
+  *an event that reports no change is not an event* (`b4f1115`). A
+  `:demographic-update` whose `:value` equals its `:prior-value` renders
+  an A08 that changes no PID field, which is traffic with no message in
+  it; and a `:prior-value` that disagrees with the fold is a claim about
+  this patient's history that the log itself contradicts.
+
+  `:coverage-change` is the SAME law on `:payer` and is checked here
+  rather than in a seventh invariant nobody named: one kind reports a
+  demographic change and the other an insurance change, and the honesty
+  obligation does not know the difference.
+
+  A hand-authored event carrying no prior at all is not examined for the
+  first half -- `:prior-value`/`:prior-payer` are `{:optional true}` in
+  the contract, and a correction of a field never previously set has no
+  prior to report."
+  [ground-truth]
+  (for [{:keys [event before patient-id]} (engine/replay ground-truth)
+        :let [[prior-key value-key field]
+              (case (:event event)
+                :demographic-update [:prior-value :value (:field event)]
+                :coverage-change [:prior-payer :payer :payer]
+                nil)]
+        :when (and field
+                   (or (= (get event prior-key) (get event value-key))
+                       (and (contains? event prior-key)
+                            (some? (:demographics before))
+                            (not= (get event prior-key)
+                                  (get (:demographics before) field)))))]
+    {:invariant :demographic-update-reports-a-real-change
+     :patient-id patient-id :at (:t event)}))
+
+(defn no-demographic-event-after-a-patient-expires
+  "No `:demographic-update`, `:coverage-change` or `:registered` for a
+  patient whose state is already `:expired`.
+
+  ADR-0173 ruling C1's behavioural half. The person process outlives the
+  patient by design -- its horizon is years and a run's is hours -- so
+  the fold has to stop somewhere, and a patient the log has already
+  discharged as expired is where. It is also the gate on the arrival
+  candidate set: a dead person is not selectable, so a `:registered`
+  after an expiry is the one shape that would prove the alive-filter had
+  stopped working."
+  [ground-truth]
+  (for [{:keys [event before patient-id]} (engine/replay ground-truth)
+        :when (and (#{:demographic-update :coverage-change :registered} (:event event))
+                   (= :expired (:status before)))]
+    {:invariant :no-demographic-event-after-a-patient-expires
+     :patient-id patient-id :at (:t event)}))
+
+(defn person-scoped-provenance-is-a-stamp-not-a-reference
+  "`:person-event-id` is a STAMP -- the person stream's own
+  `\"<person-id>#<n>\"` string -- and never a log index.
+
+  The distinction is load-bearing and this catalog is where it is kept.
+  Every OTHER `-event-id` key in this log (`:order-event-id`,
+  `:start-event-id`, `:placeholder-event-id`) IS a log index, resolved
+  by `nth` into the same vector, and three invariants above do exactly
+  that. `:person-event-id` cannot be: person events are not log events,
+  so resolving it would be a dangling reference BY CONSTRUCTION rather
+  than by accident.
+
+  Born green, and red the day someone mints an integer here -- which is
+  the only way an invariant could come to `nth` it. A string is not
+  indexable, so the type is the guard, and asserting the type is
+  asserting that no invariant in this catalog can treat it as an index."
+  [ground-truth]
+  (for [event ground-truth
+        :when (and (contains? event :person-event-id)
+                   (not (string? (:person-event-id event))))]
+    {:invariant :person-scoped-provenance-is-a-stamp-not-a-reference
+     :patient-id (:patient-id (first (:participants event))) :at (:t event)}))
+
 ;; --- M4: Persona (docs/sim-theory.edn's :persona stage) -------------------
 
 (defn registered-is-every-patients-first-event
@@ -831,7 +1027,18 @@
    ;; adjacent -- the reason the catalog is documented as being in
    ;; reporting order.
    #'care-plan-end-references-existing-start-and-follows-it-in-time
-   #'expired-patient-retains-location])
+   #'expired-patient-retains-location
+   ;; ADR-0173 section 2(e) (arc 3a part 3): the person-fold family, six,
+   ;; registered together and in the order the ADR tables them. Three
+   ;; are over part 4's identification flow and fire on nothing this arc
+   ;; produces -- they land now because a gate written after its
+   ;; producer is a gate written to agree with it.
+   #'identity-fill-references-its-placeholder-registration
+   #'identification-merge-survivor-is-the-persons-prior-patient
+   #'every-placeholder-registration-is-resolved-or-still-open
+   #'demographic-update-reports-a-real-change
+   #'no-demographic-event-after-a-patient-expires
+   #'person-scoped-provenance-is-a-stamp-not-a-reference])
 
 (def facility-catalog
   "Invariants that need the facility config, not just the log (checked

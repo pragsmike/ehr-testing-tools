@@ -116,12 +116,31 @@
            (and resolved-modules (not (result/ok? resolved-modules)))
            resolved-modules
 
+           (and (contains? opts :persons) (not (run/valid-persons-config? (:persons opts))))
+           (result/error :invalid-persons
+                         {:key :persons
+                          :value (:persons opts)
+                          :expected "{:count <positive int> :years <positive int, optional> ...}"})
+
            :else
            (let [reference-date (or reference-date emit-hl7/default-reference-date)
                  utc-offset (or utc-offset emit-hl7/default-utc-offset)
                  engine-opts (cond-> (merge (select-keys opts engine/config-keys)
                                             {:seed seed :churn-profile (run/effective-churn-profile opts)})
                                resolved-modules (assoc :modules (:payload resolved-modules)))
+                 ;; ADR-0173 section 2(a) (arc 3a part 3): `:persons` is
+                 ;; config-facing here and engine-facing there, the same
+                 ;; two-layer key `:modules` already is -- so this
+                 ;; projection translates it through `run/engine-persons`
+                 ;; rather than forwarding the authored map, which the
+                 ;; engine would refuse as `:invalid-persons`. Same run,
+                 ;; same config surface, same translation: this namespace
+                 ;; is a PROJECTION over `run-command`'s own run and
+                 ;; would stop being one the moment the two dialects
+                 ;; diverged.
+                 engine-opts (if (:persons engine-opts)
+                               (assoc engine-opts :persons (run/engine-persons engine-opts))
+                               engine-opts)
                  engine-result (engine-run-fn engine-opts)
                  {:keys [ground-truth providers exhausted]} engine-result]
              (cond

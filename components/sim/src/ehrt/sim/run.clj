@@ -33,6 +33,7 @@
             [ehrt.sim-emit-hl7.interface :as emit-hl7]
             [ehrt.sim-emit-fhir.interface :as emit-fhir]
             [ehrt.patient-simulator.interface :as patient-simulator]
+            [ehrt.person-simulator.interface :as person-simulator]
             [ehrt.sim.manifest :as manifest]
             [ehrt.sim-model.interface :as sim-model]))
 
@@ -89,6 +90,119 @@
                         (conj acc (cond-> closure (seq ia) (assoc :initial-attributes ia)))))
                (result/error :module-load-failed
                              {:module module-name :category (:category loaded) :payload (:payload loaded)})))))))))
+
+;; --- arc 3a part 3: `:persons`, config-facing -> engine-facing ------------
+;;
+;; ADR-0173 section 2(a). `ehrt.sim-engine.engine/run` does not require
+;; the person component and CANNOT: that component depends on
+;; sim-engine's stream-partition surface, and the reverse edge would be
+;; a cycle `clojure -M:poly check` refuses (ADR-0172 limitations row
+;; 10). So the person events reach the engine as DATA, and THIS
+;; namespace -- which may require both -- is where they are built. It is
+;; exactly the layering `:modules` already follows: names here, loaded
+;; closures there, one translation step in between.
+;;
+;; ADR-0172 ruling F1 ("the component lands ALONE: nothing in this
+;; workspace calls it, and nothing may until arc 3's fold") is LIFTED
+;; here, by a caller that is not a sim-engine namespace. Row 10 stays
+;; green verbatim, both halves.
+
+(def default-person-years
+  "How many whole years the person walk covers when `:persons` names no
+  `:years`. Ten, so a default run's people actually move house, change
+  jobs and change payers at the rates the process draws -- a one-year
+  walk over a handful of people produces almost nothing, and a knob
+  whose default produces nothing is a knob that ships untested."
+  10)
+
+(defn- person-id-for
+  "The person pool's own id space, and deliberately NOT the patient id
+  space: a person is not a patient until an arrival binds them to one,
+  and two id spaces that look alike would invite a reader to join them
+  by string equality."
+  [i]
+  (format "PERSON-%06d" i))
+
+(defn- person-walk-config
+  "The person process's own config, built from `:persons`' authored map
+  plus whatever `:persona-config` this run already carries. The payer
+  pools are read off `:persona-config` rather than named twice: a run's
+  people and its patients draw coverage from ONE pool set, and letting
+  them diverge would produce a corpus whose registrations and whose
+  coverage changes disagree about which payers exist.
+
+  nil-valued keys are dropped, not passed: the process reads
+  `:unhoused` through a defaulting `get-in`, so an explicit nil would
+  override its own default with zero."
+  [{:keys [persons persona-config]} population]
+  (let [{:keys [years identification unhoused]} persons
+        pc (or persona-config {})]
+    (into {} (remove (comp nil? val))
+          {:t0 0
+           :years (or years default-person-years)
+           :population population
+           :persona pc
+           :payers-under-65 (:payers-under-65 pc)
+           :payers-65-plus (:payers-65-plus pc)
+           :identification identification
+           :unhoused unhoused})))
+
+(defn valid-persons-config?
+  "Whether `:persons`' authored value is well-formed: a map with a
+  positive `:count`, and a positive `:years` if it names one."
+  [persons]
+  (and (map? persons)
+       (pos-int? (:count persons))
+       (or (nil? (:years persons)) (pos-int? (:years persons)))))
+
+(defn engine-persons
+  "`:persons`, translated: the authored `{:count :years :identification
+  :unhoused}` map becomes the `{:population :personas :alive :events}`
+  value `ehrt.sim-engine.engine/run` takes.
+
+  TWO CALLS TO `persons`, AND THE REASON IS AN ORDERING ONE. ADR-0173
+  ruling C1 gives the person process the COMPILED trajectory's death
+  instant as a t0 parameter, keyed by person -- so the deaths cannot be
+  computed until the person-to-arrival binding is known, and the binding
+  is a `:world`-family draw taken inside the run's own pre-loop over the
+  persons ALIVE at each arrival instant (ruling A1). Written naively
+  that is a cycle: aliveness depends on deaths, deaths depend on the
+  binding, the binding depends on aliveness.
+
+  It is broken at the ALIVE FILTER, and the break is disclosed rather
+  than hidden. Pass 1 runs with no compiled deaths at all, and its
+  `:person-death` events are what `:alive` carries -- each person's OWN
+  drawn death, which depends on nothing but their own `:person` stream.
+  The binding is then a function of fixed data, `engine/person-plan`
+  answers it, the compiled deaths follow, and pass 2 produces the stream
+  the engine actually folds. Both passes draw from freshly derived
+  streams, so the second is not a continuation of the first and nothing
+  is consumed twice.
+
+  What the filter is CONSERVATIVE about, said plainly: a person whose
+  own drawn death precedes an arrival is not selectable for it, even
+  though binding them would have replaced that death with a later
+  compiled one. That direction is the safe one. The direction the filter
+  exists to forbid -- an arrival landing on somebody the ground truth
+  already says is dead -- is closed absolutely, because a compiled death
+  is by construction at or after the arrival that produced it."
+  [engine-opts]
+  (let [{:keys [seed persons persona-config]} engine-opts
+        population (vec (for [i (range (:count persons))]
+                          {:person-id (person-id-for i) :id-tag (inc i)}))
+        personas (into {} (for [{:keys [person-id id-tag]} population]
+                            [person-id (person-simulator/initial-persona
+                                        person-id
+                                        {:rng (engine/stream seed :person id-tag)
+                                         :t 0 :master seed :id-tag id-tag
+                                         :persona (or persona-config {})})]))
+        walk (person-walk-config engine-opts population)
+        pass-1 (person-simulator/persons (assoc walk :deaths {}) {:master seed})
+        alive (engine/person-deaths pass-1)
+        provisional {:population population :personas personas :alive alive :events pass-1}
+        plan (engine/person-plan (assoc engine-opts :persons provisional))
+        pass-2 (person-simulator/persons (assoc walk :deaths (:deaths plan)) {:master seed})]
+    (assoc provisional :events pass-2)))
 
 ;; --- M6 Task 0: config-reachable :self-check-failed, recategorized -------
 ;; The tools full-capability session (`tools/ADR-0015`, this project's
@@ -383,16 +497,41 @@
            (and resolved-modules (not (result/ok? resolved-modules)))
            resolved-modules
 
+           ;; ADR-0173 section 2(a): rejected BEFORE the engine (and its
+           ;; RNG) ever starts, the same fail-fast-on-a-bad-config
+           ;; posture a missing `--seed` already gets.
+           (and (contains? opts :persons) (not (valid-persons-config? (:persons opts))))
+           (result/error :invalid-persons
+                         {:key :persons
+                          :value (:persons opts)
+                          :expected "{:count <positive int> :years <positive int, optional> ...}"})
+
            :else
            (let [reference-date (or reference-date emit-hl7/default-reference-date)
                  utc-offset (or utc-offset emit-hl7/default-utc-offset)
                  warm-up-seconds (or warm-up-seconds 0)
                  effective-churn-profile (effective-churn-profile opts)
-                 engine-params (-> (select-keys opts [:patients :arrival-gap :warm-up-seconds])
+                 ;; ADR-0173 section 2(f): the two keys a demographic
+                 ;; fold's configuration lives in, stamped so the
+                 ;; artifact's own face says a fold ran and under what
+                 ;; settings. `:persons` here is the AUTHORED map, not
+                 ;; the translated payload -- a manifest describes a
+                 ;; configuration, and the population itself is the
+                 ;; corpus. `ManifestV1_1` is an open map, so this is
+                 ;; additive at the same seam `:event-schema-version` and
+                 ;; `:stream-scheme` already ride, and no schema moves.
+                 engine-params (-> (select-keys opts [:patients :arrival-gap :warm-up-seconds
+                                                      :persons :persona-config])
                                     (assoc :reference-date reference-date :utc-offset utc-offset))
                  engine-opts (cond-> (merge (select-keys opts engine/config-keys)
                                             {:seed seed :churn-profile effective-churn-profile})
                                resolved-modules (assoc :modules (:payload resolved-modules)))
+                 ;; `:persons` reaches `engine/run` TRANSLATED or not at
+                 ;; all -- absent entirely is the byte-identical path, and
+                 ;; the authored map would be a malformed engine value.
+                 engine-opts (if (:persons engine-opts)
+                               (assoc engine-opts :persons (engine-persons engine-opts))
+                               engine-opts)
                  engine-result (engine-run-fn engine-opts)
                  {:keys [ground-truth facility providers exhausted]} engine-result
                  checked (when (and (not exhausted) (not (result/error? engine-result)))

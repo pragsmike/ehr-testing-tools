@@ -35,7 +35,8 @@
   (:require [ehrt.sim-engine.churn :as churn]
             [ehrt.sim-engine.engine :as engine]
             [ehrt.sim-engine.event-schema :as event-schema]
-            [ehrt.sim-engine.order-profiles :as order-profiles]))
+            [ehrt.sim-engine.order-profiles :as order-profiles]
+            [ehrt.sim-engine.person-fold :as person-fold]))
 
 ;; --- orchestration surface (run.clj's own engine + churn wiring;
 ;; config-keys is also read by identifiers.clj, mirroring run's own
@@ -59,6 +60,26 @@
 ;; distinguishes a citation from a dependency; the reverse half does
 ;; not, and this arc may not widen it (arc 3a part 2's own fence).
 (def compile-patient engine/compile-patient)
+;; ADR-0173 section 2(a)/ruling C1 (arc 3a part 3). `run` gained one
+;; config key, `:persons`, whose value is DATA a caller built -- the
+;; same two-layer treatment `:modules` already has, where the config
+;; side is names and this side is already-resolved structures.
+;;
+;; `person-plan` is the export ruling C1's ordering problem needs: the
+;; compiled trajectory's death instant is a t0 parameter of the process
+;; that produces the person stream, keyed by PERSON, while this engine
+;; mints a patient id from an arrival ORDINAL and binds the two with a
+;; `:world`-family draw taken at a pinned position inside the run. A
+;; caller cannot key those deaths without asking which person each
+;; arrival bound to, and this is that question -- answered by the same
+;; pre-loop `run` itself uses, so the two cannot disagree.
+;;
+;; `person-deaths` and `valid-persons?` are the other two halves of that
+;; contract: how `:alive` is read off a stream, and what a well-formed
+;; `:persons` value is.
+(def person-plan engine/person-plan)
+(def person-deaths person-fold/deaths)
+(def valid-persons? engine/valid-persons?)
 (def default-churn-profile churn/default-churn-profile)
 (def sample-profile churn/sample-profile)
 

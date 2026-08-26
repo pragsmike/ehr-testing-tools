@@ -417,7 +417,6 @@ can be born red, which is the only kind worth writing.
 | 3 | **Foster placement and adoption are excluded.** Household membership is birth- or cohabitation-derived only. | `minors-join-households-only-by-birth-or-formation-test` — a `:household-join` for a person under 18 references a `:delivery` or a `:household-form`. |
 | 4 | **A death outside care mints no wire event.** `:person-death` stops the person's other processes and nothing else. The only death that reaches a message is the GMF one's expired discharge. | `person-death-emits-no-ground-truth-event-test` — folding a stream containing `:person-death` leaves the count of `:discharge` events with `:disposition :expired` unchanged. |
 | 5 | **A legal name change and a data-entry correction are collapsed.** Both are `:identity-correction`; only real HL7v2 practice distinguishes them (A08 vs A31 usage), and v1 does not. | `identity-correction-carries-no-cause-test` — `:field` is a closed set `{:name :dob}` and no `:cause` key exists. Red the day the distinction is added without a row. |
-| 6 | **Demographics reach the wire through ONE per-run lookup.** `personas-by-patient-id` (`emit_hl7.clj:302`) is keyed by patient-id alone. Until arc 3 re-keys it, a delta folded onto patient state is invisible to every message. | `personas-are-keyed-by-patient-id-alone-test` — asserts the map's key shape. Red the day it becomes `(patient-id, t)`, which is exactly when the row should be struck. |
 | 7 | **Geography stays the 24-row `places.edn` pool** (R-mix-3). A residence move draws a whole new row from the same flat weighted pool: no adjacency, no distance, no local-versus-cross-country move. | `every-residence-address-is-a-places-row-test` — every `:residence-move` `:address` is a member of `sim-model/places` (`persona.clj:64`). A synthesized address is red. Population asserted non-empty first (`rulings.md#R-empty-population-is-red`). |
 | 8 | **Household structure has no wire surface.** No emitter writes an NK1 segment; `NK1` occurs in no `src` file anywhere in the tree. Households exist to correlate moves and coverage, not to be rendered. | `no-emitter-writes-nk1-test` — the emitter's segment vocabulary contains no NK1. Red the day one is added, which is the day households owe a rendering row. |
 | 9 | **Every hazard rate is authored-provisional.** No cited table stands behind any number in section 2. | `every-provisional-rate-is-tabled-test` — each rate constant in `src` carries a `PROVISIONAL` marker and every marker is covered by a citation into its own comment block. The ADR-0162 drift mechanism, with a fourth token. |
@@ -436,11 +435,40 @@ copy honest. Recorded here rather than absorbed
 (`rulings.md#R-stop-only-on-two-defensible-readings`: one defensible
 reading, so the tree wins and this is the record).
 
-Row 6 is the one to read twice. It is a limitation of the **engine and
-emitter**, not of this component, and it is tabled here because this
-component's whole output is invisible until it is lifted. A charter that
-tabled only its own gaps would let arc 2b ship a stream nothing reads
-and call it done.
+**Row 6 was STRUCK on 2026-08-26** by arc 3a part 3 (ADR-0173 section
+2(b), which designed the strike and predicted exactly this), and the
+table above is twelve rows rather than thirteen because of it. It read:
+*"Demographics reach the wire through ONE per-run lookup.
+`personas-by-patient-id` (`emit_hl7.clj:302`) is keyed by patient-id
+alone. Until arc 3 re-keys it, a delta folded onto patient state is
+invisible to every message."* It was the one row that was a limitation
+of the **engine and emitter** rather than of this component, tabled here
+because this component's whole output was invisible until it was lifted
+-- a charter that tabled only its own gaps would have let arc 2b ship a
+stream nothing reads and call it done.
+
+Its substance is now FALSE BY DESIGN. `demographics-timeline` folds
+`:demographic-update` and `:coverage-change` into a t-ascending
+per-patient timeline and `demographics-at` answers state-at-t, so a
+delta folded onto patient state is exactly what every subsequent message
+renders. Its gate, `personas-are-keyed-by-patient-id-alone-test`, was
+DELETED rather than repaired: a gate whose limitation no longer exists
+can only assert something untrue or something vacuous. Its successor is
+a positive law rather than a negative one --
+`demographics-at-answers-state-at-t-test`, in `sim-emit-hl7`.
+
+TWO DATED CORRECTIONS to how this strike was predicted, both from the
+tree. ADR-0173 expected the row to go red at the emitter RE-KEY (arc 3a
+part 2, `2393b48`); it did not, and should not have, because the re-key
+alone moved the lookup's shape while its VALUE was still the t0 Persona
+-- the row's substance survived the change that was supposed to falsify
+it, and part 2's record carries the finding. And the re-key was thirteen
+signatures, not the twelve ADR-0173 section 1 counted.
+
+The row numbers of the surviving rows are UNCHANGED: 1-5 and 7-13, with
+no 6. Renumbering would have silently re-pointed every citation of "row
+N" in three documents and eleven tests at a different limitation, which
+is a worse cost than a gap in a sequence.
 
 ### 5. Rulings needed
 

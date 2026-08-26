@@ -89,6 +89,40 @@
   :participants [{:patient-id "PID-000001-01564f61", :role :subject}],
   :citation {:module "schema-fixture-mod", :state :the-plan},
   :warm-up false},
+ :coverage-change
+ {:cause :employment,
+  :participants [{:patient-id "PID-000000-00cc4d19", :role :subject}],
+  :prior-payer {:id "medicare-65", :name "Medicare", :type :medicare},
+  :active-mrn "MRN000001",
+  :payer
+  {:id "fixture-payer", :name "Fixture Health", :type :commercial},
+  :warm-up false,
+  :person-event-id "fixture-person-a#1",
+  :event :coverage-change,
+  :t 7200},
+ :demographic-update
+ {:prior-value
+  {:status :housed,
+   :address
+   {:street "1180 Sunset Blvd",
+    :city "Denver",
+    :state "CO",
+    :zip "80202"}},
+  :cause :residence-move,
+  :participants [{:patient-id "PID-000000-00cc4d19", :role :subject}],
+  :value
+  {:status :housed,
+   :address
+   {:street "2 Fixture Way",
+    :city "Shelbyville",
+    :state "IL",
+    :zip "62565"}},
+  :active-mrn "MRN000001",
+  :field :residence,
+  :warm-up false,
+  :person-event-id "fixture-person-a#0",
+  :event :demographic-update,
+  :t 3600},
  :diagnostic-report
  {:event :diagnostic-report,
   :t 12182400,

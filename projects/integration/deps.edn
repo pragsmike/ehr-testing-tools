@@ -72,6 +72,15 @@
         ;; poly/patient-simulator (sim split S2): poly/sim's own src now
         ;; requires ehrt.patient-simulator.interface transitively.
         poly/patient-simulator {:local/root "../../components/patient-simulator"}
+        ;; poly/person-simulator (traffic-scale arc 3a part 3, ADR-0173
+        ;; section 2(a)): sim's own src now requires
+        ;; ehrt.person-simulator.interface directly -- `ehrt.sim.run` is
+        ;; where the person stream is built and handed to the engine as
+        ;; data, because the engine may not require that component at
+        ;; all (ADR-0172 limitations row 10, the one-way edge). This is
+        ;; the real `:require` edge that lifts ruling F1's "the
+        ;; component lands ALONE".
+        poly/person-simulator {:local/root "../../components/person-simulator"}
         ;; poly/sim-emit-hl7 (sim split S3 / Wave D stage D0): poly/sim's
         ;; own src now requires ehrt.sim-emit-hl7.interface transitively.
         poly/sim-emit-hl7 {:local/root "../../components/sim-emit-hl7"}
