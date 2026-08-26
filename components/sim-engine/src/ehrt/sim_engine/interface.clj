@@ -43,6 +43,15 @@
 
 (def run engine/run)
 (def config-keys engine/config-keys)
+;; ADR-0173 ruling C1 (arc 3a): one patient's Persona + compiled module
+;; trajectory, drawn from that patient's own `:patient` stream and
+;; INDEPENDENT of when that patient arrives. Exported with no caller
+;; today, deliberately: arc 3a part 3 has `ehrt.sim.run` call it to
+;; obtain each patient's compiled DEATH instant before the run, which is
+;; what `person-simulator/persons` needs as its `:deaths` parameter --
+;; the engine owns the stream positioning, so a caller outside this
+;; component never reimplements it.
+(def compile-patient engine/compile-patient)
 (def default-churn-profile churn/default-churn-profile)
 (def sample-profile churn/sample-profile)
 

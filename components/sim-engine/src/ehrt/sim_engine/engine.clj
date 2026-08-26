@@ -480,16 +480,41 @@
 ;; (AR-4), and only NEWLY reaches a closure's own called submodules/
 ;; tables/seed for a root that actually has them.
 
-(defmethod decide :registered
-  [{rng :patient} t world patient-id {:keys [closure]}]
-  ;; :active-mrn is REQUIRED here, not merely conventional: :registered
-  ;; is now every patient's FIRST event, and `replay` (below) bootstraps
-  ;; a never-yet-seen participant's initial state via `(initial-patient
-  ;; pid (:active-mrn event))` off the FIRST event naming them -- every
-  ;; other event type already carries :active-mrn for exactly this
-  ;; reason (a convention this event must honor, not just a rendering
-  ;; nicety), or `replay`'s own bootstrap (and every check.clj invariant
-  ;; built on it) silently seeds `:mrns #{nil}`.
+(defn compile-patient
+  "One patient's Persona and compiled module trajectory, drawn from that
+  patient's OWN `:patient` stream. Returns `{:persona p :compiled c}`;
+  `:compiled` is nil for a patient with no assigned closure.
+
+  ARRIVAL-TIME INDEPENDENT, and that is the whole reason this is a
+  function rather than a `let` inside `decide :registered` (ADR-0173
+  ruling C1: `ehrt.sim.run` must be able to obtain every patient's
+  compiled death instant BEFORE the run, because
+  `person-simulator/persons` is a whole-population front door). There is
+  no `t` parameter here because nothing below could read one. Every
+  input, enumerated:
+
+  | input | why it cannot differ between run start and arrival |
+  |---|---|
+  | `rng` | ONE stream per patient (`run`'s `patient-rngs`), and exactly three `decide` methods draw from the `:patient` family -- `:registered`, `:delay`, `:order` -- all three on the ACTING patient's own stream. `:delay` and `:order` are steps that follow `:registered` in that patient's own queue, so at arrival the stream stands exactly where the pre-loop draws left it. See `run`'s docstring for the pinned pre-loop order. |
+  | `(:persona-config world)` | set once in `init-world`; the run loop only ever `assoc`s `:ground-truth`/`:reinstate-index`/`:citation-index` and `update-in`s `[:patients pid]` |
+  | `closure` | resolved pre-loop by `run`'s own `module-for` and carried on the `:registered` STEP -- immutable queue data |
+  | `(:modules closure)` / `(:root closure)` / `(:initial-attributes closure)` / `(:tables closure)` | pure data inside that closure |
+  | `reg-t` | `sim-model/reference-today-epoch-day` is `(LocalDate/of (inc reference-birth-year) 1 1)` -- a FIXED calendar anchor computed from a constant, not a clock and not the arrival instant |
+  | `horizon-end-t` | `reg-t` plus `(:module-horizon-days world)`, run config |
+  | `(:facility world)` | run config; never re-`assoc`ed by the loop (bed occupancy lives in `[:patients pid :location]`, not here) |
+  | `history?` | `(:history world)`, run config |
+
+  So the ONLY thing that moves when the call moves is WHEN it happens in
+  wall-clock terms; the stream position it reads from is unchanged, which
+  is what makes the move byte-identical. `the-registered-compile-is-
+  arrival-time-independent` (engine-test) and `every-gated-run-compiles-
+  the-same-persona-at-any-arrival-time` (ehrt.sim.run-test) are the
+  gates, and `bin/regression-oracle` is the proof.
+
+  `world` here is any map carrying the four config keys above -- the live
+  `world` at `decide` time, or the equivalent map `run` builds before the
+  loop exists."
+  [rng world closure]
   (let [persona (sim-model/persona rng (:persona-config world))
         history? (boolean (:history world))
         compiled (when closure
@@ -508,6 +533,33 @@
                      ;; to every pre-H run, since that arity's own body is
                      ;; nothing but a call to the unchanged 3-arg one).
                      (patient-simulator/compile-trajectory trajectory (:facility world) reg-t history?)))]
+    {:persona persona :compiled compiled}))
+
+(defmethod decide :registered
+  [{rng :patient} t world patient-id {:keys [closure]}]
+  ;; :active-mrn is REQUIRED here, not merely conventional: :registered
+  ;; is now every patient's FIRST event, and `replay` (below) bootstraps
+  ;; a never-yet-seen participant's initial state via `(initial-patient
+  ;; pid (:active-mrn event))` off the FIRST event naming them -- every
+  ;; other event type already carries :active-mrn for exactly this
+  ;; reason (a convention this event must honor, not just a rendering
+  ;; nicety), or `replay`'s own bootstrap (and every check.clj invariant
+  ;; built on it) silently seeds `:mrns #{nil}`.
+  ;;
+  ;; ADR-0173 C1: the persona draw and the module walk now happen at RUN
+  ;; START, not here -- `run` calls `compile-patient` for every arrival
+  ;; ordinal, in ordinal order, immediately after the pre-loop
+  ;; `:patient`-family draws, and carries the result in
+  ;; `:compiled-patients`. This method ATTACHES what was pre-compiled.
+  ;; FALLS BACK to compiling in place when `world` carries no
+  ;; `:compiled-patients` KEY -- a hand-built world, as most of
+  ;; engine-test uses. Same fallback rule as `reinstated-state` and
+  ;; `last-cited-index`, and for the same reason: on the KEY, never on a
+  ;; missing entry, so a carrier `run` built but failed to populate shows
+  ;; up as a changed corpus rather than as a silent recompile.
+  (let [{:keys [persona compiled]} (if (contains? world :compiled-patients)
+                                     (get (:compiled-patients world) patient-id)
+                                     (compile-patient rng world closure))]
     {:events [(cond-> {:event :registered :t t
                        :active-mrn (get-in world [:patients patient-id :active-mrn])
                        :persona persona
@@ -1737,6 +1789,31 @@
                       assigned module (there is no history phase to gate
                       without one).
 
+  THE PRE-LOOP `:patient`-FAMILY DRAW ORDER, PINNED (ADR-0173 ruling C1
+  requires this to be stated here, because it is the one thing about the
+  compile's new position that is a CHOICE rather than a consequence).
+  For each arrival ordinal i, in ordinal order, before the run loop
+  starts, patient i's own `:patient` stream is drawn from in exactly
+  this order:
+
+    1. `module-for`   -- `assign-module`, 1 draw, only with :module-assignment
+    2. `pathway-for`  -- `assign-pathway`, 1 draw, only with :pathways
+    3. `steps-for`    -- `churn/inject`, only with :churn-profile
+    4. `compile-patient` -- the Persona (13 draws, 16 with demographic
+       weights) and then the module walk (unbounded), only ever in that
+       order and only for a patient with an assigned closure
+
+  Steps 1-3 are `initial-entries`; step 4 is `compiled-patients`. Steps
+  1-3 are exactly where they have always been. Step 4 is where ADR-0173
+  C1 MOVED the persona draw and the module walk to, out of `decide
+  :registered` -- a move in TIME only: patient i's stream is read by
+  nothing but patient i's own decides, so the sequence each stream sees
+  is unchanged and every run stays byte-identical (`compile-patient`'s
+  own docstring carries the input-by-input argument;
+  `bin/regression-oracle` carries the proof). Everything after step 4 is
+  loop-time: `decide :delay` and `decide :order`, the only other two
+  `:patient`-family draw sites in this namespace.
+
   Returns {:ground-truth [event ...] :state-history {patient-id [state
   ...]} :facility .. :providers [materialized-provider ...]}. The
   facility and MATERIALIZED providers (real NPIs, not just templates)
@@ -1823,9 +1900,11 @@
         ;; more fixed-consumption draw per patient, ONLY when
         ;; :module-assignment is actually present -- absent entirely,
         ;; `module-for` draws nothing, byte-identical to pre-M5b (see
-        ;; `run`'s own docstring)). The MODULE WALK itself (persona-
-        ;; dependent -- an unbounded number of draws) stays at :registered
-        ;; decide-time, below, the same place persona sampling already is.
+        ;; `run`'s own docstring)). ADR-0173 ruling C1 (2026-08-26): the
+        ;; MODULE WALK itself (persona-dependent -- an unbounded number of
+        ;; draws) no longer waits for :registered decide-time; it happens
+        ;; in `compiled-patients` below, together with the persona sampling
+        ;; it depends on, immediately after this stage's own draws.
         ;; ADR-0033 AR-2: `:modules` entries are closure-shaped -- keyed
         ;; by each closure's own `:root`, not a bare module's `:id`
         ;; (byte-identical for a singleton closure, whose :root IS the
@@ -1840,16 +1919,61 @@
         ;; operates on `pathway-for`'s output, before this prepend), the
         ;; same "not authorable IR" treatment :result-followup gets. M5b:
         ;; carries this patient's own resolved closure (nil, absent
-        ;; :module-assignment) -- :registered's own decide method is
-        ;; where the actual walk + compile happens (this namespace's own
-        ;; comment there).
-        registered-steps-for (fn [i] (into [{:type :registered :closure (module-for i)}] (steps-for i)))
+        ;; :module-assignment). ADR-0173 C1: the closure still rides the
+        ;; step (the hand-built-world fallback in `decide :registered`
+        ;; reads it), but the walk + compile it feeds now happens in
+        ;; `compiled-patients`, below.
+        registered-entry-for (fn [i]
+                               ;; `module-for` FIRST, then `steps-for` --
+                               ;; the exact evaluation order the previous
+                               ;; `(into [{... (module-for i)}] (steps-for
+                               ;; i))` had, preserved deliberately: it is
+                               ;; the pinned pre-loop order of this
+                               ;; patient's own `:patient` stream (see
+                               ;; `run`'s docstring). The resolved closure
+                               ;; is returned ALONGSIDE the steps so
+                               ;; `compiled-patients` below can read it
+                               ;; without a second `module-for` call,
+                               ;; which would draw again.
+                               (let [closure (module-for i)]
+                                 {:closure closure
+                                  :steps (into [{:type :registered :closure closure}] (steps-for i))}))
+        initial-entries (into [] (map-indexed (fn [i _] (registered-entry-for i))) arrivals)
         init-queue (into (sorted-map)
                          (map-indexed
                           (fn [i arrival-t]
                             [[arrival-t i]
-                             {:patient-id (pid-for i) :steps (registered-steps-for i)}])
+                             {:patient-id (pid-for i) :steps (:steps (nth initial-entries i))}])
                           arrivals))
+        ;; ADR-0173 ruling C1: the four run-config values `compile-patient`
+        ;; reads, gathered here because the compile now happens BEFORE
+        ;; `init-world` exists. Identical to what `decide :registered`
+        ;; would have read off `world` at arrival -- none of the four is
+        ;; ever re-`assoc`ed by the run loop (`compile-patient`'s own
+        ;; t-independence table says so key by key).
+        compile-inputs {:persona-config persona-config
+                        :module-horizon-days module-horizon-days
+                        :facility facility
+                        :history history}
+        ;; ADR-0173 ruling C1: every patient's Persona and compiled module
+        ;; trajectory, drawn HERE rather than at that patient's arrival,
+        ;; in arrival-ordinal order, immediately after `initial-entries`
+        ;; took this run's pre-loop `:patient`-family draws. Each patient
+        ;; reads its OWN stream, so the move changes WHEN the draw happens
+        ;; and not WHERE in any stream it lands -- the byte-identity
+        ;; argument, in one line.
+        ;;
+        ;; A patient whose `:registered` is never decided (an `:exhausted`
+        ;; run ends the loop early) is compiled here anyway. That costs a
+        ;; walk and moves no byte: the draws land on that patient's own
+        ;; stream, which nothing else ever reads.
+        compiled-patients (into {}
+                                (map-indexed
+                                 (fn [i _]
+                                   [(pid-for i) (compile-patient (nth patient-rngs i)
+                                                                 compile-inputs
+                                                                 (:closure (nth initial-entries i)))]))
+                                arrivals)
         init-world {:patients (into {} (map-indexed (fn [i _] [(pid-for i) (initial-patient (pid-for i) (mrn-for i))]))
                                     arrivals)
                     :facility facility
@@ -1886,7 +2010,15 @@
                     ;; overwrites an earlier one, which is precisely what
                     ;; the `last` in the scan it replaces meant. Read by
                     ;; `last-cited-index`.
-                    :citation-index {}}
+                    :citation-index {}
+                    ;; ADR-0173 ruling C1 (arc 3a): patient-id -> that
+                    ;; patient's `compile-patient` result, drawn at RUN
+                    ;; START (above) rather than at the patient's own
+                    ;; arrival. Read by `decide :registered`, which falls
+                    ;; back to compiling in place when this KEY is absent
+                    ;; -- the hand-built-world tolerance `:reinstate-index`
+                    ;; and `:citation-index` already establish.
+                    :compiled-patients compiled-patients}
         mark-warmup (fn [ev] (assoc ev :warm-up (< (:t ev) warm-up-seconds)))
         ;; ADR-0171: what `decide` receives. The two run-scoped families
         ;; are fixed for the whole loop; `:patient` is swapped per queue

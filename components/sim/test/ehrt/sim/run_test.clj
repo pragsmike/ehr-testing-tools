@@ -585,6 +585,83 @@
                    "order is part of \"byte-identical\" is an AUTHOR ruling, not this "
                    "session's: report the diff, do not re-pin.")))))))
 
+(def ^:private arrival-shift-gap
+  "The `:arrival-gap` the shifted twin of each gated run is driven at --
+  a value none of the four gated configs uses (ed-tuesday authors 30,
+  clinic-decade 5, the adhd run takes `run`'s own default 60), and a
+  LARGER one deliberately: spreading arrivals out lowers bed pressure, so
+  the twin cannot end early on `:exhausted` and change which patients
+  registered at all."
+  97)
+
+(def ^:private arrival-shifted-corpora
+  "run id -> the SAME gated run with every arrival moved to a different
+  instant, and nothing else changed. `:arrival-gap` feeds
+  `rand-int-in world-rng 0 arrival-gap` -- the WORLD family, ADR-0171 --
+  so it moves every patient's arrival `:t` while touching no
+  `:patient`-family draw at all. That is exactly the perturbation ADR-
+  0173 ruling C1's move has to survive.
+
+  A `delay`, not the `:once` fixture, so the cost (one extra generation
+  of all four corpora) is paid by the one gate that needs it and is
+  legible as that gate's own price."
+  (delay (into {} (map (juxt :id #(run/run-command (assoc (:opts %) :arrival-gap arrival-shift-gap))))
+               gated-runs)))
+
+(defn- registered-by-patient-id
+  "patient-id -> that patient's `:registered` event, for one run-command
+  result."
+  [r]
+  (into {} (comp (filter #(= :registered (:event %)))
+                 (map (fn [ev] [(:patient-id (first (:participants ev))) ev])))
+        (get-in r [:payload :ground-truth])))
+
+(deftest every-gated-run-compiles-the-same-persona-at-any-arrival-time
+  (testing "ADR-0173 ruling C1, at population scale: what `decide
+            :registered` compiles for a patient does not depend on WHEN
+            that patient arrives. Move every arrival in a gated run and
+            every patient's Persona, and every history-phase fact their
+            module walk compiled, must come back byte-identical -- which
+            is what licenses `run` to do the compile at run start
+            instead. Born green on the unrefactored tree, in the same
+            commit that moved the compile (ADR-0169's equivalence-proof
+            pattern: a pure refactor owes proof that nothing moved, not
+            red-before-green)."
+    (let [pairs (for [{:keys [id]} gated-runs]
+                  [id (registered-by-patient-id (corpus id))
+                   (registered-by-patient-id (get @arrival-shifted-corpora id))])]
+      (doseq [[id base shifted] pairs]
+        (testing (str "gated run " id)
+          (testing "population is non-empty (R-empty-population-is-red)"
+            (is (seq base) "the gated run registered nobody at all"))
+          (is (= (set (keys base)) (set (keys shifted)))
+              (str "the shifted twin of " id " registered a DIFFERENT patient set -- "
+                   "the two runs are no longer comparable, and this gate proves nothing "
+                   "until that is understood (an early :exhausted is the likely cause)"))
+          (testing "the perturbation actually perturbed something"
+            (is (not= (mapv (comp :t val) (sort-by key base))
+                      (mapv (comp :t val) (sort-by key shifted)))
+                (str "arrival instants are IDENTICAL between the two runs of " id
+                     " -- :arrival-gap " arrival-shift-gap " moved nothing, so this gate is vacuous")))
+          (doseq [[pid ev] (sort-by key base)]
+            (let [ev' (get shifted pid)]
+              ;; :t is the arrival instant itself and :warm-up is derived
+              ;; from it; everything else on a :registered event is the
+              ;; compile's own output.
+              (is (= (dissoc ev :t :warm-up) (dissoc ev' :t :warm-up))
+                  (str id " / " pid ": the :registered event differs by more than its own
+                       arrival instant between arrival gaps "
+                       (:arrival-gap (:opts (first (filter #(= id (:id %)) gated-runs))))
+                       " and " arrival-shift-gap))
+              (is (= (pr-str (dissoc ev :t :warm-up)) (pr-str (dissoc ev' :t :warm-up)))
+                  (str id " / " pid ": `=` but not byte-equal"))))))
+      (testing "the compile half of this gate is not vacuous: at least one
+                gated run really does walk a module and compile
+                history-phase facts onto its :registered events"
+        (is (some (fn [[_ base _]] (some :pre-horizon-facts (vals base))) pairs)
+            "not one gated run produced a single :pre-horizon-facts -- this gate is
+             testing the persona draw alone, and the module walk is untested here")))))
+
 (def ^:private arc0-pre-partition-digest
   "What each gated corpus digested to BEFORE ADR-0171's stream partition
   -- ADR-0169's own pins, frozen here as the migration boundary and

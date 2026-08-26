@@ -1284,6 +1284,114 @@
           "the compiled encounter step carries its module/state citation into ground truth")
       (is (result/ok? (check/check-all ground-truth (:facility result)))))))
 
+;; --- ADR-0173 ruling C1 (arc 3a, 2026-08-26): the compile is
+;; ARRIVAL-TIME INDEPENDENT -----------------------------------------------
+;;
+;; The gate that had to be green BEFORE the persona draw and the module
+;; walk could be moved out of `decide :registered` and up to run start.
+;; `decide` takes `t` as a parameter, so the claim is directly testable:
+;; call the SAME method, for the SAME patient, off two identically-seeded
+;; fresh streams, at two wildly different arrival instants -- everything
+;; the compile produces must be `=`, and the ONLY thing that may differ
+;; on the emitted event is `:t` itself.
+;;
+;; This is an equivalence gate, born green on the unrefactored tree
+;; (ADR-0169's own pattern: a pure refactor owes no red-before-green, it
+;; owes proof that nothing moved). It stays green afterwards, and after
+;; the refactor it also exercises `decide :registered`'s hand-built-world
+;; FALLBACK path, since the worlds below carry no `:compiled-patients`
+;; key.
+
+(def ^:private arrival-time-independence-world
+  "A hand-built world carrying exactly the four run-config keys
+  `compile-patient` reads, plus the one `:patients` entry `:registered`
+  needs for its `:active-mrn`."
+  {:patients {"PID-000000-deadbeef" {:patient-id "PID-000000-deadbeef"
+                                     :mrns #{"MRN000001"} :active-mrn "MRN000001"
+                                     :status :new}}
+   :facility sim-model/default-facility
+   :persona-config {}
+   :module-horizon-days 3650
+   :history false})
+
+(defn- registered-decision-at
+  "`decide :registered` for one patient at instant `t`, off a FRESH
+  stream at `seed`/ordinal 0 -- so two calls differ in nothing but `t`."
+  [seed t closure]
+  (engine/decide {:patient (engine/stream seed :patient 0)}
+                 t arrival-time-independence-world "PID-000000-deadbeef"
+                 {:type :registered :closure closure}))
+
+(deftest the-registered-compile-is-arrival-time-independent
+  (testing "ADR-0173 C1: every input to the persona draw, the module walk
+            and compile-trajectory is arrival-time-independent, so moving
+            the whole compile from arrival to run start cannot move a
+            byte. `t` reaches the emitted event and nothing else."
+    (let [closure (patient-simulator/singleton-closure sinusitis-module)
+          ;; 0 is the earliest instant any run can produce (ordinal 0
+          ;; always arrives at t=0); the other two are far past any
+          ;; realistic arrival, one of them past a full year of seconds.
+          instants [0 86400 (* 400 86400)]
+          seeds (range 12)
+          compiled-for (fn [seed] (mapv #(registered-decision-at seed % closure) instants))]
+      (doseq [seed seeds]
+        (let [[a & others] (compiled-for seed)]
+          (doseq [[t b] (map vector (rest instants) others)]
+            (is (= (:prepend-steps a) (:prepend-steps b))
+                (str "seed " seed ": the compiled step IR differs between arrival at "
+                     (first instants) " and arrival at " t))
+            (is (= (:advance a) (:advance b)))
+            (is (= (dissoc (first (:events a)) :t) (dissoc (first (:events b)) :t))
+                (str "seed " seed ": the :registered event differs by more than :t"))
+            (is (= (pr-str (:prepend-steps a)) (pr-str (:prepend-steps b)))
+                (str "seed " seed ": the compiled step IR is `=` but not byte-equal"))
+            (is (= (first instants) (:t (first (:events a))))
+                "the emitted event's :t is the arrival instant it was decided at")
+            (is (= t (:t (first (:events b)))))))))
+    (testing "the no-closure path -- the persona alone -- is independent too"
+      (doseq [seed (range 12)]
+        (let [a (registered-decision-at seed 0 nil)
+              b (registered-decision-at seed (* 400 86400) nil)]
+          (is (= (dissoc (first (:events a)) :t) (dissoc (first (:events b)) :t)))
+          (is (nil? (:prepend-steps a)))))))
+  (testing "the gate is not vacuous (R-empty-population-is-red): the
+            closure path really does compile a trajectory, and at least
+            one seed really does carry history-phase facts onto the event"
+    (let [closure (patient-simulator/singleton-closure sinusitis-module)
+          decisions (mapv #(registered-decision-at % 0 closure) (range 12))]
+      ;; NOT `every?`: a seed whose whole sinusitis walk falls in the
+      ;; history phase compiles to registration-facts and NO horizon
+      ;; steps at all -- found by this assertion going red as `every?`,
+      ;; and left as the record of why the weaker form is the right one.
+      (is (some #(seq (:prepend-steps %)) decisions)
+          "not one of the twelve seeds compiled a single horizon-phase step")
+      (is (every? #(some? (:persona (first (:events %)))) decisions))
+      (is (some #(seq (:pre-horizon-facts (first (:events %)))) decisions)
+          "no seed produced :pre-horizon-facts -- the registration-facts half
+           of the compile is untested by this gate"))))
+
+(deftest compile-patient-is-what-registered-attaches
+  (testing "ADR-0173 C1: `compile-patient` -- the export `ehrt.sim.run`
+            will call at run start in part 3 -- returns exactly what
+            `decide :registered` attaches, off the same stream position."
+    (let [closure (patient-simulator/singleton-closure sinusitis-module)]
+      (doseq [seed (range 8)]
+        (let [{:keys [persona compiled]} (engine/compile-patient
+                                          (engine/stream seed :patient 0)
+                                          arrival-time-independence-world
+                                          closure)
+              decision (registered-decision-at seed 0 closure)]
+          (is (= persona (:persona (first (:events decision)))))
+          (is (= (:steps compiled) (:prepend-steps decision)))
+          (is (= (seq (:registration-facts compiled))
+                 (seq (:pre-horizon-facts (first (:events decision))))))))))
+  (testing "a patient with no closure compiles to a persona and nothing else"
+    (let [{:keys [persona compiled]} (engine/compile-patient
+                                      (engine/stream 3 :patient 0)
+                                      arrival-time-independence-world nil)]
+      (is (some? persona))
+      (is (nil? compiled)))))
+
 ;; --- GMF coverage Wave C (2026-08-02, ADR-0028, C6): the full engine/check
 ;; round trip for a real Death-bearing walk -- interpreter -> compile-
 ;; trajectory -> :registered's own module wiring -> a real run -> the full
