@@ -185,7 +185,7 @@ changed. `brick:sim-engine`, `brick:sim`, `brick:sim-check` and
 | `bin/regression-oracle c45ddb9 <tip>` | **IDENTICAL**, exit 0, no declaration, 35 roots -- run at FOUR points (after C1, after 2(a), after 2(b), after the re-key), never once |
 | `git diff --stat c45ddb9 HEAD` on `arc0_gated_*`, `pinned_seed_42`, both conformance baselines, `demos/traces` | **empty** |
 | `make traces` | regenerated, `git status --porcelain` EMPTY -- no trace moved |
-| CI at the pushed tip | recorded by the follow-up commit that closes this session (`rulings.md#R-session-verifies-ci-via-gh`, kept as the close marker after the tag was retired) |
+| CI at the pushed tip `c7bca76` | **run 32966670638, conclusion success** -- the close marker (`rulings.md#R-session-verifies-ci-via-gh`, kept as the marker after the tag was retired). One run at this sha, the `test` workflow; no separate Integration run was scheduled for it |
 
 **The suite delta reconciles exactly.** Baseline, measured this session
 at `c45ddb9` and not inherited: `engine-test` 94 tests / 419 assertions,
