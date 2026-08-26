@@ -92,9 +92,21 @@
 
 (defn- hl7-date->iso
   "\"yyyyMMdd\" -> \"yyyy-MM-dd\" -- the inverse of
-  ehrt.sim-emit-hl7.emit-hl7/pid-segment's own dash-stripping."
+  ehrt.sim-emit-hl7.emit-hl7/pid-segment's own dash-stripping.
+
+  nil/BLANK IN, nil OUT (arc 3a part 4, 2026-08-26). PID-7 was
+  unconditionally populated until the identification flow landed: a
+  PLACEHOLDER registration renders an empty PID-7, because an
+  unidentified patient has no known date of birth and the wire may not
+  invent one. This function threw a NullPointerException on the first
+  such message, which reached a user as `ehrt play` dying mid-stream on
+  a real corpus -- found by replaying `demos/scenarios/clinic-decade`
+  after its own opt-in, not by reasoning about it. Every other reader
+  in this namespace was already nil- and blank-safe; this was the one
+  that was not."
   [raw]
-  (str (subs raw 0 4) "-" (subs raw 4 6) "-" (subs raw 6 8)))
+  (when (and raw (>= (count raw) 8))
+    (str (subs raw 0 4) "-" (subs raw 4 6) "-" (subs raw 6 8))))
 
 ;; --- Safe field/component access -------------------------------------------
 

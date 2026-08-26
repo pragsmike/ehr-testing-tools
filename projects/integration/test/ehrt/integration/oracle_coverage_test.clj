@@ -4,7 +4,7 @@
 
   `ehrt.docs-tooling.oracle-coverage-test` gates the committed claim's
   shape, population, membership and location on every push. It cannot
-  gate the claim against reality: only a real 35-root digest knows which
+  gate the claim against reality: only a real 36-root digest knows which
   event kinds and message types the oracle can witness. That run is 114
   seconds (ADR-0156 Step 0 b), so it lives here, in the scheduled lane.
 
@@ -64,7 +64,7 @@
        " :aliases {:oracle-run {:extra-paths [\"" root "/components/patient-simulator/test\"]}}}"))
 
 (defn- run-digest!
-  "One fresh 35-root digest into `out`. Returns the process result."
+  "One fresh 36-root digest into `out`. Returns the process result."
   [out]
   (let [root (.getCanonicalPath (io/file repo-root))]
     (shell/sh "clojure" "-Sdeps" (deps-string root)
@@ -138,8 +138,8 @@
             roots (engine-roots out)]
         (testing "the digest ran at all -- a failed run must never read as agreement"
           (is (zero? exit) (str "the digest process must exit 0. stderr:\n" err))
-          (is (= 35 (count edns))
-              (str "35 roots today. A root added or removed lands here first. Found "
+          (is (= 36 (count edns))
+              (str "36 roots today. A root added or removed lands here first. Found "
                    (count edns) "."))
           (is (= 32 (count roots))
               (str "32 engine-layer roots produce `{:ground-truth :hl7}`; the other three are "

@@ -133,7 +133,19 @@
 
   nil-valued keys are dropped, not passed: the process reads
   `:unhoused` through a defaulting `get-in`, so an explicit nil would
-  override its own default with zero."
+  override its own default with zero.
+
+  ARC 3A PART 4: the payer pools FALL BACK to `sim-model`'s own, and
+  that closes a gap arc 2b recorded rather than worked around.
+  `ehrt.person-simulator.process` emits no `:coverage-change` at all
+  for a run that names neither pool -- the variates are drawn and the
+  event is not -- so a scenario with no `:persona-config` produced ZERO
+  of a kind the 1.3.0 contract declares, measured across all four gated
+  corpora. Defaulting here rather than restating the pools in a
+  scenario file is deliberate: a forked payer pool is the same class of
+  drift that component's own docstring forbids for addresses. The run's
+  patients already draw from these defaults (`sim-model/persona`'s own
+  `:or`), so this makes the two agree instead of making them differ."
   [{:keys [persons persona-config]} population]
   (let [{:keys [years identification unhoused]} persons
         pc (or persona-config {})]
@@ -142,8 +154,8 @@
            :years (or years default-person-years)
            :population population
            :persona pc
-           :payers-under-65 (:payers-under-65 pc)
-           :payers-65-plus (:payers-65-plus pc)
+           :payers-under-65 (or (:payers-under-65 pc) sim-model/under-65-payers)
+           :payers-65-plus (or (:payers-65-plus pc) sim-model/sixty-five-plus-payers)
            :identification identification
            :unhoused unhoused})))
 

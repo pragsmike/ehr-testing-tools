@@ -931,6 +931,31 @@
                        {:type :delay :from stay-minutes :to stay-minutes}
                        {:type :discharge}]})))
 
+(defn- identity-fill-outcome
+  "The `:fill` branch's own outcome, factored because TWO decides reach
+  it: `:identity-fill` directly, and `:identification-merge` when the
+  world refuses the merge (ADR-0173 section 2(d)'s \"a merge with no
+  survivor degenerates to a fill\", answered at DECIDE time and not only
+  at queue-seeding time -- the survivor can be merged away or expire
+  between the two)."
+  [t world patient-id {:keys [persona residence person-event-id]}]
+  (let [patient (demographic-target world patient-id)]
+    (if (or (nil? patient) (not= :placeholder (:identity (:demographics patient))))
+      {:events [] :advance 0}
+      {:events [(cond-> {:event :demographic-update :t t
+                         :active-mrn (:active-mrn patient)
+                         :cause :identity-fill
+                         :field :identity
+                         :value :known
+                         :prior-value :placeholder
+                         :placeholder-event-id (get-in world [:registration-index patient-id])
+                         :persona persona
+                         :person-event-id person-event-id
+                         :participants [{:patient-id patient-id :role :subject}]}
+                  (and residence (not= :housed (:status residence)))
+                  (assoc :residence residence))]
+       :advance 0})))
+
 (defmethod decide :identity-fill
   ;; ADR-0173 section 2(d), the `:fill` branch of `:identity-resolution`:
   ;; the placeholder patient KEEPS their patient-id and their MRN, and
@@ -953,23 +978,8 @@
   ;; such KEY answers nil, which
   ;; `identity-fill-references-its-placeholder-registration` reports as
   ;; a dangling reference -- correctly, because it would be one.
-  [_streams t world patient-id {:keys [persona residence person-event-id]}]
-  (let [patient (demographic-target world patient-id)]
-    (if (or (nil? patient) (not= :placeholder (:identity (:demographics patient))))
-      {:events [] :advance 0}
-      {:events [(cond-> {:event :demographic-update :t t
-                         :active-mrn (:active-mrn patient)
-                         :cause :identity-fill
-                         :field :identity
-                         :value :known
-                         :prior-value :placeholder
-                         :placeholder-event-id (get-in world [:registration-index patient-id])
-                         :persona persona
-                         :person-event-id person-event-id
-                         :participants [{:patient-id patient-id :role :subject}]}
-                  (and residence (not= :housed (:status residence)))
-                  (assoc :residence residence))]
-       :advance 0})))
+  [_streams t world patient-id step]
+  (identity-fill-outcome t world patient-id step))
 
 (defmethod decide :identification-merge
   ;; ADR-0173 section 2(d), the `:merge` branch. The event is churn's own
@@ -990,24 +1000,39 @@
   ;; decide method with its own guard, and `churn/inject`'s step-type
   ;; set and roll order are untouched.
   ;;
-  ;; The step is queued on the SURVIVOR, so `patient-id` here is the
-  ;; person's prior patient and `:placeholder-patient-id` is the record
-  ;; being absorbed.
-  [_streams t world patient-id {:keys [placeholder-patient-id person-event-id]}]
+  ;; THE STEP IS QUEUED ON THE PLACEHOLDER, not on the survivor, and
+  ;; that placement is load-bearing rather than incidental. The run
+  ;; loop SHORT-CIRCUITS a queue entry whose patient is already
+  ;; `:merged`, so a step queued on the survivor would vanish silently
+  ;; the moment churn merged that survivor away -- leaving the
+  ;; placeholder unresolved past its own close instant, which is a real
+  ;; violation of `every-placeholder-registration-is-resolved-or-still-
+  ;; open` and was found exactly that way, at population scale, by a
+  ;; corpus probe rather than by reasoning. Queued on the placeholder,
+  ;; the same event still names both patients and the DEGENERATE case
+  ;; is reachable.
+  ;;
+  ;; A MERGE THE WORLD REFUSES DEGENERATES TO A FILL. Section 2(d)
+  ;; states that rule for the case with no survivor at all, and
+  ;; `prelude` applies it there; this is the same rule at decide time,
+  ;; for a survivor who existed when the step was seeded and has since
+  ;; been merged away or expired. Either the placeholder is joined to
+  ;; the person's other record or it is filled in place -- what it may
+  ;; never be is silently left dangling.
+  [_streams t world patient-id {:keys [survivor-patient-id person-event-id] :as step}]
   (let [{:keys [patients]} world
-        survivor (get patients patient-id)
-        merged (get patients placeholder-patient-id)]
+        survivor (get patients survivor-patient-id)
+        merged (demographic-target world patient-id)]
     (if (or (nil? survivor) (nil? merged)
-            (= patient-id placeholder-patient-id)
+            (= patient-id survivor-patient-id)
             (#{:merged :expired} (:status survivor))
-            (#{:merged :expired} (:status merged))
             (not= :placeholder (:identity (:demographics merged))))
-      {:events [] :advance 0}
+      (identity-fill-outcome t world patient-id step)
       {:events [{:event :merge :t t
                  :cause :identification
                  :person-event-id person-event-id
-                 :participants [{:patient-id patient-id :role :survivor}
-                                {:patient-id placeholder-patient-id :role :merged}]
+                 :participants [{:patient-id survivor-patient-id :role :survivor}
+                                {:patient-id patient-id :role :merged}]
                  :surviving-mrn (:active-mrn survivor)
                  :merged-mrn (:active-mrn merged)
                  :merged-mrns (:mrns merged)}]
@@ -2181,6 +2206,38 @@
   [persons]
   (m/validate Persons persons))
 
+(defn- placeholder-registration
+  "What a PLACEHOLDER registration adds to a patient's compiled entry
+  (ADR-0173 section 2(d)): the window's alias, and its close instant.
+
+  `:window-close-t` RIDES ONLY A WINDOW THAT ACTUALLY RESOLVES, and
+  that is a correction the tree forced rather than a choice. The key
+  means *identification is DUE at this instant*, and
+  `every-placeholder-registration-is-resolved-or-still-open` reads it
+  as exactly that: a placeholder past its own close with no fill and no
+  merge is a defect. But a window can fail to resolve for a reason that
+  is not a defect at all -- the person DIED inside it, and the person
+  process correctly emits no `:identity-resolution` for somebody who
+  did not live to see one. Found at population scale, not by reasoning:
+  `clinic-decade` seed 5 over an 800-person pool exited
+  `:self-check-failed` on that invariant for PID-000208-f8f59cb6, whose
+  own person opened a window at t 62,829,345 due to close at
+  65,248,545 and died at 64,751,457 -- 497,088 seconds short of it.
+
+  An unidentified patient who dies before anybody establishes who they
+  were is the most characteristic John Doe outcome there is, and an
+  invariant that forbade it would be wrong about the world rather than
+  about the log. So the ENGINE declines to promise a close instant it
+  already knows will never come, and the invariant's own existing
+  clause -- *a placeholder carrying none cannot be judged either way, so
+  it is left alone* -- is what covers it. Nothing is weakened: a window
+  that DOES resolve still carries its close, so a resolution the engine
+  failed to mint still goes red, which is the failure the invariant
+  exists for."
+  [entry window]
+  (cond-> (assoc entry :identity :placeholder :alias-name (:alias-name window))
+    (some? (:branch window)) (assoc :window-close-t (:until-t window))))
+
 (defn- select-person
   "A1: ONE uniform from the `:world` stream picks this arrival's person
   out of the persons ALIVE at that instant.
@@ -2591,9 +2648,7 @@
                                            :person-id person-id}
                                     mother-patient-id (assoc :mother-patient-id mother-patient-id)
                                     placeholder-window
-                                    (assoc :identity :placeholder
-                                           :alias-name (:alias-name placeholder-window)
-                                           :window-close-t (:until-t placeholder-window)))])))
+                                    (as-> e (placeholder-registration e placeholder-window)))])))
                             mints)
         ;; --- ADR-0173 section 2(d): THE IDENTIFICATION FLOW ------------
         ;;
@@ -2673,9 +2728,8 @@
                                          (nth bindings i)
                                          (assoc :person-id (nth bindings i))
                                          (placeholder? i)
-                                         (assoc :identity :placeholder
-                                                :alias-name (:alias-name (nth arrival-windows i))
-                                                :window-close-t (:until-t (nth arrival-windows i))))]))
+                                         (as-> e (placeholder-registration
+                                                  e (nth arrival-windows i))))]))
                            mint-patients)
         ;; ADR-0173 section 2(b): THE FOLD IS A QUEUE-SEEDING PASS, not a
         ;; change to the main loop. A person event strictly after its
@@ -2698,20 +2752,25 @@
                                    {:type :person-encounter :t t :cause cause :reason reason
                                     :ward-class ward-class :stay-minutes stay-minutes
                                     :person-event-id person-event-id}]}))
+        ;; BOTH branches are queued ON THE PLACEHOLDER, and the merge
+        ;; carries the fill's payload alongside its survivor: `decide
+        ;; :identification-merge` degenerates to the fill when the world
+        ;; refuses the merge, and it can only do that if the payload
+        ;; rode the step. See that method's own docstring for the
+        ;; population-scale failure that put it there.
         resolution-steps
-        (vec (for [{:keys [patient-id person-id window branch survivor-patient-id]} resolutions]
-               (if (= :merge branch)
-                 {:patient-id survivor-patient-id :t (:until-t window)
-                  :steps [{:type :identification-merge :t (:until-t window)
-                           :placeholder-patient-id patient-id
-                           :person-event-id (:resolution-event-id window)}]}
-                 (let [reg (person-fold/registration (persona-of person-id)
-                                                     (get events-by-person person-id)
-                                                     (:until-t window))]
-                   {:patient-id patient-id :t (:until-t window)
-                    :steps [{:type :identity-fill :t (:until-t window)
-                             :persona (:persona reg) :residence (:residence reg)
-                             :person-event-id (:resolution-event-id window)}]}))))
+        (vec (for [{:keys [patient-id person-id window branch survivor-patient-id]} resolutions
+                   :let [reg (person-fold/registration (persona-of person-id)
+                                                       (get events-by-person person-id)
+                                                       (:until-t window))
+                         payload {:t (:until-t window)
+                                  :persona (:persona reg) :residence (:residence reg)
+                                  :person-event-id (:resolution-event-id window)}]]
+               {:patient-id patient-id :t (:until-t window)
+                :steps [(if (= :merge branch)
+                          (assoc payload :type :identification-merge
+                                 :survivor-patient-id survivor-patient-id)
+                          (assoc payload :type :identity-fill))]}))
         ;; ONE list, in a fixed category order -- the demographic fold,
         ;; then the hooks' own arrivals, then the encounters they put on
         ;; EXISTING patients, then the identification resolutions.

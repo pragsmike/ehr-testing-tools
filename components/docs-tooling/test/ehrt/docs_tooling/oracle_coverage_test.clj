@@ -6,7 +6,7 @@
   than it does. Three separate gaps, one subject:
 
   (a) `digest.clj`'s docstring opened `Six roots, ...` and its dated
-      notes account for 11. The map holds **35**. Not a false claim --
+      notes account for 11. The map holds **36**. Not a false claim --
       each note is dated and scoped -- but a reader who stops at the
       docstring gets a third of the population (L1-5).
 
@@ -27,7 +27,7 @@
 
   WHAT THIS FILE GATES, and what it deliberately does not. The claim in
   `digest.clj` is a set of event kinds and message types. Asserting it
-  against a FRESH 35-root digest costs 114 seconds (ADR-0156 Step 0 b),
+  against a FRESH 36-root digest costs ~120 seconds (ADR-0156 Step 0 b),
   so that half lives in the scheduled lane:
   `ehrt.integration.oracle-coverage-test`. Putting only that there would
   leave the claim ungated on every push, so the checks below are the
@@ -231,8 +231,8 @@
         docstring (subs source 0 (str/index-of source "(:require"))]
     (testing "sanity: the roots map parses"
       (is (pos? roots) "must find at least one root in the map")
-      (is (= 35 roots)
-          (str "35 roots today; a root added or removed moves this number and the docstring "
+      (is (= 36 roots)
+          (str "36 roots today; a root added or removed moves this number and the docstring "
                "paragraph together. Found " roots ".")))
     (testing "the docstring states the CURRENT population (L1-5)"
       (is (str/includes? docstring (str roots " roots"))

@@ -75,9 +75,9 @@ expect 0 bin/ehrt corpus generate sim --seed 20260807 --patients 200 \
   --config demos/scenarios/clinic-decade/config.edn \
   --out-dir out/scenarios/clinic-decade
 
-expect 0 bin/ehrt play out/scenarios/clinic-decade --board 60 --rate 100000
+expect 0 bin/ehrt play out/scenarios/clinic-decade --board 60 --rate 10000000
 
-expect 0 bin/ehrt play out/scenarios/clinic-decade/events.edn --rate 100000
+expect 0 bin/ehrt play out/scenarios/clinic-decade/events.edn --rate 10000000
 # END clinic-decade commands
 
 ended_s="$(date +%s)"
@@ -85,58 +85,54 @@ echo "== demo-exerciser-clinic-decade: full run wallclock $((ended_s - started_s
 
 echo "== demo-exerciser-clinic-decade: checking named invariants (re-derived live from the README) =="
 
-# "41 of the 48 board snapshots read `inpatients: 0` ... the other 7
-# read `inpatients: 1`" -- both counts AND both literals are read from
-# the README's own prose at runtime, never hand-copied here, so a
-# future re-witness of these figures (ADR-0103 moved them once, and
-# ADR-0171's stream partition moved them again) cannot silently desync
-# from this check.
+# The README's own counted board-snapshot CENSUS -- every count and
+# every literal read from its prose at runtime, never hand-copied here,
+# so a future re-witness of these figures cannot silently desync from
+# this check.
 #
-# WIDENED 2026-08-25 (ADR-0171). This used to extract ONE literal and
-# require every snapshot line to contain it -- a universal, which is
-# what the scenario supported until the reshuffle put exactly one
-# sepsis ED admission into the decade. A universal that has become a
-# 41/7 split cannot be rescued by re-pointing the literal: no single
-# string is in every line. So the claim's SHAPE changed with it, from
-# "every snapshot reads X" to "n snapshots read X and m read Y", and
-# the check now asserts both counts exactly and that they exhaust the
-# population. Weaker as a sentence, not as a gate: it pins two numbers
-# where it used to pin none.
+# WIDENED TWICE. It began as ONE literal required of every snapshot
+# line -- a universal, which held until ADR-0171's reshuffle put a
+# single sepsis ED admission into the decade. ADR-0171 replaced that
+# with a two-way "n read X and m read Y" split. Arc 3a part 4's
+# demographic-fold opt-in (2026-08-26) broke THAT shape in turn: the
+# scenario now carries births, occupational injuries and unidentified
+# arrivals, and its snapshots read four distinct inpatient counts, not
+# two. So the claim's shape widened once more, to a full DISTRIBUTION,
+# and the check asserts every count exactly plus that they exhaust the
+# population. Weaker as a sentence each time, never as a gate: it pins
+# four numbers where it once pinned none.
 #
-# The claim sentences wrap across markdown line breaks in the README's
-# own prose, so both extraction regexes tolerate whitespace (including
-# a newline) between words rather than requiring one physical line.
-# Step 2 is the --board play.
+# The claim wraps across markdown line breaks in the README's own
+# prose, so the extraction tolerates whitespace (including newlines)
+# between the pairs. Step 2 is the --board play.
 clojure -M:dev:test -e '
 (require (quote [clojure.string :as str]))
 (let [readme (slurp "demos/scenarios/clinic-decade/README.md")
-      major (re-find #"\*\*(\d+)\s+of\s+the\s+(\d+)\s+board\s+snapshots\s+read\s+`([^`]+)`\*\*" readme)
-      minor (re-find #"\*\*the\s+other\s+(\d+)\s+read\s+`([^`]+)`\*\*" readme)]
-  (if-not (and major minor)
-    (do (println "FAIL: could not find the README'"'"'s own counted board-snapshot claims")
+      total (re-find #"\*\*The board-snapshot census,\s+(\d+)\s+snapshots:\*\*" readme)
+      census (when total
+               (let [tail (subs readme (+ (str/index-of readme (first total)) (count (first total))))
+                     stop (or (str/index-of tail "\n\n") (count tail))]
+                 (into {} (for [[_ lit n] (re-seq #"`([^`]+)`\s+(\d+)" (subs tail 0 stop))]
+                            [lit (Long/parseLong n)]))))]
+  (if-not (and total (seq census))
+    (do (println "FAIL: could not find the README'"'"'s own counted board-snapshot census")
         (System/exit 1))
-    (let [n-major (Long/parseLong (nth major 1))
-          n-total (Long/parseLong (nth major 2))
-          lit-major (nth major 3)
-          n-minor (Long/parseLong (nth minor 1))
-          lit-minor (nth minor 2)
+    (let [n-total (Long/parseLong (nth total 1))
           out-lines (str/split-lines (slurp (str (System/getenv "LOG_DIR") "/step-2.out")))
           snapshot-lines (filter #(str/includes? % "inpatients:") out-lines)
-          got-major (count (filter #(str/includes? % lit-major) snapshot-lines))
-          got-minor (count (filter #(str/includes? % lit-minor) snapshot-lines))]
+          got (into {} (for [[lit _] census]
+                         [lit (count (filter #(str/includes? % lit) snapshot-lines))]))]
       (if (and (seq snapshot-lines)
                (= n-total (count snapshot-lines))
-               (= n-major got-major)
-               (= n-minor got-minor)
-               (= n-total (+ n-major n-minor)))
-        (do (println (str "OK: " n-total " board-snapshot lines split " n-major "/" n-minor
-                          " across the README'"'"'s own re-derived claims "
-                          (pr-str lit-major) " / " (pr-str lit-minor)))
+               (= census got)
+               (= n-total (reduce + (vals census))))
+        (do (println (str "OK: " n-total " board-snapshot lines match the README'"'"'s own "
+                          "re-derived census " (pr-str (into (sorted-map) census))))
             (System/exit 0))
-        (do (println (str "FAIL: the board-snapshot split does not match the README -- README says "
-                          n-major " of " n-total " read " (pr-str lit-major) " and " n-minor " read "
-                          (pr-str lit-minor) "; this run has " (count snapshot-lines) " snapshot lines, "
-                          got-major " and " got-minor))
+        (do (println (str "FAIL: the board-snapshot census does not match the README -- README says "
+                          n-total " snapshots split " (pr-str (into (sorted-map) census))
+                          "; this run has " (count snapshot-lines) " snapshot lines split "
+                          (pr-str (into (sorted-map) got))))
             (doseq [l snapshot-lines] (println "  " l))
             (System/exit 1))))))
 ' || fail "board-snapshot split invariant did not hold (see FAIL detail above)"

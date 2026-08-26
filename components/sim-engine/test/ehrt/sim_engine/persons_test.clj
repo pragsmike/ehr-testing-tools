@@ -624,21 +624,31 @@
       (is (pos? (count (identification-merges gt))))
       (is (empty? (fills gt))))))
 
-(deftest a-window-still-open-at-the-horizon-leaves-its-placeholder-unresolved-test
-  ;; `every-placeholder-registration-is-resolved-or-still-open`'s second
-  ;; clause, produced rather than only asserted: a placeholder nobody
-  ;; had identified by the time the feed stopped is real traffic.
-  (let [gt (:ground-truth (p4-run [(p4-window 0 100000 900000)]))]
-    (is (= 1 (count (placeholder-registrations gt))))
+(deftest a-window-with-no-resolution-leaves-its-placeholder-unjudgeable-test
+  ;; `every-placeholder-registration-is-resolved-or-still-open` has TWO
+  ;; escapes, and this is the one the engine reaches for whenever a
+  ;; window never resolves in the stream it was handed -- the person
+  ;; died inside it, or their own horizon ended inside it. The
+  ;; placeholder is minted, nothing resolves it, and it carries NO
+  ;; `:window-close-t`, which is that invariant's own "a placeholder
+  ;; carrying none cannot be judged either way, so it is left alone".
+  ;;
+  ;; The OTHER escape -- a close instant that is genuinely still in the
+  ;; future when the feed stops -- is a hand-authored-log case now, and
+  ;; is exercised by the mutation gates in
+  ;; `ehrt.sim-check.person-invariants-test`. It is nearly unreachable
+  ;; from a real run by construction: a resolution is QUEUED at its own
+  ;; `:until-t`, so a run whose window resolves has already reached it.
+  (let [gt (:ground-truth (p4-run [(p4-window 0 100000 900000)]))
+        ph (placeholder-registrations gt)]
+    (is (= 1 (count ph)))
     (is (empty? (fills gt)))
     (is (empty? (identification-merges gt)))
-    (testing "and the placeholder carries the close instant that makes it JUDGEABLE --
-              `every-placeholder-registration-is-resolved-or-still-open` reads it,
-              and that invariant's own gate lives in `ehrt.sim-check.person-
-              invariants-test`, which is the layer allowed to require `check`"
-      (is (= 900000 (:window-close-t (first (placeholder-registrations gt)))))
-      (is (< (:t (last gt)) 900000)
-          "the run outlived the window, so this is no longer the still-open case"))))
+    (is (nil? (:window-close-t (first ph)))
+        "an unresolved window promised a close instant it cannot keep")
+    (is (< (:t (last gt)) 900000)
+        "the run outlived the window, so this fixture is no longer the
+         unresolved case at all")))
 
 ;; --- 2(c): the delivery hook ---------------------------------------------
 
@@ -793,3 +803,74 @@
         (is (= 1 (count index)))
         (is (= (engine/patient-id-for p4-seed 0) (:patient-id (get index "q-a"))))
         (is (= 0 (:first-ordinal (get index "q-a"))))))))
+
+;; --- the two population-scale defects, gated as units --------------------
+;;
+;; Both were found by a corpus probe during arc 3a part 4's own opt-in --
+;; `clinic-decade` seed 5 over an 800-person pool exited
+;; `:self-check-failed` -- and neither was reachable from any fixture in
+;; this file until it was written for them. That is the shape
+;; `rulings.md#R-empty-population-is-red` is about, one level up: a gate
+;; over a case the fixtures cannot produce is a gate that proves nothing.
+
+(deftest a-window-nobody-lives-to-close-mints-no-due-instant-test
+  ;; ADR-0173 section 2(d), corrected by the tree. The person opens an
+  ;; identity window and DIES inside it, so the process emits no
+  ;; `:identity-resolution` -- correctly, since they did not live to see
+  ;; one. The placeholder is then unresolvable forever, and a
+  ;; `:window-close-t` promising a resolution that can never come would
+  ;; make `every-placeholder-registration-is-resolved-or-still-open` fire
+  ;; on the most characteristic John Doe outcome there is.
+  (let [gt (:ground-truth (p4-run [(p4-window 0 1000 900000)
+                                   {:event :person-death :person-id "q-a" :t 500000
+                                    :event-id "q-a#1"}]
+                                  {:persons (assoc p4-pool
+                                                   :alive {"q-a" 500000}
+                                                   :events [(p4-window 0 1000 900000)])}))
+        ph (placeholder-registrations gt)]
+    (is (pos? (count ph)) "the window minted no placeholder, so this proves nothing")
+    (is (every? #(nil? (:window-close-t %)) ph)
+        "a window with no resolution still promised a close instant")
+    (is (every? #(= {:family "Doe" :given "Unknown"} (:alias-name %)) ph)
+        "the alias is still minted -- only the DUE instant is withheld")
+    (testing "and a window that DOES resolve still carries its close, so nothing
+              is weakened: the engine withholds the promise it cannot keep and
+              keeps the one it can"
+      (let [resolved (:ground-truth (p4-run [(p4-window 0 1000 6000)
+                                             (p4-resolution 1 :fill "q-a#0" 6000)]))]
+        (is (every? #(= 6000 (:window-close-t %))
+                    (placeholder-registrations resolved)))))))
+
+(deftest a-merge-the-world-refuses-degenerates-to-a-fill-test
+  ;; The SECOND half of the same finding. The resolution is queued on the
+  ;; PLACEHOLDER rather than on the survivor, because the run loop
+  ;; short-circuits a queue entry whose patient is already `:merged` --
+  ;; so a step queued on the survivor would vanish the moment anything
+  ;; merged that survivor away, leaving the placeholder dangling past its
+  ;; own due close. Here the survivor EXPIRES instead, which the merge
+  ;; guard refuses for the same reason and by the same branch.
+  (let [expiring {:name "expiring"
+                  :steps [{:type :admission :location "Renal"}
+                          {:type :delay :from 10 :to 10}
+                          {:type :discharge :disposition :expired}]}
+        gt (:ground-truth (p4-run [(p4-window 0 1000 6000)
+                                   (p4-resolution 1 :merge "q-a#0" 6000)]
+                                  {:pathways [{:patient-ordinal 0 :pathway expiring}
+                                              {:patient-ordinal 1 :pathway {:name "empty" :steps []}}
+                                              {:patient-ordinal 2 :pathway {:name "empty" :steps []}}
+                                              {:patient-ordinal 3 :pathway {:name "empty" :steps []}}]}))
+        survivor-id (engine/patient-id-for p4-seed 0)]
+    (testing "the survivor really did expire before the window closed"
+      (let [death (first (filter #(and (= :discharge (:event %)) (= :expired (:disposition %))) gt))]
+        (is (some? death) "the fixture's expiring pathway produced no expired discharge")
+        (is (= survivor-id (:patient-id (first (:participants death)))))
+        (is (< (:t death) 6000) "the expiry lands after the window closes, so the
+                                 merge would have been legal and this proves nothing")))
+    (is (empty? (identification-merges gt))
+        "a merge was emitted naming an expired survivor")
+    (is (pos? (count (fills gt)))
+        "the refused merge minted NOTHING -- the placeholder is left dangling past
+         its own due close, which is exactly the violation this fallback exists
+         to prevent")
+    (testing "and the fill landed on the placeholder, not on the survivor"
+      (is (every? #(not= survivor-id (:patient-id (first (:participants %)))) (fills gt))))))

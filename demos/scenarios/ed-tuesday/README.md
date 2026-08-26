@@ -41,7 +41,7 @@ or rename a prior run's own directory before regenerating.
 ## Play
 
 ```bash
-bin/ehrt play out/scenarios/ed-tuesday --board 60 --rate 100000
+bin/ehrt play out/scenarios/ed-tuesday --board 60 --rate 10000000
 ```
 
 Renders a bed-state snapshot every 60 stream-minutes instead of a
@@ -52,54 +52,75 @@ Or play the sim's own story directly, from its own event log rather
 than the emitted HL7 v2 messages:
 
 ```bash
-bin/ehrt play out/scenarios/ed-tuesday/events.edn --rate 100000
+bin/ehrt play out/scenarios/ed-tuesday/events.edn --rate 10000000
 ```
 
 ## What to look for
 
-Witnessed this session (seed 20260811, 100 patients, `--config` as
-above, `--churn` on): 375 ground-truth events, 275 HL7 v2 messages,
-33 board snapshots over a 127,200,000 ms (~35.3-hour) stream span --
-one busy shift running a little past the next morning, day-scale as
-intended. (Re-witnessed 2026-08-25 under ADR-0171's RNG stream
-partition, which moved every draw in this run; the previous witness was
-383 events / 283 messages / 34 snapshots / 128,520,000 ms.)
+Witnessed 2026-08-26 (seed 20260811, 100 patients, `--config` as
+above, `--churn` on): **695 ground-truth events, 286 HL7 v2 messages,
+104 board snapshots** over a 603,759,336,000 ms stream span.
 
-**Inpatients rise and fall.** The first snapshot already shows 3
-occupied beds; the census climbs through the shift to a peak of 17
-concurrent inpatients, then drains back down to 1 by the run's own
-last snapshot -- the whole point of this scenario, unlike
-clinic-decade's own `inpatients: 0` throughout:
+**THE SHIFT IS STILL A SHIFT; THE STREAM IS NOT.** `config.edn` opted
+this scenario into `ehrt.sim-engine.engine`'s demographic fold on
+2026-08-26 (arc 3a part 4, ADR-0173 ruling D1's commit 2), so the run
+now carries a POPULATION of 200 people walking twenty years alongside
+its hundred scripted arrivals. The scripted ED shift is untouched and
+still happens in the first ~35 hours; what follows it is those people's
+own lives -- moves, coverage changes, births, occupational injuries and
+unidentified arrivals -- spread across two decades. So the run has TWO
+PHASES now, and the day-scale contrast this scenario draws with
+clinic-decade is about the first one. Read the board with that in mind:
+the busy shift is the opening minute of the playback, and the long
+sparse tail after it is the population.
+
+**Inpatients rise and fall.** The first snapshot already shows 4
+occupied beds; the census climbs through the shift to a peak of 11
+concurrent inpatients, then drains to 1 by the run's own last snapshot:
 
 ```
 -- board snapshot: 2026-08-11T01:12:00Z --
 
 Emergency:
-  ED-H10  Miller, Robert  MRN MRN000003  inpatient  attending: 5761303028
-  ED-H12  Patel, Matthew  MRN MRN000004  inpatient  attending: 5761303028
-  ED-H14  Smith, Madison  MRN MRN000005  inpatient  attending: 5761303028
+  ED-H01  Patel, Lisa  MRN MRN000004  inpatient  attending: 5761303028
+  ED-H05  Johnson, Christopher  MRN MRN000003  inpatient  attending: 5761303028
+  ED-H09  Hernandez, Sandra  MRN MRN000002  inpatient  attending: 5761303028
+  ED-H11  Johnson, Michael  MRN MRN000005  inpatient  attending: 5761303028
 
-inpatients: 3  active outpatients: 0  discharged: 2  merged: 0
+inpatients: 4  active outpatients: 0  discharged: 1  merged: 0
 ```
 
 ```
--- board snapshot: 2026-08-12T11:20:00Z --
+-- board snapshot: 2045-09-27T22:55:36Z --
 
 Emergency:
-  ED-H06  Garcia, Madison  MRN MRN000040  inpatient  attending: 5761303028
+  ED-H03  Lee, Jennifer  MRN MRN000040  inpatient  attending: 5761303028
 
-inpatients: 1  active outpatients: 0  discharged: 90  merged: 1
+inpatients: 1  active outpatients: 0  discharged: 108  merged: 1
 ```
 
-**Discharges accrue and churn fires.** `discharged` climbs from 2 to
-90 across the run; `merged` (an `InjectChurn` bed-merge event) climbs
-from 0 to 1 -- real churn traffic, the direct payoff of scripting real
-admissions for `--churn` to work with, unlike clinic-decade's own
-outpatient-only mix where a merge has no admitted patient to touch.
-The merge count is THINNER than the five this run showed before
-ADR-0171's reshuffle, and that is stated rather than smoothed over: it
-is one merge, not five, and the claim it supports is that merges happen
-here at all, which one still witnesses.
+Note the DATE on that second snapshot: 2045, not 2026. That is the
+population tail, not the shift.
+
+**Discharges accrue and churn fires.** `discharged` climbs from 1 to
+108 across the run; `merged` climbs from 0 to 1. That merge is now an
+IDENTIFICATION merge rather than an `InjectChurn` one -- a John Doe
+record joined to the patient the same person already had -- and churn's
+own bed-merge lottery contributed none at this seed. Stated rather than
+smoothed over: the claim this supports is that merges happen here at
+all, and they do, but the family that produces them has changed.
+
+**The person stream's own clinical traffic**, counted: **15
+unidentified ED arrivals**, every one of them later filled in place
+(PID-5 `Doe^Unknown`, PID-7/8/11/13 empty, no IN1); **15 newborns**,
+each on a patient of their own whose `:registered` carries
+`:mother-patient-id`; **8 occupational-injury presentations**; **1
+parent delivery admission**; and **3 registrations for a patient with
+nowhere to live** (PID-11 absent). Only one parent delivery, because
+this scenario's patients nearly all walk a scripted ED pathway and a
+hook may only put an encounter on a patient whose own queue is
+otherwise empty -- the single-encounter horizon, doing exactly what it
+is for.
 
 **Capacity held.** No `:capacity-exhausted` at any point in this
 run -- `config.edn`'s own facility bump (Emergency's surge slots,
@@ -127,10 +148,18 @@ at a genuinely short (day/week/month-scale) horizon is expected to
 show sparse-to-zero live content; this run's own zero is that expected
 outcome, not a config defect.
 
-Full closing summary: `{:unparseable-count 0, :snapshot-count 33,
-:skip-count 0, :rate 100000.0, :idle-cap-ms 5000, :wallclock-ms 1734,
-:stream-span-ms 127200000, :clamped-count 0, :emitted 275,
+Full closing summary: `{:unparseable-count 0, :snapshot-count 104,
+:skip-count 2, :rate 1.0E7, :idle-cap-ms 5000, :wallclock-ms 57860,
+:stream-span-ms 603759336000, :clamped-count 0, :emitted 286,
 :unfolded-count 0, :sink "ticker"}`.
+
+**`--rate` MOVED, 100,000 -> 10,000,000**, on both scenarios and for
+the same measured reason: `--rate` is stream-seconds per
+wallclock-second, so it has to be read against the stream it paces, and
+this one grew from 35 hours to nineteen years. At the old rate the
+playback spent its time waiting; at the new one the whole stream plays
+in ~58 seconds with two skips. The board census is unchanged by the
+rate -- the number paces the demo and changes nothing it shows.
 
 **Same ground truth, a second, latency-realistic wire.** This shift's
 own ground truth is also played onto a wire where messages transmit
@@ -192,7 +221,7 @@ two directories generated from the same seed.
 **Play the latency wire into the board:**
 
 ```bash
-bin/ehrt play out/scenarios/ed-tuesday-latency --board 60 --rate 100000
+bin/ehrt play out/scenarios/ed-tuesday-latency --board 60 --rate 10000000
 ```
 
 **What the board actually shows.** Patient MRN000020 (Jones, Ava),
@@ -259,25 +288,36 @@ Jessica (MRN000048)`: two patients shown in one bed, one of them a
 phantom re-admission and the other a transfer message (A02) that posted
 after its own cancellation.
 
-This is one of 8 (of 92 admitted patients, seed 20260811) whose own
-admission message arrives after its own transfer or discharge message
-on this wire -- occasional and visible, not universal
-(`config-latency.edn`'s own header has the tuning rationale). That
-8-of-92 figure is unchanged across ADR-0171's reshuffle; which eight
-patients they are is not.
+This is one of **3 (of 110 admitted patients, seed 20260811)** whose
+own admission message arrives after its own transfer or discharge
+message on this wire -- occasional and visible, not universal
+(`config-latency.edn`'s own header has the tuning rationale).
 
-Closing summary: `{:unparseable-count 0, :snapshot-count 33,
-:skip-count 0, :rate 100000.0, :idle-cap-ms 5000, :wallclock-ms 1762,
-:stream-span-ms 126894000, :clamped-count 0, :emitted 275,
-:unfolded-count 0, :sink "ticker"}` -- the same 275 messages as the
-base run, the same 33 snapshots, and a stream span 306 seconds SHORTER
-(the wire's own tail now ends before the last clinical event rather
-than after it). Before ADR-0171's reshuffle this run had one snapshot
-FEWER than the base and a span 430 seconds LONGER; both differences are
-artifacts of where transmit times fall against the board's own
-tick-crossing schedule, and neither direction is the claim -- the claim
-is that the same ground truth, played on a delayed wire, produces a
-different board.
+**RE-WITNESSED 2026-08-26, and the direction is worth stating: 8 of 92
+became 3 of 110.** The demographic-fold opt-in added 18 more admitted
+patients, and every one of them is a HOOK encounter spread across the
+population's twenty years -- a birth, an injury, an unidentified
+arrival -- whose own admission-to-discharge gap is hours or days.
+`config-latency.edn`'s bands are 15 to 90 minutes, so a gap that wide
+cannot be crossed by a transmit delay and those encounters simply
+cannot disorder. The three that do are the scripted ED shift's own,
+where the gaps are tight enough for the wire to overtake the clinic.
+The mechanism is unchanged and so is the claim; what changed is that
+the denominator now contains patients the mechanism cannot reach, and
+saying "3 of 110" without saying which 110 would understate it.
+
+Closing summary: `{:unparseable-count 0, :snapshot-count 104,
+:skip-count 2, :rate 1.0E7, :idle-cap-ms 5000, :wallclock-ms 57828,
+:stream-span-ms 603759467000, :clamped-count 0, :emitted 286,
+:unfolded-count 0, :sink "ticker"}` -- the same 286 messages as the
+base run, the same 104 snapshots, and a stream span 131 seconds LONGER
+(the wire's own tail now ends after the last clinical event rather than
+before it). It has gone both ways across three witnesses -- 430 seconds
+longer before ADR-0171, 306 shorter after it, 131 longer now -- and
+neither direction is the claim; all three are artifacts of where
+transmit times fall against the board's own tick-crossing schedule. The
+claim is that the same ground truth, played on a delayed wire, produces
+a different board.
 
 **What a receiver could do better.** Nothing here is prescribed or
 built this session -- as reader orientation only: a receiver that
@@ -310,9 +350,9 @@ bin/ehrt corpus batch out/scenarios/ed-tuesday-latency --interval 60 \
   --out-dir out/scenarios/ed-tuesday-latency-batches
 ```
 
-Witnessed this session (same seed-20260811 run as above, 275 messages
-across 32 occupied hourly buckets, `2026-08-11T00:00Z` through
-`2026-08-12T12:00Z`):
+Witnessed 2026-08-26 (same seed-20260811 run as above, 286 messages
+across 105 occupied hourly buckets, `2026-08-11T00:00Z` through
+`2045-09-27T13:00Z`):
 
 ```
 {:status :ok,
@@ -324,29 +364,30 @@ across 32 occupied hourly buckets, `2026-08-11T00:00Z` through
     :start-ms 1786406400000, :end-ms 1786410000000, :verified true}
    {:file "batch-001.hl7", :count 4,
     :start-ms 1786410000000, :end-ms 1786413600000, :verified true}
-   {:file "batch-002.hl7", :count 6,
+   {:file "batch-002.hl7", :count 7,
     :start-ms 1786413600000, :end-ms 1786417200000, :verified true}
-   ;; ... batch-003.hl7 through batch-028.hl7, one per occupied hour ...
-   {:file "batch-029.hl7", :count 1,
-    :start-ms 1786518000000, :end-ms 1786521600000, :verified true}
-   {:file "batch-030.hl7", :count 1,
-    :start-ms 1786528800000, :end-ms 1786532400000, :verified true}
-   {:file "batch-031.hl7", :count 2,
-    :start-ms 1786532400000, :end-ms 1786536000000, :verified true}],
-  :span {:earliest-ms 1786406400000, :latest-ms 1786536000000}}}
+   ;; ... batch-003.hl7 through batch-102.hl7 ...
+   {:file "batch-103.hl7", :count 1,
+    :start-ms 2389993200000, :end-ms 2389996800000, :verified true}
+   {:file "batch-104.hl7", :count 1,
+    :start-ms 2390166000000, :end-ms 2390169600000, :verified true}],
+  :span {:earliest-ms 1786406400000, :latest-ms 2390169600000}}}
 ```
 
-**Epoch-aligned, and the interior gap is real.** `batch-029` spans
-`[07:00Z, 08:00Z)` on 2026-08-12 and `batch-030` spans `[10:00Z,
-11:00Z)` -- the two hours in between (`08:00Z`-`10:00Z`) carried no
-traffic at all in this run's own tail and are simply absent, never
-written as empty files (ADR-0111's own named v1 deferral: an
-interior empty batch isn't represented, only skipped). Every one of
-the 32 written files self-verified: `write-and-verify-batch!`
-(`bases/cli`) decodes what it just wrote straight back and checks
-`BTS-1` against the real message count before ever reporting success
--- `:verified true` on all 32 is that check, exercised, not merely
-claimed.
+**Epoch-aligned, and the interior gaps are enormous.** The first thirty
+or so batches are the ED shift itself, packed hour after hour with 2 to
+12 messages each; everything after them is the population tail, and
+they are almost all `:count 1` -- one birth, one injury, one
+unidentified arrival, in an hour that carried nothing else, years apart
+from the batch before it. `batch-103` and `batch-104` sit in 2045. The
+empty hours between are simply ABSENT, never written as empty files
+(ADR-0111's own named v1 deferral: an interior empty batch is not
+represented, only skipped), which is why nineteen years partition into
+105 files rather than 168,000. Every one of the 105 written files
+self-verified: `write-and-verify-batch!` (`bases/cli`) decodes what it
+just wrote straight back and checks `BTS-1` against the real message
+count before ever reporting success -- `:verified true` on all 105 is
+that check, exercised, not merely claimed.
 
 **The wrapper itself**, `batch-000.hl7`, head and tail:
 
@@ -384,7 +425,7 @@ finished.
 **The lesson** (the author's own charter, ADR-0107/ADR-0109, quoted
 above, restated for batching specifically): transport-level
 completeness -- every `BTS-1` count checks out, exactly as this run's
-own 32-for-32 self-verification shows -- says nothing about
+own 105-for-105 self-verification shows -- says nothing about
 clinical-level completeness -- whether an encounter's own full record
 set has actually arrived yet. A downstream receiver deciding "do I
 have all of this encounter?" gets exactly the case it needs to test

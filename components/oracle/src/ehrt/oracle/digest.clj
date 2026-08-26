@@ -42,8 +42,9 @@
   component-code versions, and hashing itself happens in the calling
   shell (`sha256sum`), not in-process.
 
-  CURRENT STATE, 2026-08-19 (ADR-0156, review-4 register row L1-5).
-  `roots` holds 35 roots in two families:
+  CURRENT STATE, 2026-08-26 (arc 3a part 4, ADR-0173 ruling D1's
+  commit 2; previously 2026-08-19, ADR-0156, review-4 register row L1-5).
+  `roots` holds 36 roots in two families:
 
     3 INTERPRETER-LAYER batches -- appendicitis/sore-throat/
       ear-infections. 100 well-mixed seeds x both sexes = 200 walks per
@@ -53,10 +54,12 @@
       well-distributed for their own first draw, confirmed repeatedly
       across GMF coverage waves.
 
-   32 ENGINE-LAYER pairs -- engine/run plus emit-hl7/emit, ground truth
+   33 ENGINE-LAYER pairs -- engine/run plus emit-hl7/emit, ground truth
       AND emitted HL7 both captured, at the run-config each root's own
       vendored/engine test already established as producing real
-      content.
+      content. The 33rd, `demographic-fold`, is the first root to turn
+      `:persons` ON and is the only one covering the demographic fold,
+      the two clinical hooks or the identification flow.
 
   This paragraph replaced an opening that read `Six roots, matching this
   session's own J1 ruling verbatim` -- true when written and never
@@ -65,7 +68,7 @@
   false; a cold reader simply got a third of the population and no
   signal that it was a third. The count is gated now
   (`ehrt.docs-tooling.oracle-coverage-test`), and the COVERAGE block
-  beside `roots` states what these 35 can and cannot witness.
+  beside `roots` states what these 36 can and cannot witness.
 
   Dated note (2026-08-03, ADR-0033 AR-4b): three more roots join at the
   ENGINE layer -- ear-infections-engine/urinary-tract-infections-engine/
@@ -118,6 +121,7 @@
             [clojure.string :as str]
             [ehrt.kernel.interface :as kernel]
             [ehrt.patient-simulator.interface :as patient-simulator]
+            [ehrt.sim.interface :as sim]
             [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim-engine.interface :as engine]
             [ehrt.sim-emit-hl7.interface :as emit-hl7])
@@ -540,6 +544,59 @@
                   :modules [seeded-closure] :module-assignment [{:module-id "veteran-substance-abuse-treatment" :weight 1}]
                   :module-horizon-days 36500})))
 
+(defn- demographic-fold-pair
+  "Arc 3a part 4's own root (2026-08-26, ADR-0173 ruling D1's commit 2):
+  the FIRST oracle root that turns `:persons` ON, and so the first one
+  whose digest covers the demographic fold, the two clinical hooks and
+  the identification flow at all. FIRST BASELINE -- there is no
+  `before` to diff against, because no ref before this commit has a
+  root here.
+
+  IT IS ALSO WHY THIS SESSION'S ORACLE RUN CARRIES
+  `--declared-digest-change`: the manifest gains a file the baseline
+  side cannot produce. The 35 pre-existing roots stay IDENTICAL and
+  that is the claim; a difference in any ONE of them would be a STOP.
+
+  IT IS THE ONE ROOT THAT DOES NOT USE `engine-pair`, and the reason is
+  a dependency one rather than a preference. `:persons` reaches
+  `engine/run` TRANSLATED -- the engine may not require the component
+  that draws the person stream (ADR-0172 limitations row 10), so
+  somebody on the caller's side has to translate, and that somebody is
+  `ehrt.sim.run`. Reimplementing its two-pass ordering here would put
+  ruling C1's resolution in two places; widening `ehrt.sim.interface`
+  to export it would break that façade's own frozen-surface gate, which
+  exists because `components/corpus` depends on its stability
+  (ADR-0012) and which is not this session's to re-rule. So this root
+  goes through `run-command`, which is ALREADY on that façade and
+  already returns exactly the pair every other root captures --
+  `:ground-truth` plus, with `:emit` set to hl7, `:messages` rendered
+  by `emit-hl7/emit` against the run's own facility and providers.
+
+  A SIDE EFFECT WORTH HAVING: this is the first oracle root to exercise
+  `ehrt.sim.run/run-command` at all. Every other one calls `engine/run`
+  directly, so the CLI's own orchestration layer -- config merge, module
+  resolution, the self-check -- has never been inside an IDENTICAL
+  verdict until now.
+
+  THE COVERAGE THIS ROOT ADDS is stated in the block below and is the
+  reason it exists: three closed event kinds and one MSH-9 that no root
+  could reach before it."
+  []
+  (let [r (sim/run-command
+           {:seed 20260826 :patients 120 :pathway {:name "module-only" :steps []}
+            :modules ["sinusitis"]
+            :module-assignment [{:module-id "sinusitis" :weight 1}]
+            :module-horizon-days 3650
+            :emit "hl7" :reference-date "2024-01-01" :utc-offset "+00:00"
+            ;; Twice the arrival count and twenty years, the same sizing
+            ;; the two gated scenario configs carry and for the same
+            ;; measured reasons.
+            :persons {:count 240 :years 20}})]
+    (when-not (= :ok (:status r))
+      (throw (ex-info "demographic-fold root did not run cleanly" {:result r})))
+    {:ground-truth (:ground-truth (:payload r))
+     :hl7 (vec (:messages (:payload r)))}))
+
 (defn- injuries-pair
   "Injuries arc close (2026-08-11, ADR-0107): FIRST BASELINE, not a
   regression check -- this closure never completed a round trip before
@@ -557,7 +614,8 @@
                   :modules [closure] :module-assignment [{:module-id "injuries" :weight 1}]
                   :module-horizon-days 18250})))
 
-;; --- COVERAGE (2026-08-19, ADR-0156, register rows L1-1/L1-2/L1-3) ---
+;; --- COVERAGE (2026-08-19, ADR-0156, register rows L1-1/L1-2/L1-3;
+;;     WIDENED 2026-08-26 by arc 3a part 4's own root) ---
 ;;
 ;; WHAT `IDENTICAL` MEANS, AND WHAT IT DOES NOT. This block is INSIDE
 ;; the region `bin/regression-oracle`'s soundness check compares, on
@@ -567,30 +625,63 @@
 ;; `--declared-digest-change`, and the session that pays it has to say
 ;; which way coverage moved.
 ;;
+;; WHICH WAY IT MOVED, 2026-08-26: WIDER, by one root. `demographic-fold`
+;; turns `:persons` on and lifts five surfaces out of the vacuous set
+;; below -- `:merge` (the KIND), `merge-message`, `mrg-segment`, the
+;; MSH-9 `ADT^A40`, and the two kinds the fold itself mints. Measured on
+;; that root's own output, not predicted: 671 events, 134 messages,
+;; kinds `#{:admission :coverage-change :demographic-update :discharge
+;; :medication-order :merge :outpatient-visit :outpatient-visit-end
+;; :registered}`, MSH-9s `#{"ADT^A01" "ADT^A03" "ADT^A04" "ADT^A40"}`.
+;; The A40 arrives by the IDENTIFICATION merge, which is churn's own
+;; `:merge` shape with a `:cause` -- so the oracle now witnesses the
+;; merge emitter for the first time, though still not churn's own
+;; `decide :merge`, whose lottery no root turns on.
+;;
 ;; THE VACUOUS SET -- surfaces no root can move, so no IDENTICAL verdict
 ;; says anything about them (review 4's instrumented reachability
 ;; battery over 78 named surfaces, all 35 roots, its output proven
 ;; byte-identical to the clean digest):
 ;;
-;;   * 9 of 22 `decide` dispatches and 8 of 21 `evolve` dispatches.
-;;   * 8 of the event contract's 21 closed kinds: :bed-swap,
-;;     :cancel-admit, :cancel-discharge, :cancel-transfer, :merge,
-;;     :order-placed, :result-available, :step-rejected.
+;;   * `evolve` dispatches: 7 of 23 unreached, which is the complement
+;;     of the kind list immediately below (that multi dispatches on
+;;     `:event`, so the two are the same measurement). It was 8 of 21
+;;     before 2026-08-26: the contract gained two kinds at 1.3.0 and
+;;     BOTH are now witnessed, and `:merge` left the unreached set.
+;;   * `decide` dispatches: NOT RE-INSTRUMENTED this session, and said
+;;     so rather than restated. Review 4's battery measured 9 of 22
+;;     unreached; since then the multi has gained five methods
+;;     (`:demographic-update`, `:coverage-change`, `:person-encounter`,
+;;     `:identity-fill`, `:identification-merge`) and `demographic-fold`
+;;     reaches all five, so both the numerator and the denominator
+;;     moved. Re-running that battery is its own piece of work and is
+;;     not smuggled into this bullet as an updated-looking number.
+;;   * 7 of the event contract's 23 closed kinds: :bed-swap,
+;;     :cancel-admit, :cancel-discharge, :cancel-transfer,
+;;     :order-placed, :result-available, :step-rejected. `:merge` LEFT
+;;     this set on 2026-08-26 -- `demographic-fold`'s identification
+;;     merges are the first any root has produced.
 ;;   * The whole order->result path: `orm-message`, `oru-message`,
 ;;     `obx-segment`. NOTE the precision, because the summary version of
 ;;     this claim is wrong: ORU^R01 IS emitted, 1,768 times across 14
 ;;     roots -- by `observation-message` and `diagnostic-report-message`.
 ;;     It is `oru-message`, the :result-available order-result emitter,
 ;;     that no root reaches. ORM^O01 is emitted zero times.
-;;   * `bed-swap-message`, `merge-message`, `mrg-segment`, the Z-segment
-;;     pair, `plan-latency`/`emit-wire` (the second clock),
+;;   * `bed-swap-message`, the Z-segment pair,
+;;     `plan-latency`/`emit-wire` (the second clock),
 ;;     `v2-replay/fold-message`, `churn/inject`+`strip`, `engine/replay`,
-;;     and `sim-check` in its entirety.
+;;     and `sim-check` in its entirety. `merge-message` and
+;;     `mrg-segment` LEFT this list on 2026-08-26, by the same root and
+;;     the same A40.
 ;;
 ;; THE STRUCTURAL CAUSE, re-derived rather than inferred from the
-;; instrumentation: all 35 roots pass `:pathway {:name "module-only"
-;; :steps []}`, and 11 of 18 components plus `bases/cli` are off the
+;; instrumentation: all 36 roots pass `:pathway {:name "module-only"
+;; :steps []}`, and 10 of 19 components plus `bases/cli` are off the
 ;; oracle classpath entirely (`bin/regression-oracle`'s own deps block).
+;; `components/person-simulator` joined that classpath on 2026-08-26 --
+;; not because `digest.clj` requires it, but because `ehrt.sim.run`
+;; does, and `demographic-fold` reaches the person stream through
+;; `ehrt.sim.interface`.
 ;;
 ;; SITE PROFILES -- generalising ADR-0150 (a), which named only the
 ;; Z-segment quarter of this surface. The sole emitter call below is the
@@ -605,29 +696,46 @@
 ;; THE CAPACITY WITNESS IS ONE ROOT DEEP. `death-fixture` alone carries
 ;; the oracle's single `:transfer` -- and with it the only ADT^A02, the
 ;; only `:bed-ready true`, and all 13 of its ladder rung-3 placements.
-;; Rung 4, `:forced` and `:exhausted` are zero across all 35. Lose that
+;; Rung 4, `:forced` and `:exhausted` are zero across all 36. Lose that
 ;; root and four claims go dark together. `:medication-end` is one root
-;; deep too (`injuries`, one occurrence).
+;; deep too (`injuries`, one occurrence) -- and so, as of 2026-08-26,
+;; are `:merge`, `:demographic-update`, `:coverage-change` and ADT^A40,
+;; all four of them `demographic-fold`'s alone. That root is now the
+;; single point of failure for the whole person-fold half of this
+;; oracle, stated here rather than discovered later.
 ;;
 ;; The two sets below are the committed claim, asserted against a FRESH
-;; 35-root digest by `ehrt.integration.oracle-coverage-test` and checked
+;; 36-root digest by `ehrt.integration.oracle-coverage-test` and checked
 ;; for shape, population, membership and location on every push by
 ;; `ehrt.docs-tooling.oracle-coverage-test`.
 
 (def ^:private witnessed-event-kinds
-  "The 13 of 21 closed event kinds any root can produce. Adding a root
+  "The 16 of 23 closed event kinds any root can produce. Adding a root
   that reaches the capacity or order->result paths moves this set --
-  that is R4-Q6 (ii) (b), rowed and priced, deliberately not taken."
-  #{:admission :care-plan-end :care-plan-start :diagnostic-report
-    :discharge :medication-end :medication-order :observation
+  that is R4-Q6 (ii) (b), rowed and priced, deliberately not taken.
+
+  WIDENED 2026-08-26, 13 of 21 -> 16 of 23, by `demographic-fold`: the
+  denominator grew by the two kinds contract 1.3.0 added, and the
+  numerator by those two plus `:merge`."
+  #{:admission :care-plan-end :care-plan-start :coverage-change
+    :demographic-update :diagnostic-report
+    :discharge :medication-end :medication-order :merge :observation
     :outpatient-visit :outpatient-visit-end :procedure :registered
     :transfer})
 
 (def ^:private witnessed-message-types
-  "Every MSH-9 the 32 engine-layer roots emit. ADT^A02 is death-fixture's
-  alone, once. ADT^A08/A11/A13/A34/A40 and ORM^O01 are emitted by no
-  root at all."
-  #{"ADT^A01" "ADT^A02" "ADT^A03" "ADT^A04" "ORU^R01"})
+  "Every MSH-9 the 33 engine-layer roots emit. ADT^A02 is death-fixture's
+  alone, once; ADT^A40 is `demographic-fold`'s alone. ADT^A08/A11/A13/
+  A34 and ORM^O01 are emitted by no root at all.
+
+  WIDENED 2026-08-26 by `demographic-fold`'s identification merges --
+  the first A40 any root has produced, and with it the first
+  `merge-message` and `mrg-segment`. NOTE what it does NOT buy: the two
+  kinds the fold itself mints render no message of their own in 1.4.0
+  (an A08 for `:demographic-update` is a later arc's candidate, named
+  in `message-type-registry`'s own comment), so the fold reaches this
+  set only through the merge."
+  #{"ADT^A01" "ADT^A02" "ADT^A03" "ADT^A04" "ADT^A40" "ORU^R01"})
 
 (def ^:private roots
   {"appendicitis"                       appendicitis-batch
@@ -664,7 +772,8 @@
    "veteran-ptsd"                       veteran-ptsd-pair
    "veteran-self-harm"                  veteran-self-harm-pair
    "veteran-substance-abuse-treatment"  veteran-substance-abuse-treatment-pair
-   "injuries"                           injuries-pair})
+   "injuries"                           injuries-pair
+   "demographic-fold"                   demographic-fold-pair})
 
 (defn -main
   "Writes one <root>.edn per root into out-dir (pr-str of the batch or

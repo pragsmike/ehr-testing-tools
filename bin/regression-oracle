@@ -104,6 +104,27 @@ sim_brick_dir_for() {
   fi
 }
 
+# The person-process component's own dep line, per side -- EMPTY for a
+# worktree that predates it. `components/person-simulator` landed
+# 2026-08-25 (ADR-0172) and `components/sim` began requiring it
+# 2026-08-26 (arc 3a part 3), so any bracket whose BASELINE predates
+# either would name a `:local/root` that does not exist and clojure
+# would refuse the whole deps map -- on a side whose digest.clj never
+# loads `ehrt.sim.run` at all. Same per-worktree resolution shape
+# `oracle_wiring_for` and `sim_brick_dir_for` above already use, and
+# here for the same reason.
+#
+# RETIREMENT CONDITION: delete this function and inline the dep once no
+# bracket this repo runs still needs a pre-2026-08-25 baseline.
+person_sim_dep_for() {
+  local wt="$1"
+  if [ -d "$wt/components/person-simulator" ]; then
+    echo "poly/person-simulator {:local/root \"$wt/components/person-simulator\"}"
+  else
+    echo ""
+  fi
+}
+
 # The digest.clj blob path for `ref` at the REPO's own object store (no
 # worktree needed for this lookup) -- used only by the soundness check,
 # which compares source text, not runtime behavior.
@@ -175,6 +196,9 @@ run_one() {
   local sim_brick
   sim_brick="$(sim_brick_dir_for "$wt")"
 
+  local person_sim_dep
+  person_sim_dep="$(person_sim_dep_for "$wt")"
+
   local oracle_deps oracle_paths
   case "$path" in
     components/oracle/*)
@@ -194,6 +218,7 @@ run_one() {
         poly/kernel {:local/root "$wt/components/kernel"}
         $oracle_deps
         poly/sim {:local/root "$wt/components/sim"}
+        $person_sim_dep
         poly/sim-engine {:local/root "$wt/components/sim-engine"}
         poly/sim-model {:local/root "$wt/components/sim-model"}
         poly/$sim_brick {:local/root "$wt/components/$sim_brick"}

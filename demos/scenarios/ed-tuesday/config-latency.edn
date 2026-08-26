@@ -105,6 +105,40 @@
                       {:patient-ordinal 78 :module-id "bronchitis"}
                       {:patient-ordinal 90 :module-id "ear_infections"}]
  :module-horizon-days 90
+ ;; ARC 3A PART 4 (ADR-0173 ruling D1's commit 2, 2026-08-26): the
+ ;; demographic fold, TURNED ON. This is the opt-in -- `:persons` absent
+ ;; is the byte-identical path, and this file is one of the six corpora
+ ;; that stop taking it.
+ ;;
+ ;; `:count` IS TWICE THE ARRIVAL COUNT, and both the shape and the
+ ;; factor are measurements rather than preferences. With `:persons`
+ ;; present an arrival BINDS to a person, and a repeat arrival of
+ ;; somebody already registered queues NOTHING (ADR-0173's own first
+ ;; tabled deviation: a second `:admission` for a discharged patient
+ ;; violates `admission-only-when-new`). So a small pool silently
+ ;; deletes clinical content -- probed at `:count` 50 against 100
+ ;; arrivals, only 50 patients registered and three quarters of this
+ ;; scenario's own module walks never happened.
+ ;;
+ ;; One person per arrival is not enough either, and the generator-side
+ ;; COVERAGE GATE is what said so: at `:count` 100 the birthday paradox
+ ;; still makes better than a third of the arrivals repeats, and the
+ ;; module coverage that thinned took this scenario's only
+ ;; module-compiled `:admission`/`:discharge` pair with it --
+ ;; `gated-runs-collectively-produce-every-emittable-event-type` went
+ ;; red on exactly those two kinds. At twice the arrival count the
+ ;; collision rate drops enough that both come back.
+ ;;
+ ;; `:years` IS TWENTY, not the ten `ehrt.sim.run/default-person-years`
+ ;; would give, and that is a measurement too: at 10 years this
+ ;; population produced ZERO occupational injuries (the hazard is
+ ;; conditioned on `:employed` person-years, and most of a ten-year walk
+ ;; is not), so the clinical hook would have been declared and never
+ ;; witnessed. At 20 it fires. A run's own log therefore extends to the
+ ;; PERSON horizon, well past its clinical content -- that is what a
+ ;; demographic timeline is, and this scenario's own README carries the
+ ;; re-witnessed figures.
+ :persons {:count 200 :years 20}
  :latency {:admission {:from-minutes 15 :to-minutes 90}
            :transfer {:from-minutes 15 :to-minutes 60}
            :discharge {:from-minutes 15 :to-minutes 60}

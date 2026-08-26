@@ -380,12 +380,19 @@
            (pr-str (:payload (check/check-all (:ground-truth @identification-run)
                                               p4-facility 0))))))
 
-(deftest a-still-open-placeholder-is-not-a-violation-test
-  ;; `every-placeholder-registration-is-resolved-or-still-open`'s second
-  ;; clause, PRODUCED. A placeholder left dangling by a horizon is real
-  ;; traffic -- an unidentified patient nobody had established by the
-  ;; time the simulated feed stopped -- and an invariant that forbade it
-  ;; would be wrong about the world rather than about the log.
+(deftest an-unresolvable-placeholder-is-not-a-violation-test
+  ;; `every-placeholder-registration-is-resolved-or-still-open`'s escape
+  ;; clauses, PRODUCED rather than only mutated into existence. A
+  ;; placeholder nobody ever identifies is real traffic -- the
+  ;; unidentified patient whose window the feed outlived, or who died
+  ;; inside it -- and an invariant that forbade it would be wrong about
+  ;; the world rather than about the log.
+  ;;
+  ;; The ENGINE withholds `:window-close-t` from a window that never
+  ;; resolves in the stream it was handed, so what this run exercises is
+  ;; the "carries none, cannot be judged" clause; the "close instant
+  ;; still in the future" clause is a hand-authored-log shape and is
+  ;; exercised by the mutation gates above.
   (let [persona-c (sim-model/persona (engine/stream 15 :person 3) {})
         gt (:ground-truth
             (engine/run
@@ -400,7 +407,8 @@
                                   :alias-name {:family "Doe" :given "Unknown"}}]}}))
         ph (filterv #(and (= :registered (:event %)) (= :placeholder (:identity %))) gt)]
     (is (pos? (count ph)) "no placeholder was minted")
-    (is (every? #(> (:window-close-t %) (:t (last gt))) ph)
-        "the run outlived the window, so this is no longer the still-open case")
+    (is (every? #(nil? (:window-close-t %)) ph)
+        "an unresolved window promised a close instant it cannot keep, which is
+         what would make this placeholder judgeable and therefore a violation")
     (is (empty? (check/every-placeholder-registration-is-resolved-or-still-open gt))
-        "a placeholder inside its own still-open window was reported as dangling")))
+        "an unresolvable placeholder was reported as dangling")))

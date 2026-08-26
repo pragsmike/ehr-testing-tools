@@ -51,6 +51,25 @@
 (def Persona persona/Persona)
 (defn valid-persona? [p] (persona/valid-persona? p))
 (defn persona [rng config] (persona/persona rng config))
+
+;; The two payer pools `persona` itself defaults to, PROMOTED onto this
+;; façade 2026-08-26 (arc 3a part 4) to close an interface gap arc 2b
+;; recorded rather than worked around.
+;;
+;; `ehrt.person-simulator.process` draws a coverage change from "the
+;; same `:payers-under-65` / `:payers-65-plus` keys a run already
+;; supplies to `sim-model/persona`", and its own docstring says a run
+;; that supplies NEITHER gets no `:coverage-change` events at all (the
+;; variates are still drawn). That gap made a declared 1.3.0 event kind
+;; unreachable from any config that did not restate the pools -- and
+;; restating them in a scenario file is exactly the forked-pool drift
+;; that component's docstring forbids for addresses, for the same
+;; reason. Exposing the real ones is the fix that removes a fork
+;; instead of creating one: `ehrt.sim.run/person-walk-config` defaults
+;; to these, so a run's people and its patients draw coverage from ONE
+;; pool set by construction.
+(def under-65-payers persona/under-65-payers)
+(def sixty-five-plus-payers persona/sixty-five-plus-payers)
 (defn reference-today-epoch-day [] (persona/reference-today-epoch-day))
 
 ;; --- config --------------------------------------------------------------

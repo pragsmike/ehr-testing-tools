@@ -397,7 +397,20 @@
   "The population-scale scenario runs this namespace gates. Adding a
   run here adds it to the coverage gate's own population at the same
   moment -- that coupling is the point: a gated run no coverage meter
-  reads is exactly the gap ADR-0163's defect fell through."
+  reads is exactly the gap ADR-0163's defect fell through.
+
+  ARC 3A PART 4 (ADR-0173 ruling D1's COMMIT 2, 2026-08-26): all four
+  now carry `:persons`. The three scenario-driven runs get it from
+  their own `config.edn` -- which is the SAME opt-in the scenarios
+  themselves take, so a gated corpus and the scenario a reader runs by
+  hand cannot disagree about what is in it -- and `:adhd-seed-45`,
+  which names no config, carries it in its own opts. `merge-config-file`
+  merges the file UNDER the caller's opts, so naming it in both places
+  would have been one declaration too many.
+
+  `:count` is the ARRIVAL COUNT in every case, and `:years` is 20 in
+  every case; each config carries the measurement behind those two
+  numbers."
   [{:id :seed-202-ed-tuesday
     :opts {:seed 202 :patients 100 :churn true
            :config "demos/scenarios/ed-tuesday/config.edn"}}
@@ -440,12 +453,37 @@
    ;; 0-399 at ten patients yield exactly four: 130, 158, 233, 331, each
    ;; producing the identical 12-event, one-of-each shape seed 2 used to
    ;; have. 130 is the smallest, and is taken for that reason alone.
-   {:id :adhd-seed-130
-    :opts {:seed 130 :patients 10 :reference-date "2026-08-04"
+   ;;
+   ;; RE-POINTED AGAIN 2026-08-26, seed 130 -> seed 45, by arc 3a part
+   ;; 4's own opt-in, and for EXACTLY the reason the partition re-point
+   ;; above records. `:persons` moves where a bound patient's Persona
+   ;; comes from -- the `:person` family instead of `:patient`'s
+   ;; thirteen draws -- so it reshuffles which patient walks what, and
+   ;; the straddle is a knife-edge: measured at seed 130 under
+   ;; `:persons {:count 10 :years 20}`, this run produces SIX
+   ;; registrations, fourteen `:demographic-update`s and NOT ONE cited
+   ;; end. Both counted witnesses below would have gone vacuous at once,
+   ;; which is the failure repo review 5 predicted for this run a second
+   ;; time (L1-7).
+   ;;
+   ;; The replacement was found ADR-0165's own way -- a seed sweep under
+   ;; the LIVE engine WITH `:persons` on, at the pool size this slot
+   ;; actually ships, filtering for runs with at least one CITED
+   ;; `:medication-end` and one CITED `:care-plan-end`. Seeds 0-799
+   ;; yield FOURTEEN: 45, 114, 237, 305, 313, 392, 429, 484 and six
+   ;; beyond the eight printed. 45 is the smallest, and is taken for
+   ;; that reason alone -- the same criterion the seed-2 -> seed-130
+   ;; re-point above used.
+   {:id :adhd-seed-45
+    :opts {:seed 45 :patients 10 :reference-date "2026-08-04"
            :module-horizon-days 3650
            :pathway {:name "adhd-only" :steps []}
            :modules ["attention_deficit_disorder"]
-           :module-assignment [{:module-id "attention_deficit_disorder" :weight 1}]}}])
+           :module-assignment [{:module-id "attention_deficit_disorder" :weight 1}]
+           ;; No `:config` to carry it, so the opt-in is here. Twice the
+           ;; arrival count and twenty years, for the reasons the two
+           ;; scenario configs state at length.
+           :persons {:count 20 :years 20}}}])
 
 (def ^:private corpora
   "run id -> that run's own `run-command` result, populated once by
@@ -493,7 +531,7 @@
   {:seed-202-ed-tuesday       "ehrt/sim/fixtures/arc0_gated_seed_202_ed_tuesday.edn"
    :seed-424242-clinic-decade "ehrt/sim/fixtures/arc0_gated_seed_424242_clinic_decade.edn"
    :seed-5-clinic-decade      "ehrt/sim/fixtures/arc0_gated_seed_5_clinic_decade.edn"
-   :adhd-seed-130               "ehrt/sim/fixtures/arc0_gated_adhd_seed_130.edn"})
+   :adhd-seed-45               "ehrt/sim/fixtures/arc0_gated_adhd_seed_45.edn"})
 
 (def ^:private arc0-pinned-digest
   "run id -> SHA-256 of that run's ground-truth AS THE SHIPPED WRITER
@@ -514,11 +552,29 @@
   Round-trip verified when pinned: for all four corpora,
   `(= gt (edn/read-string (pr-str gt)))` AND `(= (pr-str gt) (pr-str
   (edn/read-string (pr-str gt))))` -- value AND bytes both survive, so
-  the committed baseline is a faithful pin for BOTH gates below."
-  {:seed-202-ed-tuesday       "469a26d7d19772b9d6a3fd84adf3e71f737d82dd2c47bfe7da47049d8f115623"
-   :seed-424242-clinic-decade "5386957e20c645e75ac07548c3069591c92fb43e5070586ee18609f6739966cd"
-   :seed-5-clinic-decade      "03201649595475f4040c780cc02cb8a2bbc0b2b7675d28ea2147f048607c01a3"
-   :adhd-seed-130             "e6f44fe8c52455416d8ed40b9bd6a4af5ec8af1c1d88ea228a90497246c0827d"})
+  the committed baseline is a faithful pin for BOTH gates below.
+
+  RE-PINNED 2026-08-26, all four, by ADR-0173 ruling D1's COMMIT 2 --
+  the ONE declared sweep this arc is allowed, and the reason the fold
+  landed dark in three prior commits so that this diff would have
+  exactly one possible cause. `:persons` is now ON in all four (from
+  each scenario's own `config.edn`, and from the adhd run's own opts),
+  and the fourth run also changed SEED, 130 -> 45, because the opt-in
+  took its two counted cited-end witnesses vacuous -- `gated-runs`
+  above carries the sweep that replaced it.
+
+  WHAT MOVED, and it is everything: with `:persons` present a bound
+  patient's Persona comes from the `:person` family rather than from
+  thirteen `:patient` draws, so every downstream `:patient` draw shifts
+  and the whole corpus reshuffles. The counts, before -> after:
+  seed-202 393 -> 648 events, seed-424242 343 -> 1,279, seed-5 363 ->
+  1,058, adhd 12 -> 66. The growth is the fold: `:demographic-update`,
+  `:coverage-change`, hook-created encounters and unidentified
+  arrivals, none of which existed in any corpus before this commit."
+  {:seed-202-ed-tuesday       "edcc7008125c0f5de24ea8751ce10adbcf6880270d3af5876d5b6ba9e7b779ba"
+   :seed-424242-clinic-decade "0f7e38e63c35a12865b46b5b79ada5bb36bb381bb3bbf8279e821b1ff9759d4d"
+   :seed-5-clinic-decade      "f754c3b7a346756357f7232016a4f170bf3d716a58cc4b6828c53a51dbf4651d"
+   :adhd-seed-45              "36530c9ab0123cd1a349d4f158bd152c00be5b09acca582f6af042a6f45c5950"})
 
 (defn- arc0-baseline
   "The committed baseline ground-truth vector for one gated run."
@@ -702,9 +758,13 @@
    ;; Keyed by this gated SLOT's current id even though the digest was
    ;; taken when the slot ran seed 2: it is the slot's pre-partition
    ;; value, and the slot is what the test below looks it up by. The
-   ;; seed re-point, and why the partition forced it, are disclosed in
-   ;; `gated-runs` above.
-   :adhd-seed-130             "34f5faf0283d71a79b0e7ded21f3e5cb4515ef844cebd42fd84347be3a6e0b40"})
+   ;; slot has now been re-pointed TWICE -- seed 2 -> 130 by ADR-0171's
+   ;; partition, 130 -> 45 by arc 3a part 4's `:persons` opt-in -- and
+   ;; this value is untouched by both, because what it records is what
+   ;; the slot digested to BEFORE the partition and nothing since. Both
+   ;; re-points, and why each was forced, are disclosed in `gated-runs`
+   ;; above.
+   :adhd-seed-45             "34f5faf0283d71a79b0e7ded21f3e5cb4515ef844cebd42fd84347be3a6e0b40"})
 
 (deftest gated-corpora-re-pin-exactly-once-under-the-new-scheme
   (testing "ADR-0171 section 3's DETERMINISM CONTINUITY obligation. The
@@ -786,7 +846,7 @@
   "run id -> the facility its corpus was generated under. A scenario
   config declares one only if it means to override the default:
   `demos/scenarios/ed-tuesday` does (its Emergency surge bump),
-  `demos/scenarios/clinic-decade` does not, and `adhd-seed-130` names no
+  `demos/scenarios/clinic-decade` does not, and `adhd-seed-45` names no
   config at all -- so `sim-model/default-facility` is the honest fallback
   for three of the four, not a guess. Measured, not assumed: passing nil
   instead lands `surge-only-when-earlier-rungs-exhausted` on a nil ward
@@ -795,7 +855,7 @@
   {:seed-202-ed-tuesday       "demos/scenarios/ed-tuesday/config.edn"
    :seed-424242-clinic-decade "demos/scenarios/clinic-decade/config.edn"
    :seed-5-clinic-decade      "demos/scenarios/clinic-decade/config.edn"
-   :adhd-seed-130               nil})
+   :adhd-seed-45               nil})
 
 (defn- arc0-facility-for [id]
   (or (when-let [path (get arc0-baseline-facility id)]
@@ -860,20 +920,22 @@
         (is (= [] (vec (cancel-reinstatement-mismatches (arc0-baseline id)))))))
     (testing "and the check is not vacuous -- FINDING, disclosed: only ONE of
               the four gated corpora carries reinstating cancels at all
-              (seed-202: 8 :cancel-transfer + 1 :cancel-discharge = NINE; the
-              two clinic-decade runs and adhd-seed-130 carry none, and
+              (seed-202: 6 :cancel-transfer + 1 :cancel-discharge = SEVEN; the
+              two clinic-decade runs and adhd-seed-45 carry none, and
               seed-202's own 1 :cancel-admit reinstates nothing). RE-COUNTED
-              under ADR-0171's stream partition, which moved this corpus: the
-              count was TEN (9 + 1) before, with 2 :cancel-admit. The
-              gated-corpus half of this gate therefore rests on nine events
-              in one run;
+              TWICE now, and both times because a licensed reshuffle moved
+              this corpus rather than because anything about churn changed:
+              TEN (9 + 1, 2 :cancel-admit) before ADR-0171's stream
+              partition, NINE (8 + 1) after it, SEVEN after arc 3a part 4's
+              `:persons` opt-in. The gated-corpus half of this gate
+              therefore rests on seven events in one run;
               `cancel-reinstatement-survives-the-fold-carried-index` in
               engine-test is what carries it at population scale."
       (let [counted (into {} (map (fn [{:keys [id]}]
                                     [id (count (filter #(contains? reinstating-cancel-fields (:event %))
                                                        (arc0-baseline id)))]))
                           gated-runs)]
-        (is (= 9 (get counted :seed-202-ed-tuesday))
+        (is (= 7 (get counted :seed-202-ed-tuesday))
             (str "seed-202's reinstating-cancel count moved: " (pr-str counted)))
         (is (pos? (reduce + (vals counted)))
             (str "NO gated corpus carries a reinstating cancel -- this gate has "
@@ -927,7 +989,7 @@
         (is (= [] (vec (citation-index-mismatches (arc0-baseline id)))))))
     (testing "FINDING, disclosed: the gated corpora exercise only the NIL arm.
               Exactly two cited end events exist across all four corpora, both
-              in adhd-seed-130, and BOTH resolve to nil -- their opening
+              in adhd-seed-45, and BOTH resolve to nil -- their opening
               :medication-order and :care-plan-start fall in the history phase
               and never enter the log, which is the designed pre-horizon
               straddle ADR-0165 chose that run for. The two clinic-decade runs
@@ -940,8 +1002,8 @@
                        :let [[ck _ rk] (get cited-end-resolution (:event ev))]
                        :when (and ck (get ev ck))]
                    [id (:event ev) (get ev rk)])]
-        (is (= [[:adhd-seed-130 :care-plan-end nil]
-                [:adhd-seed-130 :medication-end nil]]
+        (is (= [[:adhd-seed-45 :care-plan-end nil]
+                [:adhd-seed-45 :medication-end nil]]
                (vec ends))
             (str "the gated corpora's cited-end population moved -- re-read the "
                  "disclosure above before adjusting: " (pr-str (vec ends))))))))
@@ -999,14 +1061,14 @@
   (filterv #(= kind (:event %)) ground-truth))
 
 (defn- cited-end-witness
-  "The counted witness both ADR-0163 gates rest on: `:adhd-seed-130`'s
+  "The counted witness both ADR-0163 gates rest on: `:adhd-seed-45`'s
   terminal events of `kind`, which carry their opening citation
   (ADR-0165 step 5 chose that run precisely because it produces both
   ends PAIRED, self-check clean, in ~25ms). Returned as a vector so a
   caller can pin its SIZE and then run `unpaired-ends` over it -- an
   emptiness claim made over a population known to be non-empty."
   [kind]
-  (end-events-of kind (:ground-truth (:payload (corpus :adhd-seed-130)))))
+  (end-events-of kind (:ground-truth (:payload (corpus :adhd-seed-45)))))
 
 (deftest clinic-decade-seed-424242-self-checks-clean
   (testing "ADR-0163: the exact reproducing invocation --
@@ -1035,7 +1097,7 @@
                 disclosed (repo review 5, L1-1): this corpus carries ZERO
                 :medication-end events of its own, because ADR-0163's drop
                 rule removed the only ones it had. The counted witness is
-                :adhd-seed-130's ONE cited :medication-end, pinned here, with
+                :adhd-seed-45's ONE cited :medication-end, pinned here, with
                 `unpaired-ends` run over it: the same assertion, over a
                 population that could have failed it."
         (let [own (end-events-of :medication-end (:ground-truth (:payload r)))
@@ -1046,7 +1108,7 @@
                    "disclosure and re-point the witness before adjusting: "
                    (pr-str (mapv :t own))))
           (is (= 1 (count witness))
-              (str "the counted witness population moved -- :adhd-seed-130 no "
+              (str "the counted witness population moved -- :adhd-seed-45 no "
                    "longer produces exactly one :medication-end, so this gate "
                    "is asserting emptiness over nothing: " (pr-str witness)))
           (is (every? :order-citation witness)
@@ -1076,7 +1138,7 @@
                 HISTORY. It describes what this seed's log carried BEFORE
                 ADR-0163; the fixed log carries ZERO :care-plan-end events,
                 so the shape assertion has had nothing to judge since the fix
-                landed. The counted witness is :adhd-seed-130's ONE cited
+                landed. The counted witness is :adhd-seed-45's ONE cited
                 :care-plan-end, pinned here, with `unpaired-ends` run over
                 it -- and it is the ONLY population-scale exercise of the
                 :care-plan-end half in the suite, which no invariant covers."
@@ -1088,7 +1150,7 @@
                    "disclosure and re-point the witness before adjusting: "
                    (pr-str (mapv :t own))))
           (is (= 1 (count witness))
-              (str "the counted witness population moved -- :adhd-seed-130 no "
+              (str "the counted witness population moved -- :adhd-seed-45 no "
                    "longer produces exactly one :care-plan-end, so this gate "
                    "is asserting emptiness over nothing: " (pr-str witness)))
           (is (every? :care-plan-citation witness)
@@ -1171,3 +1233,155 @@
                " -- add a gated run that produces each, or waive it with a queue row "
                "(ADR-0165 P3(a)). Produced: " (pr-str (vec (sort produced)))
                "; emittable: " (pr-str (vec (sort emittable))))))))
+
+;; --- ADR-0173 ruling D1's COMMIT 2: the wire witnesses -------------------
+;;
+;; `:persons` is ON in all four gated corpora as of 2026-08-26, and this
+;; is what that BUYS. Every witness below is `pos?` and none is pinned
+;; (`rulings.md#R-empty-population-is-red`): a pinned count turns a
+;; future hazard retune into a false red, while `pos?` catches the
+;; failure that matters -- a declared traffic family that no corpus
+;; produces. That failure is not hypothetical here. Repo review 5 found
+;; it twice, and this very session found it twice more: the
+;; identification flow is UNREACHABLE by the coincidence rule ADR-0173
+;; section 2(d) states (measured: 9 windows covering 0.018% of a
+;; 200-person decade, earliest at day 418, against arrivals that finish
+;; inside the first 17 hours), and the occupational-injury hook produces
+;; NOTHING at ten person-years per person (measured: zero injuries
+;; across 2,000 person-years at seed 424242, because the hazard is
+;; conditioned on `:employed` years). Both are why the configs say what
+;; they say, and these are the gates that keep them honest.
+
+(defn- witness-counts
+  "One gated corpus's part-4 traffic, counted by family."
+  [ground-truth]
+  (let [of (fn [pred] (count (filter pred ground-truth)))
+        hook-admission? (fn [ev] (and (= :admission (:event ev)) (:person-event-id ev)))
+        reason-is (fn [prefix]
+                    (fn [ev] (and (hook-admission? ev)
+                                  (str/starts-with? (str (:reason ev)) prefix))))]
+    {:placeholder-registrations
+     (of #(and (= :registered (:event %)) (= :placeholder (:identity %))))
+     :identity-fills
+     (of #(and (= :demographic-update (:event %)) (= :identity-fill (:cause %))))
+     :identification-merges
+     (of #(and (= :merge (:event %)) (= :identification (:cause %))))
+     :unhoused-registrations
+     (of #(and (= :registered (:event %)) (= :unhoused (:status (:residence %)))))
+     :newborn-registrations (of :mother-patient-id)
+     :birth-encounters (of (reason-is "Live birth"))
+     :parent-delivery-encounters (of (reason-is "Delivery"))
+     :occupational-injury-arrivals (of (reason-is "Occupational injury"))
+     :unidentified-arrivals (of (reason-is "Unidentified patient"))
+     :demographic-updates (of #(= :demographic-update (:event %)))
+     :coverage-changes (of #(= :coverage-change (:event %)))
+     :person-stamped-registrations (of #(and (= :registered (:event %)) (:person-id %)))}))
+
+(defn- gated-witness-totals []
+  (apply merge-with + (map #(witness-counts (arc0-baseline (:id %))) gated-runs)))
+
+(deftest every-part-4-traffic-family-is-witnessed-across-the-gated-corpora
+  (testing "ADR-0173 ruling D1's commit 2: each family `pos?` across the
+            opted-in set, so no part of the fold is declared and never
+            produced. Asserted over the COMMITTED baselines, which is what
+            a reader of this repo actually receives."
+    (let [totals (gated-witness-totals)]
+      (doseq [family (sort (keys totals))]
+        (is (pos? (get totals family))
+            (str "no gated corpus produces " family
+                 " -- the fold declares traffic no corpus carries. Totals: "
+                 (pr-str (into (sorted-map) totals))))))))
+
+(deftest the-witness-families-are-not-all-carried-by-one-corpus
+  (testing "FINDING, disclosed rather than left implicit: the families are
+            NOT evenly spread, and a reader deciding which corpus to point a
+            consumer at needs to know which one carries what. Each corpus's
+            own counts are printed by this gate's failure message; what is
+            ASSERTED is only that no single corpus is the sole witness for
+            EVERY family at once, which is the shape that would make the
+            other three corpora decorative."
+    (let [per-corpus (into {} (for [{:keys [id]} gated-runs]
+                                [id (witness-counts (arc0-baseline id))]))
+          families (keys (gated-witness-totals))
+          sole (fn [family]
+                 (let [carriers (filter #(pos? (get-in per-corpus [% family])) (keys per-corpus))]
+                   (when (= 1 (count carriers)) (first carriers))))
+          sole-by (into {} (keep (fn [f] (when-let [c (sole f)] [f c]))) families)]
+      (is (not= 1 (count (distinct (vals sole-by))))
+          (str "every single-carrier family is carried by the SAME corpus, so the "
+               "other three witness nothing of their own: "
+               (pr-str (into (sorted-map) sole-by))
+               " -- per-corpus counts: " (pr-str per-corpus))))))
+
+(deftest an-unhoused-registration-renders-pid-11-absent-on-a-gated-corpus
+  (testing "ADR-0173 ruling E1, on a POPULATION-SCALE corpus rather than a
+            scripted fixture: a patient with nowhere to live renders an
+            EMPTY PID-11, and their Persona still carries the row they last
+            lived at -- `sim-model/Persona`'s own `:address` is required and
+            non-nilable, which is why the sum lives beside it and not in it."
+    (let [unhoused (for [{:keys [id]} gated-runs
+                         ev (arc0-baseline id)
+                         :when (and (= :registered (:event ev))
+                                    (= :unhoused (:status (:residence ev))))]
+                     ev)]
+      (is (pos? (count unhoused))
+          "no gated corpus registers an unhoused patient at all")
+      (is (every? #(some? (:address (:persona %))) unhoused)
+          "an unhoused registration lost its Persona's address, so the sum is
+           standing in for the row instead of beside it")
+      (is (every? #(some? (:last-known-address (:residence %))) unhoused)
+          "an unhoused registration carries no last-known address -- this corpus's
+           unhoused persons all entered the run with nowhere to live, which is
+           the `:at-t0` case and not the loss case"))))
+
+(deftest a-placeholder-is-either-resolved-or-was-never-due
+  (testing "The identification flow's own closing claim, over the gated
+            corpora rather than a fixture: every placeholder registration is
+            joined to the person's other record, or filled in place, or
+            carries no `:window-close-t` at all -- which is what the engine
+            mints for a window nobody lived to see close (the person died
+            inside it; `engine/placeholder-registration` carries the
+            population-scale failure that found this)."
+    (let [rows (for [{:keys [id]} gated-runs
+                     :let [gt (arc0-baseline id)
+                           resolved (into #{}
+                                          (concat
+                                           (for [ev gt
+                                                 :when (and (= :demographic-update (:event ev))
+                                                            (= :identity-fill (:cause ev)))]
+                                             (:patient-id (first (:participants ev))))
+                                           (for [ev gt
+                                                 :when (and (= :merge (:event ev))
+                                                            (= :identification (:cause ev)))
+                                                 p (:participants ev) :when (= :merged (:role p))]
+                                             (:patient-id p))))]
+                     ev gt
+                     :when (and (= :registered (:event ev)) (= :placeholder (:identity ev)))]
+                 {:corpus id
+                  :patient-id (:patient-id (first (:participants ev)))
+                  :resolved? (contains? resolved (:patient-id (first (:participants ev))))
+                  :due? (some? (:window-close-t ev))})]
+      (is (pos? (count rows)) "no gated corpus mints a placeholder registration")
+      (is (pos? (count (filter :resolved? rows)))
+          "no placeholder in any gated corpus is ever resolved -- the flow mints
+           unidentified arrivals and never closes one")
+      (is (empty? (remove #(or (:resolved? %) (not (:due? %))) rows))
+          (str "a placeholder is past its own due close and was never resolved: "
+               (pr-str (remove #(or (:resolved? %) (not (:due? %))) rows))))
+      (testing "FINDING, disclosed rather than gated: the NEVER-DUE case --
+                a person who died inside their own identity window, so no
+                resolution was ever emitted for it -- is not exercised by
+                these four corpora. It is a rare event at the process's own
+                0.004-per-person-year window rate, and gating `pos?` on it at
+                population scale would make this test a coin flip that a
+                hazard retune could flip. Where it IS exercised is
+                `ehrt.sim-engine.persons-test`, on a stream that puts the
+                death inside the window by construction. This assertion
+                records the current split so a reader knows which clause the
+                population-scale half is actually testing."
+        (is (= (count rows) (count (filter :due? rows)))
+            (str "a placeholder in a gated corpus now carries NO close instant -- "
+                 "that is the died-inside-the-window case arriving at population "
+                 "scale, which is good news and means the disclosure above is "
+                 "stale: re-read it before adjusting. Split: "
+                 (pr-str (frequencies (map (juxt :corpus :due?) rows)))))))))
