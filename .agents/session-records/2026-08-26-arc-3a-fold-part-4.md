@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-26
 **Prompt:** [`.agents/prompts/2026-08-26-arc-3a-fold-part-4.md`](../prompts/2026-08-26-arc-3a-fold-part-4.md)
-**Base:** `dd4cf8d` -- **Tip:** `TIP_SHA`
+**Base:** `dd4cf8d` -- **Tip:** `a920ea3`
 **Mode:** payload session under the de-scaffold moratorium. R30 ceremony,
 no tag, CI green at the tip as the close marker.
 
@@ -32,7 +32,7 @@ declared sweep that turns `:persons` on. Arc 3a's half of
 | `make test` at the tip | **MAKE_EXIT=0**, 4,284 tests / 20,098 assertions, 0 failures, 0 errors (18m17s) |
 | `make integration` at the tip | **INT_EXIT=0**, 0 `FAIL:` lines, 1,601 tests / 5,702 assertions; both demo exercisers "every command asserted, every named invariant held, tree clean" |
 | `clojure -M:poly check` | OK |
-| CI at the pushed tip | CI_LINE |
+| CI at the pushed tip `a920ea3` | **run 33015547985, conclusion success** -- the close marker (`rulings.md#R-session-verifies-ci-via-gh`, kept as the marker after the tag was retired). One run at this sha, the `test` workflow |
 
 Step 1's dark line, verbatim:
 
