@@ -156,8 +156,43 @@
   direction that breaks is the other one -- a 1.2.0 schema meeting a
   1.3.0 log fails to dispatch on two kinds -- which is what a version
   is FOR. MADE UNDER THE WAIVER, disclosed: no deprecation release was
-  run, and none is owed here in any case, since nothing was removed."
-  "1.3.0")
+  run, and none is owed here in any case, since nothing was removed.
+
+  1.4.0 (2026-08-26, ADR-0173 sections 2(c)/2(d), arc 3a part 4) is the
+  two clinical hooks and the identification flow. UNLIKE 1.3.0, THIS
+  BUMP IS OWED, and `classify-change` is again what says so rather than
+  the ADR. Run against the frozen 1.3.0 baseline it returns
+  `:additive? false` with exactly four reasons, all of them on
+  `:demographic-update` and all of them WIDENINGS:
+
+    :demographic-update: key changed: :cause (value schema changed)
+    :demographic-update: key changed: :field (value schema changed)
+    :demographic-update: key changed: :prior-value (value schema changed)
+    :demographic-update: key changed: :value (value schema changed)
+
+  `:cause` gained `:identity-fill`, `:field` gained `:identity`, and
+  `DemographicValue` gained the identity arm the other two need. Every
+  other part-4 change IS additive and is reported as such: five new
+  optional keys on `:registered` (`:person-id`, `:identity`,
+  `:alias-name`, `:window-close-t`, `:mother-patient-id`), three more on
+  `:demographic-update` (`:placeholder-event-id`, `:persona`,
+  `:residence`), one on `:admission` (`:person-event-id`) and two on
+  `:merge` (`:cause`, `:person-event-id`). No kind was added and none
+  was removed: the vocabulary the fold grew is still the two 1.3.0
+  declared.
+
+  MINOR rather than MAJOR for the reason 1.1.0 and 1.2.0 give: the four
+  moved value schemas are enum and union WIDENINGS, so a 1.3.0-era LOG
+  validates unchanged against 1.4.0 -- every value a 1.3.0 producer
+  could emit is still in range, and the breaking direction is the other
+  one, a 1.3.0 schema meeting a 1.4.0 log and failing on a `:cause` it
+  has never seen. That is what a version is FOR, and it is exactly why
+  `classify-change` is deliberately conservative about widenings rather
+  than reasoning about them.
+
+  MADE UNDER THE WAIVER, disclosed: no deprecation release was run, and
+  none is owed in any case, since nothing was removed."
+  "1.4.0")
 
 ;; --- shared leaf schemas --------------------------------------------------
 ;;
@@ -280,8 +315,16 @@
   reports one, its `:prior-value`): whichever of the three
   `engine/Demographics` fields a person event can move. The field is
   named alongside it, so a consumer dispatches on `:field` rather than
-  on the value's own shape."
-  [:or Residence (mu/get sim-model/Persona :name) (mu/get sim-model/Persona :dob)])
+  on the value's own shape.
+
+  1.4.0 (ADR-0173 section 2(d), arc 3a part 4) adds the identity arm.
+  An `:identity-fill` reports ONE fact -- this record now belongs to a
+  known person -- so its `:field` is `:identity` and its value is the
+  identity state itself, with the demographics that follow riding the
+  event's own `:persona`. Six separate field updates would have been
+  six events reporting one thing."
+  [:or Residence (mu/get sim-model/Persona :name) (mu/get sim-model/Persona :dob)
+   [:enum :known :placeholder]])
 
 (def AttemptedStep
   "The pathway-IR step a `:step-rejected` event declined to perform,
@@ -353,7 +396,41 @@
            ;; registration instant. Absent -- every event of every run
            ;; with no `:persons` key -- means housed at the Persona's own
            ;; `:address`, which is what `:persona` has always meant.
-           [:residence {:optional true} Residence])]
+           [:residence {:optional true} Residence]
+           ;; 1.4.0 (ADR-0173 sections 2(c)/2(d), arc 3a part 4).
+           ;;
+           ;; `:person-id` is the person-process id of whoever this
+           ;; patient is -- present for every registration an arrival
+           ;; BOUND to a person produced, and what
+           ;; `identification-merge-survivor-is-the-persons-prior-patient`
+           ;; reads on both sides of an identification merge. It is a
+           ;; STAMP into a different id space, never a patient-id: the
+           ;; two spaces are deliberately unlike so a reader cannot join
+           ;; them by string equality.
+           [:person-id {:optional true} :string]
+           ;; The next three ride a PLACEHOLDER registration and nothing
+           ;; else: an arrival that landed inside an open
+           ;; `:identity-unavailable` window -- the author's own
+           ;; "unhoused unresponsive John Does". `:alias-name` is what
+           ;; the wire renders in PID-5; `:residence` above is
+           ;; `:unknown`, so PID-11 is absent; `:persona` still carries
+           ;; the truth, because ground truth knows who an unidentified
+           ;; patient is even while the modelled hospital does not.
+           ;; `:window-close-t` is when identification is DUE, and is
+           ;; what lets `every-placeholder-registration-is-resolved-or-
+           ;; still-open` tell a dangling placeholder from one the run
+           ;; simply ended inside.
+           [:identity {:optional true} [:enum :placeholder]]
+           [:alias-name {:optional true} (mu/get sim-model/Persona :name)]
+           [:window-close-t {:optional true} :int]
+           ;; The mother-baby link (ADR-0173 section 2(c),
+           ;; `docs/dev/traffic-model.md`: "the newborn's first encounter
+           ;; is the birth"). Present on a NEWBORN's registration, naming
+           ;; the parent's own patient. A plain field and NOT a second
+           ;; `:participants` entry, deliberately: participants are who
+           ;; the event's state fold applies to, and a birth does not
+           ;; re-register the mother.
+           [:mother-patient-id {:optional true} :string])]
 
     [:admission
      (kind :admission
@@ -381,7 +458,14 @@
            ;; and only the WRITER changed.
            [:reason {:optional true} [:maybe [:or :string sim-model/Concept]]]
            [:citation {:optional true} sim-model/Citation]
-           [:conditions {:optional true} [:vector sim-model/ConditionAnnotation]])]
+           [:conditions {:optional true} [:vector sim-model/ConditionAnnotation]]
+           ;; 1.4.0 (ADR-0173 section 2(c)): present when this admission
+           ;; came from a person-stream HOOK -- a delivery or an
+           ;; occupational injury -- and absent for every other
+           ;; admission. A provenance STAMP, gated as one by
+           ;; `person-scoped-provenance-is-a-stamp-not-a-reference`, and
+           ;; what makes hook-created traffic countable in a corpus.
+           [:person-event-id {:optional true} :string])]
 
     [:transfer
      (kind :transfer
@@ -457,7 +541,17 @@
             :transition "Survivor keeps its status and gains the merged MRNs; the merged patient becomes :merged and emits nothing further."}
            [:surviving-mrn :string]
            [:merged-mrn :string]
-           [:merged-mrns [:set :string]])]
+           [:merged-mrns [:set :string]]
+           ;; 1.4.0 (ADR-0173 section 2(d)): an IDENTIFICATION merge --
+           ;; a placeholder record absorbed into the person's prior
+           ;; patient -- carries `:cause :identification` and the
+           ;; resolution's own provenance stamp. A CHURN merge carries
+           ;; neither, which is what keeps the two families
+           ;; distinguishable while everything else about the event is
+           ;; deliberately identical: same kind, same roles, same MRN
+           ;; payload, so every merge invariant applies unchanged.
+           [:cause {:optional true} [:enum :identification]]
+           [:person-event-id {:optional true} :string])]
 
     [:order-placed
      (kind :order-placed
@@ -617,13 +711,13 @@
            {:doc "One demographic fact about a patient changed between encounters: an address, a legal name, a corrected date of birth. Deliberately renders no HL7 message of its own in 1.3.0 -- the change is visible in the PID of every message the patient receives after it."
             :transition "Writes one field of :demographics; :persona (the t0 sample) is untouched."}
            [:active-mrn :string]
-           ;; Which person-side fact caused it. `:identity-fill` is
-           ;; declared and not yet produced: arc 3a part 4's
-           ;; identification flow mints it, and declaring it here would
-           ;; be a schema that describes a future -- so it is NOT
-           ;; declared, and part 4 adds it with its producer.
-           [:cause [:enum :residence-move :residence-loss :identity-correction]]
-           [:field [:enum :residence :name :dob]]
+           ;; Which person-side fact caused it. `:identity-fill` LANDED
+           ;; WITH ITS PRODUCER in 1.4.0 (arc 3a part 4), which is what
+           ;; 1.3.0's own note here said would happen -- declaring it
+           ;; earlier would have been a schema describing a future.
+           [:cause [:enum :residence-move :residence-loss :identity-correction
+                    :identity-fill]]
+           [:field [:enum :residence :name :dob :identity]]
            [:value DemographicValue]
            ;; The folded state immediately before this event. OPTIONAL
            ;; because a hand-authored log may carry none, and because a
@@ -635,7 +729,24 @@
            ;; stream's own "<person-id>#<n>" string. `check.clj`'s
            ;; `person-scoped-provenance-is-a-stamp-not-a-reference` is
            ;; the gate that keeps it one.
-           [:person-event-id :string])]
+           [:person-event-id :string]
+           ;; 1.4.0 (ADR-0173 section 2(d)): the three keys an
+           ;; `:identity-fill` carries and no other cause does.
+           ;;
+           ;; `:placeholder-event-id` IS a log index -- the one
+           ;; referential key this arc mints -- pointing at the
+           ;; `:registered` event that opened this record as a
+           ;; placeholder; `identity-fill-references-its-placeholder-
+           ;; registration` is its gate, and it is the exact shape
+           ;; `:medication-end`'s `:order-event-id` already has.
+           ;; `:persona` is who the patient turned out to be, and
+           ;; `:residence` rides beside it only when they are not housed
+           ;; -- the same nil-dropping pair `:registered` carries, for
+           ;; the same reason (a Persona's `:address` is required and
+           ;; non-nilable, so the sum lives outside it).
+           [:placeholder-event-id {:optional true} [:maybe :int]]
+           [:persona {:optional true} sim-model/Persona]
+           [:residence {:optional true} Residence])]
 
     [:coverage-change
      (kind :coverage-change

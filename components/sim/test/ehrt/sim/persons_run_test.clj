@@ -162,10 +162,19 @@
     (testing "the whole log is t-ascending: the fold entered the SAME sorted queue"
       (is (apply <= (map :t gt))))
     (testing "every folded event names one patient and carries its person stamp"
+      ;; WIDENED 2026-08-26 (arc 3a part 4): the id space is
+      ;; `PERSON-nnnnnn` for a pool person and `PERSON-nnnnnn/bK` for a
+      ;; NEWBORN -- `ehrt.person-simulator.process`'s own
+      ;; `(str person-id "/b" parity)`. Part 3 could not see the second
+      ;; form, because a newborn had no patient for their events to fold
+      ;; onto; the delivery hook is what gives them one, and this run's
+      ;; own failure is what found it. Still anchored at both ends, so a
+      ;; stamp of any OTHER shape is still red.
       (doseq [ev (concat updates coverage)]
         (is (= 1 (count (:participants ev))))
         (is (string? (:person-event-id ev)))
-        (is (re-find #"^PERSON-\d+#\d+$" (:person-event-id ev)))))
+        (is (re-find #"^PERSON-\d+(?:/b\d+)*#\d+$" (:person-event-id ev))
+            (str "a person stamp in neither id space: " (pr-str (:person-event-id ev))))))
     (testing "and every one reports a real change"
       (is (every? #(not= (:value %) (:prior-value %)) updates))
       (is (every? #(not= (:payer %) (:prior-payer %)) coverage)))
@@ -174,11 +183,32 @@
     (testing "a person unhoused at t0 registers with the residence SUM, and their
               Persona still carries an address (Persona's own `:address` is
               required and non-nilable)"
-      (let [unhoused (filter :residence registered)]
+      ;; NARROWED 2026-08-26 (arc 3a part 4): `:residence` on a
+      ;; `:registered` event now has TWO producers, not one. `:unhoused`
+      ;; is the t0 condition this block is about; `:unknown` is a
+      ;; PLACEHOLDER registration (section 2(d)), a different fact that
+      ;; happens to ride the same optional key. Filtering on the key
+      ;; alone silently swept the second into a claim about the first,
+      ;; and this run's own failure is what found it.
+      (let [with-sum (filter :residence registered)
+            unhoused (filter #(= :unhoused (:status (:residence %))) with-sum)
+            unknown (filter #(= :unknown (:status (:residence %))) with-sum)]
         (is (pos? (count unhoused))
-            "no registration carried a residence sum -- the t0 condition was dropped")
-        (is (every? #(= :unhoused (:status (:residence %))) unhoused))
-        (is (every? #(some? (:address (:persona %))) unhoused))))))
+            "no registration carried an UNHOUSED sum -- the t0 condition was dropped")
+        (is (= (count with-sum) (+ (count unhoused) (count unknown)))
+            "a `:registered` carried a residence arm that is neither the t0 unhoused
+             condition nor a placeholder's unknown one")
+        (is (every? #(some? (:address (:persona %))) unhoused))))
+    (testing "and the identification flow reached this real walk too -- counted,
+              never pinned (arc 3a part 4)"
+      (let [placeholders (filter #(= :placeholder (:identity %)) registered)]
+        (is (pos? (count placeholders))
+            "a real person walk produced no unidentified arrival at all")
+        (is (every? #(= {:status :unknown} (:residence %)) placeholders)
+            "a placeholder registration claimed to know where the patient lives")
+        (is (every? #(= {:family "Doe" :given "Unknown"} (:alias-name %)) placeholders))
+        (is (every? #(some? (:window-close-t %)) placeholders)
+            "a placeholder with no close instant cannot be judged resolved-or-open")))))
 
 (deftest a-persons-run-satisfies-the-whole-invariant-catalog-test
   ;; run-command already refuses a run whose self-check fails

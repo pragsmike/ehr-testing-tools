@@ -388,3 +388,408 @@
         (is (every? nil? (:bindings bare)))
         (is (empty? (:person-index bare)))
         (is (empty? (:deaths bare)))))))
+
+;; --- arc 3a part 4: the two hooks and the identification flow -------------
+;;
+;; ADR-0173 sections 2(c) and 2(d). Same posture as part 3's fixtures
+;; above: the person events are HAND-AUTHORED, because the engine's own
+;; contract is that they arrive as DATA and because a fixture whose
+;; coverage depends on a hazard firing is a fixture that can silently
+;; stop covering. That the REAL stream reaches all of this is gated
+;; separately, over the real component, in `ehrt.sim.persons-run-test`.
+
+(def ^:private p4-seed 15)
+
+(def ^:private p4-arrivals
+  "This fixture's own arrival instants, PINNED by construction rather
+  than assumed: seed 15, `:arrival-gap` 100, four patients. Every window
+  below is placed against these, so a change to the `:world` family
+  moves them and the placements go red instead of quietly missing."
+  [0 4620 8160 9900])
+
+(defn- p4-persona [id-tag] (sim-model/persona (engine/stream p4-seed :person id-tag) {}))
+
+(def ^:private p4-pool
+  "ONE person, so every arrival binds to them and no `:world` draw
+  decides which arrival lands unidentified."
+  {:population [{:person-id "q-a" :id-tag 1}]
+   :personas {"q-a" (p4-persona 1)}
+   :alive {}})
+
+(def ^:private p4-facility
+  "The part-3 fixture facility plus an ED ward, because `hook-ward`
+  chooses by CLASS: an occupational injury and an unidentified arrival
+  are ED presentations, a birth is an inpatient one. A facility with no
+  ED at all falls back to its inpatient ward, which is a real fallback
+  and is asserted separately below."
+  {:id :persons-fixture-p4
+   :wards [{:id :ed :name "Emergency" :beds 0 :surge-slots 8 :surge-format "%s-H%02d"
+            :class :ed}
+           {:id :renal :name "Renal" :beds 4 :surge-slots 2 :surge-format "%s-H%02d"
+            :class :inpatient}]})
+
+(def ^:private p4-newborn-persona
+  (sim-model/persona (engine/stream p4-seed :person 4) {:age-min 0 :age-max 0}))
+
+(defn- p4-window
+  [n open-t until-t]
+  {:event :identity-unavailable :person-id "q-a" :t open-t :event-id (str "q-a#" n)
+   :until-t until-t :alias-name {:family "Doe" :given "Unknown"}})
+
+(defn- p4-resolution
+  [n branch unavailable-id t]
+  (cond-> {:event :identity-resolution :person-id "q-a" :t t :event-id (str "q-a#" n)
+           :branch branch :unavailable-event-id unavailable-id}
+    (= :merge branch) (assoc :surviving-person-id "q-a")))
+
+(def ^:private p4-delivery
+  [{:event :delivery :person-id "q-a" :t 20000 :event-id "q-a#8"
+    :newborn-person-id "q-a/b0" :parity-index 0 :within-delivery-index 0
+    :pregnancy-event-id "q-a#7" :participants ["q-a" "q-a/b0"]}
+   {:event :person-registered :person-id "q-a/b0" :t 20000 :event-id "q-a/b0#0"
+    :persona p4-newborn-persona :delivery-event-id "q-a#8"
+    :participants ["q-a/b0" "q-a"]}])
+
+(defn- p4-run
+  "A four-arrival run over the one-person pool, with an EMPTY pathway so
+  every patient stays clinically idle and a hook has somewhere to land."
+  ([events] (p4-run events {}))
+  ([events extra]
+   (engine/run (merge {:seed p4-seed :patients 4 :arrival-gap 100
+                       :pathway {:name "empty" :steps []}
+                       :facility p4-facility
+                       :persons (assoc p4-pool :events (vec events))}
+                      extra))))
+
+(defn- placeholder-registrations [gt]
+  (filterv #(and (= :registered (:event %)) (= :placeholder (:identity %))) gt))
+
+(defn- fills [gt]
+  (filterv #(and (= :demographic-update (:event %)) (= :identity-fill (:cause %))) gt))
+
+(defn- identification-merges [gt]
+  (filterv #(and (= :merge (:event %)) (= :identification (:cause %))) gt))
+
+(defn- hook-admissions [gt]
+  (filterv #(and (= :admission (:event %)) (:person-event-id %)) gt))
+
+(deftest the-fixtures-own-arrival-instants-are-what-the-windows-are-placed-against-test
+  ;; R-empty-population-is-red's cousin: every placement below is a
+  ;; number chosen against these instants, so this is the one assertion
+  ;; that makes the rest of the file non-vacuous rather than lucky.
+  (let [plan (engine/person-plan {:seed p4-seed :patients 4 :arrival-gap 100})]
+    (is (= 4 (count (:bindings plan))))
+    (is (= p4-arrivals
+           (mapv :t (filter #(= :registered (:event %))
+                            (:ground-truth (engine/run {:seed p4-seed :patients 4 :arrival-gap 100
+                                                        :pathway {:name "empty" :steps []}
+                                                        :facility p4-facility})))))
+        "this fixture's pinned arrival instants moved -- every window placement below
+         is now measuring something else")))
+
+;; --- 2(d): the placeholder registration ----------------------------------
+
+(deftest an-identity-window-mints-an-unidentified-ed-arrival-test
+  ;; ADR-0173 section 2(d), met at the rate the process actually
+  ;; produces. `person-fold/hook-kinds` carries the measurement that
+  ;; forced this reading; here is the behaviour it buys.
+  (let [gt (:ground-truth (p4-run [(p4-window 0 100000 200000)
+                                   (p4-resolution 1 :fill "q-a#0" 200000)]))
+        ph (placeholder-registrations gt)]
+    (is (= 1 (count ph)) "the window minted no unidentified arrival")
+    (let [ev (first ph)
+          pid (:patient-id (first (:participants ev)))]
+      (testing "it is an ADDITIONAL patient, at ordinal (+ patients k)"
+        (is (= (engine/patient-id-for p4-seed 4) pid)
+            "the placeholder was not minted at ordinal (+ patients 0)")
+        (is (= "MRN000005" (:active-mrn ev))
+            "the MRN is not a function of the same ordinal"))
+      (testing "and it registers as a John Doe, with the window's own close instant"
+        (is (= {:family "Doe" :given "Unknown"} (:alias-name ev)))
+        (is (= {:status :unknown} (:residence ev)))
+        (is (= 200000 (:window-close-t ev)))
+        (is (= "q-a" (:person-id ev))))
+      (testing "ground truth still knows WHO they are -- only the wire does not"
+        (is (= (get-in p4-pool [:personas "q-a"]) (:persona ev))))
+      (testing "and the presentation is an ED encounter, stamped with its own person event"
+        (let [admit (first (filter #(= pid (:patient-id (first (:participants %))))
+                                   (hook-admissions gt)))]
+          (is (some? admit) "the unidentified arrival never presented anywhere")
+          (is (= "Unidentified patient" (:reason admit)))
+          (is (= "q-a#0" (:person-event-id admit)))
+          (is (= "Emergency" (:home-ward admit))))))))
+
+(deftest a-placeholder-folds-to-the-alias-and-nothing-else-test
+  (let [r (p4-run [(p4-window 0 100000 200000)])
+        gt (:ground-truth r)
+        ev (first (placeholder-registrations gt))
+        pid (:patient-id (first (:participants ev)))
+        state (first (get (:state-history r) pid))]
+    (is (some? state))
+    (is (= {:name {:family "Doe" :given "Unknown"}
+            :residence {:status :unknown}
+            :identity :placeholder}
+           (:demographics state))
+        "a placeholder's demographic state carries a fact the hospital does not have")))
+
+(deftest an-arrival-coinciding-with-an-open-window-is-a-placeholder-too-test
+  ;; ADR-0173 section 2(d) AS WRITTEN. Unreachable by luck at the
+  ;; process's own rates -- which is why the window is also a hook --
+  ;; but implemented, and this is where it is proved.
+  (let [gt (:ground-truth (p4-run [(p4-window 0 1000 6000)
+                                   (p4-resolution 1 :fill "q-a#0" 6000)]))
+        ph (placeholder-registrations gt)
+        coincident (filter #(= 4620 (:t %)) ph)]
+    (is (= 1 (count coincident))
+        "arrival 1 (t 4620) is inside the window (1000, 6000) and did not register
+         as a placeholder")
+    (is (= (engine/patient-id-for p4-seed 1)
+           (:patient-id (first (:participants (first coincident)))))
+        "a coincident placeholder minted a NEW id space instead of using its own ordinal")
+    (testing "and the identified arrival before it still minted the person's real patient"
+      (is (= 1 (count (filter #(and (= :registered (:event %)) (nil? (:identity %))
+                                    (= 0 (:t %)))
+                              gt)))))))
+
+;; --- 2(d): the two resolutions -------------------------------------------
+
+(deftest an-identity-fill-keeps-the-mrn-and-references-its-placeholder-test
+  (let [gt (:ground-truth (p4-run [(p4-window 0 100000 200000)
+                                   (p4-resolution 1 :fill "q-a#0" 200000)]))
+        ph (first (placeholder-registrations gt))
+        pid (:patient-id (first (:participants ph)))
+        fill (first (fills gt))]
+    (is (some? fill) "the window resolved `:fill` and nothing was minted")
+    (is (= pid (:patient-id (first (:participants fill))))
+        "the fill landed on somebody other than the placeholder")
+    (is (= (:active-mrn ph) (:active-mrn fill)) "the fill changed the MRN")
+    (is (= 200000 (:t fill)) "the fill did not land at the window's close")
+    (testing "it references the placeholder registration by LOG INDEX"
+      (is (= ph (nth gt (:placeholder-event-id fill)))))
+    (testing "and it reports the one fact it is: an identity became known"
+      (is (= [:identity :known :placeholder]
+             [(:field fill) (:value fill) (:prior-value fill)]))
+      (is (= (get-in p4-pool [:personas "q-a"]) (:persona fill))))))
+
+(deftest an-identification-merge-is-churns-merge-shape-with-a-cause-test
+  (let [gt (:ground-truth (p4-run [(p4-window 0 100000 200000)
+                                   (p4-resolution 1 :merge "q-a#0" 200000)]))
+        ph (first (placeholder-registrations gt))
+        placeholder-id (:patient-id (first (:participants ph)))
+        survivor-id (engine/patient-id-for p4-seed 0)
+        m (first (identification-merges gt))]
+    (is (some? m) "the window resolved `:merge` and nothing was minted")
+    (testing "the SURVIVOR is the person's prior patient and the MERGED is the placeholder"
+      (is (= [{:patient-id survivor-id :role :survivor}
+              {:patient-id placeholder-id :role :merged}]
+             (:participants m))))
+    (testing "and every field churn's own merge carries is here, with nothing missing"
+      (is (= #{:event :t :cause :person-event-id :participants
+               :surviving-mrn :merged-mrn :merged-mrns :warm-up}
+             (set (keys m))))
+      (is (= "MRN000001" (:surviving-mrn m)))
+      (is (= (:active-mrn ph) (:merged-mrn m)))
+      (is (contains? (:merged-mrns m) (:active-mrn ph))))
+    (testing "no fill was minted as well -- one resolution, not two"
+      (is (empty? (fills gt))))
+    (testing "and churn's own lottery gained nothing: this run has no churn profile
+              at all, so the merge could only have come from the identification step"
+      (is (= 1 (count (filter #(= :merge (:event %)) gt)))))))
+
+(deftest a-merge-with-no-survivor-degenerates-to-a-fill-test
+  ;; ADR-0173 section 2(d) names this explicitly, because silently
+  ;; emitting a merge with a null survivor is the defect the sentence
+  ;; exists to prevent. The window here opens at t 0 and closes after
+  ;; every arrival, so EVERY arrival of this one-person pool is a
+  ;; placeholder and the person never acquires an identified patient at
+  ;; all -- there is nothing for a merge to survive into.
+  (let [gt (:ground-truth (p4-run [(p4-window 0 0 200000)
+                                   (p4-resolution 1 :merge "q-a#0" 200000)]))
+        ph (placeholder-registrations gt)]
+    (is (pos? (count ph)) "no placeholder was minted, so this proves nothing")
+    (is (= (count ph) (count (filter #(= :registered (:event %)) gt)))
+        "some arrival registered as an IDENTIFIED patient, so a survivor exists
+         after all and this is no longer the degenerate case")
+    (is (empty? (identification-merges gt))
+        "a merge was emitted with no prior patient to survive it")
+    (is (pos? (count (fills gt)))
+        "the merge did not degenerate to a fill -- the placeholder is left dangling")
+    (testing "and the fills land on the placeholders themselves"
+      (is (= (set (map #(:patient-id (first (:participants %))) ph))
+             (set (map #(:patient-id (first (:participants %))) (fills gt)))))))
+  (testing "the control: with an identified arrival ahead of the window, the SAME
+            stream produces a merge instead"
+    (let [gt (:ground-truth (p4-run [(p4-window 0 1000 6000)
+                                     (p4-resolution 1 :merge "q-a#0" 6000)]))]
+      (is (pos? (count (identification-merges gt))))
+      (is (empty? (fills gt))))))
+
+(deftest a-window-still-open-at-the-horizon-leaves-its-placeholder-unresolved-test
+  ;; `every-placeholder-registration-is-resolved-or-still-open`'s second
+  ;; clause, produced rather than only asserted: a placeholder nobody
+  ;; had identified by the time the feed stopped is real traffic.
+  (let [gt (:ground-truth (p4-run [(p4-window 0 100000 900000)]))]
+    (is (= 1 (count (placeholder-registrations gt))))
+    (is (empty? (fills gt)))
+    (is (empty? (identification-merges gt)))
+    (testing "and the placeholder carries the close instant that makes it JUDGEABLE --
+              `every-placeholder-registration-is-resolved-or-still-open` reads it,
+              and that invariant's own gate lives in `ehrt.sim-check.person-
+              invariants-test`, which is the layer allowed to require `check`"
+      (is (= 900000 (:window-close-t (first (placeholder-registrations gt)))))
+      (is (< (:t (last gt)) 900000)
+          "the run outlived the window, so this is no longer the still-open case"))))
+
+;; --- 2(c): the delivery hook ---------------------------------------------
+
+(deftest a-delivery-mints-the-newborn-as-an-additional-patient-test
+  (let [gt (:ground-truth (p4-run p4-delivery))
+        newborn (first (filter :mother-patient-id gt))]
+    (is (some? newborn) "no newborn registered")
+    (testing "ordinal (+ patients k), so id and MRN stay functions of an ordinal"
+      (is (= (engine/patient-id-for p4-seed 4)
+             (:patient-id (first (:participants newborn)))))
+      (is (= "MRN000005" (:active-mrn newborn))))
+    (testing "the mother-baby link names the parent's own patient"
+      (is (= (engine/patient-id-for p4-seed 0) (:mother-patient-id newborn)))
+      (is (some? (first (filter #(and (= :registered (:event %))
+                                      (= (:mother-patient-id newborn)
+                                         (:patient-id (first (:participants %)))))
+                                gt)))
+          "the link names a patient with no registration in this log"))
+    (testing "and it is a LINK, not a participant -- a birth does not re-register
+              the mother"
+      (is (= 1 (count (:participants newborn)))))
+    (testing "the newborn's first encounter IS the birth"
+      (let [nb-id (:patient-id (first (:participants newborn)))
+            own (filterv #(= nb-id (:patient-id (first (:participants %)))) gt)]
+        (is (= [:registered :admission :discharge] (mapv :event own)))
+        (is (= "Live birth" (:reason (second own))))
+        (is (= "q-a#8" (:person-event-id (second own))))))))
+
+(deftest a-delivery-admits-the-parent-when-they-are-clinically-idle-test
+  (let [gt (:ground-truth (p4-run p4-delivery))
+        parent-id (engine/patient-id-for p4-seed 0)
+        parent (filterv #(= parent-id (:patient-id (first (:participants %)))) gt)]
+    (is (= [:registered :admission :discharge] (mapv :event parent)))
+    (is (= "Delivery" (:reason (second parent))))
+    (is (= 20000 (:t (second parent))) "the admission is not at the delivery instant"))
+  (testing "and NOT when their own queue already carries an encounter -- the
+            single-encounter horizon (`admission-only-when-new`), answered
+            statically because a decide cannot see a later admission coming"
+    (let [gt (:ground-truth (p4-run p4-delivery
+                                    {:pathway {:name "brief"
+                                               :steps [{:type :admission :location "Renal"}
+                                                       {:type :delay :from 600 :to 600}
+                                                       {:type :discharge}]}}))
+          parent-id (engine/patient-id-for p4-seed 0)
+          parent (filterv #(= parent-id (:patient-id (first (:participants %)))) gt)]
+      (is (= [:registered :admission :discharge] (mapv :event parent))
+          "the parent got a second encounter, which no log may carry")
+      (is (nil? (:person-event-id (second parent)))
+          "the admission the parent got is the delivery's, not their own pathway's")
+      (testing "the NEWBORN's own encounter is untouched by that refusal"
+        (is (some? (first (filter :mother-patient-id gt))))))))
+
+;; --- 2(c): the occupational-injury hook ----------------------------------
+
+(deftest an-occupational-injury-presents-at-the-ed-test
+  (let [gt (:ground-truth (p4-run [{:event :occupational-injury :person-id "q-a" :t 30000
+                                    :event-id "q-a#9" :injury-class :laceration}]))
+        pid (engine/patient-id-for p4-seed 0)
+        own (filterv #(= pid (:patient-id (first (:participants %)))) gt)]
+    (is (= [:registered :admission :discharge] (mapv :event own)))
+    (is (= "Occupational injury: laceration" (:reason (second own))))
+    (is (= "Emergency" (:home-ward (second own))) "an injury did not present at the ED")
+    (is (= "q-a#9" (:person-event-id (second own))))))
+
+(deftest an-injury-to-a-person-no-arrival-bound-mints-their-first-patient-test
+  ;; ADR-0173 section 2(c): "It selects the injured person's own patient,
+  ;; or mints one if this is their first contact."
+  (let [two-person (assoc p4-pool
+                          :population [{:person-id "q-a" :id-tag 1} {:person-id "q-b" :id-tag 2}]
+                          :personas {"q-a" (p4-persona 1) "q-b" (p4-persona 2)}
+                          ;; q-b is alive but never selectable: every arrival is
+                          ;; at or after t 0 and this death fires at 0.
+                          :alive {"q-b" 0})
+        gt (:ground-truth (engine/run
+                           {:seed p4-seed :patients 4 :arrival-gap 100
+                            :pathway {:name "empty" :steps []}
+                            :facility p4-facility
+                            :persons (assoc two-person :events
+                                            [{:event :occupational-injury :person-id "q-b" :t 30000
+                                              :event-id "q-b#0" :injury-class :fracture}])}))]
+    (testing "a person the ground truth says is DEAD mints nothing -- the same alive
+              filter ruling A1 puts on arrival selection"
+      (is (empty? (hook-admissions gt))
+          "an injury minted a patient for somebody already dead")))
+  (let [two-person (assoc p4-pool
+                          :population [{:person-id "q-a" :id-tag 1} {:person-id "q-b" :id-tag 2}]
+                          :personas {"q-a" (p4-persona 1) "q-b" (p4-persona 2)}
+                          :alive {"q-b" 20000})
+        gt (:ground-truth (engine/run
+                           {:seed p4-seed :patients 1 :arrival-gap 100
+                            :pathway {:name "empty" :steps []}
+                            :facility p4-facility
+                            :persons (assoc two-person :events
+                                            [{:event :occupational-injury :person-id "q-b" :t 10000
+                                              :event-id "q-b#0" :injury-class :fracture}])}))
+        minted (first (hook-admissions gt))]
+    (is (some? minted) "an unbound person's injury minted no patient at all")
+    (is (= (engine/patient-id-for p4-seed 1)
+           (:patient-id (first (:participants minted))))
+        "the minted patient did not take ordinal (+ patients 0)")
+    (is (= "Occupational injury: fracture" (:reason minted)))))
+
+;; --- fixed consumption: a hook costs no existing patient a draw ----------
+
+(deftest hook-patients-consume-no-patient-family-draw-test
+  ;; The claim, and the only observable it can have: adding hook events
+  ;; to a stream leaves every event of every patient that would have
+  ;; existed anyway BYTE-IDENTICAL. A hook patient's Persona comes from
+  ;; the person side and it walks no module, and its `:from` = `:to`
+  ;; delay is draw-free (ADR-0171 section 2(d)), so it reads its own
+  ;; stream zero times.
+  (let [without (:ground-truth (p4-run []))
+        with (:ground-truth (p4-run [{:event :occupational-injury :person-id "q-a" :t 30000
+                                      :event-id "q-a#9" :injury-class :strain}]))
+        existing (set (map #(:patient-id (first (:participants %))) without))
+        with-existing (filterv #(existing (:patient-id (first (:participants %)))) with)]
+    (is (pos? (count without)) "the control run produced nothing")
+    (is (pos? (count (hook-admissions with))) "the hook run produced no hook at all")
+    (is (= without (take (count without) with-existing))
+        "a hook moved an existing patient's own events")
+    (is (= (pr-str without) (pr-str (vec (take (count without) with-existing))))
+        "a hook moved an existing patient's own BYTES")))
+
+;; --- ADR-0173's first tabled deviation, COUNTED -------------------------
+
+(deftest repeat-arrivals-resolve-and-queue-nothing-test
+  ;; ADR-0173's own first tabled deviation, made VISIBLE rather than
+  ;; left silent. A second `:admission` for a patient whose status is
+  ;; `:discharged` violates `admission-only-when-new`, which is this
+  ;; project's single-encounter horizon (sim/ADR-0007 point 3) expressed
+  ;; as an invariant, so a repeat arrival queues NOTHING. What the
+  ;; repeat is FOR survives: the person resolves to the patient they
+  ;; already are.
+  (let [r (p4-run [] {:pathway {:name "brief"
+                                :steps [{:type :admission :location "Renal"}
+                                        {:type :delay :from 30 :to 30}
+                                        {:type :discharge}]}})
+        gt (:ground-truth r)
+        registered (filterv #(= :registered (:event %)) gt)]
+    (testing "four arrivals over a ONE-person pool: three of them are repeats"
+      (is (= 4 (count p4-arrivals)))
+      (is (= 1 (count registered))
+          (str "the repeat arrivals did not resolve -- " (count registered)
+               " patients registered for one person")))
+    (testing "and they queued nothing: the run carries exactly ONE encounter"
+      (is (= 1 (count (filter #(= :admission (:event %)) gt))))
+      (is (= 1 (count (filter #(= :discharge (:event %)) gt)))))
+    (testing "the fold index resolves the person to that one patient"
+      (let [index (:person-index (engine/person-plan
+                                  {:seed p4-seed :patients 4 :arrival-gap 100
+                                   :persons (assoc p4-pool :events [])}))]
+        (is (= 1 (count index)))
+        (is (= (engine/patient-id-for p4-seed 0) (:patient-id (get index "q-a"))))
+        (is (= 0 (:first-ordinal (get index "q-a"))))))))

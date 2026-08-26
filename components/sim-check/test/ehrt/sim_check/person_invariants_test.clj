@@ -282,3 +282,125 @@
       (is (result/rejected? r))
       (is (some #(= :person-scoped-provenance-is-a-stamp-not-a-reference (:invariant %))
                 (:violations (:payload r)))))))
+
+;; --- arc 3a part 4: the identification family, on a REAL run -------------
+;;
+;; Three of the six above landed in part 3 with NO PRODUCER, and their
+;; own docstrings said so. Part 4 is the producer, so the clean side of
+;; each is no longer a run that could not have violated it: it is a run
+;; that mints placeholder registrations, fills and identification merges
+;; and violates none of them.
+;;
+;; Every population here is counted before it is judged
+;; (`rulings.md#R-empty-population-is-red`): an emptiness claim over a
+;; corpus with no placeholders in it is the exact shape repo review 5
+;; found twice.
+
+(def ^:private p4-facility
+  {:id :check-fixture-p4
+   :wards [{:id :ed :name "Emergency" :beds 0 :surge-slots 8 :surge-format "%s-H%02d"
+            :class :ed}
+           {:id :renal :name "Renal" :beds 4 :surge-slots 2 :surge-format "%s-H%02d"
+            :class :inpatient}]})
+
+(def ^:private identification-run
+  "Four arrivals over a ONE-person pool at seed 15, `:arrival-gap` 100 --
+  whose arrival instants are `[0 4620 8160 9900]` -- carrying two
+  identity windows and a delivery.
+
+  * Arrival 0 is IDENTIFIED and mints the person's canonical patient.
+  * Window one (t 1000 - 6000) covers arrival 1, so that arrival
+    registers as a placeholder, AND mints an unidentified ED
+    presentation of its own; both resolve `:merge` into arrival 0's
+    patient.
+  * Window two (t 7000 - 9000) covers arrival 2 and does the same,
+    resolving `:fill`.
+  * The delivery at t 20000 mints the newborn and admits the parent.
+  * Arrival 3 (t 9900) falls outside both windows, so it RESOLVES to
+    the canonical patient and queues nothing."
+  (delay
+   (let [persona-c (sim-model/persona (engine/stream 15 :person 3) {})]
+     (engine/run
+      {:seed 15 :patients 4 :arrival-gap 100
+       :pathway {:name "empty" :steps []}
+       :facility p4-facility
+       :persons
+       {:population [{:person-id "p-c" :id-tag 3}]
+        :personas {"p-c" persona-c}
+        :alive {}
+        :events [{:event :identity-unavailable :person-id "p-c" :t 1000 :event-id "p-c#0"
+                  :until-t 6000 :alias-name {:family "Doe" :given "Unknown"}}
+                 {:event :identity-resolution :person-id "p-c" :t 6000 :event-id "p-c#1"
+                  :branch :merge :unavailable-event-id "p-c#0" :surviving-person-id "p-c"}
+                 {:event :identity-unavailable :person-id "p-c" :t 7000 :event-id "p-c#2"
+                  :until-t 9000 :alias-name {:family "Doe" :given "Unknown"}}
+                 {:event :identity-resolution :person-id "p-c" :t 9000 :event-id "p-c#3"
+                  :branch :fill :unavailable-event-id "p-c#2"}
+                 {:event :delivery :person-id "p-c" :t 20000 :event-id "p-c#4"
+                  :newborn-person-id "p-c/b0" :parity-index 0 :within-delivery-index 0
+                  :pregnancy-event-id "p-c#x" :participants ["p-c" "p-c/b0"]}
+                 {:event :person-registered :person-id "p-c/b0" :t 20000
+                  :event-id "p-c/b0#0"
+                  :persona (sim-model/persona (engine/stream 15 :person 4) {:age-min 0 :age-max 0})
+                  :delivery-event-id "p-c#4" :participants ["p-c/b0" "p-c"]}]}}))))
+
+(deftest the-identification-run-actually-mints-all-three-shapes-test
+  (let [gt (:ground-truth @identification-run)]
+    (is (pos? (count (filter #(and (= :registered (:event %)) (= :placeholder (:identity %))) gt)))
+        "no placeholder registration -- every identification claim below is vacuous")
+    (is (pos? (count (filter #(and (= :demographic-update (:event %))
+                                   (= :identity-fill (:cause %))) gt)))
+        "no fill")
+    (is (pos? (count (filter #(and (= :merge (:event %)) (= :identification (:cause %))) gt)))
+        "no identification merge")
+    (is (pos? (count (filter :mother-patient-id gt)))
+        "no newborn, so the delivery hook is untested here")
+    (is (pos? (count (filter #(and (= :admission (:event %)) (:person-event-id %)) gt)))
+        "no hook-created encounter")))
+
+(deftest the-whole-person-family-is-clean-on-the-identification-run-test
+  (doseq [invariant [#'check/identity-fill-references-its-placeholder-registration
+                     #'check/identification-merge-survivor-is-the-persons-prior-patient
+                     #'check/every-placeholder-registration-is-resolved-or-still-open
+                     #'check/demographic-update-reports-a-real-change
+                     #'check/no-demographic-event-after-a-patient-expires
+                     #'check/person-scoped-provenance-is-a-stamp-not-a-reference]]
+    (is (empty? (invariant (:ground-truth @identification-run)))
+        (str (:name (meta invariant)) " fired on a real identification run"))))
+
+(deftest the-whole-catalog-is-clean-on-the-identification-run-test
+  ;; Not just the person family: the identification merge is churn's own
+  ;; `:merge` SHAPE, so `merge-survivor-absorbs-merged-mrns`,
+  ;; `no-events-after-merged-terminal` and the whole post-merge shadow
+  ;; surface have to be clean over it without a line of change. That is
+  ;; the claim ADR-0173 section 2(d) makes, and this is where it is
+  ;; checked rather than assumed.
+  (is (= :ok (:status (check/check-all (:ground-truth @identification-run) p4-facility 0)))
+      (str "violations: "
+           (pr-str (:payload (check/check-all (:ground-truth @identification-run)
+                                              p4-facility 0))))))
+
+(deftest a-still-open-placeholder-is-not-a-violation-test
+  ;; `every-placeholder-registration-is-resolved-or-still-open`'s second
+  ;; clause, PRODUCED. A placeholder left dangling by a horizon is real
+  ;; traffic -- an unidentified patient nobody had established by the
+  ;; time the simulated feed stopped -- and an invariant that forbade it
+  ;; would be wrong about the world rather than about the log.
+  (let [persona-c (sim-model/persona (engine/stream 15 :person 3) {})
+        gt (:ground-truth
+            (engine/run
+             {:seed 15 :patients 4 :arrival-gap 100
+              :pathway {:name "empty" :steps []}
+              :facility p4-facility
+              :persons {:population [{:person-id "p-c" :id-tag 3}]
+                        :personas {"p-c" persona-c}
+                        :alive {}
+                        :events [{:event :identity-unavailable :person-id "p-c" :t 1000
+                                  :until-t 9999999 :event-id "p-c#0"
+                                  :alias-name {:family "Doe" :given "Unknown"}}]}}))
+        ph (filterv #(and (= :registered (:event %)) (= :placeholder (:identity %))) gt)]
+    (is (pos? (count ph)) "no placeholder was minted")
+    (is (every? #(> (:window-close-t %) (:t (last gt))) ph)
+        "the run outlived the window, so this is no longer the still-open case")
+    (is (empty? (check/every-placeholder-registration-is-resolved-or-still-open gt))
+        "a placeholder inside its own still-open window was reported as dangling")))

@@ -188,14 +188,26 @@
   * `:identity` marks a placeholder registration -- an arrival landing
     inside an open `:identity-unavailable` window.
   * `:age` is NOT carried. It is a t0 derivation of `:dob` against a
-    fixed calendar anchor, so it is not state-at-t at all."
+    fixed calendar anchor, so it is not state-at-t at all.
+
+  ARC 3A PART 4: FIVE FIELDS BECAME `{:optional true}`, and that is the
+  placeholder registration and nothing else. A patient who arrived
+  unidentified has a `:name` -- the window's own `:alias-name`, a John
+  Doe -- and genuinely has no known sex, DOB, phone, SSN or payer. The
+  alternative was to carry the person's REAL values under an alias
+  name, which is a fabrication with a wire face: a John Doe rendering a
+  correct date of birth tells a consumer's MPI something the modelled
+  hospital does not know. `:name`, `:residence` and `:identity` stay
+  REQUIRED: every one of the three has a true value in the placeholder
+  case (the alias, `:unknown`, and `:placeholder`), so making them
+  optional would buy nothing and lose a constraint."
   [:map
    [:name (mu/get sim-model/Persona :name)]
-   [:sex (mu/get sim-model/Persona :sex)]
-   [:dob (mu/get sim-model/Persona :dob)]
-   [:phone (mu/get sim-model/Persona :phone)]
-   [:ssn (mu/get sim-model/Persona :ssn)]
-   [:payer (mu/get sim-model/Persona :payer)]
+   [:sex {:optional true} (mu/get sim-model/Persona :sex)]
+   [:dob {:optional true} (mu/get sim-model/Persona :dob)]
+   [:phone {:optional true} (mu/get sim-model/Persona :phone)]
+   [:ssn {:optional true} (mu/get sim-model/Persona :ssn)]
+   [:payer {:optional true} (mu/get sim-model/Persona :payer)]
    [:residence [:multi {:dispatch :status}
                 [:housed [:map
                           [:status [:= :housed]]
@@ -227,6 +239,21 @@
      :payer (:payer persona)
      :residence {:status :housed :address (:address persona)}
      :identity :known}))
+
+(defn placeholder-demographics
+  "The state-at-t demographics of a patient who arrived inside an open
+  `:identity-unavailable` window (ADR-0173 section 2(d), arc 3a part 4).
+
+  The window's `:alias-name` and NOTHING ELSE. No address -- `:unknown`
+  rather than `:unhoused`, because not knowing where somebody lives is
+  a different fact from their having nowhere to live, and ruling E1
+  keeps the two apart in ground truth even though both render PID-11
+  absent. No DOB, no sex, no payer: the person behind this record is
+  somebody, and the run's own `:persona` on the registration event says
+  who, but the modelled hospital does not know it yet and the wire may
+  not claim otherwise."
+  [alias-name]
+  {:name alias-name :residence {:status :unknown} :identity :placeholder})
 
 (def PatientState
   "The engine's per-patient accumulator -- what folding `evolve` over a
@@ -654,15 +681,45 @@
   ;; last lived at, and this says whether anybody lives there (ruling E1
   ;; -- the wire renders PID-11 absent, ground truth keeps the
   ;; distinction between `:unhoused` and `:unknown`).
-  (let [{:keys [persona compiled residence]} (if (contains? world :compiled-patients)
-                                               (get (:compiled-patients world) patient-id)
-                                               (compile-patient rng world closure))]
+  ;;
+  ;; ARC 3A PART 4 adds four optional keys, all of them ABSENT for every
+  ;; run with no `:persons`, so this method's bytes are unchanged there.
+  ;; `:person-id` is the provenance stamp
+  ;; `identification-merge-survivor-is-the-persons-prior-patient` reads
+  ;; on BOTH sides of an identification merge. The other three ride only
+  ;; a PLACEHOLDER registration (ADR-0173 section 2(d)): the arrival
+  ;; landed inside an open `:identity-unavailable` window, so the wire
+  ;; gets the window's alias and an `:unknown` residence, and
+  ;; `:window-close-t` is what lets
+  ;; `every-placeholder-registration-is-resolved-or-still-open` tell a
+  ;; dangling placeholder from one the horizon simply ended inside.
+  ;;
+  ;; `:persona` RIDES A PLACEHOLDER REGISTRATION UNCHANGED, and that is
+  ;; deliberate. Ground truth knows who this patient is -- an
+  ;; unidentified arrival is still somebody -- so the record stays
+  ;; truthful and `registered-persona-is-schema-valid` keeps asserting
+  ;; exactly what it asserts today. What `:identity :placeholder` buys
+  ;; is that the FOLD (and therefore every message) renders the alias
+  ;; instead: `evolve :registered` seeds `placeholder-demographics`
+  ;; rather than `demographics-from-persona`.
+  (let [{:keys [persona compiled residence person-id identity alias-name window-close-t
+                mother-patient-id]}
+        (if (contains? world :compiled-patients)
+          (get (:compiled-patients world) patient-id)
+          (compile-patient rng world closure))
+        placeholder? (= :placeholder identity)]
     {:events [(cond-> {:event :registered :t t
                        :active-mrn (get-in world [:patients patient-id :active-mrn])
                        :persona persona
                        :participants [{:patient-id patient-id :role :subject}]}
                 (seq (:registration-facts compiled)) (assoc :pre-horizon-facts (:registration-facts compiled))
-                (and residence (not= :housed (:status residence))) (assoc :residence residence))]
+                (and residence (not= :housed (:status residence))) (assoc :residence residence)
+                person-id (assoc :person-id person-id)
+                mother-patient-id (assoc :mother-patient-id mother-patient-id)
+                placeholder? (assoc :identity :placeholder
+                                    :alias-name alias-name
+                                    :window-close-t window-close-t
+                                    :residence {:status :unknown}))]
      :advance 0
      :prepend-steps (:steps compiled)}))
 
@@ -698,6 +755,21 @@
   contract's 1.1.0 -> 1.2.0 bump buys."
   [step]
   (into {} (filter val) (select-keys step [:reason])))
+
+(defn- person-stamp-field
+  "Arc 3a part 4: `:person-event-id` rides onto an encounter event ONLY
+  when the step that produced it came from a person-stream HOOK -- the
+  same nil-dropping shape `reason-field` and `citation-fields` use, and
+  a third sibling rather than a widening of either, for the same reason
+  they are two: this one scopes itself to PERSON provenance, which is
+  neither glass-box compiler traceability nor authored clinical content.
+
+  It is a STAMP and never a log index -- `check.clj`'s
+  `person-scoped-provenance-is-a-stamp-not-a-reference` is the gate --
+  and it is what makes a hook-created encounter COUNTABLE in a corpus
+  without joining it back to the person stream by guesswork."
+  [step]
+  (into {} (filter val) (select-keys step [:person-event-id])))
 
 ;; --- arc 3a part 3: the two kinds the person stream mints ----------------
 ;;
@@ -766,6 +838,181 @@
                  :participants [{:patient-id patient-id :role :subject}]}]
        :advance 0})))
 
+;; --- arc 3a part 4: the two clinical hooks and the identification flow ----
+;;
+;; ADR-0173 sections 2(c) and 2(d). THREE new step types, all
+;; engine-internal and all QUEUE-SEEDED at an absolute `:t` by `run`,
+;; exactly like part 3's two. None of them adds an event KIND: a hook
+;; produces the ordinary `:admission`/`:delay`/`:discharge` triple, a
+;; fill produces a `:demographic-update`, and an identification merge
+;; produces a `:merge` in churn's own shape. The vocabulary the fold
+;; grew is still exactly two.
+;;
+;; NONE OF THE THREE DRAWS. `:person-encounter` prepends steps and
+;; emits nothing itself; the fill and the merge read `world` and emit.
+;; So the hooks change WHICH patients exist and what happens to them,
+;; and change no stream's consumption for any patient that would have
+;; existed anyway.
+
+(def delivery-stay-minutes
+  "How long a birth encounter lasts, in MINUTES -- two days, the
+  ordinary post-partum stay. A CONSTANT and not a range, deliberately:
+  `decide :delay` skips the draw entirely when `:from` = `:to`
+  (ADR-0171 section 2(d)), so a hook-created encounter costs no
+  `:patient`-family draw and cannot shift a stream that would have
+  existed without it.
+
+  BOUNDED AT ALL is the load-bearing part. ADR-0173 section 2(c) says
+  `:delivery` mints an admission and stops there; an admission with no
+  discharge holds a licensed bed for the REST OF THE RUN, and with
+  `:persons` present a run's horizon is the person process's own -- ten
+  years by default, not the hours a clinical pathway spans. One
+  unclosed birth per delivery would exhaust any facility this repo
+  ships. So the hook mints an ENCOUNTER, which is what a birth is."
+  2880)
+
+(def injury-stay-minutes
+  "How long an occupational-injury ED encounter lasts, in MINUTES --
+  four hours. Same constant-not-a-range reasoning as
+  `delivery-stay-minutes` above, and the same bounded-encounter one."
+  240)
+
+(def unidentified-stay-minutes
+  "How long an UNIDENTIFIED ED presentation lasts, in MINUTES -- twelve
+  hours, longer than an ordinary injury visit because nobody can
+  discharge a patient they cannot name. Same constant-not-a-range and
+  bounded-encounter reasoning as the two above."
+  720)
+
+(defn- hook-ward
+  "Which ward a hook-created encounter admits to, by CLASS rather than
+  by name: an occupational injury is an ED presentation, a birth is an
+  inpatient one. Read off this run's own facility, so a config that
+  renames its wards -- `demos/scenarios/ed-tuesday` does -- still gets
+  a real one, and a facility carrying neither class falls back to its
+  first ward rather than to a literal no facility need contain."
+  [facility want]
+  (let [named (fn [c] (:name (first (filter #(= c (:class %)) (:wards facility)))))]
+    (or (named want) (named :inpatient) (named :ed) (:name (first (:wards facility))))))
+
+(defmethod decide :person-encounter
+  ;; ADR-0173 section 2(c). The step carries WHAT the encounter is; this
+  ;; method decides WHETHER it may happen at all, and prepends the
+  ;; ordinary three-step encounter when it may.
+  ;;
+  ;; THE `:new` GUARD IS THIS PROJECT'S SINGLE-ENCOUNTER HORIZON, met a
+  ;; second time. `check.clj`'s `admission-only-when-new` (sim/ADR-0007
+  ;; point 3) means a patient gets ONE inpatient encounter, ever --
+  ;; `evolve :discharge` leaves them `:discharged`, never back at
+  ;; `:new`. So a hook landing on a patient who has already had their
+  ;; encounter mints nothing, exactly as ADR-0173's own first tabled
+  ;; deviation says a repeat arrival queues nothing. `run` also refuses
+  ;; these statically, before the run, for a patient whose own queue
+  ;; contains an encounter at all (`prelude`'s `encounter-free?`); this
+  ;; guard is the runtime half, and the two are deliberately both
+  ;; present -- a static analysis that turns out to be wrong shows up
+  ;; here as a skipped encounter rather than as a red invariant.
+  ;;
+  ;; THE WHOLE TRIPLE IS PREPENDED OR NONE OF IT IS. A `:delay` and a
+  ;; `:discharge` queued behind an admission that did not happen would
+  ;; be a discharge with no admission, which
+  ;; `discharge-follows-admission` correctly calls a defect -- so the
+  ;; encounter is one decision, not three steps that each guard
+  ;; themselves.
+  [_streams _t world patient-id {:keys [reason ward-class stay-minutes person-event-id]}]
+  (let [patient (get-in world [:patients patient-id])]
+    (if (not= :new (:status patient))
+      {:events [] :advance 0}
+      {:events [] :advance 0
+       :prepend-steps [{:type :admission
+                        :location (hook-ward (:facility world) ward-class)
+                        :reason reason
+                        :person-event-id person-event-id}
+                       {:type :delay :from stay-minutes :to stay-minutes}
+                       {:type :discharge}]})))
+
+(defmethod decide :identity-fill
+  ;; ADR-0173 section 2(d), the `:fill` branch of `:identity-resolution`:
+  ;; the placeholder patient KEEPS their patient-id and their MRN, and
+  ;; every demographic field is filled in from the person's real
+  ;; demographics at this instant.
+  ;;
+  ;; ONE EVENT, NOT SEVEN. A fill is not six independent field changes
+  ;; that happen to coincide; it is one fact -- this record now belongs
+  ;; to a known person -- so `:field` is `:identity` and `:value` is
+  ;; `:known`, with the demographics themselves riding as the `:persona`
+  ;; the record should have had all along. `evolve` below rebuilds the
+  ;; whole state from it, and `demographic-update-reports-a-real-change`
+  ;; still has something true to check: `:prior-value` is `:placeholder`,
+  ;; which is exactly what the fold says it was.
+  ;;
+  ;; `:placeholder-event-id` IS A LOG INDEX -- the one referential key
+  ;; this arc mints -- and it comes from `run`'s fold-carried
+  ;; `:registration-index` rather than from a scan, the same shape
+  ;; ADR-0169 gave `:citation-index`. A hand-built world carrying no
+  ;; such KEY answers nil, which
+  ;; `identity-fill-references-its-placeholder-registration` reports as
+  ;; a dangling reference -- correctly, because it would be one.
+  [_streams t world patient-id {:keys [persona residence person-event-id]}]
+  (let [patient (demographic-target world patient-id)]
+    (if (or (nil? patient) (not= :placeholder (:identity (:demographics patient))))
+      {:events [] :advance 0}
+      {:events [(cond-> {:event :demographic-update :t t
+                         :active-mrn (:active-mrn patient)
+                         :cause :identity-fill
+                         :field :identity
+                         :value :known
+                         :prior-value :placeholder
+                         :placeholder-event-id (get-in world [:registration-index patient-id])
+                         :persona persona
+                         :person-event-id person-event-id
+                         :participants [{:patient-id patient-id :role :subject}]}
+                  (and residence (not= :housed (:status residence)))
+                  (assoc :residence residence))]
+       :advance 0})))
+
+(defmethod decide :identification-merge
+  ;; ADR-0173 section 2(d), the `:merge` branch. The event is churn's own
+  ;; `:merge` -- same kind, same `:survivor`/`:merged` roles, same
+  ;; `:surviving-mrn`/`:merged-mrn`/`:merged-mrns` payload -- so
+  ;; `merge-survivor-absorbs-merged-mrns`, `no-events-after-merged-
+  ;; terminal`, the run loop's own `:merged` short-circuit and the whole
+  ;; post-merge shadow surface apply verbatim. `:cause :identification`
+  ;; is the ONLY thing that distinguishes it, and
+  ;; `identification-merge-survivor-is-the-persons-prior-patient` is
+  ;; what makes that marker mean something.
+  ;;
+  ;; A SEPARATE DECIDE, AND NOTHING ADDED TO CHURN'S LOTTERY. `decide
+  ;; :merge`'s own `never-mergeable?` excludes `:new`, and a placeholder
+  ;; patient who registered and was never admitted is exactly `:new`;
+  ;; relaxing that would move every churn corpus for an unrelated
+  ;; reason, which this arc has no licence to do. So this is one more
+  ;; decide method with its own guard, and `churn/inject`'s step-type
+  ;; set and roll order are untouched.
+  ;;
+  ;; The step is queued on the SURVIVOR, so `patient-id` here is the
+  ;; person's prior patient and `:placeholder-patient-id` is the record
+  ;; being absorbed.
+  [_streams t world patient-id {:keys [placeholder-patient-id person-event-id]}]
+  (let [{:keys [patients]} world
+        survivor (get patients patient-id)
+        merged (get patients placeholder-patient-id)]
+    (if (or (nil? survivor) (nil? merged)
+            (= patient-id placeholder-patient-id)
+            (#{:merged :expired} (:status survivor))
+            (#{:merged :expired} (:status merged))
+            (not= :placeholder (:identity (:demographics merged))))
+      {:events [] :advance 0}
+      {:events [{:event :merge :t t
+                 :cause :identification
+                 :person-event-id person-event-id
+                 :participants [{:patient-id patient-id :role :survivor}
+                                {:patient-id placeholder-patient-id :role :merged}]
+                 :surviving-mrn (:active-mrn survivor)
+                 :merged-mrn (:active-mrn merged)
+                 :merged-mrns (:mrns merged)}]
+       :advance 0})))
+
 (defmethod decide :admission
   [{world-rng :world facility-rng :facility} t world patient-id
    {:keys [location force-placement] :as step}]
@@ -783,7 +1030,8 @@
             active-mrn (get-in patients [patient-id :active-mrn])]
         {:events [(merge {:event :admission :t t :active-mrn active-mrn :attending attending
                           :participants [{:patient-id patient-id :role :subject}]}
-                         alloc (reason-field step) (citation-fields step))]
+                         alloc (reason-field step) (citation-fields step)
+                         (person-stamp-field step))]
          :advance 0}))))
 
 (defmethod decide :delay
@@ -1303,8 +1551,11 @@
   no `:person-index` KEY -- on the KEY, never on a missing entry, the
   same rule `reinstated-state` and `last-cited-index` already follow, so
   a carrier `run` built but failed to populate shows up as a changed
-  corpus rather than as a silent miss. `run` seeds the key EMPTY today;
-  nothing writes it until part 3's arrival selection does."
+  corpus rather than as a silent miss. Part 3's arrival selection is
+  what writes it; part 4 grows each entry a `:placeholders` set -- every
+  unidentified record minted for that person, before any of them is
+  filled or merged. `run` still seeds the key EMPTY for a run with no
+  `:persons`."
   [world person-id]
   (when (contains? world :person-index)
     (get (:person-index world) person-id)))
@@ -1421,11 +1672,20 @@
   ;; person who is not housed at that instant; absent -- every event in
   ;; every corpus that has no `:persons` behind it -- this is the seed
   ;; verbatim.
-  [patient {:keys [persona residence]}]
+  ;;
+  ;; ARC 3A PART 4: a PLACEHOLDER registration seeds
+  ;; `placeholder-demographics` instead -- the window's alias name, an
+  ;; `:unknown` residence and nothing else. `:persona` is written all
+  ;; the same, because ground truth knows who this patient is even
+  ;; while the modelled hospital does not, and every t0-only census
+  ;; site keeps reading a Persona for every patient.
+  [patient {:keys [persona residence alias-name identity]}]
   (assoc patient
          :persona persona
-         :demographics (cond-> (demographics-from-persona persona)
-                         (and residence (some? persona)) (assoc :residence residence))))
+         :demographics (if (= :placeholder identity)
+                         (placeholder-demographics alias-name)
+                         (cond-> (demographics-from-persona persona)
+                           (and residence (some? persona)) (assoc :residence residence)))))
 
 ;; --- arc 3a part 3: the two folding siblings ------------------------------
 ;;
@@ -1439,9 +1699,21 @@
 ;; field is unknown.
 
 (defmethod evolve :demographic-update
-  [patient {:keys [field value]}]
-  (cond-> patient
-    (some? (:demographics patient)) (assoc-in [:demographics field] value)))
+  ;; ARC 3A PART 4: `:cause :identity-fill` is the one branch that writes
+  ;; the WHOLE demographic state rather than one field of it, because
+  ;; that is what the fact is -- the record now belongs to a known
+  ;; person, and every field they have follows. `:persona` (the t0
+  ;; record) is NOT rewritten: a placeholder registration already
+  ;; carried the right one, and mutating it here would falsify the one
+  ;; property fourteen census sites depend on.
+  [patient {:keys [field value cause persona residence]}]
+  (if (= :identity-fill cause)
+    (cond-> patient
+      (some? (:demographics patient))
+      (assoc :demographics (cond-> (demographics-from-persona persona)
+                             residence (assoc :residence residence))))
+    (cond-> patient
+      (some? (:demographics patient)) (assoc-in [:demographics field] value))))
 
 (defmethod evolve :coverage-change
   [patient {:keys [payer]}]
@@ -2012,24 +2284,48 @@
         ;; person-id -> the ordinal that person FIRST arrived at. A person
         ;; selected twice is the point of having a pool: the second
         ;; arrival resolves to the patient the first one minted.
+        events-by-person (group-by :person-id (:events persons))
+        ;; ADR-0173 section 2(d) (arc 3a part 4): an arrival landing
+        ;; inside an open `:identity-unavailable` window is a PLACEHOLDER
+        ;; arrival -- an unresponsive John Doe, in the author's own
+        ;; words. It mints its OWN patient at its OWN ordinal even when
+        ;; the person behind it already has a record, because the whole
+        ;; point is that nobody yet knows the two are the same somebody;
+        ;; the identification flow is what joins them afterwards, by a
+        ;; fill or by a merge.
+        windows-of (fn [p] (person-fold/identification-windows (get events-by-person p)))
+        arrival-windows (mapv (fn [i]
+                                (when-let [p (nth bindings i)]
+                                  (person-fold/window-open-at (windows-of p) (nth arrivals i))))
+                              (range patients))
+        placeholder? (fn [i] (some? (nth arrival-windows i)))
+        ;; A PLACEHOLDER ARRIVAL IS NEVER A PERSON'S CANONICAL PATIENT,
+        ;; so it is skipped here rather than claiming the person: an
+        ;; identified arrival that follows it still mints their real
+        ;; record, and their later demographic events land on that one.
         first-ordinal (persistent!
                        (reduce (fn [acc i]
                                  (let [p (nth bindings i)]
-                                   (if (or (nil? p) (contains? acc p)) acc (assoc! acc p i))))
+                                   (if (or (nil? p) (placeholder? i) (contains? acc p))
+                                     acc
+                                     (assoc! acc p i))))
                                (transient {}) (range (count bindings))))
         ;; A patient id is minted from an ARRIVAL ORDINAL and always has
         ;; been (`patient-id-for`), so a repeat arrival is resolved by
         ;; minting from the FIRST ordinal rather than by inventing a
         ;; second id space. A run whose pool is larger than its arrival
         ;; count mints exactly the ids it mints today.
-        owner-ordinal (fn [i] (if-let [p (nth bindings i)] (get first-ordinal p) i))
+        ;;
+        ;; The `(get first-ordinal p i)` DEFAULT is part 4's: a
+        ;; placeholder arrival is bound to a person who has no entry
+        ;; here, and it owns itself.
+        owner-ordinal (fn [i]
+                        (if-let [p (nth bindings i)]
+                          (if (placeholder? i) i (get first-ordinal p i))
+                          i))
         first-arrival? (fn [i] (= i (owner-ordinal i)))
         pid-of (fn [i] (pid-for (owner-ordinal i)))
         firsts (filterv first-arrival? (range patients))
-        person-index (into {} (for [[p i] first-ordinal]
-                                [p {:patient-id (pid-for i) :first-ordinal i
-                                    :active-mrn (mrn-for i)}]))
-        events-by-person (group-by :person-id (:events persons))
         ;; ADR-0173 section 2(b): what a bound person brings to their own
         ;; first arrival. Their pre-arrival events are folded onto their
         ;; t0 Persona rather than replayed as log events, because
@@ -2146,22 +2442,288 @@
                                           (:closure (nth initial-entries i))
                                           (:persona (nth registrations i))))
                        (range patients))
-        compiled-patients (into {} (for [i firsts]
-                                     [(pid-for i) (cond-> (nth compiled i)
-                                                    (nth registrations i)
-                                                    (assoc :residence (:residence (nth registrations i))))]))
+        ;; --- ADR-0173 section 2(c), arc 3a part 4: THE TWO HOOKS -------
+        ;;
+        ;; Both hooks CREATE traffic `:patients` does not count, said
+        ;; plainly because it changes what a config means: with
+        ;; `:persons` present, `:patients` is the number of SELECTED
+        ;; arrivals, and the run's patient count is that plus the
+        ;; newborns plus the injury arrivals.
+        ;;
+        ;; A hook may only put an encounter on a patient who is
+        ;; CLINICALLY IDLE -- whose whole step queue, authored and
+        ;; compiled, is their `:registered` and nothing else. This is
+        ;; the single-encounter horizon again (`admission-only-when-
+        ;; new`, sim/ADR-0007 point 3), and it has to be answered
+        ;; STATICALLY as well as at decide time: a birth encounter
+        ;; landing on a patient whose own module admits them LATER would
+        ;; leave that later admission illegal, and the decide-time guard
+        ;; cannot see the future. `decide :person-encounter` carries the
+        ;; runtime half, so a wrong answer here costs a skipped
+        ;; encounter rather than a red invariant.
+        clinically-idle? (fn [i]
+                           (and (empty? (:steps (:compiled (nth compiled i))))
+                                (every? #(= :registered (:type %))
+                                        (:steps (nth initial-entries i)))))
+        hook-events (if persons (person-fold/hooks (:events persons)) [])
+        newborn-personas (if persons (person-fold/newborn-personas (:events persons)) {})
+        persona-of (fn [p] (or (get (:personas persons) p) (get newborn-personas p)))
+        bound-persons (into #{} (remove nil?) bindings)
+        ;; The SAME alive filter ruling A1 puts on arrival selection, put
+        ;; on hook minting for the same reason: a patient minted for
+        ;; somebody the ground truth already says is dead is a defect
+        ;; with a wire face. Half-open on the left, exactly as
+        ;; `select-person` is -- a person whose death instant IS the
+        ;; hook's instant is dead at it.
+        alive-at? (fn [p t] (let [d (get (:alive persons) p)] (or (nil? d) (> d t))))
+        ;; One pass over the hooks, in the order the stream already
+        ;; stands in (t-ascending -- the component's own front-door
+        ;; contract). Each hook contributes at most one ADDITIONAL
+        ;; patient and at most one encounter on an EXISTING one.
+        ;;
+        ;;   :delivery            -> the newborn is an additional patient
+        ;;                           whose first encounter is the birth
+        ;;                           (`traffic-model.md`), plus the
+        ;;                           parent's own delivery admission when
+        ;;                           the parent is clinically idle.
+        ;;   :occupational-injury -> an ED encounter on the injured
+        ;;                           person's own patient; or, for a
+        ;;                           person NO arrival ever bound, an
+        ;;                           additional patient of their own
+        ;;                           ("or mints one if this is their
+        ;;                           first contact", section 2(c)).
+        hook-plan
+        (reduce
+         (fn [{:keys [mints encounters] :as acc} h]
+           (let [p (:person-id h)
+                 own (get first-ordinal p)
+                 after-own-arrival? (and own (> (:t h) (nth arrivals own)))
+                 encounter (fn [pid cause reason ward-class stay]
+                             {:patient-id pid :t (:t h)
+                              :steps [{:type :person-encounter :t (:t h) :cause cause
+                                       :reason reason :ward-class ward-class
+                                       :stay-minutes stay :person-event-id (:event-id h)}]})]
+             (case (:event h)
+               :delivery
+               (let [nb (:newborn-person-id h)
+                     nb-persona (get newborn-personas nb)
+                     acc (if (and nb-persona after-own-arrival? (alive-at? nb (:t h)))
+                           (update acc :mints conj
+                                   {:person-id nb :t (:t h) :cause :delivery
+                                    :reason "Live birth"
+                                    :ward-class :inpatient
+                                    :stay-minutes delivery-stay-minutes
+                                    :person-event-id (:event-id h)
+                                    :mother-patient-id (pid-for own)})
+                           acc)]
+                 (if (and after-own-arrival? (clinically-idle? own))
+                   (update acc :encounters conj
+                           (encounter (pid-for own) :delivery "Delivery"
+                                      :inpatient delivery-stay-minutes))
+                   acc))
+               ;; ADR-0173 section 2(d), as an ARRIVAL rather than as a
+               ;; coincidence -- `person-fold/hook-kinds` carries the
+               ;; measurement that forced it. The window itself is the
+               ;; unidentified presentation, so it mints a patient whether
+               ;; or not this person already has one: that is the whole
+               ;; case, and the resolution below is what joins the two
+               ;; records back together (a merge) or fills this one in (a
+               ;; fill).
+               :identity-unavailable
+               (if (alive-at? p (:t h))
+                 (update acc :mints conj
+                         {:person-id p :t (:t h) :cause :identity-unavailable
+                          :reason "Unidentified patient"
+                          :ward-class :ed
+                          :stay-minutes unidentified-stay-minutes
+                          :person-event-id (:event-id h)
+                          :placeholder-window (person-fold/window-open-at
+                                               (windows-of p) (:t h))})
+                 acc)
+               :occupational-injury
+               (cond
+                 (and after-own-arrival? (clinically-idle? own))
+                 (update acc :encounters conj
+                         (encounter (pid-for own) :occupational-injury
+                                    (str "Occupational injury: " (name (or (:injury-class h) :unspecified)))
+                                    :ed injury-stay-minutes))
+                 ;; No arrival ever bound this person, so this injury IS
+                 ;; their first contact with the system.
+                 (and (nil? own) (not (bound-persons p)) (some? (persona-of p))
+                      (alive-at? p (:t h)))
+                 (update acc :mints conj
+                         {:person-id p :t (:t h) :cause :occupational-injury
+                          :reason (str "Occupational injury: " (name (or (:injury-class h) :unspecified)))
+                          :ward-class :ed
+                          :stay-minutes injury-stay-minutes
+                          :person-event-id (:event-id h)})
+                 :else acc)
+               acc)))
+         {:mints [] :encounters []}
+         hook-events)
+        ;; ADDITIONAL PATIENTS take ordinals `(+ patients k)` in hook-`:t`
+        ;; order, so `patient-id-for` and `mrn-for` stay pure functions
+        ;; of an ordinal (ADR-0173 section 2(c)) and the newborn's own
+        ;; `:patient` stream is `(stream seed :patient (+ patients k))`
+        ;; -- order-free, and disjoint from every t0 arrival's. A person
+        ;; who ALREADY has a patient never mints a second one here, so
+        ;; the list carries no silent duplicates.
+        mints (into [] (map-indexed (fn [k m] (assoc m :ordinal (+ patients k))))
+                    (:mints hook-plan))
+        hook-rngs (mapv (fn [{:keys [ordinal]}] (stream seed :patient ordinal)) mints)
+        ;; A hook patient draws NOTHING: their Persona comes from the
+        ;; person side and they walk no module, so `compile-patient`'s
+        ;; 4-arity with a nil closure is a pure construction. Their
+        ;; `:patient` stream is built all the same, so every patient in
+        ;; the run has one.
+        mint-registrations (mapv (fn [{:keys [person-id t]}]
+                                   (person-fold/registration (persona-of person-id)
+                                                             (get events-by-person person-id)
+                                                             t))
+                                 mints)
+        mint-patients (into {}
+                            (map-indexed
+                             (fn [k {:keys [ordinal person-id mother-patient-id placeholder-window]}]
+                               (let [reg (nth mint-registrations k)]
+                                 [(pid-for ordinal)
+                                  (cond-> {:persona (:persona reg) :compiled nil
+                                           :residence (:residence reg)
+                                           :person-id person-id}
+                                    mother-patient-id (assoc :mother-patient-id mother-patient-id)
+                                    placeholder-window
+                                    (assoc :identity :placeholder
+                                           :alias-name (:alias-name placeholder-window)
+                                           :window-close-t (:until-t placeholder-window)))])))
+                            mints)
+        ;; --- ADR-0173 section 2(d): THE IDENTIFICATION FLOW ------------
+        ;;
+        ;; `base-owner` is who a person's canonical patient is BEFORE any
+        ;; placeholder resolves: their first identified arrival, or --
+        ;; for a newborn, or somebody whose first contact was an injury
+        ;; -- the additional patient a hook minted for them.
+        base-owner (merge
+                    (into {} (for [[p i] first-ordinal]
+                               [p {:patient-id (pid-for i) :first-ordinal i
+                                   :active-mrn (mrn-for i) :t (nth arrivals i)}]))
+                    ;; A PLACEHOLDER mint is not a person's canonical
+                    ;; patient any more than a placeholder ARRIVAL is:
+                    ;; nobody yet knows whose record it is. The fill
+                    ;; promotion below is what can make it one.
+                    (into {} (for [{:keys [person-id ordinal t placeholder-window]} mints
+                                   :when (nil? placeholder-window)]
+                               [person-id {:patient-id (pid-for ordinal) :first-ordinal ordinal
+                                           :active-mrn (mrn-for ordinal) :t t}])))
+        ;; EVERY placeholder record this run mints, from BOTH sources:
+        ;; a t0 arrival that coincided with an open window (section
+        ;; 2(d) as written), and a window that minted its own
+        ;; unidentified arrival (the same section, met at the rate the
+        ;; process actually produces -- `person-fold/hook-kinds` carries
+        ;; the measurement).
+        placeholders
+        (into (into [] (for [i (range patients) :when (placeholder? i)]
+                         {:patient-id (pid-for i) :ordinal i :person-id (nth bindings i)
+                          :window (nth arrival-windows i) :t (nth arrivals i)}))
+              (for [{:keys [ordinal person-id t placeholder-window]} mints
+                    :when placeholder-window]
+                {:patient-id (pid-for ordinal) :ordinal ordinal :person-id person-id
+                 :window placeholder-window :t t}))
+        ;; One resolution per placeholder record. A `:merge` with NO
+        ;; survivor DEGENERATES TO A FILL -- named in section 2(d) rather
+        ;; than left implicit, because silently emitting a merge with a
+        ;; null survivor is the defect that sentence exists to prevent.
+        resolutions
+        (into []
+              (for [{:keys [patient-id ordinal person-id window]} placeholders
+                    :let [survivor (get base-owner person-id)
+                          mergeable? (and (= :merge (:branch window))
+                                          survivor
+                                          (not= (:patient-id survivor) patient-id)
+                                          (<= (:t survivor) (:until-t window)))]
+                    :when (some? (:branch window))]
+                {:patient-id patient-id :ordinal ordinal :person-id person-id :window window
+                 :branch (if mergeable? :merge :fill)
+                 :survivor-patient-id (:patient-id survivor)}))
+        ;; A person whose ONLY contact was an unidentified arrival gets
+        ;; that record as their canonical patient once it is filled --
+        ;; section 2(d)'s "the placeholder patient becomes theirs and the
+        ;; fold index is updated". The fold starts at the FILL instant
+        ;; and not at the arrival: a demographic change reported for
+        ;; somebody nobody had identified yet would be a claim the
+        ;; modelled hospital was in no position to make.
+        person-owner (reduce (fn [acc {:keys [patient-id ordinal person-id window branch]}]
+                               (if (or (not= :fill branch) (contains? acc person-id))
+                                 acc
+                                 (assoc acc person-id
+                                        {:patient-id patient-id :first-ordinal ordinal
+                                         :active-mrn (mrn-for ordinal) :t (:until-t window)})))
+                             base-owner resolutions)
+        placeholders-by-person (reduce (fn [acc {:keys [person-id patient-id]}]
+                                         (update acc person-id (fnil conj #{}) patient-id))
+                                       {} placeholders)
+        person-index (into {}
+                           (for [[p e] person-owner]
+                             [p (assoc (dissoc e :t)
+                                       :placeholders (get placeholders-by-person p #{}))]))
+        compiled-patients (merge
+                           (into {} (for [i firsts]
+                                      [(pid-for i)
+                                       (cond-> (nth compiled i)
+                                         (nth registrations i)
+                                         (assoc :residence (:residence (nth registrations i)))
+                                         (nth bindings i)
+                                         (assoc :person-id (nth bindings i))
+                                         (placeholder? i)
+                                         (assoc :identity :placeholder
+                                                :alias-name (:alias-name (nth arrival-windows i))
+                                                :window-close-t (:until-t (nth arrival-windows i))))]))
+                           mint-patients)
         ;; ADR-0173 section 2(b): THE FOLD IS A QUEUE-SEEDING PASS, not a
         ;; change to the main loop. A person event strictly after its
         ;; person's own first arrival becomes an ordinary queue entry at
         ;; its own `:t`, exactly the way `schedule-followup` already
         ;; inserts one at an absolute instant.
-        person-steps (vec (for [i firsts
-                                :let [p (nth bindings i)]
-                                :when p
-                                step (person-fold/steps-after (get events-by-person p) (nth arrivals i))]
-                            {:patient-id (pid-for i) :steps [step] :t (:t step)}))]
+        ;;
+        ;; PART 4 widened WHAT "their own first arrival" means, and
+        ;; nothing else: it is now `person-owner`'s instant, which for a
+        ;; newborn is their birth, for an injury-first patient their
+        ;; injury, and for a filled placeholder the fill.
+        person-steps (vec (for [[p {:keys [patient-id t]}] (sort-by key person-owner)
+                                step (person-fold/steps-after (get events-by-person p) t)]
+                            {:patient-id patient-id :steps [step] :t (:t step)}))
+        ;; The additional patients' own arrivals, and the encounters both
+        ;; hooks put on existing ones.
+        mint-steps (vec (for [{:keys [ordinal t cause reason ward-class stay-minutes person-event-id]} mints]
+                          {:patient-id (pid-for ordinal) :t t
+                           :steps [{:type :registered :closure nil}
+                                   {:type :person-encounter :t t :cause cause :reason reason
+                                    :ward-class ward-class :stay-minutes stay-minutes
+                                    :person-event-id person-event-id}]}))
+        resolution-steps
+        (vec (for [{:keys [patient-id person-id window branch survivor-patient-id]} resolutions]
+               (if (= :merge branch)
+                 {:patient-id survivor-patient-id :t (:until-t window)
+                  :steps [{:type :identification-merge :t (:until-t window)
+                           :placeholder-patient-id patient-id
+                           :person-event-id (:resolution-event-id window)}]}
+                 (let [reg (person-fold/registration (persona-of person-id)
+                                                     (get events-by-person person-id)
+                                                     (:until-t window))]
+                   {:patient-id patient-id :t (:until-t window)
+                    :steps [{:type :identity-fill :t (:until-t window)
+                             :persona (:persona reg) :residence (:residence reg)
+                             :person-event-id (:resolution-event-id window)}]}))))
+        ;; ONE list, in a fixed category order -- the demographic fold,
+        ;; then the hooks' own arrivals, then the encounters they put on
+        ;; EXISTING patients, then the identification resolutions.
+        ;; `[t seq-no]` is the queue's key, so `:t` decides everything
+        ;; that matters and this order only settles ties,
+        ;; deterministically.
+        seeded-steps (-> person-steps
+                         (into mint-steps)
+                         (into (:encounters hook-plan))
+                         (into resolution-steps))]
     {:world-rng world-rng
-     :patient-rngs patient-rngs
+     :patient-rngs (into patient-rngs hook-rngs)
      :arrivals arrivals
      :mrn-for mrn-for
      :pid-for pid-for
@@ -2174,7 +2736,12 @@
      :initial-entries initial-entries
      :compiled compiled
      :compiled-patients compiled-patients
-     :person-steps person-steps}))
+     :mints mints
+     :placeholders placeholders
+     :resolutions resolutions
+     :hook-patient-ordinals (mapv :ordinal mints)
+     :person-steps person-steps
+     :seeded-steps seeded-steps}))
 
 (defn person-plan
   "ADR-0173 ruling C1's own resolution, exported. Returns, for a config
@@ -2205,7 +2772,18 @@
 
   A person who binds to no arrival, or whose bound arrival compiles no
   expiring discharge, is ABSENT from `:deaths` and keeps their own drawn
-  death."
+  death.
+
+  ARC 3A PART 4, DISCLOSED: so is a person whose only patient a HOOK
+  minted -- a newborn, an unidentified presentation, or a first-contact
+  injury arrival. Those patients exist only because the person STREAM
+  produced them, and the stream is what `:deaths` is computed to
+  produce, so feeding their compiled deaths back would re-open ruling
+  C1's cycle at a second point and need a THIRD pass. Two passes is what
+  C1 resolved to and what `ehrt.sim.run/engine-persons` implements; a
+  third is not designed. The conservatism runs the safe way, as the
+  alive filter's does: such a person keeps their own DRAWN death, which
+  the stream already respects by emitting nothing after it."
   [config]
   (let [{:keys [arrivals bindings compiled person-index first-ordinal]} (prelude config)
         death-of (fn [i]
@@ -2446,7 +3024,8 @@
         ;; run (`person-plan`). `:persons` ABSENT makes every one of its
         ;; person-aware branches the expression that was there before.
         {:keys [world-rng patient-rngs arrivals mrn-for pid-for firsts pid-of
-                person-index initial-entries compiled-patients person-steps]}
+                person-index initial-entries compiled-patients seeded-steps
+                hook-patient-ordinals]}
         (prelude {:seed seed :patients patients :pathway pathway :pathways pathways
                   :arrival-gap arrival-gap :facility facility :churn-profile churn-profile
                   :persona-config persona-config :modules modules
@@ -2475,12 +3054,19 @@
         ;; arrival instant still sorts after that arrival's own
         ;; `:registered`, and the loop's own counter starts past all of
         ;; them.
+        ;;
+        ;; PART 4 puts the two hooks' own entries -- an additional
+        ;; patient's whole arrival, and an encounter on an existing one
+        ;; -- and the identification resolutions into this SAME list, at
+        ;; their own `:t`. `prelude` fixes their order; the queue's
+        ;; `[t seq-no]` key is what actually decides.
         init-queue (into arrival-queue
                          (map-indexed (fn [k {:keys [patient-id steps t]}]
                                         [[t (+ patients k)] {:patient-id patient-id :steps steps}]))
-                         person-steps)
-        seq-start (+ patients (count person-steps))
-        init-world {:patients (into {} (for [i firsts] [(pid-for i) (initial-patient (pid-for i) (mrn-for i))]))
+                         seeded-steps)
+        seq-start (+ patients (count seeded-steps))
+        init-world {:patients (into {} (for [i (concat firsts hook-patient-ordinals)]
+                                         [(pid-for i) (initial-patient (pid-for i) (mrn-for i))]))
                     :facility facility
                     :providers materialized-providers
                     :order-profiles order-profiles
@@ -2542,7 +3128,19 @@
                     ;; tolerance, on the KEY and never on a missing entry
                     ;; -- as `:reinstate-index`, `:citation-index` and
                     ;; `:compiled-patients` above.
-                    :person-index person-index}
+                    :person-index person-index
+                    ;; ADR-0173 section 2(d) (arc 3a part 4): patient-id
+                    ;; -> the LOG INDEX of that patient's own
+                    ;; `:registered` event, written in the same fold that
+                    ;; produces `world'`. `decide :identity-fill` reads it
+                    ;; for `:placeholder-event-id`, which is the ONE
+                    ;; referential key this arc mints -- and it is read
+                    ;; from a carried index rather than found by a scan,
+                    ;; the shape ADR-0169 gave `:citation-index` for
+                    ;; exactly this reason. Same hand-built-world
+                    ;; tolerance, on the KEY and never on a missing
+                    ;; entry.
+                    :registration-index {}}
         mark-warmup (fn [ev] (assoc ev :warm-up (< (:t ev) warm-up-seconds)))
         ;; ADR-0171: what `decide` receives. The two run-scoped families
         ;; are fixed for the whole loop; `:patient` is swapped per queue
@@ -2556,7 +3154,13 @@
         ;; stated: a repeat arrival's own ordinal has a `:patient` stream
         ;; that is never used. It is still CONSTRUCTED -- the `mapv` in
         ;; `prelude` is unconditional and draw-free -- so nothing shifts.
-        streams-by-pid (into {} (for [i firsts] [(pid-for i) (nth patient-rngs i)]))
+        ;; PART 4: hook-minted patients take ordinals `(+ patients k)`
+        ;; and their streams sit at those indices, appended by `prelude`.
+        ;; They draw nothing -- no persona (it comes from the person
+        ;; side), no module walk, and a `:from` = `:to` delay is
+        ;; draw-free -- so each one is constructed and never read.
+        streams-by-pid (into {} (for [i (concat firsts hook-patient-ordinals)]
+                                  [(pid-for i) (nth patient-rngs i)]))
         final-result (fn [ground-truth state-history extra]
                        (merge {:ground-truth (persistent! ground-truth)
                                :state-history state-history
@@ -2619,8 +3223,8 @@
                   ;; read off each event rather than assumed to be
                   ;; `patient-id`, and the state is captured per event
                   ;; rather than once for the batch.
-                  [world' reinstate' citations']
-                  (reduce (fn [[w ridx cidx] [offset ev]]
+                  [world' reinstate' citations' registrations']
+                  (reduce (fn [[w ridx cidx gidx] [offset ev]]
                             (let [idx (+ base-idx offset)
                                   subject (:patient-id (first (:participants ev)))
                                   ridx' (if (reinstatable-event-types (:event ev))
@@ -2631,17 +3235,27 @@
                                           (reduce (fn [ci {:keys [patient-id]}]
                                                     (assoc ci [(:event ev) patient-id (:citation ev)] idx))
                                                   cidx (:participants ev))
-                                          cidx)]
+                                          cidx)
+                                  ;; ADR-0173 section 2(d): one more index
+                                  ;; off the SAME fold, for the same
+                                  ;; reason the two above are here -- the
+                                  ;; log index exists at this point and
+                                  ;; nowhere later.
+                                  gidx' (if (= :registered (:event ev))
+                                          (assoc gidx subject idx)
+                                          gidx)]
                               [(reduce (fn [w2 {:keys [patient-id]}]
                                          (update-in w2 [:patients patient-id] evolve ev))
                                        w (:participants ev))
-                               ridx' cidx']))
-                          [world (:reinstate-index world) (:citation-index world)]
+                               ridx' cidx' gidx']))
+                          [world (:reinstate-index world) (:citation-index world)
+                           (:registration-index world)]
                           (map-indexed vector events))
                   world'' (assoc world'
                                  :ground-truth (into (:ground-truth world) events)
                                  :reinstate-index reinstate'
-                                 :citation-index citations')
+                                 :citation-index citations'
+                                 :registration-index registrations')
                   ground-truth' (reduce conj! ground-truth events)
                   state-history' (reduce (fn [sh ev]
                                             (reduce (fn [sh2 {:keys [patient-id]}]

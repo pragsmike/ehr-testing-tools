@@ -170,3 +170,99 @@
   [events]
   (into {} (for [ev events :when (= :person-death (:event ev))]
              [(:person-id ev) (:t ev)])))
+
+;; --- arc 3a part 4: the two clinical hooks and the identification flow ----
+;;
+;; ADR-0173 sections 2(c) and 2(d). Nothing below mints a ground-truth
+;; EVENT: these functions read one person's stream and answer questions
+;; `engine/prelude` asks of it -- which arrivals land unidentified, which
+;; person events create an encounter, and which person has a newborn.
+;; The minting is `engine`'s, in `decide`, the same division of labour
+;; `demographic-effect`/`wire-step` above already draw.
+
+(def hook-kinds
+  "The person-event kinds with a CLINICAL face rather than a demographic
+  one. All three create traffic `:patients` does not count: a delivery
+  mints the newborn, an occupational injury mints an ED arrival, and an
+  identity-unavailable window mints an UNIDENTIFIED ED arrival.
+
+  ADR-0173 SECTION 2(c) NAMES THE FIRST TWO. `:identity-unavailable` is
+  here because section 2(d)'s own rule -- \"an arrival landing inside an
+  open `:identity-unavailable` window mints a PLACEHOLDER
+  registration\" -- is unreachable by coincidence at this process's own
+  rates, and that was MEASURED rather than reasoned about. Over a
+  200-person, ten-year walk the process opens 9 windows covering
+  0.018% of the horizon, and the EARLIEST of them opens at t
+  36,118,094 (day 418), while every t0 arrival of a scenario at
+  `:arrival-gap` 5 has happened inside the first 60,000 seconds. The
+  two intervals cannot meet.
+
+  So the coincidence rule stands, implemented exactly as written, AND
+  it is joined by its own antecedent: an `:identity-unavailable` event
+  is not a state a person is quietly in, it is an unidentified
+  PRESENTATION -- which is what the author's \"unhoused unresponsive
+  John Does\" describes. It therefore mints an arrival the same way an
+  occupational injury does. `engine/prelude` carries both rules; this
+  set is what makes the second one a hook."
+  #{:delivery :occupational-injury :identity-unavailable})
+
+(defn identification-windows
+  "Every `:identity-unavailable` window in ONE person's stream, paired
+  with the `:identity-resolution` that closes it.
+
+  `{:event-id :t :until-t :alias-name :branch :resolution-t
+    :resolution-event-id}` -- `:branch` and the two resolution keys are
+  nil for a window the person's own horizon ended inside. That is not a
+  defect and is why `every-placeholder-registration-is-resolved-or-still-
+  open` carries its second clause: a placeholder nobody had identified
+  by the time the feed stopped is real traffic.
+
+  The pairing is by `:unavailable-event-id`, which
+  `ehrt.person-simulator.process` stamps on every resolution, and never
+  by position -- a person can open a second window after closing a
+  first, and matching by order would cross them the day one goes
+  unresolved."
+  [events]
+  (let [resolutions (into {} (for [ev events :when (= :identity-resolution (:event ev))]
+                               [(:unavailable-event-id ev) ev]))]
+    (into []
+          (for [ev events :when (= :identity-unavailable (:event ev))
+                :let [r (get resolutions (:event-id ev))]]
+            {:event-id (:event-id ev)
+             :t (:t ev)
+             :until-t (:until-t ev)
+             :alias-name (:alias-name ev)
+             :branch (:branch r)
+             :resolution-t (:t r)
+             :resolution-event-id (:event-id r)}))))
+
+(defn window-open-at
+  "The window open at instant `t`, or nil. OPEN at its own `:t` and
+  CLOSED at `:until-t`: a resolution lands exactly at `:until-t` and the
+  arrival that lands there is an identified one, so the interval is
+  half-open on the right for the same reason the alive filter is
+  half-open on the left."
+  [windows t]
+  (first (filter (fn [w] (and (<= (:t w) t) (< t (:until-t w)))) windows)))
+
+(defn hooks
+  "Every person event in ONE person's stream with a clinical face, in
+  the order the stream already stands in (which is t-ascending -- the
+  component's own front-door contract, and this namespace never
+  re-sorts)."
+  [events]
+  (into [] (filter #(hook-kinds (:event %))) events))
+
+(defn newborn-personas
+  "person-id -> that person's own t0 Persona, read off the
+  `:person-registered` events a delivery mints.
+
+  A newborn is NOT in the pool: `ehrt.sim.run`'s `:population` is the
+  arrival-candidate set and a person who does not exist at t0 cannot be
+  selected for a t0 arrival. Their Persona therefore rides their own
+  registration event rather than the `:personas` map, and this is the
+  function that puts it back into one."
+  [events]
+  (into {} (for [ev events
+                 :when (and (= :person-registered (:event ev)) (some? (:persona ev)))]
+             [(:person-id ev) (:persona ev)])))

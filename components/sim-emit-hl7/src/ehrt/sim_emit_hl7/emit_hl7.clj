@@ -274,7 +274,17 @@
   demographic enrichment: PID-5 (XPN name), PID-7 (DOB, HL7 date), PID-8 (sex,
   Table 0001 F/M), PID-11 (XAD address), PID-13 (phone). nil persona (hand-
   built test worlds that never processed a :registered step) falls back to
-  the pre-M4 3-field segment exactly -- no positional padding, no crash."
+  the pre-M4 3-field segment exactly -- no positional padding, no crash.
+
+  ARC 3A PART 4: PID-7, PID-8 and PID-13 render EMPTY when the field is
+  absent, the same way PID-11 already does. That is the PLACEHOLDER
+  registration and nothing else -- a patient who arrived unidentified
+  has an alias name and no known date of birth, sex or phone -- and it
+  is a rendering rule, not a permission: every persona this emitter has
+  ever been handed carries all three, so no existing message moves. The
+  alternative was to render the person's REAL values under an alias
+  name, which would tell a consumer's MPI something the modelled
+  hospital does not know."
   [active-mrn persona]
   (if (nil? persona)
     (parser/create-segment
@@ -290,8 +300,12 @@
      (parser/create-field [])
      (xpn-field (:name persona))
      (parser/create-field [])
-     (parser/create-field [(str/replace (:dob persona) "-" "")])
-     (parser/create-field [(case (:sex persona) :female "F" :male "M")])
+     (if (:dob persona)
+       (parser/create-field [(str/replace (:dob persona) "-" "")])
+       (parser/create-field []))
+     (if (:sex persona)
+       (parser/create-field [(case (:sex persona) :female "F" :male "M")])
+       (parser/create-field []))
      (parser/create-field [])
      (parser/create-field [])
      ;; ADR-0173 ruling E1: an ABSENT `:address` renders an EMPTY
@@ -306,7 +320,9 @@
        (xad-field (:address persona))
        (parser/create-field []))
      (parser/create-field [])
-     (parser/create-field [(:phone persona)]))))
+     (if (:phone persona)
+       (parser/create-field [(:phone persona)])
+       (parser/create-field [])))))
 
 (defn- in1-segment
   "IN1 (insurance): IN1-1 set id, IN1-3/IN1-4 the sampled payer pool
@@ -315,7 +331,15 @@
   Synthea-limitations-considered.md §5.3). Rides ONLY the admission
   message (single-subject-message's own call site) -- the real HL7v2
   convention: insurance coverage is registered once, at admission, not
-  restated on every subsequent ADT event."
+  restated on every subsequent ADT event.
+
+  ARC 3A PART 4: the call site skips this segment ENTIRELY when the
+  patient's demographic state carries no payer, which is the
+  PLACEHOLDER registration and nothing else -- an unidentified arrival
+  has no known coverage, and an IN1 with two empty fields would be a
+  claim that they have none rather than that nobody has asked yet.
+  Every persona this emitter has ever been handed carries a payer, so
+  no existing message moves."
   [{payer-id :id payer-name :name}]
   (parser/create-segment
    "IN1"
@@ -355,23 +379,41 @@
   returned `{patient-id persona}` and every `t` answered with the t0
   sample -- the shape ADR-0172 limitations row 6 was written about. That
   row is STRUCK by this change, not repaired, and its gate is deleted:
-  a delta folded onto patient state is no longer invisible to a message."
+  a delta folded onto patient state is no longer invisible to a message.
+
+  ARC 3A PART 4 ADDS THE PLACEHOLDER AND ITS FILL. A `:registered`
+  carrying `:identity :placeholder` seeds the window's ALIAS NAME and
+  nothing else -- no DOB, no sex, no phone, no address -- even though
+  the event's own `:persona` says who the patient really is. That gap
+  between what ground truth knows and what the wire may claim is the
+  whole of the identification flow's point (ADR-0173 section 2(d)), and
+  this is the one function that enforces it. The `:identity-fill` then
+  RE-SEEDS from the persona the fill carries, so every message after it
+  renders the identified patient and every message before it renders
+  the John Doe."
   [ground-truth]
-  (letfn [(seed [ev]
-            (let [persona (:persona ev)
-                  residence (:residence ev)]
-              (cond-> persona
-                (and persona residence (not= :housed (:status residence)))
-                (dissoc :address))))
+  (letfn [(hide-address [state residence]
+            (cond-> state
+              (and residence (not= :housed (:status residence))) (dissoc :address)))
+          (seed [ev]
+            (if (= :placeholder (:identity ev))
+              ;; PERSONA-SHAPED, with one field in it. `pid-segment`
+              ;; renders every absent field empty, so this is a PID
+              ;; carrying an MRN and a John Doe name and nothing else.
+              {:name (:alias-name ev)}
+              (when-let [persona (:persona ev)]
+                (hide-address persona (:residence ev)))))
           (fold [state ev]
             (case (:event ev)
               :demographic-update
-              (case (:field ev)
-                :residence (let [address (:address (:value ev))]
-                             (if address (assoc state :address address) (dissoc state :address)))
-                :name (assoc state :name (:value ev))
-                :dob (assoc state :dob (:value ev))
-                state)
+              (if (= :identity-fill (:cause ev))
+                (hide-address (:persona ev) (:residence ev))
+                (case (:field ev)
+                  :residence (let [address (:address (:value ev))]
+                               (if address (assoc state :address address) (dissoc state :address)))
+                  :name (assoc state :name (:value ev))
+                  :dob (assoc state :dob (:value ev))
+                  state))
               :coverage-change (assoc state :payer (:payer ev))
               state))]
     (reduce (fn [acc ev]
@@ -592,7 +634,8 @@
         (evn-segment (:trigger type+trigger) clinical-ts)
         (pid-segment active-mrn persona)
         (pv1-segment site-profile patient-class facility-name location from provider disposition-state)
-        (concat (when (and (= :admission event) persona) [(in1-segment (:payer persona))])
+        (concat (when (and (= :admission event) (:payer persona))
+                  [(in1-segment (:payer persona))])
                 (z-segments-for site-profile demographics ev)))))))
 
 (defn- bed-swap-message

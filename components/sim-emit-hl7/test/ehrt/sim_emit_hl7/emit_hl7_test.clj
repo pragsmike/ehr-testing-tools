@@ -1124,3 +1124,73 @@
     (testing "and the payer the admission's IN1 carried is the t0 one, because the
               coverage change had not happened yet"
       (is (str/includes? admit (:name (:payer folded-persona)))))))
+
+;; --- arc 3a part 4: the John Doe on the wire, and the fill that ends him ---
+;;
+;; ADR-0173 section 2(d). GROUND TRUTH knows who a placeholder patient
+;; is -- their `:registered` event carries the real Persona -- and the
+;; WIRE may not say so. These are the gates on that gap, which is the
+;; whole of what the identification flow buys a consumer testing an MPI.
+
+(defn- placeholder-log
+  "One unidentified arrival, admitted, whose identity is then
+  established. Hand-built for the same reason `folded-log` above is: the
+  emitter's law is what is asserted here, not the engine's scheduling."
+  [& {:keys [fill?] :or {fill? true}}]
+  (let [pid "PID-000004-abcdef02"
+        subject [{:patient-id pid :role :subject}]
+        loc {:ward "Emergency" :bed "ED-H01" :placement :surge}]
+    (cond-> [{:event :registered :t 0 :active-mrn "MRN000005"
+              :persona folded-persona
+              :person-id "PERSON-000000"
+              :identity :placeholder
+              :alias-name {:family "Doe" :given "Unknown"}
+              :window-close-t 5000
+              :residence {:status :unknown}
+              :participants subject :warm-up false}
+             {:event :admission :t 10 :active-mrn "MRN000005" :attending "1234567890"
+              :home-ward "Emergency" :location loc :forced false
+              :reason "Unidentified patient" :person-event-id "PERSON-000000#0"
+              :participants subject :warm-up false}]
+      fill?
+      (conj {:event :demographic-update :t 5000 :active-mrn "MRN000005"
+             :cause :identity-fill :field :identity :value :known :prior-value :placeholder
+             :placeholder-event-id 0 :persona folded-persona
+             :person-event-id "PERSON-000000#1" :participants subject :warm-up false})
+      true
+      (conj {:event :transfer :t 6000 :active-mrn "MRN000005" :attending "1234567890"
+             :home-ward "Emergency" :from loc
+             :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}
+             :participants subject :warm-up false}))))
+
+(deftest a-placeholder-registration-renders-a-john-doe-pid-test
+  (let [[admit] (emit-hl7/emit (placeholder-log :fill? false) ref-date utc-offset)
+        pid (first (filter #(str/starts-with? % "PID") (str/split admit #"\r")))]
+    (testing "PID-5 is the window's alias, never the person's real name"
+      (is (= "Doe^Unknown" (message/get-field-first-value (parser/parse admit) "PID" 5)))
+      (is (not (str/includes? admit (:family (:name folded-persona))))
+          "the real family name reached the wire for a patient nobody had identified"))
+    (testing "and every fact the hospital does not have renders EMPTY -- DOB, sex,
+              address, phone"
+      (is (str/blank? (str (pid-11-of admit))))
+      (is (= "PID|1||MRN000005||Doe^Unknown||||||||" pid)
+          (str "the John Doe PID carries something it should not: " pid)))
+    (testing "no IN1 rides the admission: an unidentified patient has no known
+              coverage, and an empty IN1 would claim they have none"
+      (is (not (str/includes? admit "IN1"))))))
+
+(deftest the-identity-fill-makes-later-messages-render-the-real-patient-test
+  (let [msgs (emit-hl7/emit (placeholder-log) ref-date utc-offset)
+        [admit transfer] msgs]
+    (is (= 2 (count msgs)) "the fill rendered a message of its own")
+    (testing "before the fill, the John Doe"
+      (is (= "Doe^Unknown" (message/get-field-first-value (parser/parse admit) "PID" 5)))
+      (is (str/blank? (str (pid-11-of admit)))))
+    (testing "after it, the person the record turned out to belong to"
+      (let [{:keys [family given]} (:name folded-persona)]
+        (is (= (str family "^" given)
+               (message/get-field-first-value (parser/parse transfer) "PID" 5))))
+      (is (= (xad-of (:address folded-persona)) (pid-11-of transfer))))
+    (testing "and the MRN never moved -- a fill keeps the record it fills"
+      (is (= (message/get-field-first-value (parser/parse admit) "PID" 3)
+             (message/get-field-first-value (parser/parse transfer) "PID" 3))))))

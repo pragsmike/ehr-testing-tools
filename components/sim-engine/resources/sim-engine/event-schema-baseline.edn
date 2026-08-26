@@ -10,7 +10,7 @@
 ;;
 ;; Re-freeze ONLY when bumping schema-version, with
 ;; `make event-schema-freeze`.
-{:event-schema-version "1.3.0",
+{:event-schema-version "1.4.0",
  :schema
  [:multi
   {:dispatch :event,
@@ -102,7 +102,14 @@
           [:city :string]
           [:state :string]
           [:zip :string]]]]]
-      [:unknown [:map {:closed true} [:status [:= :unknown]]]]]]]]
+      [:unknown [:map {:closed true} [:status [:= :unknown]]]]]]
+    [:person-id {:optional true} :string]
+    [:identity {:optional true} [:enum :placeholder]]
+    [:alias-name
+     {:optional true}
+     [:map [:family :string] [:given :string]]]
+    [:window-close-t {:optional true} :int]
+    [:mother-patient-id {:optional true} :string]]]
   [:admission
    [:map
     {:doc
@@ -155,7 +162,8 @@
            [:code :string]
            [:display {:optional true} :string]]]]]
        [:citation [:map [:module :string] [:state :keyword]]]
-       [:references {:optional true} [:maybe :int]]]]]]]
+       [:references {:optional true} [:maybe :int]]]]]
+    [:person-event-id {:optional true} :string]]]
   [:transfer
    [:map
     {:doc
@@ -348,7 +356,9 @@
     [:warm-up :boolean]
     [:surviving-mrn :string]
     [:merged-mrn :string]
-    [:merged-mrns [:set :string]]]]
+    [:merged-mrns [:set :string]]
+    [:cause {:optional true} [:enum :identification]]
+    [:person-event-id {:optional true} :string]]]
   [:order-placed
    [:map
     {:doc "A diagnostic order is placed against an order profile.",
@@ -743,8 +753,12 @@
     [:warm-up :boolean]
     [:active-mrn :string]
     [:cause
-     [:enum :residence-move :residence-loss :identity-correction]]
-    [:field [:enum :residence :name :dob]]
+     [:enum
+      :residence-move
+      :residence-loss
+      :identity-correction
+      :identity-fill]]
+    [:field [:enum :residence :name :dob :identity]]
     [:value
      [:or
       [:multi
@@ -772,7 +786,8 @@
            [:zip :string]]]]]
        [:unknown [:map {:closed true} [:status [:= :unknown]]]]]
       [:map [:family :string] [:given :string]]
-      [:re "^\\d{4}-\\d{2}-\\d{2}$"]]]
+      [:re "^\\d{4}-\\d{2}-\\d{2}$"]
+      [:enum :known :placeholder]]]
     [:prior-value
      {:optional true}
      [:or
@@ -801,8 +816,59 @@
            [:zip :string]]]]]
        [:unknown [:map {:closed true} [:status [:= :unknown]]]]]
       [:map [:family :string] [:given :string]]
-      [:re "^\\d{4}-\\d{2}-\\d{2}$"]]]
-    [:person-event-id :string]]]
+      [:re "^\\d{4}-\\d{2}-\\d{2}$"]
+      [:enum :known :placeholder]]]
+    [:person-event-id :string]
+    [:placeholder-event-id {:optional true} [:maybe :int]]
+    [:persona
+     {:optional true}
+     [:map
+      [:name [:map [:family :string] [:given :string]]]
+      [:sex [:enum :female :male]]
+      [:dob [:re "^\\d{4}-\\d{2}-\\d{2}$"]]
+      [:age :int]
+      [:address
+       [:map
+        [:street :string]
+        [:city :string]
+        [:state :string]
+        [:zip :string]]]
+      [:phone [:re "^\\d{3}-\\d{3}-\\d{4}$"]]
+      [:ssn [:re "^\\d{3}-\\d{2}-\\d{4}$"]]
+      [:payer
+       [:map
+        [:id :string]
+        [:name :string]
+        [:type [:enum :medicare :medicaid :commercial :self-pay]]]]
+      [:race {:optional true} :string]
+      [:socioeconomic-category {:optional true} :string]
+      [:state {:optional true} :string]]]
+    [:residence
+     {:optional true}
+     [:multi
+      {:dispatch :status}
+      [:housed
+       [:map
+        {:closed true}
+        [:status [:= :housed]]
+        [:address
+         [:map
+          [:street :string]
+          [:city :string]
+          [:state :string]
+          [:zip :string]]]]]
+      [:unhoused
+       [:map
+        {:closed true}
+        [:status [:= :unhoused]]
+        [:last-known-address
+         {:optional true}
+         [:map
+          [:street :string]
+          [:city :string]
+          [:state :string]
+          [:zip :string]]]]]
+      [:unknown [:map {:closed true} [:status [:= :unknown]]]]]]]]
   [:coverage-change
    [:map
     {:doc

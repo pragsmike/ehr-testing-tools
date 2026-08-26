@@ -1,5 +1,5 @@
 (ns ehrt.sim-engine.event-fleet
-  "The deterministic fixture fleet: five small engine runs whose union
+  "The deterministic fixture fleet: six small engine runs whose union
   produces EXACTLY the 23 kinds `ehrt.sim-engine.event-schema` declares.
 
   Lives on the test path, and is shared by two consumers that must not
@@ -248,13 +248,82 @@
                :facility crowded-facility
                :persons (assoc person-pool :events person-events)}))
 
+
+;; --- arc 3a part 4: identification and the delivery hook ------------------
+
+(def identification-pool
+  "ONE person, so every arrival in the run below binds to them and the
+  identification flow has something to join. Two people would make WHICH
+  arrival lands unidentified a `:world` draw, and a fixture whose
+  coverage depends on a draw is a fixture that can silently stop
+  covering -- the same reason `person-events` above is authored rather
+  than walked."
+  {:population [{:person-id "fixture-person-c" :id-tag 3}]
+   :personas {"fixture-person-c" (sim-model/persona (engine/stream 15 :person 3) {})}
+   :alive {}})
+
+(def identification-events
+  "TWO identification windows and one delivery, placed against this
+  run's own arrival instants -- `[0 4620 8160 9900]` at seed 15,
+  `:arrival-gap` 100, four patients, which `engine/person-plan` answers
+  and this fixture pins by construction.
+
+  * Arrival 0 (t 0) is IDENTIFIED, so it mints the person's canonical
+    patient and gives the merge below a survivor to merge into.
+  * Arrival 1 (t 4620) lands inside window one, which resolves `:merge`.
+  * Arrival 2 (t 8160) lands inside window two, which resolves `:fill`.
+  * Arrival 3 (t 9900) lands outside both, so it RESOLVES to the
+    canonical patient and queues nothing -- ADR-0173's own first tabled
+    deviation, exercised here rather than only asserted.
+
+  The delivery at t 20000 mints the newborn as an additional patient
+  whose first encounter is the birth, and puts the parent's own
+  delivery admission on the canonical patient -- which is clinically
+  idle here, because this run's pathway is empty."
+  [{:event :identity-unavailable :person-id "fixture-person-c" :t 1000
+    :event-id "fixture-person-c#0" :until-t 6000
+    :alias-name {:family "Doe" :given "Unknown"}}
+   {:event :identity-resolution :person-id "fixture-person-c" :t 6000
+    :event-id "fixture-person-c#1" :branch :merge
+    :unavailable-event-id "fixture-person-c#0"
+    :surviving-person-id "fixture-person-c"}
+   {:event :identity-unavailable :person-id "fixture-person-c" :t 7000
+    :event-id "fixture-person-c#2" :until-t 9000
+    :alias-name {:family "Doe" :given "Unknown"}}
+   {:event :identity-resolution :person-id "fixture-person-c" :t 9000
+    :event-id "fixture-person-c#3" :branch :fill
+    :unavailable-event-id "fixture-person-c#2"}
+   {:event :delivery :person-id "fixture-person-c" :t 20000
+    :event-id "fixture-person-c#4" :newborn-person-id "fixture-person-c/b0"
+    :parity-index 0 :within-delivery-index 0
+    :pregnancy-event-id "fixture-person-c#x"
+    :participants ["fixture-person-c" "fixture-person-c/b0"]}
+   {:event :person-registered :person-id "fixture-person-c/b0" :t 20000
+    :event-id "fixture-person-c/b0#0"
+    :persona (sim-model/persona (engine/stream 15 :person 4) {:age-min 0 :age-max 0})
+    :delivery-event-id "fixture-person-c#4"
+    :participants ["fixture-person-c/b0" "fixture-person-c"]}])
+
+(defn identification-run
+  "The identification flow and the delivery hook (ADR-0173 sections
+  2(c)/2(d), contract 1.4.0): two placeholder registrations, one
+  resolved by an identification merge and one by a fill, plus a newborn
+  whose registration carries the mother-baby link and whose birth
+  admission carries the hook's own provenance stamp."
+  []
+  (engine/run {:seed 15 :patients 4 :arrival-gap 100
+               :pathway {:name "empty" :steps []}
+               :facility crowded-facility
+               :persons (assoc identification-pool :events identification-events)}))
+
 (defn fleet
   []
   [["clinical" (clinical-run)]
    ["operational" (operational-run)]
    ["churn" (churn-run)]
    ["death" (death-run)]
-   ["person" (person-run)]])
+   ["person" (person-run)]
+   ["identification" (identification-run)]])
 
 ;; --- examples for docs/formats.md -----------------------------------------
 
