@@ -232,7 +232,18 @@ a hook may place an encounter only on a patient whose compiled queue is
 otherwise empty -- and `decide :person-encounter`'s `:new` guard is its
 runtime half. That is why ed-tuesday witnesses **one** parent-delivery
 encounter against clinic-decade's 17: ed-tuesday's arrival patients all
-walk an admission-bearing ED pathway, so none of them is idle. The
+walk an admission-bearing ED pathway, so none of them is idle.
+
+> **These are the DEMO seeds, not the gate seeds.** `roadmap.md`'s
+> `[multi-encounter-horizon]` row cites 0 and 23 for the same pair; that
+> is `ed-202` and `cd-424242`, the gated-corpus seeds tabled in
+> `.agents/session-records/2026-08-26-arc-3a-fold-part-4.md:168`. This
+> ADR measures the demo seeds each scenario's own README prints (20260811
+> and 20260807). Both readings say the same thing -- the ED corpus is
+> starved of idle patients and the ambulatory one is not -- and neither
+> supersedes the other.
+
+The
 horizon is not costing this project a hypothetical; it is costing it
 **22% and 19.5% of its configured arrivals** plus every hook that lands
 on a busy patient.

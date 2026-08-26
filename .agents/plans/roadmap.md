@@ -117,6 +117,9 @@ with them.
   ARC 3B (scheduling state `rulings.md#R-mix-5`, bed-status cycle
   `R-mix-6`) is what remains on this row, and it inherits the fold
   index, the `:demographics` field and the queue-seeding pass.
+  ARC 3B IS DESIGNED by ADR-0174, PROPOSED 2026-08-26 -- both R-mix rows
+  plus the encounter horizon it argues belongs with them; five rulings
+  A-E await the author.
 - OPEN **[emission-add-ons]** PRIORITY 5 -- traffic-scale arc 4
   (`rulings.md#R-mix-7`): order/result status ladders, DFT P03 charges,
   re-statement chatter under config ratios, fan-out/subscriber table; rides
@@ -139,6 +142,9 @@ with them.
   provisional -- for the author to place. Candidates: arc 3b
   (`rulings.md#R-mix-5`, where a scheduled return IS a second encounter) or an
   arc of its own.
+  PLACED: ARC 3B (PROPOSED) -- ADR-0174 section 2(a) designs the lift and its
+  ruling A recommends taking it there, first and alone; until that ruling this
+  row stays OPEN and its owner provisional.
 - OPEN **[corpus-player-slices]** PRIORITY 7 -- the corpus-player slices
   chartered by ADR-0014 (bed-board sink, `:mllp`, accumulator wiring) have never
   had a row in any register. UNPRICED and unscheduled: they need their own author
