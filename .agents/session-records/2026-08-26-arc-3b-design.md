@@ -149,6 +149,24 @@ this session measured the DEMO seeds each README prints and got 1 and
 supersedes the other, and a reader meeting both numbers should not have
 to derive that.
 
-**HEAD landed:** see the CI line below. Three commits on `main`,
-pushed. No tag (`rulings.md#R-tag-law`, RETIRED). No `rulings.md` row
-(FROZEN, de-scaffold ruling 2026-08-25).
+**HEAD landed: `5210ceb`.** FOUR commits on `main`, all pushed --
+`b9d4d77` (the ride-along), `b81528a` (ADR-0174), `dbba732` (the
+roadmap), `5210ceb` (this record, the prompt archive and the
+regenerated indexes). No tag (`rulings.md#R-tag-law`, RETIRED). No
+`rulings.md` row (FROZEN, de-scaffold ruling 2026-08-25).
+
+**CI, the close marker** (`rulings.md#R-session-verifies-ci-via-gh`,
+retired as a tag condition, kept as the marker):
+
+| pushed tip | run | conclusion |
+|---|---|---|
+| `b9d4d77` (ride-along) | [33017722433](https://github.com/pragsmike/ehr-testing-tools/actions/runs/33017722433) | **success** |
+| `5210ceb` (session tip) | [33020549153](https://github.com/pragsmike/ehr-testing-tools/actions/runs/33020549153) | **success** |
+
+`bin/post-push-verify` ran after both pushes; all three of its checks
+OK each time (remote tip matches HEAD, every commit message in range
+pure ASCII, CI run reported once).
+
+**What the author owes this arc:** rulings A-E. Nothing in arc 3b may
+land until A in particular is ruled, because A decides whether the
+other four are describing one arc or two.
