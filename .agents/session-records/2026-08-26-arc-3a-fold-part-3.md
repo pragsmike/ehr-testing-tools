@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-26
 **Prompt:** [`.agents/prompts/2026-08-26-arc-3a-fold-part-3.md`](../prompts/2026-08-26-arc-3a-fold-part-3.md)
-**Base:** `a5d2239` -- **Tip:** `ba9126d` (code) / this record (docs)
+**Base:** `a5d2239` -- **Tip:** `4764512`
 **Mode:** payload session under the de-scaffold moratorium. R30 ceremony,
 no tag, CI green at the tip as the close marker.
 
@@ -32,7 +32,7 @@ still the DARK one -- ruling D1's commit 1.
 | `clojure -M:poly check` | **OK** |
 | `make test` | **MAKE_EXIT=0**, 4,232 tests / 19,694 assertions, 0 failures, 0 errors |
 | `make integration` | **INT_EXIT=0**, 0 `FAIL:` lines, 1,575 tests / 5,500 assertions |
-| CI at the pushed tip | CIMARKER |
+| CI at the pushed tip `4764512` | **run 32982334630, conclusion success** -- the close marker (`rulings.md#R-session-verifies-ci-via-gh`, kept as the marker after the tag was retired). One run at this sha, the `test` workflow; no separate Integration run was scheduled for it |
 
 The oracle line, verbatim:
 
