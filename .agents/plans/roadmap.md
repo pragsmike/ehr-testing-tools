@@ -146,11 +146,20 @@ with them.
   ruling A recommends taking it there, first and alone; until that ruling this
   row stays OPEN and its owner provisional.
 - OPEN **[corpus-player-slices]** PRIORITY 7 -- the corpus-player slices
-  chartered by ADR-0014 (bed-board sink, `:mllp`, accumulator wiring) have never
-  had a row in any register. UNPRICED and unscheduled: they need their own author
-  ruling before a session takes them. Rowed rather than retired because
-  `R-unregistered-request-gets-a-row` puts visibility first, and a charter with
-  no row is exactly what that rule exists to catch. ADR-0158 (review-4 D7-5).
+  chartered by ADR-0014 that have never had a row in any register. CORRECTED
+  2026-08-26 (ADR-0174 section 1(ii)'s disclosure): the **bed-board sink LANDED
+  under ADR-0067** (2026-08-07) and ships as `ehrt play PATH --board` --
+  `components/corpus/board.clj` folds a paced v2 stream and renders occupied
+  beds by ward. This row's original wording named it among the never-rowed
+  slices, which was the review-5 pattern -- a claim true when written that
+  nothing keeps true. What is actually left, and still UNPRICED and unscheduled
+  pending their own author ruling: **`:mllp`** and **accumulator wiring**, plus
+  the board's own blind spot ADR-0174 section 2(c) names -- `--board` is message
+  input only (`:play-board-unsupported-for-events`), so a bed the cycle marks
+  dirty or cleaning stays invisible on the whiteboard until a message carries it.
+  Rowed rather than retired because `R-unregistered-request-gets-a-row` puts
+  visibility first, and a charter with no row is exactly what that rule exists to
+  catch. ADR-0158 (review-4 D7-5).
 
 ## Externals (author-only)
 - EXTERNAL **[ci-failure-email]** -- enable GitHub's workflow-failure

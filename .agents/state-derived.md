@@ -79,7 +79,7 @@ Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entr
 | :corpus | 7 | 1867 | 2045 | 2045 | 178 |
 | :docs | 5 | 778 | 785 | 785 | 7 |
 | :judge | 8 | 957 | 1000 | 1000 | 43 |
-| :onboarding | 10 | 1453 | 1530 | 1530 | 77 |
+| :onboarding | 10 | 1462 | 1530 | 1530 | 68 |
 | :sim | 6 | 1330 | 1405 | 1405 | 75 |
 
 ## What this page reads

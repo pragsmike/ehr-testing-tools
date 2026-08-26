@@ -1,8 +1,15 @@
 ## ADR-0174 — arc 3b: the encounter horizon, scheduling state, and the bed-status cycle
 
-**Status:** Proposed (design session 2026-08-26, HEAD `b9d4d77`). A
+**Status:** Accepted (design session 2026-08-26, HEAD `b9d4d77`;
+**RULED 2026-08-26: A1 B1 C1 D1 E1** -- the recommendation on every one
+of the five, with one addition the author made at ruling C: **ADT^A20
+for bed status**, which C1 as recommended declined, lands in sweep 2
+alongside the bed cycle it renders). A
 payload session under the de-scaffold moratorium: **no engine code
-lands with this ADR**, and no `components/*/src` file is touched. Arc
+lands with this ADR**, and no `components/*/src` file is touched.
+Each ruling is quoted below at the option it selected; the declined
+options are kept verbatim and unstruck, because what was declined is
+the reason the selection means anything. Arc
 3's roadmap row bundles three folds -- the demographic timeline
 (ADR-0173, CLOSED), scheduling state (`rulings.md#R-mix-5`) and the
 bed-status cycle (`R-mix-6`). **This ADR designs the LATTER TWO**, plus
@@ -204,6 +211,9 @@ event log"*.
 > the review-5 pattern -- a claim true when written that nothing keeps
 > true. This session's fences allow two roadmap edits and this is not
 > one of them, so it is reported rather than rewritten.
+> **FIXED 2026-08-26** by the execution session that opened arc 3b's
+> first sweep, in its own step-0 commit: the row now says the sink
+> landed and prices what is actually left.
 
 #### (iii) Every arrival source now, and which could be scheduled
 
@@ -684,7 +694,8 @@ is BREAKING. So:
 **(A) Is the encounter horizon lifted in arc 3b, or deferred to its own
 arc?**
 
-*Recommendation: **A1 -- lifted, in 3b, and FIRST.*** Three grounds,
+**RULED A1, 2026-08-26.** *Recommendation: **A1 -- lifted, in 3b, and
+FIRST.*** Three grounds,
 all measured. (i) `R-mix-5`'s second invariant is vacuous without it:
 max encounter openers per patient is **1** at both gated corpora, so
 *"a scheduled encounter follows its appointment"* would gate a set that
@@ -704,8 +715,8 @@ consecutive arc.
 
 **(B) `:encounter-id` derivation.**
 
-*Recommendation: **B1 -- a pure function of seed × arrival ordinal ×
-encounter ordinal, off the RNG stream***, mirroring `patient-id-for`
+**RULED B1, 2026-08-26.** *Recommendation: **B1 -- a pure function of
+seed × arrival ordinal × encounter ordinal, off the RNG stream***, mirroring `patient-id-for`
 (`engine.clj:361`) exactly: `(format "ENC-%06d-%02d-%08x" ordinal
 enc-ordinal (bit-and (mix64 (mix64 seed ordinal) enc-ordinal)
 0xffffffff))`. `mix64` is this repo's own, and PUBLIC since ADR-0171 ruling A1
@@ -724,6 +735,14 @@ persist, and every reshuffle would renumber all of them.
 
 **(C) Which scheduling kinds reach the wire in v1 -- and does PV1-19
 render?**
+
+**RULED C1, 2026-08-26, PLUS ADT^A20.** The four scheduling kinds stay
+skeleton-only and PV1-19 renders, as recommended; the author added
+ADT^A20 for the bed-status cycle, which this recommendation had
+declined. The A20 belongs to sweep 2 -- the bed cycle it renders -- not
+to sweep 1, and it carries the two costs (d) names: the message
+family's own four items, and the MSH-12 2.3-vs-v2.4 question, which
+sweep 2 owes an answer to rather than an assertion from memory.
 
 *Recommendation: **C1 -- none of the four, and PV1-19 DOES render.***
 The scheduling kinds stay skeleton-only, which is `R-mix-5`'s own
@@ -745,8 +764,8 @@ in a project whose own registry comment calls that a failure mode.
 
 **(D) Bed-cycle durations: FACILITY or WORLD?**
 
-*Recommendation: **D1 -- FACILITY, per-ward, drawn on the `:facility`
-stream.*** `Ward` (`config.clj:19`) already carries per-ward `:beds`,
+**RULED D1, 2026-08-26.** *Recommendation: **D1 -- FACILITY, per-ward,
+drawn on the `:facility` stream.*** `Ward` (`config.clj:19`) already carries per-ward `:beds`,
 `:surge-slots` and `:surge-format`; turnaround is a property of that
 ward's housekeeping in exactly the same way. `:facility` is already
 defined as the family for draws *"that read no patient state at all"*
@@ -762,7 +781,8 @@ already says they do not.
 
 **(E) Landing order: one sweep or three?**
 
-*Recommendation: **E1 -- three sweeps, encounter FIRST and ALONE***,
+**RULED E1, 2026-08-26.** *Recommendation: **E1 -- three sweeps,
+encounter FIRST and ALONE***,
 each D1-style dark-then-on (land the machinery with `:persons`-style
 opt-in absent, prove the corpus byte-identical, then turn it on in a
 second commit). Order: **encounter → bed-status → scheduling.**
@@ -830,4 +850,5 @@ restructure.
   becomes a rulings row; the invariants land as gates in arc 3b's own
   commits or not at all.
 * **`[multi-encounter-horizon]` gets an owner if ruling A goes A1**, and
-  the roadmap row says so pending that ruling.
+  the roadmap row says so pending that ruling. Ruling A went A1 on
+  2026-08-26, so that row's owner is arc 3b sweep 1.

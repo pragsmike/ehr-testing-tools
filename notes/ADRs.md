@@ -236,4 +236,4 @@ append-only, never-reassigned rule stands.
 - **ADR-0171** — arc 1: the RNG stream partition, designed from the tree — [`0171-arc-1-rng-stream-partition-design.md`](adr/0171-arc-1-rng-stream-partition-design.md) — Accepted
 - **ADR-0172** — arc 2: the person-simulator, chartered from the tree — [`0172-person-simulator-charter.md`](adr/0172-person-simulator-charter.md) — Accepted
 - **ADR-0173** — arc 3a: the engine folds the person stream (the demographic half) — [`0173-arc-3a-engine-folds-the-person-stream.md`](adr/0173-arc-3a-engine-folds-the-person-stream.md) — Accepted
-- **ADR-0174** — arc 3b: the encounter horizon, scheduling state, and the bed-status cycle — [`0174-arc-3b-encounter-horizon-scheduling-and-bed-status.md`](adr/0174-arc-3b-encounter-horizon-scheduling-and-bed-status.md) — Proposed
+- **ADR-0174** — arc 3b: the encounter horizon, scheduling state, and the bed-status cycle — [`0174-arc-3b-encounter-horizon-scheduling-and-bed-status.md`](adr/0174-arc-3b-encounter-horizon-scheduling-and-bed-status.md) — Accepted
