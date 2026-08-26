@@ -608,6 +608,20 @@
   (delay (into {} (map (juxt :id #(run/run-command (assoc (:opts %) :arrival-gap arrival-shift-gap))))
                gated-runs)))
 
+(defn- first-demographic-divergence
+  "Which patient's `:registered` event first differs between two
+  arrival-shifted runs of the same gated config, as a human-readable
+  string -- the same diagnostic-over-a-bare-mismatch posture
+  `first-divergence` above takes for the arc-0 corpora."
+  [a b]
+  (if-let [pid (first (filter #(not= (get a %) (get b %)) (keys a)))]
+    (str "the compile moved with the arrival time, first at patient " pid
+         "\n  at the config's own arrival gap: " (pr-str (get a pid))
+         "\n  at arrival gap " arrival-shift-gap ":          " (pr-str (get b pid)))
+    (str "no patient's event differs, but the patient SETS do: only-in-base "
+         (pr-str (vec (remove (set (keys b)) (keys a)))) ", only-in-shifted "
+         (pr-str (vec (remove (set (keys a)) (keys b)))))))
+
 (defn- registered-by-patient-id
   "patient-id -> that patient's `:registered` event, for one run-command
   result."
@@ -643,18 +657,26 @@
                       (mapv (comp :t val) (sort-by key shifted)))
                 (str "arrival instants are IDENTICAL between the two runs of " id
                      " -- :arrival-gap " arrival-shift-gap " moved nothing, so this gate is vacuous")))
-          (doseq [[pid ev] (sort-by key base)]
-            (let [ev' (get shifted pid)]
-              ;; :t is the arrival instant itself and :warm-up is derived
-              ;; from it; everything else on a :registered event is the
-              ;; compile's own output.
-              (is (= (dissoc ev :t :warm-up) (dissoc ev' :t :warm-up))
-                  (str id " / " pid ": the :registered event differs by more than its own
-                       arrival instant between arrival gaps "
-                       (:arrival-gap (:opts (first (filter #(= id (:id %)) gated-runs))))
-                       " and " arrival-shift-gap))
-              (is (= (pr-str (dissoc ev :t :warm-up)) (pr-str (dissoc ev' :t :warm-up)))
-                  (str id " / " pid ": `=` but not byte-equal"))))))
+          ;; ONE assertion per run, not one per patient -- the shape
+          ;; `arc0-gated-corpora-are-byte-and-value-identical-to-the-
+          ;; pinned-baseline` above already uses: compare the whole
+          ;; thing, and let the failure message name the first patient
+          ;; that diverged. 510 patients across the four runs would
+          ;; otherwise be 1,020 assertions for one gate.
+          ;;
+          ;; `:t` is the arrival instant itself and `:warm-up` is derived
+          ;; from it; everything else on a `:registered` event is the
+          ;; compile's own output.
+          (let [strip (fn [m] (into (sorted-map)
+                                    (map (fn [[pid ev]] [pid (dissoc ev :t :warm-up)]))
+                                    m))
+                a (strip base)
+                b (strip shifted)]
+            (is (= a b) (str id ": " (or (first-demographic-divergence a b) "")))
+            (is (= (pr-str a) (pr-str b))
+                (str id ": every :registered event is `=` across the two arrival "
+                     "schedules but the bytes differ -- a re-keyed map printing in a "
+                     "different order. Report it, do not re-pin (ADR-0169 fence F3).")))))
       (testing "the compile half of this gate is not vacuous: at least one
                 gated run really does walk a module and compile
                 history-phase facts onto its :registered events"
