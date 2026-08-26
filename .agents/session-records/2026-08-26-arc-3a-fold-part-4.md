@@ -18,8 +18,9 @@ declared sweep that turns `:persons` on. Arc 3a's half of
 | `a70a2c2` | hooks and identification, dark -- oracle IDENTICAL, 35 roots, no declaration |
 | `279df87` | the fold turned on -- six corpora, one declared sweep |
 | `acd9f4a` | the oracle harness needs `run-command`'s own require closure |
-| this record | the close, plus the straddle asset the tripwire caught |
-| FIXUP_SHA | the asset register's own `:reviewed-at`, which can only be written after the commit it names |
+| `7e06eb5` | this record, the prompt, the roadmap, and the straddle asset the tripwire caught |
+| `8f1bad6` | the asset register's own `:reviewed-at`, which can only be written after the commit it names |
+| `1fb1957` | the INTEGRATION harness builds the same classpath by hand, and only one of the two had been taught |
 
 ## The two proofs
 
@@ -28,8 +29,8 @@ declared sweep that turns `:persons` on. Arc 3a's half of
 | `bin/regression-oracle dd4cf8d a70a2c2` | **IDENTICAL**, exit 0, no declaration, **35 roots** |
 | `bin/regression-oracle a70a2c2 HEAD --declared-digest-change` | **DIFFERS by exactly ONE manifest line**, exit 1, **35 baseline + 36 target roots** -- the added `demographic-fold.edn` and nothing else |
 | `make test` (step 1) | MAKE_EXIT=0, 4,272 tests / 20,038 assertions |
-| `make test` (step 2) | STEP2_TEST |
-| `make integration` | STEP2_INT |
+| `make test` at the tip | **MAKE_EXIT=0**, 4,284 tests / 20,098 assertions, 0 failures, 0 errors (18m17s) |
+| `make integration` at the tip | **INT_EXIT=0**, 0 `FAIL:` lines, 1,601 tests / 5,702 assertions; both demo exercisers "every command asserted, every named invariant held, tree clean" |
 | `clojure -M:poly check` | OK |
 | CI at the pushed tip | CI_LINE |
 
@@ -287,6 +288,17 @@ tests kept:
   count -- a generated page, caught by its own freshness gate.
 
 ## Two process shapes worth naming
+
+**A SECOND HAND-BUILT CLASSPATH.** `bin/regression-oracle` is not the
+only harness that stands up `digest.clj` by hand:
+`ehrt.integration.oracle-coverage-test` builds its own to run a FRESH
+36-root digest and gate the committed COVERAGE claim against reality.
+Teaching one and not the other left the second dying at load time --
+and its own guard rail did exactly its job: *the digest ran at all -- a
+failed run must never read as agreement* failed FIRST, before any set
+comparison, so a dead harness could not be mistaken for a coverage
+match. `make test` never sees this tier (review 4's standing W-1), which
+is why `make integration` runs before a push.
 
 **THE RECORD COMMIT IS RED ON ONE GATE AND ITS SUCCESSOR IS WHAT MAKES
 IT GREEN**, disclosed under `rulings.md#R-red-pushed-with-green` and
