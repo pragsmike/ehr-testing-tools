@@ -78,6 +78,21 @@ with them.
   re-key is thirteen signatures and not twelve, and limitations row 6 did
   NOT go red (the re-key without the fold leaves its substance intact),
   so row 6's STRIKE is still owed by part 3.
+  PART 3 LANDED 2026-08-26 (`ba9126d`): THE FOLD -- `:persons` as a config
+  key on both layers, ruling A1's selection and the fold index, the
+  queue-seeding pass, the two new kinds at contract 1.3.0, the six
+  invariants, the provenance stamps, and ADR-0172 limitations row 6
+  STRUCK with its gate deleted. `:persons` is ABSENT from every existing
+  config, so the proof is still the dark one: oracle IDENTICAL over 35
+  roots with no declaration, every pinned fixture and both conformance
+  baselines byte-equal, not one trace byte moved. ADR-0172 ruling F1 is
+  LIFTED -- `ehrt.sim.run` calls the component for real, and row 10's
+  one-way edge is untouched. Six ADR premises the tree contradicted are
+  tabled as dated deviations in ADR-0173's own Consequences and named in
+  `.agents/session-records/2026-08-26-arc-3a-fold-part-3.md`.
+  STILL OPEN: part 4 (the two clinical hooks, the identification flow and
+  the placeholder MRN) and ruling D1's COMMIT 2, the single declared
+  sweep that turns `:persons` on in a gated corpus and re-pins.
 - OPEN **[emission-add-ons]** PRIORITY 5 -- traffic-scale arc 4
   (`rulings.md#R-mix-7`): order/result status ladders, DFT P03 charges,
   re-statement chatter under config ratios, fan-out/subscriber table; rides
