@@ -2,8 +2,8 @@
 
 **Date:** 2026-08-26
 **Prompt:** [`.agents/prompts/2026-08-26-arc-3b-encounter-horizon.md`](../prompts/2026-08-26-arc-3b-encounter-horizon.md)
-**Base:** `b4e3048` -- **Tip:** `1f046bd` plus the two commits that
-can only follow it: this sha-fill, and the CI marker below
+**Base:** `b4e3048` -- **Tip:** `04e4df1`, the pushed tip CI ran
+against, plus the one commit that can only follow it: this CI marker
 **Mode:** payload session under the de-scaffold moratorium. R30 ceremony,
 no tag, CI green at the tip as the close marker.
 
@@ -21,7 +21,8 @@ at ruling C) and 3 (scheduling) are untouched.
 | `ef563fe` | the encounter, TURNED ON in six corpora -- one declared sweep |
 | `611a285` | the 37th root's own three integration-tier pins |
 | `1f046bd` | this record, the prompt, the roadmap, and the tripwire row |
-| `<FILL>` | the shas above, which no commit can write about itself |
+| `04e4df1` | the shas above, which no commit can write about itself |
+| *(this one)* | the CI marker: run 33033373325, conclusion success |
 
 ## The two oracle lines, verbatim
 
@@ -50,7 +51,7 @@ added line.** Not one pre-existing root moved a byte in either commit.
 | `make integration` at the tip | **INT_EXIT=0**, zero `FAIL:` lines, 1,634 tests / 5,873 assertions; both demo exercisers "every command asserted, every named invariant held, tree clean" |
 | `clojure -M:poly check` | OK at both commits |
 | `bin/preflight` | no findings, exit 0, at session start |
-| CI at the pushed tip | `<CI>` |
+| CI at the pushed tip `04e4df1` | **run 33033373325, workflow `test`, conclusion success** -- the close marker (`rulings.md#R-session-verifies-ci-via-gh`, kept as the marker after the tag was retired). ONE run at this sha |
 
 `make test` figures are the sum over BOTH project runs the polylith
 runner performs, which double-counts bricks shared by two projects --
