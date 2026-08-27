@@ -55,11 +55,22 @@ with them.
   whatever the component still owes on its own terms, not a dependency on
   a row that no longer exists.
 - OPEN **[emission-add-ons]** PRIORITY 5 -- traffic-scale arc 4
-  (`rulings.md#R-mix-7`): order/result status ladders, DFT P03 charges,
-  re-statement chatter under config ratios, fan-out/subscriber table; rides
-  `roadmap.md#corpus-player-slices`. Reshuffles NOTHING and needs no stream work,
-  so it is the one arc that may proceed independently once arc 3's skeleton
-  contract is stable. Gating policy at scale owes a ruling here.
+  (`rulings.md#R-mix-7`): re-statement chatter (A08/A31/A28, IN1-only),
+  order/result status ladders, DFT^P03 charges, the fan-out/subscriber table;
+  rides `roadmap.md#corpus-player-slices`. Reshuffles NOTHING and needs no stream
+  work, so it is the one arc that may proceed independently now that arc 3's
+  skeleton contract is stable. DESIGNED 2026-08-27 by ADR-0175 (Proposed): the
+  census, each add-on classified under `rulings.md#R-skeleton-or-emission` with
+  its rejected alternatives, and five rulings A-E awaiting the author -- MSH-12
+  2.3-vs-2.4, the v1 add-on set, where chatter ratios live, the
+  sampled/stratified gating policy at scale (the ruling this row already owed),
+  and the dark-then-on landing shape. Two measured findings the design turned up
+  rather than a sweep: at MSH-12 "2.3" every message this project emits resolves
+  to HAPI's own generic message, so the base-structural tier is structurally
+  vacuous over our own corpus (and one PID-13 rendering fix is all that stands
+  between the tree and a clean 2.4 declaration); and NK1 is not available to this
+  arc at all, because household state reaches no ground-truth event, so ADR-0172
+  limitations row 8 stands and arc 4 lifts none of it.
 - OPEN **[corpus-player-slices]** PRIORITY 7 -- the corpus-player slices
   chartered by ADR-0014 that have never had a row in any register. CORRECTED
   2026-08-26 (ADR-0174 section 1(ii)'s disclosure): the **bed-board sink LANDED
@@ -74,7 +85,14 @@ with them.
   dirty or cleaning stays invisible on the whiteboard until a message carries it.
   Rowed rather than retired because `R-unregistered-request-gets-a-row` puts
   visibility first, and a charter with no row is exactly what that rule exists to
-  catch. ADR-0158 (review-4 D7-5).
+  catch. ADR-0158 (review-4 D7-5). ADR-0175 section 2(f)/2(g) designs both
+  remaining halves and re-prices the second: `:mllp` is a new SINK KIND (the
+  framing codec and its property tests already exist; `known-sink-kinds` has no
+  socket), reachable as `ehrt play --sink mllp://host:port` through the
+  designator vocabulary rather than a new flag; and the "accumulator wiring"
+  half is mostly built already -- `ehrt.corpus.board` folds a paced stream
+  through `sim-emit-hl7/fold-message`, so what is actually left is exposing that
+  accumulator's final state as an output rather than only as a whiteboard.
 
 ## Externals (author-only)
 - EXTERNAL **[ci-failure-email]** -- enable GitHub's workflow-failure
