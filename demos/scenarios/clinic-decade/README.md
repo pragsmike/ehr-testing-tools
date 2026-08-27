@@ -42,9 +42,19 @@ bin/ehrt play out/scenarios/clinic-decade/events.edn --rate 10000000
 
 ## What to look for
 
-Witnessed 2026-08-26 (seed 20260807, 200 patients, `--config` as
-above): **1,156 ground-truth events, 248 HL7 v2 messages, 183 board
-snapshots** over a 611,762,027,000 ms (~19.4-year) stream span.
+Witnessed 2026-08-27 (seed 20260807, 200 patients, `--config` as
+above): **1,456 ground-truth events, 548 HL7 v2 messages, 222 board
+snapshots** over a 611,763,467,000 ms (~19.4-year) stream span.
+
+**AND BEDS TAKE TIME TO TURN OVER**, though in this scenario that buys
+less than it does at `ed-tuesday`. `config.edn` opted in to the
+BED-STATUS CYCLE on 2026-08-27 (arc 3b sweep 2, ADR-0174 section 2(c)
+and ruling C), and every one of the 300 events and 300 ADT^A20 messages
+it added is bed housekeeping: this decade admits 100 people and BOARDS
+NOBODY, so there is no discharge-to-relief coupling here for the cycle
+to move. What it does buy is a bed board that shows a room being turned
+over rather than a bed blinking from occupied to empty -- which is the
+whole of what a nineteen-year ambulatory corpus needed from it.
 
 **PATIENTS COME BACK NOW**, and in this scenario that shows up in one
 place: `config.edn` opted in to the lifted ENCOUNTER HORIZON on
@@ -76,8 +86,8 @@ timeline IS. Every figure in this section moved with it, and the
 previous witness is recorded at the bottom of this block rather than
 overwritten.
 
-**The board-snapshot census, 183 snapshots:** `inpatients: 0` 84,
-`inpatients: 1` 97, `inpatients: 2` 1, `inpatients: 3` 1.
+**The board-snapshot census, 222 snapshots:** `inpatients: 0` 122,
+`inpatients: 1` 98, `inpatients: 2` 1, `inpatients: 3` 1.
 `bin/demo-exerciser-clinic-decade` re-derives that whole distribution
 from this paragraph at runtime and asserts every count exactly, plus
 that they exhaust the snapshot lines -- so a future re-witness cannot
@@ -86,7 +96,11 @@ before that a universal `inpatients: 0`; the claim's SHAPE has widened
 twice now, each time because the scenario genuinely gained traffic. Its
 COUNTS moved a third time on 2026-08-26 without the shape changing --
 ten hours that used to read `inpatients: 0` now read `inpatients: 1`,
-which is precisely the ten recovered parent deliveries occupying a bed.
+which is precisely the ten recovered parent deliveries occupying a bed
+-- and a FOURTH time on 2026-08-27, when the bed cycle added 39
+snapshots, 38 of them `inpatients: 0`. Those are hours in which the
+only traffic is an A20 saying a bed finished being cleaned: real
+messages, on a board with nobody on it.
 
 **Where the inpatients come from is entirely new.** All 100 admissions
 in this run are HOOK-created -- the person stream's own clinical
@@ -112,9 +126,9 @@ sentinel, because HL7 v2 has no code for it and every literal is one
 site's local convention).
 
 The run's own closing summary: `{:unparseable-count 0, :snapshot-count
-183, :skip-count 0, :rate 1.0E7, :idle-cap-ms 5000, :wallclock-ms
-61566, :stream-span-ms 611762027000, :clamped-count 0, :emitted 248,
-:unfolded-count 0, :sink "ticker"}` -- 183 of the 248 messages rendered
+222, :skip-count 0, :rate 1.0E7, :idle-cap-ms 5000, :wallclock-ms
+61631, :stream-span-ms 611763467000, :clamped-count 0, :emitted 548,
+:unfolded-count 0, :sink "ticker"}` -- 222 of the 548 messages rendered
 a snapshot; the others landed in a board window a prior message had
 already opened. NOT ONE inter-message wait exceeded `--idle-cap`'s
 default 5 seconds, so nothing was skipped and the whole ~19.4-year

@@ -42,10 +42,11 @@
   component-code versions, and hashing itself happens in the calling
   shell (`sha256sum`), not in-process.
 
-  CURRENT STATE, 2026-08-26 (arc 3b sweep 1, ADR-0174 ruling A1's
-  turn-on commit; before it, arc 3a part 4, ADR-0173 ruling D1's
-  commit 2; previously 2026-08-19, ADR-0156, review-4 register row L1-5).
-  `roots` holds 37 roots in two families:
+  CURRENT STATE, 2026-08-27 (arc 3b sweep 2, ADR-0174 section 2(c)'s
+  turn-on commit; before it, arc 3b sweep 1, ADR-0174 ruling A1; before
+  that, arc 3a part 4, ADR-0173 ruling D1's commit 2; previously
+  2026-08-19, ADR-0156, review-4 register row L1-5).
+  `roots` holds 38 roots in two families:
 
     3 INTERPRETER-LAYER batches -- appendicitis/sore-throat/
       ear-infections. 100 well-mixed seeds x both sexes = 200 walks per
@@ -55,7 +56,7 @@
       well-distributed for their own first draw, confirmed repeatedly
       across GMF coverage waves.
 
-   34 ENGINE-LAYER pairs -- engine/run plus emit-hl7/emit, ground truth
+   35 ENGINE-LAYER pairs -- engine/run plus emit-hl7/emit, ground truth
       AND emitted HL7 both captured, at the run-config each root's own
       vendored/engine test already established as producing real
       content. The 33rd, `demographic-fold`, is the first root to turn
@@ -64,7 +65,10 @@
       `encounter-horizon`, is the first to turn `:encounters` ON -- the
       only root where a patient has more than one encounter -- and the
       first to pass `:churn true` at all, which is why it brings three
-      event kinds and three MSH-9s with it.
+      event kinds and three MSH-9s with it. The 35th, `bed-cycle`, is
+      the first to turn `:bed-cycle` ON, and it is the first root of any
+      kind to reach the allocation ladder's FOURTH RUNG -- the gap the
+      COVERAGE block below said sweep 2 would have to close.
 
   This paragraph replaced an opening that read `Six roots, matching this
   session's own J1 ruling verbatim` -- true when written and never
@@ -73,7 +77,7 @@
   false; a cold reader simply got a third of the population and no
   signal that it was a third. The count is gated now
   (`ehrt.docs-tooling.oracle-coverage-test`), and the COVERAGE block
-  beside `roots` states what these 36 can and cannot witness.
+  beside `roots` states what these 38 can and cannot witness.
 
   Dated note (2026-08-03, ADR-0033 AR-4b): three more roots join at the
   ENGINE layer -- ear-infections-engine/urinary-tract-infections-engine/
@@ -649,6 +653,74 @@
     {:ground-truth (:ground-truth (:payload r))
      :hl7 (vec (:messages (:payload r)))}))
 
+(defn- bed-cycle-pair
+  "Arc 3b sweep 2's own root (ADR-0174 section 2(c), plus ruling C's
+  ADT^A20), and the FIRST to turn `:bed-cycle` on. FIRST BASELINE, not a
+  regression check: no side before this commit has a `:bed-cycle` key to
+  run under at all.
+
+  IT GOES THROUGH `run-command` for the SELF-CHECK, not for a
+  translation: unlike `:persons`, `:bed-cycle` reaches `engine/run`
+  untranslated and an `engine-pair` would have rendered the same bytes.
+  What `run-command` adds is `check-all`, and this root is the only
+  place the cycle's three new invariants are exercised at population
+  scale by the oracle rather than by a unit fixture.
+
+  WHY THIS CONFIG, and every number in it was PROBED rather than
+  guessed. A ward small enough to CONTEND is the whole point -- the
+  cycle is invisible in a facility that never runs out of ready beds,
+  and it is contention that produces boarding, the outlier rung, and the
+  bed-ready transfers whose timing this sweep moves. Three earlier
+  candidates were rejected because they EXHAUSTED the ladder outright
+  (`:error :capacity-exhausted`, which halts a run rather than degrading
+  it -- see the coverage note below), which is exactly the effective-
+  capacity risk ADR-0174 section 2(c) item 4 names. `--churn` is on
+  because the reinstatement arc lives in that family and because it is
+  the only way `:bed-swap` -- the kind invariant 1 must EXCLUDE -- occurs
+  at all.
+
+  Measured at the config below, not predicted: 527 events, 467 messages,
+  295 `:bed-status-change` events over 26 distinct beds (99 dirty, 98
+  cleaning, 98 ready -- the tail difference is beds still mid-cycle when
+  the run ends), 43 transfers of which 39 are BED-READY, and ZERO of
+  those 39 sharing the instant of the discharge that vacated the bed.
+  The ladder reaches all four rungs: 45 rung-1, 17 rung-2, 10 rung-3 and
+  THIRTY-ONE rung-4 placements.
+
+  THE COVERAGE IT ADDS is stated in the block below and is larger than
+  the cycle: it is the first root to reach rung 4 at all, the first to
+  produce a `:cancel-discharge`, and the first to emit ADT^A13 or
+  ADT^A20."
+  []
+  (let [r (sim/run-command
+           {:seed 20260828 :patients 60 :churn true :arrival-gap 90
+            :facility {:id :bed-cycle-oracle
+                       :wards [{:id :ed :name "Emergency" :beds 0 :surge-slots 16
+                                :surge-format "%s-H%02d" :class :ed
+                                :turnaround-minutes [5 15]}
+                               {:id :renal :name "Renal" :beds 4 :surge-slots 2
+                                :surge-format "%s-H%02d" :class :inpatient
+                                :turnaround-minutes [15 30]}
+                               {:id :cardiology :name "Cardiology" :beds 4 :surge-slots 2
+                                :surge-format "%s-H%02d" :class :inpatient
+                                :turnaround-minutes [15 30]}]}
+            :pathways [{:pathway {:name "renal-stay"
+                                  :steps [{:type :admission :location "Renal"}
+                                          {:type :delay :from 180 :to 900}
+                                          {:type :discharge}]}
+                        :weight 1}
+                       {:pathway {:name "cardio-stay"
+                                  :steps [{:type :admission :location "Cardiology"}
+                                          {:type :delay :from 180 :to 900}
+                                          {:type :discharge}]}
+                        :weight 1}]
+            :emit "hl7" :reference-date "2024-01-01" :utc-offset "+00:00"
+            :bed-cycle true})]
+    (when-not (= :ok (:status r))
+      (throw (ex-info "bed-cycle root did not run cleanly" {:result r})))
+    {:ground-truth (:ground-truth (:payload r))
+     :hl7 (vec (:messages (:payload r)))}))
+
 (defn- injuries-pair
   "Injuries arc close (2026-08-11, ADR-0107): FIRST BASELINE, not a
   regression check -- this closure never completed a round trip before
@@ -740,10 +812,11 @@
 ;;     on one root, never what it reported.
 ;;
 ;; THE STRUCTURAL CAUSE, re-derived rather than inferred from the
-;; instrumentation: 36 of the 37 roots pass `:pathway {:name
-;; "module-only" :steps []}` -- `encounter-horizon` is the exception and
-;; passes a real admit/delay/discharge pathway, which is why the churn
-;; family reaches it -- and 8 of 19 components plus `bases/cli` are off the
+;; instrumentation: 36 of the 38 roots pass `:pathway {:name
+;; "module-only" :steps []}` -- `encounter-horizon` and `bed-cycle` are
+;; the two exceptions and pass real admit/delay/discharge pathways,
+;; which is why the churn family and the allocation ladder reach them --
+;; and 8 of 19 components plus `bases/cli` are off the
 ;; oracle classpath entirely (`bin/regression-oracle`'s own deps block).
 ;; THREE components joined that classpath on 2026-08-26 -- person-
 ;; simulator, sim-check and sim-emit-fhir -- none because `digest.clj`
@@ -765,9 +838,17 @@
 ;; ADT^A02, its only `:bed-ready true` and all 13 of its ladder rung-3
 ;; placements. `encounter-horizon` (2026-08-26) carries transfers and
 ;; A02s of its own, so those four claims no longer die with one root.
-;; Rung 4, `:forced` and `:exhausted` are still zero across all 37,
-;; which is the part that has not moved and is the part arc 3b sweep 2
-;; will have to. `:medication-end` is one root
+;; RUNG 4 IS NO LONGER ZERO: `bed-cycle` (2026-08-27) reaches all four
+;; rungs -- 45 rung-1, 17 rung-2, 10 rung-3 and 31 rung-4 placements --
+;; which is what the sweep-1 note said sweep 2 would have to move, and it
+;; moved for a reason worth keeping: a `:ready` gate makes a small ward
+;; CONTEND where an ungated one did not. `:forced` and `:exhausted` are
+;; STILL zero across all 38, and `:exhausted` is worth naming precisely
+;; -- it is not a degraded outcome a root could carry, it HALTS the run
+;; (`:error :capacity-exhausted`), so a root witnessing it would be a
+;; root that produces no corpus at all. Three earlier candidate configs
+;; for `bed-cycle` did exactly that and were rejected for it.
+;; `:medication-end` is one root
 ;; deep too (`injuries`, one occurrence) -- and so, as of 2026-08-26,
 ;; are `:demographic-update` and `:coverage-change`, both of them
 ;; `demographic-fold`'s alone -- `:merge` and ADT^A40 left that list on
@@ -776,17 +857,27 @@
 ;; identification flow specifically, stated here rather than discovered
 ;; later. And ADT^A11, ADT^A12 and ADT^A17 are now one root deep in
 ;; their turn -- `encounter-horizon`'s alone -- which is the price of
-;; adding a root rather than a hole it closes.
+;; adding a root rather than a hole it closes. ADT^A13 and ADT^A20 join
+;; them as of 2026-08-27, one root deep and `bed-cycle`'s alone -- and
+;; ADT^A20 unavoidably so, since it is the only root that can emit one.
 ;;
 ;; The two sets below are the committed claim, asserted against a FRESH
-;; 37-root digest by `ehrt.integration.oracle-coverage-test` and checked
+;; 38-root digest by `ehrt.integration.oracle-coverage-test` and checked
 ;; for shape, population, membership and location on every push by
 ;; `ehrt.docs-tooling.oracle-coverage-test`.
 
 (def ^:private witnessed-event-kinds
-  "The 19 of 23 closed event kinds any root can produce. Adding a root
+  "The 21 of 24 closed event kinds any root can produce. Adding a root
   that reaches the order->result paths moves this set -- that is
   R4-Q6 (ii) (b), rowed and priced, deliberately not taken.
+
+  WIDENED AGAIN 2026-08-27, 19 of 23 -> 21 of 24, by `bed-cycle`. The
+  DENOMINATOR grew by the kind that root exists for
+  (`:bed-status-change`, contract 1.6.0), and the NUMERATOR by that kind
+  plus `:cancel-discharge` -- which sweep 1 left unwitnessed and named
+  as such rather than rounding up. THE CHURN FAMILY IS NOW WHOLE. What
+  is left unwitnessed is the order->result path alone:
+  `:order-placed`, `:result-available` and `:step-rejected`.
 
   WIDENED AGAIN 2026-08-26, 16 of 23 -> 19 of 23, by
   `encounter-horizon`: `:bed-swap`, `:cancel-admit` and
@@ -800,7 +891,8 @@
   WIDENED 2026-08-26, 13 of 21 -> 16 of 23, by `demographic-fold`: the
   denominator grew by the two kinds contract 1.3.0 added, and the
   numerator by those two plus `:merge`."
-  #{:admission :bed-swap :cancel-admit :cancel-transfer :care-plan-end
+  #{:admission :bed-status-change :bed-swap :cancel-admit
+    :cancel-discharge :cancel-transfer :care-plan-end
     :care-plan-start :coverage-change
     :demographic-update :diagnostic-report
     :discharge :medication-end :medication-order :merge :observation
@@ -808,9 +900,15 @@
     :transfer})
 
 (def ^:private witnessed-message-types
-  "Every MSH-9 the 34 engine-layer roots emit. ADT^A02 is death-fixture's
-  alone, once. ADT^A08/A13/A34 and ORM^O01 are emitted by no root at
-  all.
+  "Every MSH-9 the 35 engine-layer roots emit. ADT^A02 is death-fixture's
+  alone, once. ADT^A08/A34 and ORM^O01 are emitted by no root at all.
+
+  WIDENED AGAIN 2026-08-27 by `bed-cycle`: ADT^A20 (bed status update),
+  the message family ruling C added to this arc and the FIRST this
+  project emits that carries no PID and no PV1; and ADT^A13 (cancel
+  discharge), which arrives with the `:cancel-discharge` sweep 1 could
+  not draw. A13 was named in this docstring as emitted by no root; it is
+  now emitted by exactly one.
 
   WIDENED AGAIN 2026-08-26 by `encounter-horizon`, which is the first
   root to run the churn family over a pathway that admits: ADT^A11
@@ -829,7 +927,7 @@
   in `message-type-registry`'s own comment), so the fold reaches this
   set only through the merge."
   #{"ADT^A01" "ADT^A02" "ADT^A03" "ADT^A04" "ADT^A11" "ADT^A12"
-    "ADT^A17" "ADT^A40" "ORU^R01"})
+    "ADT^A13" "ADT^A17" "ADT^A20" "ADT^A40" "ORU^R01"})
 
 (def ^:private roots
   {"appendicitis"                       appendicitis-batch
@@ -865,6 +963,7 @@
    "veteran-prostate-cancer"            veteran-prostate-cancer-pair
    "veteran-ptsd"                       veteran-ptsd-pair
    "encounter-horizon"                  encounter-horizon-pair
+   "bed-cycle"                          bed-cycle-pair
    "veteran-self-harm"                  veteran-self-harm-pair
    "veteran-substance-abuse-treatment"  veteran-substance-abuse-treatment-pair
    "injuries"                           injuries-pair

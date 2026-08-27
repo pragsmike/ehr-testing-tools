@@ -85,4 +85,23 @@
  ;; :repeat-arrival`), and one landing on a `:merged` or `:expired`
  ;; patient still opens nothing either. Both terminals stay absorbing.
  :encounters true
+
+ ;; ARC 3B SWEEP 2 (ADR-0174 section 2(c) plus ruling C, 2026-08-27): the
+ ;; BED-STATUS CYCLE, ON. A vacated bed goes `:dirty`, then `:cleaning`,
+ ;; then `:ready`, at the pace each ward's own `:turnaround-minutes`
+ ;; declares, and `allocate` is gated on `:ready`.
+ ;;
+ ;; WHAT IT CHANGES HERE IS ALMOST NOTHING, and that is worth stating
+ ;; rather than leaving a reader to expect otherwise. This scenario
+ ;; produces NO bed-ready transfers at all -- measured, at both gated
+ ;; seeds and at the demo seed -- because its ambulatory decade never
+ ;; boards anybody, so the discharge-to-relief coupling the cycle moves
+ ;; has nothing here to move. What the opt-in DOES buy is the
+ ;; `:bed-status-change` stream and its ADT^A20 traffic for its handful
+ ;; of admissions, which is what makes a bed board of this corpus show a
+ ;; room being turned over rather than a bed blinking from occupied to
+ ;; empty. It takes the key for the same reason it takes `:encounters`:
+ ;; a scenario a reader runs by hand and a gated corpus must not
+ ;; disagree about what is in them.
+ :bed-cycle true
  :module-horizon-days 3650}

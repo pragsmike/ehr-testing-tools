@@ -187,4 +187,27 @@
  ;; :repeat-arrival`), and one landing on a `:merged` or `:expired`
  ;; patient still opens nothing either. Both terminals stay absorbing.
  :encounters true
+
+ ;; ARC 3B SWEEP 2 (ADR-0174 section 2(c) plus ruling C, 2026-08-27): the
+ ;; BED-STATUS CYCLE, ON. A bed is no longer free the instant its
+ ;; occupant leaves it -- it goes `:dirty`, then `:cleaning`, then
+ ;; `:ready`, at the per-leg pace each ward's own
+ ;; `:turnaround-minutes` above declares, and `allocate` is gated on
+ ;; `:ready`.
+ ;;
+ ;; WHAT IT CHANGES HERE, said rather than left to be noticed. Every
+ ;; bed-ready transfer this scenario produced used to fire in the SAME
+ ;; SECOND as the discharge that vacated the bed; none does now -- each
+ ;; sits at its bed's own READY event instead, decided against the board
+ ;; as it stands then. A fresh admission can no longer take a bed
+ ;; somebody left moments earlier either. Boarders therefore wait
+ ;; longer, which is the point and not a regression.
+ ;;
+ ;; THE PACING ABOVE IS UNCHANGED, deliberately. Effective capacity
+ ;; falls under the cycle and this scenario's own header says its pacing
+ ;; was tuned to hold "without capacity exhaustion"; it was re-probed at
+ ;; the turnaround this file ships and still holds, so re-tuning it in
+ ;; the same commit that lands the cycle would leave any corpus delta
+ ;; with two possible causes.
+ :bed-cycle true
  :module-horizon-days 90}

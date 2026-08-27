@@ -498,7 +498,15 @@
            ;; encounter horizon, lifted -- here for the same reason
            ;; `:persons` is, and this run is the fourth of the six
            ;; corpora that opt in.
-           :encounters true}}])
+           :encounters true
+           ;; ARC 3B SWEEP 2 (ADR-0174 section 2(c), 2026-08-27): the bed
+           ;; cycle, same reason again. This run has no `:config` to
+           ;; carry it. It boards nobody -- ten ADHD patients over a
+           ;; decade of ambulatory content -- so what the key buys here
+           ;; is the `:bed-status-change` stream over its own admissions
+           ;; and nothing else; it is taken anyway so that all six
+           ;; corpora agree about what a gated corpus contains.
+           :bed-cycle true}}])
 
 (def ^:private corpora
   "run id -> that run's own `run-command` result, populated once by
@@ -576,7 +584,34 @@
   (edn/read-string (pr-str gt))))` -- value AND bytes both survive, so
   the committed baseline is a faithful pin for BOTH gates below.
 
-  RE-PINNED AGAIN 2026-08-26, all four, by ADR-0174 ruling A1's TURN-ON
+  RE-PINNED AGAIN 2026-08-27, all four, by ADR-0174 section 2(c)'s
+  TURN-ON commit -- arc 3b sweep 2, the ONE declared sweep THAT sweep is
+  allowed, and the reason the bed cycle landed dark in a prior commit
+  (`bin/regression-oracle` IDENTICAL over 37 roots) so that this diff
+  would have exactly one possible cause. `:bed-cycle` is now ON in all
+  four, from the same two places `:encounters` is. No seed moved: every
+  counted witness in this namespace survived the opt-in.
+
+  WHAT MOVED. Two things at once, and they are separable by kind. FIRST,
+  the `:bed-status-change` stream itself -- 418, 351, 270 and 24 events
+  that did not exist before, three per bed turnover. SECOND, a genuine
+  reshuffle at the two ED corpora: the turnaround draws consume the
+  `:facility` stream, so attendings shift, and the bed-ready transfer
+  now fires at the READY instant rather than the discharge instant, so
+  the boarder chosen and the bed handed over are both decided against a
+  later board. The counts, before -> after: seed-202 711 -> 1,131
+  events, seed-424242 1,309 -> 1,660, seed-5 1,072 -> 1,342, adhd
+  68 -> 92.
+
+  THE HEADLINE IS THE COUPLING, not the count. At seed-202 every one of
+  the TEN bed-ready transfers used to fire in the same second as the
+  discharge that vacated the bed; now none of the twelve does -- each
+  sits at its own bed's READY event. Two clinic-decade corpora and the
+  adhd run board nobody at all, so for them the opt-in buys the A20
+  stream and nothing else, which is said here rather than left to be
+  inferred from an unchanged transfer count.
+
+  RE-PINNED 2026-08-26, all four, by ADR-0174 ruling A1's TURN-ON
   commit -- arc 3b sweep 1, the ONE declared sweep that sweep is
   allowed, and the reason the encounter landed dark in a prior commit
   so that this diff would have exactly one possible cause.
@@ -614,10 +649,10 @@
   1,058, adhd 12 -> 66. The growth is the fold: `:demographic-update`,
   `:coverage-change`, hook-created encounters and unidentified
   arrivals, none of which existed in any corpus before this commit."
-  {:seed-202-ed-tuesday       "8fd36e60e53c437d00d37e2798dfadf0ab60a410cbc84d4b0223bfdf45fd5913"
-   :seed-424242-clinic-decade "f3dfe0997ed192c15802bd34809bf4f40847fefeb657f03f84cf908f34234a69"
-   :seed-5-clinic-decade      "984b65804140b65090c2ea90fec6b766bb57bc71cf42ff6a4c8e2baa5dbec309"
-   :adhd-seed-45              "3f8d423cc7edcaf89953c71dca3e88a4234bfb323b2b0b28838d61ea3b1fc955"})
+  {:seed-202-ed-tuesday       "8b749b247ae8f6e9b866c0cee98e34f2c4e28754b1303b0496c3be3a31072eaf"
+   :seed-424242-clinic-decade "a6ca474fca36dff9928059f35bb1460e63e93181d95e5a4d2cb3dbba2ef635b2"
+   :seed-5-clinic-decade      "64be85ce5d9d5944532595c8b4eb59f68e0b842f9fd6759580dac7500daca2af"
+   :adhd-seed-45              "f22c2225bcfc2e89a85109d989b238d5e011454850772be8f7d4e165509c0af0"})
 
 (defn- arc0-baseline
   "The committed baseline ground-truth vector for one gated run."

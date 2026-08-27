@@ -4,7 +4,7 @@
 
   `ehrt.docs-tooling.oracle-coverage-test` gates the committed claim's
   shape, population, membership and location on every push. It cannot
-  gate the claim against reality: only a real 37-root digest knows which
+  gate the claim against reality: only a real 38-root digest knows which
   event kinds and message types the oracle can witness. That run is 114
   seconds (ADR-0156 Step 0 b), so it lives here, in the scheduled lane.
 
@@ -73,7 +73,7 @@
        " :aliases {:oracle-run {:extra-paths [\"" root "/components/patient-simulator/test\"]}}}"))
 
 (defn- run-digest!
-  "One fresh 37-root digest into `out`. Returns the process result."
+  "One fresh 38-root digest into `out`. Returns the process result."
   [out]
   (let [root (.getCanonicalPath (io/file repo-root))]
     (shell/sh "clojure" "-Sdeps" (deps-string root)
@@ -81,7 +81,7 @@
               :dir root)))
 
 (defn- engine-roots
-  "The 34 engine-layer roots, keyed by name. The other three are
+  "The 35 engine-layer roots, keyed by name. The other three are
   interpreter batches whose facts are a DIFFERENT vocabulary -- see the
   nested-`:event` hazard in `ehrt.sim-engine.event-schema`, which is
   exactly the mistake a naive tree-walk for `:event` makes."
@@ -147,11 +147,11 @@
             roots (engine-roots out)]
         (testing "the digest ran at all -- a failed run must never read as agreement"
           (is (zero? exit) (str "the digest process must exit 0. stderr:\n" err))
-          (is (= 37 (count edns))
-              (str "37 roots today. A root added or removed lands here first. Found "
+          (is (= 38 (count edns))
+              (str "38 roots today. A root added or removed lands here first. Found "
                    (count edns) "."))
-          (is (= 34 (count roots))
-              (str "34 engine-layer roots produce `{:ground-truth :hl7}`; the other three are "
+          (is (= 35 (count roots))
+              (str "35 engine-layer roots produce `{:ground-truth :hl7}`; the other three are "
                    "interpreter batches. Found " (count roots) ".")))
         (let [kinds (witnessed-event-kinds roots)
               types (witnessed-message-types roots)]
@@ -170,23 +170,25 @@
             (is (= (committed "witnessed-message-types") types)
                 (str "fresh digest emits " (pr-str types) "; committed "
                      (pr-str (committed "witnessed-message-types")))))
-          (testing "the capacity witness is TWO roots deep, and the claim says so"
+          (testing "the capacity witness is THREE roots deep, and the claim says so"
             ;; ARC 3B SWEEP 1 (ADR-0174, 2026-08-26): it was one --
             ;; `death-fixture` alone -- for the whole life of this gate,
             ;; and the `encounter-horizon` root made it two by being the
             ;; first to pass `:churn true` over a pathway that ADMITS.
-            ;; The list is pinned rather than relaxed to a `pos?` count
-            ;; for the reason the original comment gives: WHICH roots
-            ;; carry it is the claim `digest.clj`'s coverage paragraph
-            ;; makes, and a bare count would let a third arrive
-            ;; unnoticed.
-            (is (= ["death-fixture" "encounter-horizon"]
+            ;; ARC 3B SWEEP 2 (2026-08-27) makes it THREE: `bed-cycle` is
+            ;; the first root to reach the ladder's fourth rung, and it
+            ;; carries 43 transfers of which 39 are bed-ready. The list
+            ;; is pinned rather than relaxed to a `pos?` count for the
+            ;; reason the original comment gives: WHICH roots carry it is
+            ;; the claim `digest.clj`'s coverage paragraph makes, and a
+            ;; bare count would let a fourth arrive unnoticed.
+            (is (= ["bed-cycle" "death-fixture" "encounter-horizon"]
                    (vec (sort (for [[n v] roots
                                     :when (some #(= :transfer (:event %)) (:ground-truth v))] n))))
-                "`:transfer` -- and with it ADT^A02, :bed-ready and ladder rung 3 -- is
-                witnessed by `death-fixture` and `encounter-horizon`, and by nothing
-                else. If this ever passes with a different root list, the coverage
-                paragraph in digest.clj is stale."))))
+                "`:transfer` -- and with it ADT^A02, :bed-ready and ladder rungs 3 and 4
+                -- is witnessed by `bed-cycle`, `death-fixture` and `encounter-horizon`,
+                and by nothing else. If this ever passes with a different root list, the
+                coverage paragraph in digest.clj is stale."))))
       (finally
         (doseq [f (.listFiles out)] (.delete ^java.io.File f))
         (.delete out)))))

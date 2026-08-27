@@ -155,6 +155,14 @@
  ;; identity breaks, which is exactly how this line came to be added:
  ;; the exerciser's own `diff` went red.
  :encounters true
+ ;; ARC 3B SWEEP 2 (ADR-0174 section 2(c), 2026-08-27): `:bed-cycle` is
+ ;; here for the SAME single reason `:encounters` is, and it is not a
+ ;; second opt-in decision. This file is `config.edn` PLUS a `:latency`
+ ;; block, and `bin/demo-exerciser-ed-tuesday` asserts the two produce
+ ;; BYTE-IDENTICAL ground truth (the second-clock zero-offset identity,
+ ;; ADR-0109). Any engine-facing key that lands in one has to land in
+ ;; the other or that identity breaks.
+ :bed-cycle true
  :latency {:admission {:from-minutes 15 :to-minutes 90}
            :transfer {:from-minutes 15 :to-minutes 60}
            :discharge {:from-minutes 15 :to-minutes 60}
