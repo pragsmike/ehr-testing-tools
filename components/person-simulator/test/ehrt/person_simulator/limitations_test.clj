@@ -86,9 +86,11 @@
         person-kinds (set (map :event (fx/evs)))]
     (testing "the engine's vocabulary parsed, non-empty (R-empty-population-is-red)"
       ;; 23 since contract 1.3.0 (ADR-0173, arc 3a part 3): the fold's
-      ;; own `:demographic-update` and `:coverage-change`.
-      (is (= 23 (count engine-kinds))
-          (str "expected the CLOSED 23-kind engine vocabulary, parsed " (count engine-kinds))))
+      ;; own `:demographic-update` and `:coverage-change`; 24 since 1.6.0
+      ;; (ADR-0174 section 2(c), arc 3b sweep 2): the bed cycle's own
+      ;; `:bed-status-change`.
+      (is (= 24 (count engine-kinds))
+          (str "expected the CLOSED 24-kind engine vocabulary, parsed " (count engine-kinds))))
     (testing "the witness stream carries deaths at all"
       (is (seq (fx/of-kind :person-death))))
     ;; REWRITTEN 2026-08-26 (arc 3a part 3). This assertion used to be

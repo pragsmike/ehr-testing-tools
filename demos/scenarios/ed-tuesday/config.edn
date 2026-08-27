@@ -56,12 +56,18 @@
 ;; see this scenario's own README for the actual witnessed number, not
 ;; silently retuned to force a nonzero result.
 {:facility {:id :general-hospital
+            ;; ARC 3B SWEEP 2 (ADR-0174 ruling D1, 2026-08-27):
+            ;; `:turnaround-minutes` is the range EACH LEG of the bed
+            ;; cycle draws from (dirty -> cleaning, cleaning -> ready),
+            ;; so a ward's whole turnaround is twice it. These are the
+            ;; shipped class defaults written out explicitly; the cycle
+            ;; itself is off unless `:bed-cycle` is set below.
             :wards [{:id :ed :name "Emergency" :beds 0 :surge-slots 16
-                     :surge-format "%s-H%02d" :class :ed}
+                     :surge-format "%s-H%02d" :class :ed :turnaround-minutes [5 15]}
                     {:id :renal :name "Renal" :beds 4 :surge-slots 2
-                     :surge-format "%s-H%02d" :class :inpatient}
+                     :surge-format "%s-H%02d" :class :inpatient :turnaround-minutes [15 30]}
                     {:id :cardiology :name "Cardiology" :beds 4 :surge-slots 2
-                     :surge-format "%s-H%02d" :class :inpatient}]}
+                     :surge-format "%s-H%02d" :class :inpatient :turnaround-minutes [15 30]}]}
  :arrival-gap 30
  :pathways [;; Walk-in, quick turnaround -- the ED's own bread and butter.
             {:pathway {:name "ed-fast-track"

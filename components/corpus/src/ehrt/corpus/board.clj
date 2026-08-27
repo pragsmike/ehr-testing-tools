@@ -64,20 +64,64 @@
          "  " (if-let [class (:class entry)] (name class) "?")
          (when-let [attending (:attending entry)] (str "  attending: " attending)))))
 
+(defn- unoccupied-bed-line
+  "ARC 3B SWEEP 2 (ADR-0174 ruling C): a bed with NOBODY in it, rendered
+  because the A20 stream now says what state it is in. Before this
+  sweep such a bed was simply invisible on the whiteboard, which is the
+  gap `R-mix-6`'s bed-board clause named and section 2(d) had left open.
+
+  `:ready` beds are still not rendered: an available bed is the normal
+  case and listing every one of them would bury the two states a
+  charge nurse is actually looking for. An unrecognised NPU-2 code
+  (a foreign feed's, or a site profile's own override) renders its raw
+  string rather than being dropped."
+  [bed status]
+  (str "  " bed "  (" (if (keyword? status) (name status) (str status)) ")"))
+
+(defn- unoccupied-beds
+  "acc's A20-derived bed entries for `ward` that hold no patient and are
+  not `:ready` -- `[bed status]` pairs, in bed order. A bed the same
+  snapshot shows as occupied is NOT listed twice: the patient line is
+  the more informative of the two, and the A20 that marked it occupied
+  and the PV1 that placed the patient are the same fact."
+  [acc ward occupied-beds]
+  (->> (get acc sim-emit-hl7/beds-key)
+       (filter (fn [[bed entry]]
+                 (and (= ward (:ward entry))
+                      (not= :ready (:status entry))
+                      (not (contains? occupied-beds bed)))))
+       (sort-by key)
+       (map (fn [[bed entry]] [bed (:status entry)]))))
+
 (defn- ward-block
-  [ward entries]
-  (str ward ":\n"
-       (str/join "\n" (map (fn [[mrn entry]] (bed-line mrn entry))
-                            (sort-by (fn [[_ entry]] (:bed (:location entry))) entries)))))
+  [acc ward entries]
+  (let [occupied-beds (into #{} (keep (fn [[_ entry]] (:bed (:location entry)))) entries)]
+    (str ward ":\n"
+         (str/join "\n" (concat (map (fn [[mrn entry]] (bed-line mrn entry))
+                                      (sort-by (fn [[_ entry]] (:bed (:location entry))) entries))
+                                (map (fn [[bed status]] (unoccupied-bed-line bed status))
+                                     (unoccupied-beds acc ward occupied-beds)))))))
 
 (defn- ward-groups
   "acc's own occupied entries, grouped by ward (sorted), each group's
-  own [mrn entry] pairs sorted by bed within `ward-block`."
+  own [mrn entry] pairs sorted by bed within `ward-block`.
+
+  ARC 3B SWEEP 2: a ward with no occupant but a dirty or cleaning bed
+  still earns a block, so `sim-emit-hl7/beds-key`'s own wards are unioned
+  in with an empty entry list. The namespaced key itself is never a
+  group -- it is filtered out by `occupied?`, which reads a `:location`
+  it does not have."
   [acc]
-  (->> acc
-       (filter (fn [[_ entry]] (occupied? entry)))
-       (group-by (fn [[_ entry]] (:ward (:location entry))))
-       (into (sorted-map))))
+  (let [occupied (->> acc
+                      (filter (fn [[_ entry]] (occupied? entry)))
+                      (group-by (fn [[_ entry]] (:ward (:location entry)))))
+        cycle-wards (into #{} (comp (map val)
+                                    (filter #(not= :ready (:status %)))
+                                    (map :ward)
+                                    (filter some?))
+                          (get acc sim-emit-hl7/beds-key))]
+    (into (sorted-map)
+          (merge (into {} (for [w cycle-wards] [w []])) occupied))))
 
 (defn- tally-line
   [acc]
@@ -97,8 +141,14 @@
   then a one-line tally (inpatients / active outpatients / discharged
   / merged -- tombstones are counted here, never listed as occupying a
   bed). Operator voice throughout -- no citation, milestone, or
-  internal-namespace token anywhere in the rendered text."
+  internal-namespace token anywhere in the rendered text.
+
+  ARC 3B SWEEP 2 (ADR-0174 ruling C): a ward's block now also lists its
+  DIRTY and CLEANING beds, below its occupants, fed by the A20 stream.
+  A `:ready` bed stays unlisted -- an available bed is the normal case,
+  and the two states a charge nurse is looking for are the ones that
+  are not."
   [acc instant-ms]
   (let [header (str "-- board snapshot: " (java.time.Instant/ofEpochMilli instant-ms) " --")
-        blocks (map (fn [[ward entries]] (ward-block ward entries)) (ward-groups acc))]
+        blocks (map (fn [[ward entries]] (ward-block acc ward entries)) (ward-groups acc))]
     (str/join "\n\n" (concat [header] blocks [(tally-line acc)]))))

@@ -10,7 +10,7 @@
 ;;
 ;; Re-freeze ONLY when bumping schema-version, with
 ;; `make event-schema-freeze`.
-{:event-schema-version "1.5.0",
+{:event-schema-version "1.6.0",
  :schema
  [:multi
   {:dispatch :event,
@@ -27,10 +27,16 @@
     [:t :int]
     [:participants
      [:vector
-      [:map
-       {:closed true}
-       [:patient-id :string]
-       [:role [:enum :subject :survivor :merged]]]]]
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
     [:warm-up :boolean]
     [:encounter-id {:optional true} :string]
     [:active-mrn :string]
@@ -122,10 +128,16 @@
     [:t :int]
     [:participants
      [:vector
-      [:map
-       {:closed true}
-       [:patient-id :string]
-       [:role [:enum :subject :survivor :merged]]]]]
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
     [:warm-up :boolean]
     [:encounter-id {:optional true} :string]
     [:active-mrn :string]
@@ -176,10 +188,16 @@
     [:t :int]
     [:participants
      [:vector
-      [:map
-       {:closed true}
-       [:patient-id :string]
-       [:role [:enum :subject :survivor :merged]]]]]
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
     [:warm-up :boolean]
     [:encounter-id {:optional true} :string]
     [:active-mrn :string]
@@ -211,10 +229,16 @@
     [:t :int]
     [:participants
      [:vector
-      [:map
-       {:closed true}
-       [:patient-id :string]
-       [:role [:enum :subject :survivor :merged]]]]]
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
     [:warm-up :boolean]
     [:encounter-id {:optional true} :string]
     [:active-mrn :string]
@@ -246,10 +270,16 @@
     [:t :int]
     [:participants
      [:vector
-      [:map
-       {:closed true}
-       [:patient-id :string]
-       [:role [:enum :subject :survivor :merged]]]]]
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
     [:warm-up :boolean]
     [:encounter-id {:optional true} :string]
     [:active-mrn :string]
@@ -265,10 +295,16 @@
     [:t :int]
     [:participants
      [:vector
-      [:map
-       {:closed true}
-       [:patient-id :string]
-       [:role [:enum :subject :survivor :merged]]]]]
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
     [:warm-up :boolean]
     [:encounter-id {:optional true} :string]
     [:active-mrn :string]
@@ -293,10 +329,16 @@
     [:t :int]
     [:participants
      [:vector
-      [:map
-       {:closed true}
-       [:patient-id :string]
-       [:role [:enum :subject :survivor :merged]]]]]
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
     [:warm-up :boolean]
     [:encounter-id {:optional true} :string]
     [:active-mrn :string]
@@ -321,10 +363,16 @@
     [:t :int]
     [:participants
      [:vector
-      [:map
-       {:closed true}
-       [:patient-id :string]
-       [:role [:enum :subject :survivor :merged]]]]]
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
     [:warm-up :boolean]
     [:encounter-id {:optional true} :string]
     [:swap
@@ -347,6 +395,34 @@
          [:placement [:enum :licensed :surge]]]]
        [:attending :string]
        [:encounter-id {:optional true} :string]]]]]]
+  [:bed-status-change
+   [:map
+    {:doc
+     "A bed changes housekeeping status: vacated to :dirty, then :cleaning, then :ready (HL7v2 A20).",
+     :transition
+     "Changes no patient's state at all; the bed's own status moves :from -> :to.",
+     :closed true}
+    [:event [:= :bed-status-change]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
+    [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
+    [:bed :string]
+    [:ward :string]
+    [:from [:enum :ready :occupied :dirty :cleaning]]
+    [:to [:enum :ready :occupied :dirty :cleaning]]
+    [:last-patient-id {:optional true} :string]]]
   [:merge
    [:map
     {:doc
@@ -358,10 +434,16 @@
     [:t :int]
     [:participants
      [:vector
-      [:map
-       {:closed true}
-       [:patient-id :string]
-       [:role [:enum :subject :survivor :merged]]]]]
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
     [:warm-up :boolean]
     [:encounter-id {:optional true} :string]
     [:surviving-mrn :string]
@@ -378,10 +460,16 @@
     [:t :int]
     [:participants
      [:vector
-      [:map
-       {:closed true}
-       [:patient-id :string]
-       [:role [:enum :subject :survivor :merged]]]]]
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
     [:warm-up :boolean]
     [:encounter-id {:optional true} :string]
     [:active-mrn :string]
@@ -408,10 +496,16 @@
     [:t :int]
     [:participants
      [:vector
-      [:map
-       {:closed true}
-       [:patient-id :string]
-       [:role [:enum :subject :survivor :merged]]]]]
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
     [:warm-up :boolean]
     [:encounter-id {:optional true} :string]
     [:active-mrn :string]
@@ -454,10 +548,16 @@
     [:t :int]
     [:participants
      [:vector
-      [:map
-       {:closed true}
-       [:patient-id :string]
-       [:role [:enum :subject :survivor :merged]]]]]
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
     [:warm-up :boolean]
     [:encounter-id {:optional true} :string]
     [:active-mrn :string]
@@ -499,10 +599,16 @@
     [:t :int]
     [:participants
      [:vector
-      [:map
-       {:closed true}
-       [:patient-id :string]
-       [:role [:enum :subject :survivor :merged]]]]]
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
     [:warm-up :boolean]
     [:encounter-id {:optional true} :string]
     [:active-mrn :string]
@@ -520,10 +626,16 @@
     [:t :int]
     [:participants
      [:vector
-      [:map
-       {:closed true}
-       [:patient-id :string]
-       [:role [:enum :subject :survivor :merged]]]]]
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
     [:warm-up :boolean]
     [:encounter-id {:optional true} :string]
     [:active-mrn :string]
@@ -547,10 +659,16 @@
     [:t :int]
     [:participants
      [:vector
-      [:map
-       {:closed true}
-       [:patient-id :string]
-       [:role [:enum :subject :survivor :merged]]]]]
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
     [:warm-up :boolean]
     [:encounter-id {:optional true} :string]
     [:active-mrn :string]
@@ -586,10 +704,16 @@
     [:t :int]
     [:participants
      [:vector
-      [:map
-       {:closed true}
-       [:patient-id :string]
-       [:role [:enum :subject :survivor :merged]]]]]
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
     [:warm-up :boolean]
     [:encounter-id {:optional true} :string]
     [:active-mrn :string]
@@ -635,10 +759,16 @@
     [:t :int]
     [:participants
      [:vector
-      [:map
-       {:closed true}
-       [:patient-id :string]
-       [:role [:enum :subject :survivor :merged]]]]]
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
     [:warm-up :boolean]
     [:encounter-id {:optional true} :string]
     [:active-mrn :string]
@@ -661,10 +791,16 @@
     [:t :int]
     [:participants
      [:vector
-      [:map
-       {:closed true}
-       [:patient-id :string]
-       [:role [:enum :subject :survivor :merged]]]]]
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
     [:warm-up :boolean]
     [:encounter-id {:optional true} :string]
     [:active-mrn :string]
@@ -685,10 +821,16 @@
     [:t :int]
     [:participants
      [:vector
-      [:map
-       {:closed true}
-       [:patient-id :string]
-       [:role [:enum :subject :survivor :merged]]]]]
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
     [:warm-up :boolean]
     [:encounter-id {:optional true} :string]
     [:active-mrn :string]
@@ -718,10 +860,16 @@
     [:t :int]
     [:participants
      [:vector
-      [:map
-       {:closed true}
-       [:patient-id :string]
-       [:role [:enum :subject :survivor :merged]]]]]
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
     [:warm-up :boolean]
     [:encounter-id {:optional true} :string]
     [:active-mrn :string]
@@ -741,10 +889,16 @@
     [:t :int]
     [:participants
      [:vector
-      [:map
-       {:closed true}
-       [:patient-id :string]
-       [:role [:enum :subject :survivor :merged]]]]]
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
     [:warm-up :boolean]
     [:encounter-id {:optional true} :string]
     [:reason
@@ -768,10 +922,16 @@
     [:t :int]
     [:participants
      [:vector
-      [:map
-       {:closed true}
-       [:patient-id :string]
-       [:role [:enum :subject :survivor :merged]]]]]
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
     [:warm-up :boolean]
     [:encounter-id {:optional true} :string]
     [:active-mrn :string]
@@ -903,10 +1063,16 @@
     [:t :int]
     [:participants
      [:vector
-      [:map
-       {:closed true}
-       [:patient-id :string]
-       [:role [:enum :subject :survivor :merged]]]]]
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
     [:warm-up :boolean]
     [:encounter-id {:optional true} :string]
     [:active-mrn :string]

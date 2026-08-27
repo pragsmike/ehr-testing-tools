@@ -32,6 +32,11 @@
   ([ground-truth reference-date utc-offset facility providers site-profile]
    (emit-hl7/emit ground-truth reference-date utc-offset facility providers site-profile)))
 
+(def beds-key
+  "The A20 stream's own key inside a `fold-message` accumulator (arc 3b
+  sweep 2). See ehrt.sim-emit-hl7.v2-replay/beds-key."
+  v2-replay/beds-key)
+
 (defn fold-message
   "acc x message -> acc'. See ehrt.sim-emit-hl7.v2-replay/fold-message."
   [acc message]

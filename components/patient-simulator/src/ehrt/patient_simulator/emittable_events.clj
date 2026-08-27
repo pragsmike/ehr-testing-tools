@@ -131,7 +131,7 @@
    :care-plan-end     {:trajectory-event :care-plan-end     :ground-truth #{:care-plan-end}}
    ;; Death -> `death->step`, which is a :discharge step carrying
    ;; `:disposition :expired` (ADR-0028 C4). There is no `:death`
-   ;; ground-truth event kind at all -- the log's own 23-kind closed
+   ;; ground-truth event kind at all -- the log's own 24-kind closed
    ;; vocabulary (`ehrt.sim-engine.event-schema/Event`) has none.
    :death             {:trajectory-event :death            :ground-truth #{:discharge}}})
 

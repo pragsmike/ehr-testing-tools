@@ -316,6 +316,26 @@
                :facility crowded-facility
                :persons (assoc identification-pool :events identification-events)}))
 
+(defn bed-cycle-run
+  "Arc 3b sweep 2 (ADR-0174 section 2(c)): the BED CYCLE, and the only
+  fleet member that opts into `:bed-cycle`. `crowded-facility`'s two
+  wards declare no `:turnaround-minutes`, so this fixture also exercises
+  the per-class fallback (`sim-model/turnaround-minutes`) rather than
+  only the explicit path.
+
+  APPENDED AT THE END of `fleet` on purpose: `examples` takes the FIRST
+  event of each kind in fleet order, so every kind that already had an
+  example keeps the one it had, and `:bed-status-change` -- which no
+  other member can produce -- gets its own from here."
+  []
+  (engine/run {:seed 13 :patients 3 :arrival-gap 0
+               :facility crowded-facility
+               :bed-cycle true
+               :pathway {:name "admit-discharge"
+                         :steps [{:type :admission :location "Renal"}
+                                 {:type :delay :from 60 :to 60}
+                                 {:type :discharge}]}}))
+
 (defn fleet
   []
   [["clinical" (clinical-run)]
@@ -323,7 +343,8 @@
    ["churn" (churn-run)]
    ["death" (death-run)]
    ["person" (person-run)]
-   ["identification" (identification-run)]])
+   ["identification" (identification-run)]
+   ["bed-cycle" (bed-cycle-run)]])
 
 ;; --- examples for docs/formats.md -----------------------------------------
 

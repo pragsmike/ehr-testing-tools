@@ -23,7 +23,50 @@
    [:beds :int]
    [:surge-slots :int]
    [:surge-format :string]
-   [:class [:enum :inpatient :ed]]])
+   [:class [:enum :inpatient :ed]]
+   ;; ARC 3B SWEEP 2 (ADR-0174 section 2(c), ruling D1): the bed
+   ;; TURNAROUND range, in MINUTES, `[lo hi]` inclusive. Housekeeping is
+   ;; a property of the WARD, not of the discharge that dirtied the bed
+   ;; -- an ED bay and an inpatient room do not turn around at the same
+   ;; rate, which is why ruling D1 put this here and drew it on the
+   ;; `:facility` stream rather than on `:world`.
+   ;;
+   ;; ONE key, TWO draws: the cycle has two legs (`:dirty` -> `:cleaning`
+   ;; and `:cleaning` -> `:ready`) and each draws INDEPENDENTLY from this
+   ;; same range, so a ward's whole turnaround runs `[2*lo, 2*hi]`. Two
+   ;; keys would have made a config author state a decomposition of
+   ;; housekeeping that no site actually reports separately.
+   ;;
+   ;; `{:optional true}` on purpose, and it is NOT the bed cycle's
+   ;; opt-in: `:bed-cycle` on the RUN CONFIG is (ehrt.sim-engine.engine's
+   ;; own `config-keys`). This key is what a ward's cycle is TUNED by
+   ;; once that opt-in is taken, and absent it falls back to
+   ;; `default-turnaround-minutes` below -- so a facility config written
+   ;; before this sweep keeps validating unchanged, which is the same
+   ;; law the run-config opt-in follows.
+   [:turnaround-minutes {:optional true} [:tuple :int :int]]])
+
+(def default-turnaround-minutes
+  "The fallback `:turnaround-minutes` for a ward that declares none, by
+  ward CLASS (arc 3b sweep 2, ADR-0174 ruling D1). Per LEG, so the whole
+  turnaround is twice each range.
+
+  An ED bay is wiped down between patients in minutes; an inpatient room
+  is a terminal clean, and the difference is the reason ruling D1
+  rejected one global distribution (`D2`). These two numbers are this
+  repository's own shipped default and nothing more -- a site with real
+  housekeeping data states its own per ward."
+  {:ed [5 15]
+   :inpatient [15 30]})
+
+(defn turnaround-minutes
+  "`ward`'s own `:turnaround-minutes`, or its class's default. The ONE
+  reading of that key: `ehrt.sim-engine.engine`'s cycle draws through
+  this and never through `get` directly, so a ward declaring none and a
+  ward declaring the default are the same run."
+  [ward]
+  (or (:turnaround-minutes ward)
+      (get default-turnaround-minutes (:class ward))))
 
 (def Facility
   [:map
@@ -38,12 +81,17 @@
   inpatient wards, enough to exercise transfers and surge without
   asking a config author to model a whole hospital first."
   {:id :general-hospital
+   ;; ARC 3B SWEEP 2 (ADR-0174 ruling D1): every shipped ward states its
+   ;; own `:turnaround-minutes` rather than leaning on the class fallback
+   ;; -- the values here ARE `default-turnaround-minutes`, written out so
+   ;; a reader of this default facility can see the bed cycle's pacing on
+   ;; the same page as its bed counts.
    :wards [{:id :ed :name "Emergency" :beds 0 :surge-slots 6
-            :surge-format "%s-H%02d" :class :ed}
+            :surge-format "%s-H%02d" :class :ed :turnaround-minutes [5 15]}
            {:id :renal :name "Renal" :beds 4 :surge-slots 2
-            :surge-format "%s-H%02d" :class :inpatient}
+            :surge-format "%s-H%02d" :class :inpatient :turnaround-minutes [15 30]}
            {:id :cardiology :name "Cardiology" :beds 4 :surge-slots 2
-            :surge-format "%s-H%02d" :class :inpatient}]})
+            :surge-format "%s-H%02d" :class :inpatient :turnaround-minutes [15 30]}]})
 
 ;; --- Providers ---------------------------------------------------------
 

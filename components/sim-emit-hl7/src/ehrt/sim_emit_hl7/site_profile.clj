@@ -83,7 +83,9 @@
 (def CodeTables
   [:map
    [:patient-class {:optional true} CodeTable]
-   [:discharge-disposition {:optional true} CodeTable]])
+   [:discharge-disposition {:optional true} CodeTable]
+   ;; ARC 3B SWEEP 2 (ADR-0174 ruling C's A20): NPU-2's own table.
+   [:bed-status {:optional true} CodeTable]])
 
 (def standard-patient-class-codes
   "HL7v2 Table 0004 (patient class), today's hard-coded value. This
@@ -103,6 +105,25 @@
   milestone) -- every discharge today is the one standard case, \"01\"
   (discharged to home/self care)."
   {:discharged-to-home {:code "01"}})
+
+(def standard-bed-status-codes
+  "HL7v2 Table 0116 (bed status), NPU-2's own table -- arc 3b sweep 2
+  (ADR-0174 ruling C, ADT^A20).
+
+  THE MAPPING IS THIS REPOSITORY'S OWN READING of that table onto the
+  engine's four bed states, and it is stated here so a site that reads
+  it differently can override rather than fork:
+
+    :occupied  -> \"O\"  Occupied
+    :ready     -> \"U\"  Unoccupied -- the bed is turned and available
+    :dirty     -> \"K\"  Contaminated -- vacated, not yet cleaned
+    :cleaning  -> \"H\"  Housekeeping -- being cleaned right now
+
+  `K` and `H` are the pair a reader is most likely to want moved: some
+  sites report the whole vacated-to-available window as `H` and never
+  distinguish the two legs. That site sets one override; it does not
+  need a different cycle."
+  {:occupied {:code "O"} :ready {:code "U"} :dirty {:code "K"} :cleaning {:code "H"}})
 
 (defn code-for
   "Renders `state-value` (a keyword) as the ER7 field's component vector

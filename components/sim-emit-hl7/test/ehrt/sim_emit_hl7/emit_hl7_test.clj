@@ -175,6 +175,42 @@
   (let [segment (nth (message/get-segments parsed segment-id) n)]
     (parser/pr-field (:delimiters parsed) (message/get-segment-field-raw segment field-index))))
 
+(deftest message-type-registry-has-the-bed-cycles-a20
+  (testing "arc 3b sweep 2 (ADR-0174 ruling C): the message family's own
+            first cost -- a registry entry, co-landed with the kind"
+    (is (= {:type "ADT" :trigger "A20"} (emit-hl7/message-type-registry :bed-status-change)))))
+
+(deftest a20-control-ids-are-derivable-and-unique-per-bed-and-leg
+  (testing "the message family's own second and third costs: a
+            control-id derivation, and a derivability-property row. An
+            A20 has no PID to key on, so the derivability triple is
+            (bed, MSH-9, MSH-7) rather than (mrn, MSH-9, MSH-7) -- and
+            two legs of ONE bed's cycle must not collide even at the
+            same instant, which is why the status is in the key"
+    (let [{:keys [ground-truth facility providers]}
+          (engine/run {:seed 4242 :patients 6 :arrival-gap 60 :bed-cycle true
+                       :pathway {:name "ad" :steps [{:type :admission :location "Renal"}
+                                                    {:type :delay :from 30 :to 30}
+                                                    {:type :discharge}]}})
+          bed-events (filterv #(= :bed-status-change (:event %)) ground-truth)
+          messages (mapcat #(emit-hl7/event->messages ref-date utc-offset facility providers {} nil {} %)
+                           bed-events)
+          expected (mapv (fn [ev] [(:bed ev) "ADT^A20"
+                                   (emit-hl7/hl7-timestamp ref-date (:t ev) utc-offset)])
+                         bed-events)
+          actual (mapv (fn [m]
+                         (let [p (parser/parse m)]
+                           [(nth (message/get-segment-field (first (message/get-segments p "NPU")) 1) 2)
+                            (message/get-field-first-value p "MSH" 9)
+                            (message/get-field-first-value p "MSH" 7)]))
+                       messages)
+          control-ids (mapv #(emit-hl7/control-id-for %) bed-events)]
+      (is (pos? (count bed-events)) "the fixture actually produced bed events")
+      (is (= (count bed-events) (count messages)))
+      (is (= expected actual) "every message maps back to its own bed event")
+      (is (= (count control-ids) (count (distinct control-ids)))
+          "and every control id is unique"))))
+
 (deftest message-type-registry-has-the-churn-family
   (is (= {:type "ADT" :trigger "A11"} (emit-hl7/message-type-registry :cancel-admit)))
   (is (= {:type "ADT" :trigger "A12"} (emit-hl7/message-type-registry :cancel-transfer)))

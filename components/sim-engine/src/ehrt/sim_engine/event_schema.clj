@@ -231,8 +231,52 @@
   validates; required there so a live run cannot quietly stop stamping.
 
   MADE UNDER THE WAIVER, disclosed: no deprecation release was run, and
-  none is owed in any case, since nothing was removed."
-  "1.5.0")
+  none is owed in any case, since nothing was removed.
+
+  1.6.0 (2026-08-27, ADR-0174 section 2(c), arc 3b sweep 2) is the BED
+  CYCLE: one new kind, `:bed-status-change`, and one widened
+  `Participant` -- which is now `[:or PatientParticipant
+  BedParticipant]`, because the new kind's subject is a BED and beds
+  have no patient-id.
+
+  THIS BUMP IS OWED, and by twenty-three reasons rather than one.
+  `classify-change` against the frozen 1.5.0 baseline returns
+  `:additive? false` with exactly one entry per EXISTING kind:
+
+    :admission: key changed: :participants (value schema changed)
+    ... twenty-two more, one per kind, all identical in shape ...
+
+  Read it precisely. The NEW KIND is additive and is correctly not in
+  that list -- a new event kind is one of the two shapes
+  `classify-change`'s own docstring names as non-breaking. What is
+  reported is `:participants`, on every kind that already existed,
+  because its value schema `[:vector Participant]` changed one level
+  down -- the same conservatism that produced 1.5.0's single
+  `:bed-swap` reason, applied here to twenty-three kinds at once. It is
+  taken at its word rather than argued around.
+
+  A 1.5.0-ERA LOG VALIDATES UNCHANGED AGAINST 1.6.0. Every participant
+  such a log carries is a `PatientParticipant`, and
+  `[:or PatientParticipant BedParticipant]` accepts every one of them
+  through its first branch, unchanged. The widening is strictly a
+  widening.
+
+  AND THE BREAKING DIRECTION IS REAL AND IS NOT PAPERED OVER, which is
+  the one thing separating this bump from 1.5.0's. A consumer written
+  against 1.5.0 may reasonably have assumed `:patient-id` is present on
+  EVERY participant of EVERY event -- the schema said so -- and a 1.6.0
+  log carrying a `:bed-status-change` breaks that assumption on real
+  data, not merely in the schema. The obligation is one line:
+  PARTITION A LOG BY PARTICIPANTS THAT CARRY A `:patient-id`. This
+  repository's own `ehrt.sim-check.check` took exactly that line, in
+  three places, in the same change.
+
+  MADE UNDER THE WAIVER, disclosed: no deprecation release was run.
+  Nothing was removed, so the deprecation clause has nothing to
+  protect here in any case -- but the participant widening is the
+  first change under the waiver that a consumer could actually notice
+  on the wire, and saying so is what the waiver's trail is for."
+  "1.6.0")
 
 ;; --- shared leaf schemas --------------------------------------------------
 ;;
@@ -240,7 +284,7 @@
 ;; `m/form` in the EDN export (no registry), so the export stays
 ;; self-contained for a non-Clojure reader.
 
-(def Participant
+(def PatientParticipant
   "One patient's participation in an event (`sim/ADR-0010`): a
   patient's state folds exactly the events they participate in, so
   this vector -- never `:active-mrn` -- is what a consumer partitions
@@ -250,6 +294,39 @@
   [:map {:closed true}
    [:patient-id :string]
    [:role [:enum :subject :survivor :merged]]])
+
+(def BedParticipant
+  "A BED's participation in an event (1.6.0, arc 3b sweep 2, ADR-0174
+  section 2(c)). `:bed-status-change` is the first and so far only kind
+  whose subject is not a patient -- housekeeping turning a room over
+  belongs to nobody -- and this is the minimal widening that lets such
+  an event exist at all.
+
+  WHY IT HAD TO EXIST. `every-event-has-participants` requires a
+  non-empty `:participants`, and a cycle that lived only in the engine's
+  world would be a cycle no invariant could judge, which
+  `R-skeleton-or-emission` forbids for anything downstream invariants
+  must respect. ADR-0173 met the same wall for PERSON events and went
+  the other way -- they never became log events at all. Arc 3b could not
+  take that exit, so the vocabulary widened here, in ONE place.
+
+  A CONSUMER'S OWN OBLIGATION, stated plainly because this is the
+  breaking half of 1.6.0: `:patient-id` is no longer present on every
+  participant of every event. Partition a log by participants that CARRY
+  one."
+  [:map {:closed true}
+   [:bed-id :string]
+   [:ward :string]
+   [:role [:enum :subject]]])
+
+(def Participant
+  "One participant in an event: a patient (`PatientParticipant`) or, as
+  of 1.6.0, a bed (`BedParticipant`).
+
+  `[:or ..]` rather than a `[:multi]`: the export is read by non-Clojure
+  consumers and `m/form` renders a dispatch function as an opaque
+  object, while an `:or` of two closed maps renders as data."
+  [:or PatientParticipant BedParticipant])
 
 (def Location
   "A physical placement: ward, bed, and which rung of the allocation
@@ -430,10 +507,11 @@
         entries))
 
 (def Event
-  "One ground-truth event. Dispatches on `:event`; the 23 kinds below
+  "One ground-truth event. Dispatches on `:event`; the 24 kinds below
   are the CLOSED vocabulary. Twenty-one are the census's own, source
   and corpora agreed; two more landed with the demographic fold
-  (1.3.0, ADR-0173) and are declared here beside their producers.
+  (1.3.0, ADR-0173) and one with the bed cycle (1.6.0, ADR-0174), each
+  declared here beside its producer.
 
   `:t` monotonicity is deliberately NOT expressed here. It is a
   RUN-level property -- true within a run, meaningless across a
@@ -595,6 +673,27 @@
             :transition "Both stay :admitted; each takes the other's :location."}
            ;; No :active-mrn: two subjects, two MRNs, both inside :swap.
            [:swap [:map-of :string BedSwapSide]])]
+
+    ;; 1.6.0 (arc 3b sweep 2, ADR-0174 section 2(c)): ONE kind for the
+    ;; whole bed cycle, many causes -- the same choice 1.3.0 made for
+    ;; `:demographic-update` rather than minting a kind per transition.
+    ;; Three kinds would each need an `evolve`, a schema branch, an
+    ;; oracle mover-set prediction and a place in this closed vocabulary.
+    [:bed-status-change
+     (kind :bed-status-change
+           {:doc "A bed changes housekeeping status: vacated to :dirty, then :cleaning, then :ready (HL7v2 A20)."
+            :transition "Changes no patient's state at all; the bed's own status moves :from -> :to."}
+           ;; No :active-mrn and no patient participant: this event's
+           ;; subject is the BED (`BedParticipant`).
+           [:bed :string]
+           [:ward :string]
+           [:from [:enum :ready :occupied :dirty :cleaning]]
+           [:to [:enum :ready :occupied :dirty :cleaning]]
+           ;; Who LEFT the bed -- carried on the `:dirty` transition
+           ;; alone, because the two later legs are housekeeping's and
+           ;; belong to nobody. It is a plain id, never a participant:
+           ;; the patient's own state folds nothing from this event.
+           [:last-patient-id {:optional true} :string])]
 
     [:merge
      (kind :merge

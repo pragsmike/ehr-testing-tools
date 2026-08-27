@@ -235,6 +235,28 @@ alternative relief policy would eventually be configured, the same
 "policy, not law" treatment `docs/operational-models.md` already gives
 the no-census-floor non-invariant for surge use.
 
+**And WHEN the relief happens moved, arc 3b sweep 2**
+(`notes/adr/0174-*.md` section 2(c)). Behind the run-config opt-in
+`:bed-cycle`, a discharge no longer hands the bed over in the second it
+is vacated. The bed goes `:dirty`, is `:cleaning` after d1, `:ready`
+after d1+d2, and the bed-ready transfer is decided **at the `:ready`
+instant** — against the board as it stands then, which is what makes
+the relief decision reflect a world that has had time to change. The
+FIFO-by-`:admitted-at` default above is unchanged; only the instant it
+is applied at moved. With `:bed-cycle` absent, every word above holds
+exactly as written.
+
+**A bed's status is world-level state, and it is the one thing arc 3b
+keeps that the log cannot re-derive from `patients`.** That asymmetry
+is deliberate: `:occupied` *is* derivable (a bed is occupied iff some
+patient's `:location` names it — `occupancy-board`'s own consistency
+law, unchanged), while `:dirty`, `:cleaning` and `:ready` have no
+patient to be derived from at all. The cycle is nevertheless emitted as
+ground truth (`:bed-status-change`), because a cycle nothing can judge
+is not a skeleton — and that is what widened `:participants` to admit a
+**bed** subject alongside a patient one. Every patient-keyed reader
+therefore filters participants on `:patient-id` being present.
+
 (Pre-M1 staging note, kept for history: the session that first landed
 `evolve`/`decide` — sim/ADR-0008 — shipped `PatientState` with every field
 above present except `:location`, which stayed in its v0 bare-string

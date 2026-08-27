@@ -43,12 +43,19 @@
   event with multiple participants (M2b) appears in every participant's
   own sequence; today's event types are all single-participant, so this
   is presently equivalent to grouping by the sole participant, but is
-  written the general way so M2b needs no rewrite here."
+  written the general way so M2b needs no rewrite here.
+
+  ARC 3B SWEEP 2 (ADR-0174 section 2(c)): FILTER 1 OF 3. A
+  `:bed-status-change`'s participant names a BED, not a patient, so
+  `:patient-id` is absent from it -- and an unfiltered `update` here
+  would open a nil-keyed bucket holding every bed event in the run,
+  which every row below would then judge as if it were somebody's
+  clinical log."
   [ground-truth]
   (reduce (fn [acc event]
             (reduce (fn [acc2 {:keys [patient-id]}]
                       (update acc2 patient-id (fnil conj []) event))
-                    acc (:participants event)))
+                    acc (filter :patient-id (:participants event))))
           {} ground-truth))
 
 ;; --- ADR-0174 section 2(a) (arc 3b sweep 1): the encounter, judged -----
@@ -143,7 +150,18 @@
   can legitimately never get at all if their own disease process never
   produces an operational encounter inside this run's own configured
   horizon window. Catches a churn-injection or decide bug that names a
-  stray or mistyped patient-id."
+  stray or mistyped patient-id.
+
+  ARC 3B SWEEP 2 (ADR-0174 section 2(c)): FILTER 2 OF 3, and this is the
+  one the ADR names by hand. Scoped to participants that CARRY a
+  `:patient-id`; the invariant keeps asserting exactly what it asserts
+  today about every patient participant, and a bed participant -- which
+  has no id to trace -- is simply not one of them. Without the filter a
+  `{:bed-id .. :ward ..}` map yields `patient-id` nil, `(contains?
+  admitted-ids nil)` is false, and every bed event in the run goes RED:
+  the exact wall ADR-0174 predicted and the reason the participant
+  vocabulary widened in one place instead of a second event stream
+  being invented."
   [ground-truth]
   (let [admitted-ids (into #{}
                            (comp (filter #(= :registered (:event %)))
@@ -151,7 +169,7 @@
                                  (map :patient-id))
                            ground-truth)]
     (for [event ground-truth
-          {:keys [patient-id]} (:participants event)
+          {:keys [patient-id]} (filter :patient-id (:participants event))
           :when (not (contains? admitted-ids patient-id))]
       {:invariant :participant-ids-exist-in-run :patient-id patient-id :at (:t event)})))
 
@@ -339,9 +357,14 @@
 (defn- participants-of
   "The distinct patient-ids this event names -- the exact set of
   patients whose state `replay` changed at this record, and therefore
-  the only entries any index below has to touch."
+  the only entries any index below has to touch.
+
+  ARC 3B SWEEP 2 (ADR-0174 section 2(c)): FILTER 3 OF 3, and the count
+  stops at three. `engine/replay` filters the same way at source, so a
+  bed participant changes no patient's state and there is nothing here
+  for the six fold-carried invariants to reindex."
   [event]
-  (distinct (map :patient-id (:participants event))))
+  (distinct (map :patient-id (filter :patient-id (:participants event)))))
 
 (defn- reindex-set
   "`index` with `pid` removed from its `old-key` bucket and added to its
@@ -487,6 +510,242 @@
         :when (and (= :discharge (:event event)) (= :expired (:disposition event)) (nil? (:location after)))]
     {:invariant :expired-patient-retains-location :patient-id patient-id :at (:t event)}))
 
+
+;; --- ARC 3B SWEEP 2 (ADR-0174 section 2(c)): the BED-STATUS CYCLE, judged
+;;
+;; A cycle that lived only in `world` would be a cycle nothing can
+;; judge, and `R-skeleton-or-emission` classifies it skeleton precisely
+;; because downstream invariants must respect it -- skeleton means
+;; generated AND judged. So the three rows below read the LOG, like
+;; every other function in this namespace.
+;;
+;; THE FOLD BELOW IS DELIBERATELY NOT `ehrt.sim-engine.engine`'s OWN
+;; `update-beds`, though it computes the same thing. This namespace is
+;; the independent judge; calling the engine's own index-builder here
+;; would prove only that the engine agrees with itself, which is the
+;; vacuous-gate shape this repository has already been bitten by twice.
+;; `engine/replay` is reused -- it is the state fold, not the bed
+;; arithmetic -- and the bed arithmetic is written out here.
+
+(def ^:private bed-allocating-event-types
+  "The event kinds that ALLOCATE a bed: exactly the kinds the four
+  `sim-model/allocate` call sites produce. `:admission`, and `:transfer`
+  in all three of its flavours -- an ordinary pathway transfer, the
+  bed-ready one, and the one `:transfer-in-error` emits before
+  cancelling it.
+
+  `:bed-swap` IS NOT HERE, AND MUST NOT BE. `decide :bed-swap` picks a
+  peer who is already `:admitted` with a `:location` and exchanges the
+  two locations; it never calls `allocate` at all, and BOTH target beds
+  are OCCUPIED by construction. An unqualified \"assignment\" reading of
+  the row below would therefore go red on every swap in every corpus --
+  ADR-0174 section 2(c)'s own words, kept here because this set is where
+  a future writer would add it."
+  #{:admission :transfer})
+
+(def ^:private legal-bed-transitions
+  "The bed-status transition relation, enumerated so a new writer cannot
+  invent a seventh (ADR-0174 section 2(c), invariant 3).
+
+  The cycle itself:      ready -> occupied -> dirty -> cleaning -> ready
+  The reinstatement arc: dirty -> occupied
+  The correction arc:    occupied -> ready
+
+  THE CORRECTION ARC IS A SIXTH THE ADR DOES NOT NAME, and it is
+  disclosed rather than quietly added. ADR-0174 enumerated the cycle's
+  four legs plus the cancel classes that RE-OCCUPY a bed
+  (`:cancel-discharge`, and `:cancel-transfer` restoring a prior
+  location); it did not reach the two that VACATE one. A
+  `:cancel-admit`, and a `:cancel-transfer`'s own erroneously-taken bed,
+  both leave a bed with nobody in it and no dirt to clean -- the
+  occupancy they retract did not happen. Without this arc that bed would
+  stay `:occupied` for the rest of the run and its ward would silently
+  lose capacity, which no reading of section 2(c) intends. The reason
+  lives in `ehrt.sim-engine.engine`'s own `bed-correction-event-types`
+  and is repeated here because this is where a reader checks the
+  relation.
+
+  A same-status \"transition\" is not in the relation and is never
+  emitted: the fold below records a transition only when the status
+  actually moves."
+  #{[:ready :occupied]
+    [:occupied :dirty]
+    [:dirty :cleaning]
+    [:cleaning :ready]
+    [:dirty :occupied]
+    [:occupied :ready]})
+
+(def ^:private bed-correction-event-types
+  "The two kinds whose vacate returns a bed straight to `:ready` --
+  `ehrt.sim-engine.engine`'s own set, restated here because this
+  namespace reconstructs the index independently and may not read the
+  engine's."
+  #{:cancel-admit :cancel-transfer})
+
+(defn- bed-cycle-log?
+  "Whether this log carries a bed cycle at all.
+
+  THE THREE ROWS BELOW ARE VACUOUS ON A LOG THAT DOES NOT, and that is
+  stated rather than left to be discovered. A run without `:bed-cycle`
+  emits no `:bed-status-change`, so a bed it vacates never returns to
+  `:ready` in any log-derived reading -- and judging such a log against
+  the relation above would report every second occupant of every bed as
+  a violation. The gate is the same shape sweep 1's own
+  `carried-encounter-is-not-the-open-one?` uses for a legacy log: the
+  rule applies where the mechanism exists."
+  [ground-truth]
+  (boolean (some #(= :bed-status-change (:event %)) ground-truth)))
+
+(defn- bed-fold
+  "Every bed-status transition this LOG implies, in log order --
+  `{:bed :from :to :at :event :declared-from}`. Reconstructed here and
+  not read off the engine (see this section's own opening comment).
+
+  Two rules, the same two the cycle has:
+
+  * a `:bed-status-change` moves its own bed to its own `:to`;
+  * every other event moves beds by its participants' LOCATION delta --
+    a bed newly named goes `:occupied`, and a bed newly left goes
+    `:ready` only under `bed-correction-event-types`. A bed left by a
+    real vacate is untouched here, because that event's batch carries
+    the `:bed-status-change` that turns it `:dirty`.
+
+  Every bed starts `:ready` -- `initial-beds`' own posture, and the
+  reason invariant 2's \"except at run start\" clause needs no special
+  case: a bed born ready reaches `:ready` through no transition at all.
+
+  Returns `{:transitions [..] :before [..] :records [..]}` -- `:before`
+  is the bed index as it stood immediately BEFORE each record, parallel
+  to `engine/replay`'s own record seq, and `:records` is that seq
+  itself. Invariant 5 (`surge-only-when-earlier-rungs-exhausted`) needs
+  the index and not the transitions, because its question is about the
+  beds a placement PASSED OVER, which no transition names -- and it gets
+  the records back from here so that reading the index costs it no
+  SECOND `engine/replay` (`roadmap.md#performance-residual-sites` counts
+  those calls, and this sweep adds three, not four)."
+  [ground-truth]
+  (loop [records (engine/replay ground-truth)
+         all-records records beds {} acc (transient []) befores (transient [])]
+    (if (empty? records)
+      {:transitions (persistent! acc) :before (persistent! befores) :records all-records}
+      (let [{:keys [event world-before world-after]} (first records)
+            t (:t event)
+            ;; THE ENTRY IS A MAP, `{:status ..}`, and not a bare
+            ;; keyword. `sim-model/free` -- which invariant 5 hands this
+            ;; index to -- reads `(:status (get beds id))`, so a bare
+            ;; keyword makes EVERY bed read as not-ready and the whole
+            ;; row goes silent on a cycle log while looking clean. That
+            ;; is exactly what it did until the hand-built
+            ;; dirty-vs-ready case below caught it: the index shape is
+            ;; part of the contract with `free`, not a private detail of
+            ;; this fold.
+            step (fn [[bs found] bed to declared]
+                   (let [from (get-in bs [bed :status] :ready)]
+                     (if (= from to)
+                       [bs found]
+                       [(assoc bs bed {:status to})
+                        (conj found {:bed bed :from from :to to :at t
+                                     :event (:event event) :declared-from declared})])))
+            [beds' found]
+            (if (= :bed-status-change (:event event))
+              (step [beds []] (:bed event) (:to event) (:from event))
+              (reduce (fn [state pid]
+                        (let [before (get-in world-before [pid :location :bed])
+                              after (get-in world-after [pid :location :bed])
+                              state' (if (and after (not= after before))
+                                       (step state after :occupied nil)
+                                       state)]
+                          (if (and before (not= after before)
+                                   (bed-correction-event-types (:event event)))
+                            (step state' before :ready nil)
+                            state')))
+                      [beds []]
+                      (participants-of event)))]
+        (recur (rest records) all-records beds' (reduce conj! acc found) (conj! befores beds))))))
+
+(defn- bed-transitions
+  "`bed-fold`'s transition half -- the three rows below read only that."
+  [ground-truth]
+  (:transitions (bed-fold ground-truth)))
+
+(defn- log-derived-bed-fold
+  "`bed-fold`, or nil when this log carries no cycle. A nil `:before`
+  is what `sim-model/free` reads as \"no index\" and is therefore
+  exactly the pre-sweep predicate, which is what a legacy log must still
+  be judged by."
+  [ground-truth]
+  (when (bed-cycle-log? ground-truth)
+    (bed-fold ground-truth)))
+
+(defn no-assignment-to-a-non-ready-bed
+  "ADR-0174 section 2(c), invariant 1: every event that ALLOCATES a bed
+  targets a bed whose status immediately before was `:ready`.
+
+  This is `R-mix-6`'s whole point expressed as a judgement -- an
+  allocation into a bed housekeeping has not turned yet is precisely
+  what the cycle exists to make impossible, and `sim-model/free`'s
+  `:ready` gate is what the engine does about it.
+
+  `:bed-swap` is EXCLUDED, and `bed-allocating-event-types`' own
+  docstring carries the reason: a swap allocates nothing and both its
+  beds are occupied by construction.
+
+  VACUOUS on a log with no `:bed-status-change` -- see `bed-cycle-log?`."
+  [ground-truth]
+  (when (bed-cycle-log? ground-truth)
+    (for [{:keys [bed from to at event]} (bed-transitions ground-truth)
+          :when (and (= :occupied to)
+                     (bed-allocating-event-types event)
+                     (not= :ready from))]
+      {:invariant :no-assignment-to-a-non-ready-bed :bed bed :at at :status from})))
+
+(defn every-ready-follows-a-cleaning
+  "ADR-0174 section 2(c), invariant 2: a bed REACHING `:ready` was
+  `:cleaning` immediately before.
+
+  Two exemptions, both structural rather than granted:
+
+  * run start -- every bed is BORN `:ready` and reaches it through no
+    transition, so `bed-transitions` records nothing to judge;
+  * the correction arc -- a `:cancel-admit`'s bed returns to `:ready`
+    with no housekeeping because the occupancy it retracts did not
+    happen. Judged by `bed-cycle-transitions-are-legal` instead, which
+    is where that arc is enumerated.
+
+  VACUOUS on a log with no `:bed-status-change` -- see `bed-cycle-log?`."
+  [ground-truth]
+  (when (bed-cycle-log? ground-truth)
+    (for [{:keys [bed from to at event]} (bed-transitions ground-truth)
+          :when (and (= :ready to)
+                     (= :bed-status-change event)
+                     (not= :cleaning from))]
+      {:invariant :every-ready-follows-a-cleaning :bed bed :at at :status from})))
+
+(defn bed-cycle-transitions-are-legal
+  "ADR-0174 section 2(c), invariant 3: every bed-status transition is
+  one of the six in `legal-bed-transitions`, and a `:bed-status-change`
+  event's DECLARED `:from` is the status the log says the bed was
+  actually in.
+
+  The second clause is not in the ADR and is owed by it: `:from` is a
+  field the emitter renders (NPU-2's predecessor on the wire is nothing,
+  but a consumer of ground truth reads it), so an event that declares a
+  transition it did not make is a defect this row can see and no other
+  can.
+
+  VACUOUS on a log with no `:bed-status-change` -- see `bed-cycle-log?`."
+  [ground-truth]
+  (when (bed-cycle-log? ground-truth)
+    (let [transitions (bed-transitions ground-truth)]
+      (concat
+       (for [{:keys [bed from to at]} transitions
+             :when (not (legal-bed-transitions [from to]))]
+         {:invariant :bed-cycle-transitions-are-legal :bed bed :at at :from from :to to})
+       (for [{:keys [bed from at declared-from event]} transitions
+             :when (and (= :bed-status-change event) (not= declared-from from))]
+         {:invariant :bed-cycle-transitions-are-legal :bed bed :at at
+          :declared declared-from :actual from})))))
+
 (defn occupancy-within-capacity
   "Occupancy never exceeds a ward's declared capacity (licensed +
   surge slots).
@@ -522,33 +781,58 @@
   `board`, for a placement targeting `target-ward-name` on behalf of
   `home-ward-name`: rung 2 (home surge) requires only rung 1 (home
   licensed) exhausted; rung 4 (boarding, target is a DIFFERENT,
-  ED-class ward) requires rungs 1-3 all exhausted."
-  [facility-config board home-ward-name target-ward-name]
+  ED-class ward) requires rungs 1-3 all exhausted.
+
+  ARC 3B SWEEP 2 (ADR-0174 section 2(c), invariant 5): THIS ROW CHANGES
+  MEANING under the bed cycle and had to be re-read rather than
+  re-typed. \"Rung 1 was exhausted\" now means NO RUNG-1 BED WAS READY,
+  not \"no rung-1 bed was empty\" -- a bed whose last occupant left ten
+  minutes ago is empty and is not available, and a surge placement made
+  while it sits `:dirty` is legitimate, not a violation.
+
+  The three `(remove board ...)` calls therefore became three
+  `sim-model/free` calls, which is the SAME predicate `allocate`'s own
+  rungs ask -- ADR-0174 names this function specifically as one that
+  must not carry a second copy of the rule. With `beds` nil (a legacy
+  log, or any log with no `:bed-status-change` in it) `free` is
+  `(remove board ids)` verbatim and every pre-sweep judgement is
+  unchanged, byte for byte."
+  [facility-config board beds home-ward-name target-ward-name]
   (let [home-ward (sim-model/ward-by-name facility-config home-ward-name)
-        home-licensed-free? (boolean (seq (remove board (sim-model/licensed-bed-ids home-ward))))
-        home-surge-free? (boolean (seq (remove board (sim-model/surge-slot-ids home-ward))))]
+        home-licensed-free? (boolean (seq (sim-model/free (sim-model/licensed-bed-ids home-ward) board beds)))
+        home-surge-free? (boolean (seq (sim-model/free (sim-model/surge-slot-ids home-ward) board beds)))]
     (if (= home-ward-name target-ward-name)
       (not home-licensed-free?)
       (let [other-inpatient (remove #(= (:id %) (:id home-ward))
                                      (filter #(= :inpatient (:class %)) (:wards facility-config)))
             other-licensed-free? (boolean
-                                   (some #(seq (remove board (sim-model/licensed-bed-ids %))) other-inpatient))]
+                                   (some #(seq (sim-model/free (sim-model/licensed-bed-ids %) board beds))
+                                         other-inpatient))]
         (and (not home-licensed-free?) (not home-surge-free?) (not other-licensed-free?))))))
 
 (defn surge-only-when-earlier-rungs-exhausted
   "Surge placement (rung 2 or 4) only occurs when the earlier rungs are
   legitimately exhausted -- unless :forced true (docs/operational-
-  models.md's own exemption for the authoring escape hatch)."
+  models.md's own exemption for the authoring escape hatch).
+
+  ARC 3B SWEEP 2: the CLAIM is unchanged and the READING of \"exhausted\"
+  is not -- see `earlier-rungs-exhausted?` above. The bed index it now
+  consults is reconstructed from this log alone
+  (`log-derived-bed-index`), never read off the engine."
   [ground-truth facility-config]
-  (for [{:keys [event world-before patient-id]} (engine/replay ground-truth)
-        :when (and (#{:admission :transfer} (:event event))
-                   (= :surge (get-in event [:location :placement]))
-                   (not (:forced event))
-                   (not (earlier-rungs-exhausted? facility-config
-                                                  (sim-model/occupancy-board world-before)
-                                                  (:home-ward event)
-                                                  (get-in event [:location :ward]))))]
-    {:invariant :surge-only-when-earlier-rungs-exhausted :patient-id patient-id :at (:t event)}))
+  (let [folded (log-derived-bed-fold ground-truth)
+        beds-before (:before folded)
+        records (or (:records folded) (engine/replay ground-truth))]
+    (for [[idx {:keys [event world-before patient-id]}] (map-indexed vector records)
+          :when (and (#{:admission :transfer} (:event event))
+                     (= :surge (get-in event [:location :placement]))
+                     (not (:forced event))
+                     (not (earlier-rungs-exhausted? facility-config
+                                                    (sim-model/occupancy-board world-before)
+                                                    (when beds-before (nth beds-before idx))
+                                                    (:home-ward event)
+                                                    (get-in event [:location :ward]))))]
+      {:invariant :surge-only-when-earlier-rungs-exhausted :patient-id patient-id :at (:t event)})))
 
 ;; --- M2b: churn family (docs/patient-state-model.md's event-validity
 ;; table's cancel-*/bed-swap/merge rows; sim/ADR-0010's cross-participant
@@ -1191,7 +1475,14 @@
    #'every-placeholder-registration-is-resolved-or-still-open
    #'demographic-update-reports-a-real-change
    #'no-demographic-event-after-a-patient-expires
-   #'person-scoped-provenance-is-a-stamp-not-a-reference])
+   #'person-scoped-provenance-is-a-stamp-not-a-reference
+   ;; ARC 3B SWEEP 2 (ADR-0174 section 2(c)): the bed cycle's own three.
+   ;; All three are VACUOUS on a log with no `:bed-status-change` --
+   ;; `bed-cycle-log?`'s own docstring says why, and says it where a
+   ;; reader counting the catalog will look.
+   #'no-assignment-to-a-non-ready-bed
+   #'every-ready-follows-a-cleaning
+   #'bed-cycle-transitions-are-legal])
 
 (def facility-catalog
   "Invariants that need the facility config, not just the log (checked

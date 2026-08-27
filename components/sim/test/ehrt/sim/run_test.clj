@@ -79,7 +79,10 @@
    ;; nil-equals-nil pass. `run-command` forwards it untranslated -- it
    ;; is a bare opt-in flag, not a two-layer value like `:persons` or
    ;; `:modules`.
-   :encounters ::encounters-sentinel})
+   :encounters ::encounters-sentinel
+   ;; ARC 3B SWEEP 2 (ADR-0174 section 2(c)): `:bed-cycle`, same shape
+   ;; and same reason -- a bare opt-in flag forwarded untranslated.
+   :bed-cycle ::bed-cycle-sentinel})
 
 (deftest run-command-forwards-every-engine-config-key
   (testing "the FULL ehrt.sim-engine.engine/config-keys set reaches
@@ -843,10 +846,20 @@
                      "; the byte gate above carries the diagnostic."))))))))
 
 (def ^:private arc0-invariant-catalog
-  "The 36 invariant names `check-all` reports, in reporting order --
+  "The 39 invariant names `check-all` reports, in reporting order --
   pinned so the findings assertion below is a full-value `=` rather than
   a check of one key. Catalog drift is itself a change in what \"identical
   findings\" means, so it belongs inside the gate, not outside it.
+
+  RE-PINNED AGAIN 2026-08-27, 36 -> 39, by arc 3b sweep 2 (ADR-0174
+  section 2(c)), and disclosed the same way. WHICH INVARIANT MOVED:
+  none of the FINDINGS. `:status` is `:ok` on all four corpora and
+  `:events` is unchanged, and the three rows that joined --
+  `no-assignment-to-a-non-ready-bed`, `every-ready-follows-a-cleaning`
+  and `bed-cycle-transitions-are-legal` -- are VACUOUS on a log with no
+  `:bed-status-change` in it, which every corpus this pin covers still
+  is at the dark commit. They are appended at the END of `catalog`,
+  which is where `catalog` itself puts them.
 
   RE-PINNED AGAIN 2026-08-26, 35 -> 36, by arc 3b sweep 1 (ADR-0174
   section 2(a)), and disclosed for the same reason the previous re-pin
@@ -893,6 +906,8 @@
     demographic-update-reports-a-real-change
     no-demographic-event-after-a-patient-expires
     person-scoped-provenance-is-a-stamp-not-a-reference
+    no-assignment-to-a-non-ready-bed every-ready-follows-a-cleaning
+    bed-cycle-transitions-are-legal
     occupancy-within-capacity
     surge-only-when-earlier-rungs-exhausted warm-up-mark-matches-window
     result-analytes-match-order-profile])

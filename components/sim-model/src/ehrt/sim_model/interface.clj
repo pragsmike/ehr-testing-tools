@@ -42,8 +42,22 @@
 (defn surge-slot-ids [ward] (facility/surge-slot-ids ward))
 (defn occupancy-board [patients] (facility/occupancy-board patients))
 (defn ward-census [facility board] (facility/ward-census facility board))
-(defn allocate [rng facility board home-ward-name force-placement]
-  (facility/allocate rng facility board home-ward-name force-placement))
+(defn allocate
+  ([rng facility board home-ward-name force-placement]
+   (facility/allocate rng facility board home-ward-name force-placement))
+  ([rng facility board beds home-ward-name force-placement]
+   (facility/allocate rng facility board beds home-ward-name force-placement)))
+
+;; ARC 3B SWEEP 2 (ADR-0174 section 2(c)): the bed-status cycle's own
+;; three facility-level primitives. `free` is promoted here because the
+;; `:ready` gate has to be ONE predicate across three namespaces --
+;; sim-model's own ladder, sim-engine's `bed-ready-location`, and
+;; sim-check's `earlier-rungs-exhausted?` -- and a same-looking copy in
+;; any of them is the drift this promotion exists to make impossible.
+(defn free [ids board beds] (facility/free ids board beds))
+(defn initial-beds [facility] (facility/initial-beds facility))
+(defn ward-of-bed [facility bed] (facility/ward-of-bed facility bed))
+(defn bed-placement [facility bed] (facility/bed-placement facility bed))
 (defn choose-attending [rng providers ward-id] (facility/choose-attending rng providers ward-id))
 
 ;; --- persona -------------------------------------------------------------
@@ -75,5 +89,9 @@
 ;; --- config --------------------------------------------------------------
 
 (def default-facility config/default-facility)
+;; ARC 3B SWEEP 2 (ADR-0174 ruling D1): the ONE reading of a ward's
+;; turnaround range, promoted so `ehrt.sim-engine.engine`'s cycle draws
+;; through it rather than reaching for the key itself.
+(defn turnaround-minutes [ward] (config/turnaround-minutes ward))
 (def default-provider-templates config/default-provider-templates)
 (defn materialize-providers [rng provider-templates] (config/materialize-providers rng provider-templates))

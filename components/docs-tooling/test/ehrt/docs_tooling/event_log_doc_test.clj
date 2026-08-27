@@ -37,7 +37,9 @@
   (let [s (schema)
         block (doc/render s (examples))
         kinds (map first (filter vector? (rest (:schema s))))]
-    (is (= 23 (count kinds)))
+    ;; 24 as of contract 1.6.0 (arc 3b sweep 2, ADR-0174 section 2(c)):
+    ;; `:bed-status-change` joined the closed vocabulary.
+    (is (= 24 (count kinds)))
     (doseq [k kinds]
       (is (str/includes? block (str "#### `" k "`"))
           (str "no section rendered for " k))

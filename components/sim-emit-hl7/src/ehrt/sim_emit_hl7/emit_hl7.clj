@@ -73,6 +73,21 @@
    ;; same-day visit; inventing a discharge-shaped message here would be
    ;; manufacturing wire traffic no real interface sends).
    :outpatient-visit {:type "ADT" :trigger "A04"}
+   ;; ARC 3B SWEEP 2 (ADR-0174 ruling C, 2026-08-26): the AUTHOR'S OWN
+   ;; ADDITION -- the ADR had recommended nothing new reach the wire in
+   ;; arc 3b, and the author overrode that for the bed cycle so
+   ;; `ehrt play --board` can see a dirty bed. It is the only entry in
+   ;; this registry whose event names NO PATIENT, and therefore the only
+   ;; one that does not go through `single-subject-message`:
+   ;; `ADT_A20`'s segments are `[MSH EVN NPU]`, with no PID and no PV1
+   ;; at all. `bed-status-message` is its sibling, added rather than
+   ;; widening the single-subject builder with a patient-less branch.
+   ;;
+   ;; MSH-12 STAYS "2.3" and this entry does not change it -- the
+   ;; version question ADR-0174 section 2(d) raised is answered in
+   ;; `bed-status-message`'s own docstring, including what this clone
+   ;; can and cannot check.
+   :bed-status-change {:type "ADT" :trigger "A20"}
    ;; M5b (components/patient-simulator/docs/gmf-interpreter.md section 1's table): :observation is an
    ;; UNSOLICITED finding, not an order's result -- same ORU^R01 message
    ;; family as :result-available, rendered WITHOUT the ORC/OBR order
@@ -149,9 +164,17 @@
   being merged away). nil for any event type outside
   `message-type-registry` (the same 'no message, no id' rule
   `event->messages` already follows)."
-  [{:keys [event t active-mrn surviving-mrn participants swap]}]
+  [{:keys [event t active-mrn surviving-mrn participants swap bed to]}]
   (when-let [{:keys [trigger]} (message-type-registry event)]
     (case event
+      ;; ARC 3B SWEEP 2: a bed event has no `:active-mrn` to key on --
+      ;; it has no patient. The BED plus the status it is moving TO is
+      ;; what makes it unique, and the status is in the key rather than
+      ;; only the bed because a ward tuned to a zero-minute leg would
+      ;; otherwise put two legs of one bed's cycle at the same `t`.
+      :bed-status-change
+      (str bed "-" (name to) "-" trigger "-" t)
+
       :bed-swap
       (let [[p1 p2] (mapv :patient-id participants)]
         (str (:active-mrn (get swap p1)) "+" (:active-mrn (get swap p2)) "-" trigger "-" t))
@@ -689,6 +712,60 @@
       (pv1-segment site-profile :inpatient facility-name to2 from2 (provider-by-id providers att2) nil enc2)
       (z-segments-for site-profile demographics ev)))))
 
+(defn- npu-segment
+  "NPU (bed status update): NPU-1 the bed's PL -- the SAME datatype and
+  the SAME `location-field` rendering PV1-3 uses -- and NPU-2 the bed
+  status from HL7v2 Table 0116. Exactly two fields, which is the whole
+  of the segment."
+  [site-profile facility-name location status]
+  (parser/create-segment
+   "NPU"
+   (location-field facility-name location)
+   (parser/create-field (site-profile/code-for site-profile :bed-status
+                                               site-profile/standard-bed-status-codes status))))
+
+(defn- bed-status-message
+  "A20 (bed status update): `[MSH EVN NPU]`, and NOTHING ELSE -- no PID,
+  no PV1. This is the first message this project emits that names no
+  patient, which is why it is a sibling of `single-subject-message`
+  rather than a branch inside it: that builder's contract is a PID/PV1
+  pair per subject, and an A20 has no subject to pair.
+
+  THE STRUCTURE IS VERIFIED FROM THIS TREE'S OWN RESOLVED DEPENDENCIES,
+  not from memory. `components/judge-v2-hapi/deps.edn` pulls
+  `ca.uhn.hapi/hapi-structures-v24` 2.6.0; that jar carries
+  `ca/uhn/hl7v2/model/v24/message/ADT_A20.class` and
+  `ca/uhn/hl7v2/model/v24/segment/NPU.class`, and A20 does NOT appear in
+  `ca/uhn/hl7v2/parser/eventmap/2.4.properties` -- i.e. it is not
+  aliased onto another structure, it has its own. NPU's two fields are
+  NPU-1 `PL` (the datatype PV1-3 already renders) and NPU-2 `IS`.
+
+  AND THE VERSION QUESTION, ANSWERED HONESTLY RATHER THAN ASSERTED.
+  MSH-12 stays `\"2.3\"` (`site-profile/default-msh`), unchanged by this
+  message family. ADR-0174 section 2(d) asked whether a new trigger is
+  legal in 2.3 and said this ADR would not assert it from memory. This
+  clone still contains NO 2.3 trigger table: the only structure library
+  on any classpath is v2.4, `~/.m2` holds `hapi-structures-v24` alone,
+  and neither `hapi-base` nor any resource in this repository carries a
+  2.3 eventmap. So what is checkable here is A20 in 2.4, and that is
+  checked; A20 in 2.3 is the AUTHOR'S RULING (ADR-0174 ruling C, plus
+  this session's own fence), taken as a ruling and recorded as one. An
+  in-tree 2.3 trigger table would settle it and this sweep does not
+  add one."
+  [reference-date utc-offset facility _providers _demographics site-profile offsets
+   {:keys [t bed ward to] :as ev}]
+  (let [type+trigger (message-type-registry :bed-status-change)
+        control-id (control-id-for ev)
+        clinical-ts (hl7-timestamp reference-date t utc-offset)
+        transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
+        facility-name (name (:id facility))]
+    (parser/str-message
+     (parser/create-message
+      parser/DEFAULT-DELIMITERS
+      (msh-segment site-profile type+trigger control-id transmit-ts)
+      (evn-segment (:trigger type+trigger) clinical-ts)
+      (npu-segment site-profile facility-name {:ward ward :bed bed} to)))))
+
 (defn- merge-message
   "A40 (merge patient): PID carries the SURVIVING mrn, MRG-1 carries the
   prior (merged-away) one (docs/patient-state-model.md's identity
@@ -1048,6 +1125,7 @@
   ([reference-date utc-offset facility providers demographics site-profile offsets {:keys [event] :as ev}]
    (cond
      (not (message-type-registry event)) []
+     (= :bed-status-change event) [(bed-status-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
      (= :bed-swap event) [(bed-swap-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
      (= :merge event) [(merge-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
      (= :order-placed event) [(orm-message reference-date utc-offset facility providers demographics site-profile offsets ev)]

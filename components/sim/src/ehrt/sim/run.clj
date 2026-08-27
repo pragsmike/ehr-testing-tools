@@ -540,8 +540,16 @@
                  ;; reader to infer it from the presence of a second
                  ;; `:admission`. Absent from `opts`, `select-keys`
                  ;; leaves it absent here, so no legacy manifest moves.
+                 ;; ARC 3B SWEEP 2 (ADR-0174 section 2(c)): `:bed-cycle`
+                 ;; joins for the same reason -- a corpus whose beds take
+                 ;; time to turn around is a different artifact from one
+                 ;; whose beds are free the instant they empty, and the
+                 ;; manifest should say so on its own face rather than
+                 ;; leaving a reader to infer it from a `:bed-status-
+                 ;; change` they happen to notice.
                  engine-params (-> (select-keys opts [:patients :arrival-gap :warm-up-seconds
-                                                      :persons :persona-config :encounters])
+                                                      :persons :persona-config :encounters
+                                                      :bed-cycle])
                                     (assoc :reference-date reference-date :utc-offset utc-offset))
                  engine-opts (cond-> (merge (select-keys opts engine/config-keys)
                                             {:seed seed :churn-profile effective-churn-profile})

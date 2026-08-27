@@ -20,6 +20,16 @@
   :t 0,
   :location {:ward "ED", :bed "ED-H01", :placement :surge},
   :forced false},
+ :bed-status-change
+ {:ward "Renal",
+  :participants [{:bed-id "RENAL-01", :ward "Renal", :role :subject}],
+  :last-patient-id "PID-000000-e0bbdb7b",
+  :warm-up false,
+  :event :bed-status-change,
+  :from :occupied,
+  :bed "RENAL-01",
+  :t 3600,
+  :to :dirty},
  :bed-swap
  {:event :bed-swap,
   :t 0,

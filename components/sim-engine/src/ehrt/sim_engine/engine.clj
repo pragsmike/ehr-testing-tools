@@ -1273,6 +1273,113 @@
                  :merged-mrns (:mrns merged)}]
        :advance 0})))
 
+
+;; --- ARC 3B SWEEP 2 (ADR-0174 section 2(c)): the BED-STATUS CYCLE ---------
+;;
+;; `world` gains `:beds`, bed-id -> {:status :since-t :last-patient-id},
+;; every licensed bed and surge slot born `:ready`. It is the one place
+;; arc 3b keeps state the log cannot re-derive, and the asymmetry is
+;; deliberate and worth stating IN THE CODE rather than leaving for a
+;; reader to notice: `occupancy-board`'s consistency law -- recomputing
+;; from `patients` from scratch always equals this -- still holds for the
+;; OCCUPIED half (`:occupied` iff some patient's `:location` names the
+;; bed), while `:dirty`, `:cleaning` and `:ready` have no patient to be
+;; derived from at all. That is what ADR-0174's "world-level" means.
+;;
+;; NIL UNLESS THE RUN OPTED IN, exactly like `:encounter-minting` above
+;; it: no index, no `:ready` gate (`sim-model/free` falls back to
+;; "nobody is in it"), no `:bed-status-change` event, no turnaround
+;; draw, and therefore the bytes this engine has always produced.
+
+(defn- bed-status
+  "`bed`'s status in this world's index, or nil when the run carries no
+  index at all. The ONE reader -- every branch below asks through it."
+  [world bed]
+  (get-in world [:beds bed :status]))
+
+(defn- bed-status-change
+  "One `:bed-status-change` event (ADR-0174 section 2(c): ONE kind, many
+  causes, the same choice ADR-0173 made for `:demographic-update`).
+
+  ITS PARTICIPANT NAMES A BED AND NOT A PATIENT, which is the
+  vocabulary widening this sweep pays for. `every-event-has-participants`
+  is satisfied -- a bed event has one -- and every patient-keyed reader
+  in the tree filters on `:patient-id` being PRESENT rather than
+  assuming it (`ehrt.sim-check.check`'s own `events-by-patient`,
+  `participants-of` and `participant-ids-exist-in-run`; `replay` and the
+  run loop's own two folds, below).
+
+  `:last-patient-id` rides the `:dirty` transition ALONE: it is who left
+  the bed, and the two later legs of the cycle are housekeeping's, not
+  anybody's."
+  [t bed ward from to last-patient-id]
+  (cond-> {:event :bed-status-change :t t :bed bed :ward ward :from from :to to
+           :participants [{:bed-id bed :ward ward :role :subject}]}
+    last-patient-id (assoc :last-patient-id last-patient-id)))
+
+(defn- turnaround-seconds
+  "One leg of `ward-name`'s turnaround, in SECONDS, drawn on the
+  `:facility` stream (ADR-0174 ruling D1: the family for draws that read
+  no patient state at all, kept distinct from `:world` by ADR-0171
+  ruling E1 precisely so that a ward-config edit does not shift arrival
+  gaps or bed choices).
+
+  FIXED CONSUMPTION, always one draw -- deliberately UNLIKE `decide
+  :delay`, which skips an arithmetically-dead `lo` = `hi` draw. That
+  skip was paid for by a whole-corpus reshuffle in its own commit;
+  drawing unconditionally here means a site tuning one ward to a fixed
+  turnaround shifts no other ward's cycle and no other patient's stream."
+  [facility-rng facility ward-name]
+  (let [[lo hi] (sim-model/turnaround-minutes (sim-model/ward-by-name facility ward-name))]
+    (* 60 (rand-int-in facility-rng lo hi))))
+
+(defn- vacate-bed
+  "Seeds `location`'s bed into the turnaround cycle: the `:dirty`
+  transition NOW, and a queue entry for the `:cleaning` leg at
+  `t` + d1. Returns `{:events [..] :schedule-followup {..}}`, or nil
+  when this run carries no bed index or the location names no bed.
+
+  nil IS THE WHOLE OF THE NO-OPT-IN PATH. Every caller merges this in
+  rather than branching on the opt-in itself, so the expression that
+  runs with `:bed-cycle` absent is the one that was there before this
+  sweep, character for character.
+
+  THE TWO VACATING CLASSES AND NO OTHERS call this -- `:discharge` and
+  `:transfer` (`reinstatable-event-types`' own set, and for the same
+  reason: they are what vacates). `:cancel-admit` and `:cancel-transfer`
+  also leave a bed empty and deliberately do NOT come here: they are
+  CORRECTIONS, and an occupancy a cancel says did not happen leaves no
+  dirt behind it. Those two return their bed straight to `:ready`, in
+  the run loop's own fold, with no event and no cycle -- named here so
+  the omission reads as a decision."
+  [facility-rng world t location last-patient-id]
+  (when-let [bed (and (:beds world) (:bed location))]
+    (let [ward (:ward location)]
+      {:events [(bed-status-change t bed ward (bed-status world bed) :dirty last-patient-id)]
+       :schedule-followup {:t (+ t (turnaround-seconds facility-rng (:facility world) ward))
+                           :patient-id nil
+                           :steps [{:type :bed-cleaning :bed bed :ward ward}]}})))
+
+(defn- waiting-boarder
+  "The longest-waiting BOARDER of `ward-name` -- an admitted patient
+  whose `:home-ward` is this ward and whose current `:location` is
+  somewhere else -- or nil. Extracted verbatim from `decide :discharge`,
+  where it was inline, because the bed cycle asks the same question at
+  a different instant: the READY event, not the discharge.
+
+  `excluded-id` is the patient whose own departure is being processed,
+  who must not be considered their own boarder. nil excludes nobody,
+  which is what the READY instant wants: by then the patient who left
+  is discharged and holds no location at all."
+  [world excluded-id ward-name]
+  (->> (:patients world)
+       (remove (fn [[pid _]] (= pid excluded-id)))
+       (filter (fn [[_ p]] (and (= :admitted (:status p))
+                                (not= (:home-ward p) (get-in p [:location :ward]))
+                                (= ward-name (:home-ward p)))))
+       (sort-by (fn [[pid p]] [(:admitted-at p) pid]))
+       ffirst))
+
 (defmethod decide :admission
   [{world-rng :world facility-rng :facility} t world patient-id
    {:keys [location force-placement] :as step}]
@@ -1282,7 +1389,11 @@
   ;; E1's split is by what the draw READS, not by what it is named after.
   (let [{:keys [facility providers patients]} world
         board (sim-model/occupancy-board patients)
-        alloc (sim-model/allocate world-rng facility board location force-placement)]
+        ;; ARC 3B SWEEP 2: `(:beds world)` is nil with no `:bed-cycle`
+        ;; opt-in, and `allocate`'s own 6-arity is then the 5-arity
+        ;; verbatim -- one of the four `allocate` call sites
+        ;; `no-assignment-to-a-non-ready-bed` names.
+        alloc (sim-model/allocate world-rng facility board (:beds world) location force-placement)]
     (if (:exhausted alloc)
       (exhausted-outcome patient-id location facility board)
       (let [ward-id (:id (sim-model/ward-by-name facility (:home-ward alloc)))
@@ -1322,18 +1433,29 @@
    :advance (* 60 (if (= from to) from (rand-int-in rng from to)))})
 
 (defmethod decide :transfer
-  [{world-rng :world} t world patient-id {:keys [location force-placement]}]
+  ;; ARC 3B SWEEP 2 (ADR-0174 ruling D1): `:facility` joins because the
+  ;; TURNAROUND draw for the bed this transfer vacates is a facility
+  ;; draw -- it reads a ward's config and no patient state at all.
+  [{world-rng :world facility-rng :facility} t world patient-id {:keys [location force-placement]}]
   (let [{:keys [facility patients]} world
         board (sim-model/occupancy-board patients)
         patient (get patients patient-id)
-        alloc (sim-model/allocate world-rng facility board location force-placement)]
+        alloc (sim-model/allocate world-rng facility board (:beds world) location force-placement)]
     (if (:exhausted alloc)
       (exhausted-outcome patient-id location facility board)
-      {:events [(merge {:event :transfer :t t :active-mrn (:active-mrn patient) :from (:location patient)
-                        :attending (:attending patient) :bed-ready false
-                        :participants [{:patient-id patient-id :role :subject}]}
-                       alloc)]
-       :advance 0})))
+      ;; ARC 3B SWEEP 2: a transfer VACATES the bed it came from, so it
+      ;; seeds that bed's turnaround cycle exactly as a discharge does
+      ;; -- `vacate-bed` is nil with no `:bed-cycle`, and `cond->`/
+      ;; `merge` then leave this expression the one that was here.
+      (let [vacated (vacate-bed facility-rng world t (:location patient) patient-id)]
+        (merge {:events (into [(merge {:event :transfer :t t :active-mrn (:active-mrn patient)
+                                       :from (:location patient)
+                                       :attending (:attending patient) :bed-ready false
+                                       :participants [{:patient-id patient-id :role :subject}]}
+                                      alloc)]
+                              (:events vacated))
+                :advance 0}
+               (select-keys vacated [:schedule-followup]))))))
 
 (defn- death-disposition-fields
   "Wave C (2026-08-02, ADR-0028, C3): :disposition/:codes ride onto the
@@ -1370,19 +1492,62 @@
   `allocate` can never come back `:exhausted` here: the vacated bed is
   in `waiting-id`'s own home ward, so rung 1 or rung 2 always has at
   least that one candidate -- and since rung 1 is free by the branch
-  we are in, the result is always a licensed bed in that same ward."
+  we are in, the result is always a licensed bed in that same ward.
+
+  ARC 3B SWEEP 2 (ADR-0174 section 2(c)), and THE PROOF ABOVE HAD TO BE
+  RE-READ UNDER THE NEW PREDICATE, not merely re-typed. `free` now means
+  `:ready` when the run carries a bed index, so \"rung 1 or rung 2 always
+  has at least that one candidate\" is a claim about the VACATED bed's
+  own status -- and it holds, because with the cycle on this function is
+  reached only from `decide :bed-ready`, which passes a world in which
+  that bed has just BECOME `:ready`. With the cycle off, `beds` is nil,
+  `free` is `(remove board ids)` verbatim, and the original proof stands
+  unchanged word for word.
+
+  `home-licensed-free?` goes through `sim-model/free` rather than
+  repeating `(remove board ...)`: ADR-0174 names this probe specifically
+  as one that must ask the same question the ladder asks."
   [world-rng world patient-id waiting-id vacated-location]
   (let [facility (:facility world)
+        beds (:beds world)
         home-ward-name (get-in world [:patients waiting-id :home-ward])
         board (sim-model/occupancy-board (dissoc (:patients world) patient-id))
         home-ward (sim-model/ward-by-name facility home-ward-name)
-        home-licensed-free? (boolean (seq (remove board (sim-model/licensed-bed-ids home-ward))))]
+        home-licensed-free? (boolean (seq (sim-model/free (sim-model/licensed-bed-ids home-ward) board beds)))]
     (if (and (= :surge (:placement vacated-location)) home-licensed-free?)
-      (:location (sim-model/allocate world-rng facility board home-ward-name nil))
+      (:location (sim-model/allocate world-rng facility board beds home-ward-name nil))
       vacated-location)))
 
+(defn- bed-ready-transfer-event
+  "The paired bed-ready `:transfer` -- `waiting-id` pulled into the bed
+  `vacated-location` names, decided at `t`. Extracted verbatim from
+  `decide :discharge`, where it was an inline map, because ARC 3B SWEEP
+  2 moves WHEN it is decided (the READY instant, not the discharge) and
+  changes nothing about WHAT it is."
+  [world-rng world excluded-id waiting-id vacated-location t]
+  (let [location (bed-ready-location world-rng world excluded-id waiting-id vacated-location)]
+    {:event :transfer :t t
+     :active-mrn (:active-mrn (get-in world [:patients waiting-id]))
+     :from (:location (get-in world [:patients waiting-id]))
+     :attending (:attending (get-in world [:patients waiting-id]))
+     :home-ward (get-in world [:patients waiting-id :home-ward])
+     :location location
+     :placement (:placement location)
+     :forced false
+     :bed-ready true
+     :participants [{:patient-id waiting-id :role :subject}]}))
+
 (defmethod decide :discharge
-  [{world-rng :world} t world patient-id step]
+  ;; ARC 3B SWEEP 2 (ADR-0174 section 2(c)): `:facility` joins for the
+  ;; turnaround draw, and this is the ONE existing behaviour arc 3b
+  ;; CHANGES rather than extends. With `:bed-cycle` on, the paired
+  ;; bed-ready transfer is no longer emitted here at all -- the bed goes
+  ;; `:dirty` and the transfer is decided at the READY instant, against
+  ;; the board as it stands THEN. That is more correct independently of
+  ;; the cycle: today's coupling picks the longest-waiting boarder at
+  ;; the discharge instant and hands them a bed they occupy in the same
+  ;; second, with no opportunity for the world to have changed.
+  [{world-rng :world facility-rng :facility} t world patient-id step]
   (let [patient (get-in world [:patients patient-id])
         ;; C3: an expired-disposition discharge vacates NO bed --
         ;; patient-state-model.md's own "clinically absorbing but
@@ -1397,28 +1562,66 @@
                                 (death-disposition-fields step))
         vacated-ward (get-in patient [:location :ward])
         vacated-location (:location patient)
-        waiting-id (when-not expired?
-                     (->> (:patients world)
-                          (remove (fn [[pid _]] (= pid patient-id)))
-                          (filter (fn [[_ p]] (and (= :admitted (:status p))
-                                                    (not= (:home-ward p) (get-in p [:location :ward]))
-                                                    (= vacated-ward (:home-ward p)))))
-                          (sort-by (fn [[pid p]] [(:admitted-at p) pid]))
-                          ffirst))]
-    {:events (cond-> [discharge-event]
-               waiting-id
-               (conj (let [location (bed-ready-location world-rng world patient-id waiting-id vacated-location)]
-                       {:event :transfer :t t
-                        :active-mrn (:active-mrn (get-in world [:patients waiting-id]))
-                        :from (:location (get-in world [:patients waiting-id]))
-                        :attending (:attending (get-in world [:patients waiting-id]))
-                        :home-ward (get-in world [:patients waiting-id :home-ward])
-                        :location location
-                        :placement (:placement location)
-                        :forced false
-                        :bed-ready true
-                        :participants [{:patient-id waiting-id :role :subject}]})))
-     :advance 0}))
+        ;; The cycle takes the coupling over: with an index present the
+        ;; bed goes `:dirty` here and NOBODY is pulled into it yet.
+        vacated (when-not expired? (vacate-bed facility-rng world t vacated-location patient-id))
+        waiting-id (when (and (not expired?) (nil? (:beds world)))
+                     (waiting-boarder world patient-id vacated-ward))]
+    (merge
+     {:events (cond-> [discharge-event]
+                waiting-id
+                (conj (bed-ready-transfer-event world-rng world patient-id waiting-id vacated-location t))
+                (seq (:events vacated))
+                (into (:events vacated)))
+      :advance 0}
+     (select-keys vacated [:schedule-followup]))))
+
+;; --- ARC 3B SWEEP 2: the cycle's own two steps. Neither names a
+;; patient: their queue entries carry `:patient-id` nil, they draw on
+;; no `:patient` stream, and the run loop reaches them exactly as it
+;; reaches an `:order`'s auto-paired `:result` -- through
+;; `schedule-followup`, at their own `[t seq-no]`.
+;;
+;; EACH LEG GUARDS ON THE STATUS IT EXPECTS, and that guard is not
+;; belt-and-braces: a `:cancel-discharge` can reinstate a patient into
+;; a bed whose cycle is already in flight (the dirty->occupied arc
+;; ADR-0174's invariant 3 carves out), and the tick that then fires
+;; must do NOTHING rather than drag an occupied bed to `:cleaning`.
+
+(defmethod decide :bed-cleaning
+  [{facility-rng :facility} t world _patient-id {:keys [bed ward]}]
+  (if (= :dirty (bed-status world bed))
+    {:events [(bed-status-change t bed ward :dirty :cleaning nil)]
+     :advance 0
+     :schedule-followup {:t (+ t (turnaround-seconds facility-rng (:facility world) ward))
+                         :patient-id nil
+                         :steps [{:type :bed-ready :bed bed :ward ward}]}}
+    {:events [] :advance 0}))
+
+(defmethod decide :bed-ready
+  [{world-rng :world facility-rng :facility} t world _patient-id {:keys [bed ward]}]
+  (if-not (= :cleaning (bed-status world bed))
+    {:events [] :advance 0}
+    ;; The transfer below is decided against a world in which this bed
+    ;; is ALREADY `:ready` -- `world` is the state before this batch, and
+    ;; the READY event is the first event OF the batch. Without this the
+    ;; ladder would refuse the very bed whose readiness is the occasion.
+    (let [world' (assoc-in world [:beds bed :status] :ready)
+          ready-event (bed-status-change t bed ward :cleaning :ready nil)
+          vacated-location {:ward ward :bed bed
+                            :placement (sim-model/bed-placement (:facility world) bed)}
+          waiting-id (waiting-boarder world' nil ward)]
+      (if (nil? waiting-id)
+        {:events [ready-event] :advance 0}
+        (let [transfer (bed-ready-transfer-event world-rng world' nil waiting-id vacated-location t)
+              ;; A boarder pulled into a ready bed VACATES their own,
+              ;; which seeds a second cycle -- the ED surge slot they
+              ;; were holding is now dirty in its turn.
+              vacated (vacate-bed facility-rng world' t (:location (get-in world' [:patients waiting-id]))
+                                  waiting-id)]
+          (merge {:events (into [ready-event transfer] (:events vacated))
+                  :advance 0}
+                 (select-keys vacated [:schedule-followup])))))))
 
 ;; --- M2b: churn family (docs/patient-state-model.md's event-validity
 ;; table; docs/event-sourcing.md's shadow-field dissolution) ---------------
@@ -1508,7 +1711,7 @@
   (let [{:keys [facility patients ground-truth]} world
         board (sim-model/occupancy-board patients)
         patient (get patients patient-id)
-        alloc (sim-model/allocate world-rng facility board location force-placement)]
+        alloc (sim-model/allocate world-rng facility board (:beds world) location force-placement)]
     (if (:exhausted alloc)
       (exhausted-outcome patient-id location facility board)
       ;; Both events are decided ATOMICALLY, in the same decide call --
@@ -2285,6 +2488,67 @@
     (update-in patient [:care-plans idx] assoc :status :completed :ended-t t)
     patient))
 
+(def ^:private bed-correction-event-types
+  "The two kinds that leave a bed empty by SAYING IT WAS NEVER FILLED --
+  `:cancel-admit` (the admission did not happen) and `:cancel-transfer`
+  (the transfer did not happen). Their bed goes straight back to
+  `:ready`, with no `:bed-status-change` event and no turnaround: an
+  occupancy a cancel retracts leaves no dirt behind it, and pretending
+  otherwise would charge a correction the housekeeping cost of a real
+  stay.
+
+  ADR-0174's invariant 3 enumerates ready->occupied, occupied->dirty,
+  dirty->cleaning, cleaning->ready and the reinstatement's
+  dirty->occupied. THE CORRECTION ARC, occupied->ready, IS A SIXTH, and
+  the ADR does not name it -- it enumerated the cycle's own transitions
+  and the two cancel classes that RE-OCCUPY, and did not reach the two
+  that VACATE. Disclosed rather than smuggled: without it a cancelled
+  admission's bed stays `:occupied` for the rest of the run and the
+  ward silently loses capacity, which no reading of section 2(c)
+  intends.
+
+  `:transfer-in-error` is deliberately not a THIRD member. Its own
+  decide emits an ordinary `:transfer` plus that transfer's
+  `:cancel-transfer`, atomically at one instant, so the pair is already
+  handled by the `:cancel-transfer` entry -- and the bed it came FROM
+  is never dirtied at all, because `decide :transfer-in-error` does not
+  call `vacate-bed`."
+  #{:cancel-admit :cancel-transfer})
+
+(defn- update-beds
+  "The bed index, folded one event forward (ADR-0174 section 2(c)).
+
+  Two rules and no others:
+
+  * a `:bed-status-change` writes its own `:to`, which is the whole of
+    the cycle's three legs;
+  * every other event is read through its participants' LOCATION delta
+    -- a bed newly named becomes `:occupied`, and a bed newly left
+    becomes `:ready` only under `bed-correction-event-types` above. A
+    bed left by a real vacate is untouched HERE, because the
+    `:bed-status-change` its own decide emitted in the SAME batch is
+    what turns it `:dirty`.
+
+  A `:bed-swap` needs no case of its own and gets none: each side's
+  post-event bed is named by the other participant, so both come out
+  `:occupied`, which is what they are."
+  [beds ev patients-before patients-after]
+  (if (= :bed-status-change (:event ev))
+    (let [{:keys [bed to t last-patient-id]} ev]
+      (update beds bed merge (cond-> {:status to :since-t t}
+                               last-patient-id (assoc :last-patient-id last-patient-id))))
+    (reduce (fn [bs {:keys [patient-id]}]
+              (let [before (get-in patients-before [patient-id :location :bed])
+                    after (get-in patients-after [patient-id :location :bed])]
+                (cond-> bs
+                  (and after (not= after before))
+                  (update after merge {:status :occupied :since-t (:t ev) :last-patient-id patient-id})
+
+                  (and before (not= after before) (bed-correction-event-types (:event ev)))
+                  (update before merge {:status :ready :since-t (:t ev)}))))
+            beds
+            (filter :patient-id (:participants ev)))))
+
 (defn replay
   "Replays `ground-truth` through `evolve`, returning a parallel seq of
   {:event :patient-id :before :after :world-before :world-after} --
@@ -2303,7 +2567,12 @@
     (if (empty? events)
       (persistent! acc)
       (let [event (first events)
-            participant-ids (mapv :patient-id (:participants event))
+            ;; ARC 3B SWEEP 2: a `:bed-status-change`'s participant names
+            ;; a BED, not a patient. Filtering on `:patient-id` being
+            ;; present is what keeps a nil-keyed phantom patient out of
+            ;; every `world-before`/`world-after` this function hands to
+            ;; `ehrt.sim-check.check`.
+            participant-ids (mapv :patient-id (filter :patient-id (:participants event)))
             patients (reduce (fn [ps pid]
                                 (if (contains? ps pid)
                                   ps
@@ -2517,7 +2786,14 @@
    ;; nil -- is the byte-identical path, the same opt-in law `:persons`,
    ;; `:pathways`, `:churn-profile` and `:module-assignment` already
    ;; establish.
-   :encounters])
+   :encounters
+   ;; ARC 3B SWEEP 2 (ADR-0174 section 2(c), rulings C/D1/E1): the BED
+   ;; CYCLE's own opt-in. Truthy builds the `:beds` index, gates
+   ;; `allocate` on `:ready`, emits `:bed-status-change` and moves the
+   ;; bed-ready transfer from the discharge instant to the READY instant;
+   ;; ABSENT ENTIRELY is the byte-identical path, the same opt-in law
+   ;; `:encounters` and `:persons` establish.
+   :bed-cycle])
 
 (def Persons
   "`run`'s ENGINE-FACING `:persons` value (ADR-0173 section 2(a), arc 3a
@@ -3423,7 +3699,8 @@
   loop below because decide needs live world state to make its next
   decision, not because it's a second source of truth."
   [{:keys [seed patients pathway pathways arrival-gap warm-up-seconds facility providers churn-profile order-profiles
-           persona-config modules module-assignment module-horizon-days history persons encounters]
+           persona-config modules module-assignment module-horizon-days history persons encounters
+           bed-cycle]
     :or {patients 1
          pathway sim-model/sample-admission-discharge
          arrival-gap 60
@@ -3598,7 +3875,18 @@
                     :encounter-minting (when encounters
                                          {:seed seed
                                           :ordinals (into {} (for [i (concat firsts hook-patient-ordinals)]
-                                                               [(pid-for i) i]))})}
+                                                               [(pid-for i) i]))})
+                    ;; ARC 3B SWEEP 2 (ADR-0174 section 2(c)): every
+                    ;; licensed bed and surge slot the facility declares,
+                    ;; born `:ready` at t 0.
+                    ;;
+                    ;; NIL UNLESS THE RUN OPTED IN, which is
+                    ;; indistinguishable from absent to every reader --
+                    ;; `sim-model/free` falls back to "nobody is in it",
+                    ;; `vacate-bed` returns nil, and no tick is ever
+                    ;; queued. Same tolerance as every index above: on
+                    ;; the KEY, never on a missing bed entry.
+                    :beds (when bed-cycle (sim-model/initial-beds facility))}
         mark-warmup (fn [ev] (assoc ev :warm-up (< (:t ev) warm-up-seconds)))
         ;; ADR-0171: what `decide` receives. The two run-scoped families
         ;; are fixed for the whole loop; `:patient` is swapped per queue
@@ -3710,10 +3998,20 @@
                                   gidx' (if (= :registered (:event ev))
                                           (assoc gidx subject idx)
                                           gidx)]
-                              [(reduce (fn [w2 {:keys [patient-id]}]
-                                         (update-in w2 [:patients patient-id] evolve ev))
-                                       w (:participants ev))
-                               ridx' cidx' gidx']))
+                              ;; ARC 3B SWEEP 2: the participant filter,
+                              ;; and the bed index folded in the SAME
+                              ;; pass for the same reason the three
+                              ;; indexes above are -- the pre-event and
+                              ;; post-event patient maps both exist here
+                              ;; and nowhere later.
+                              (let [w-next (reduce (fn [w2 {:keys [patient-id]}]
+                                                     (update-in w2 [:patients patient-id] evolve ev))
+                                                   w (filter :patient-id (:participants ev)))]
+                                [(cond-> w-next
+                                   (:beds w-next)
+                                   (assoc :beds (update-beds (:beds w-next) ev
+                                                             (:patients w) (:patients w-next))))
+                                 ridx' cidx' gidx'])))
                           [world (:reinstate-index world) (:citation-index world)
                            (:registration-index world)]
                           (map-indexed vector events))
@@ -3723,11 +4021,16 @@
                                  :citation-index citations'
                                  :registration-index registrations')
                   ground-truth' (reduce conj! ground-truth events)
+                  ;; ARC 3B SWEEP 2: same filter, same reason -- a bed
+                  ;; participant has no patient whose history to append
+                  ;; to, and a nil key here would put a phantom patient
+                  ;; in `:state-history` for `patient-state-is-a-fold-of-
+                  ;; the-log` to trip over.
                   state-history' (reduce (fn [sh ev]
                                             (reduce (fn [sh2 {:keys [patient-id]}]
                                                       (update sh2 patient-id (fnil conj [])
                                                               (get-in world' [:patients patient-id])))
-                                                    sh (:participants ev)))
+                                                    sh (filter :patient-id (:participants ev))))
                                           state-history events)
                   ;; M3: :order's decide may ask for a follow-up queue
                   ;; entry (the auto-paired :result -- see engine's :order

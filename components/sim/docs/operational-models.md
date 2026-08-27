@@ -130,6 +130,59 @@ cross-patient coupling a pure per-patient fold doesn't give you for
 free, which is why the projection has to exist as a real (if derived)
 structure the engine consults, not just a debugging convenience.
 
+**The bed-status cycle (arc 3b sweep 2, ADR-0174 section 2(c)).** A bed
+is not free the instant its occupant leaves it. Behind the run-config
+opt-in `:bed-cycle`, `world` carries a per-bed status —
+`:ready | :occupied | :dirty | :cleaning` — and the ladder's own
+definition of a *free* bed narrows from "nobody is in it" to
+**"status is `:ready`"**. Every rung inherits that gate at once, because
+all four ask one function (`sim-model/free`); the ladder's shape and its
+per-rung seeded draw are untouched.
+
+What a discharge does changes with it, and this is the one existing
+behaviour arc 3b changes rather than extends:
+
+```
+today:   discharge@t  ──────────────────────────────►  bed-ready transfer@t
+cycle:   discharge@t → dirty@t → cleaning@t+d1 → ready@t+d1+d2 → bed-ready transfer@t+d1+d2
+```
+
+The bed-ready transfer is decided at the **ready** instant, against the
+board as it stands *then* — which is more correct independently of the
+cycle, since today's coupling hands a boarder a bed in the same second
+it is vacated, with no opportunity for the world to have changed.
+
+`d1` and `d2` are drawn **independently** from the vacated ward's own
+`:turnaround-minutes` `[lo hi]` (a `Ward` key, so an ED bay and an
+inpatient room turn around at different rates), on the **`:facility`**
+RNG family — the family for draws that read no patient state at all, so
+a ward-config edit shifts no arrival gap and no bed choice.
+
+Each leg is a `:bed-status-change` ground-truth event whose participant
+names a **bed** rather than a patient, and each renders one **ADT^A20**
+(`[MSH EVN NPU]`, no PID and no PV1) so `ehrt play --board` can show a
+dirty bed instead of an invisible one.
+
+Two arcs sit outside the cycle proper:
+
+- **Reinstatement, `:dirty → :occupied`.** A `:cancel-discharge` or
+  `:cancel-transfer` puts a patient back in a bed that has been dirty
+  since they left it; the cancel restores the bed's status alongside the
+  location.
+- **Correction, `:occupied → :ready`.** A `:cancel-admit`, and the
+  erroneously-taken bed of a `:cancel-transfer`, return their bed
+  straight to `:ready` with no event and no turnaround — an occupancy a
+  cancel retracts leaves no dirt behind it.
+
+A **`:bed-swap` allocates nothing** and is outside all of this: both its
+beds are occupied by construction, and the ladder is never consulted.
+
+**Effective capacity falls**, and that is real rather than hidden. When
+turnaround pushes a ward over, `allocate` returns `{:exhausted true}`
+and the engine emits a documented `:step-rejected` — the failure is
+visible, which is what makes this a tuning question and not a
+correctness one.
+
 **Surge naming is config, not code.** Real hospitals name their
 overflow capacity in wildly site-specific ways — hallway slot numbers,
 pseudo-rooms, chair codes, "H01" for hallway bed 1. Baking one
@@ -163,7 +216,20 @@ below — recorded as an exemption, not silently allowed.
   surge slots).
 - Surge placement only occurs when the earlier rungs (home-ward
   licensed, then home-ward surge before other-ward) are legitimately
-  exhausted — unless the placement is `:forced true`.
+  exhausted — unless the placement is `:forced true`. **Under
+  `:bed-cycle` "exhausted" means no earlier-rung bed was `:ready`**, not
+  "none was empty": a surge placement made while a rung-1 bed sits
+  `:dirty` is legitimate. The claim is unchanged; the reading of
+  *exhausted* is the ladder's own.
+- Every event that **allocates** a bed targets a bed whose status
+  immediately before was `:ready` (`:bed-swap` excluded — it allocates
+  nothing).
+- A bed reaching `:ready` was `:cleaning` immediately before, except at
+  run start, where every bed is born ready.
+- Every bed-status transition is one of the six the cycle admits:
+  `ready→occupied`, `occupied→dirty`, `dirty→cleaning`,
+  `cleaning→ready`, the reinstatement's `dirty→occupied`, and the
+  correction's `occupied→ready`.
 
 **Deliberate non-invariant, recorded so it isn't rediscovered as a
 bug:** there is **no census floor for surge use**. A real hospital's

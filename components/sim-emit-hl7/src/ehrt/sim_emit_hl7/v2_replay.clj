@@ -311,12 +311,52 @@
         (assoc survivor-mrn survivor-entry)
         (assoc merged-mrn merged-entry))))
 
+(def beds-key
+  "The one non-MRN key this accumulator carries: bed-id -> {:ward
+  :status :at}, from the A20 stream (arc 3b sweep 2, ADR-0174 ruling C).
+
+  NAMESPACED ON PURPOSE. `acc` is otherwise `{mrn -> entry}` and every
+  reader of it -- `ehrt.corpus.board`'s own tally and ward grouping, the
+  emitter-coherence property's per-participant lookup -- keys by MRN. A
+  namespaced keyword cannot collide with an MRN string, and an entry
+  under it carries no `:location` and no `:status` from the patient
+  vocabulary, so every one of those readers passes over it unchanged.
+  A stream with no A20 in it never grows the key at all."
+  ::beds)
+
+(def ^:private hl7-bed-status->keyword
+  "NPU-2 (HL7v2 Table 0116) back to the engine's own four bed states --
+  the inverse of `ehrt.sim-emit-hl7.site-profile/standard-bed-status-
+  codes`, which is where the forward mapping and its reasoning live.
+
+  A code outside this map is kept as its own RAW STRING rather than
+  dropped: a real feed, or this project under a site profile that
+  overrides the table, may legitimately send one, and the board would
+  rather render an unknown status than lose the bed."
+  {"O" :occupied "U" :ready "K" :dirty "H" :cleaning})
+
+(defn- fold-bed-status
+  "An A20 folded: `[MSH EVN NPU]`, no PID and no PV1, so this is the one
+  trigger that touches no patient entry at all. NPU-1 is the bed's PL --
+  the same `ward^^bed^facility` shape PV1-3 carries, read with the same
+  component reader -- and NPU-2 is the status."
+  [acc parsed t]
+  (let [npu (first-segment parsed "NPU")
+        ward (segment-component npu 1 0)
+        bed (segment-component npu 1 2)
+        raw (blank->nil (seg-field npu 2))
+        status (get hl7-bed-status->keyword raw raw)]
+    (if (nil? bed)
+      acc
+      (assoc-in acc [beds-key bed] {:ward ward :status status :at t}))))
+
 (defn fold-message
   "acc x message -> acc'. Parses `message`, extracts its own trigger
   (MSH-9) and instant (MSH-7, via `hl7-instant->millis` -- an absolute
   epoch instant, no reference-date), and folds it into `acc`. A17/A40
   are genuinely two-participant and dispatched directly to
-  `fold-bed-swap`/`fold-merge`; every other trigger folds onto `acc`'s
+  `fold-bed-swap`/`fold-merge`; A20 names a BED and no patient at all
+  and goes to `fold-bed-status`; every other trigger folds onto `acc`'s
   entry for that message's own PID-3 -- a never-yet-seen mrn
   self-initializes (bootstrap-from-empty)."
   [acc message]
@@ -326,6 +366,7 @@
     (case trigger
       "A17" (fold-bed-swap acc parsed)
       "A40" (fold-merge acc parsed)
+      "A20" (fold-bed-status acc parsed t)
       (let [pid-seg (first-segment parsed "PID")
             mrn (seg-field pid-seg 3)
             entry (or (get acc mrn) (initial-entry pid-seg))]
