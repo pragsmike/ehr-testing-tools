@@ -93,10 +93,52 @@
  {:asset "docs/manual/assets/straddle-timeline.svg"
   :source "demos/scenarios/ed-tuesday/README.md"
   :trigger "regenerate by hand if the cited section's own witnessed values change"
-  :reviewed-at "ef563fe"
+  :reviewed-at "cb81dff"
   :verdict :fresh
   :note
-  "RE-REVIEWED 2026-08-26 (arc 3b sweep 1, ADR-0174 ruling A1's turn-on
+  "REDRAWN 2026-08-27 (arc 3b sweep 2, ADR-0174 section 2(c)'s turn-on
+   commit `cb81dff`). The trigger fired a FIFTH time, and for the FIRST
+   time THE DEPICTED FACT ITSELF CHANGED rather than only the values
+   printed on it. The bed-cycle opt-in reshuffled this run, which redrew
+   MRN000002's discharge its own sampled transmit delay: 01:59:02Z
+   became 02:13:46Z. That crosses a SECOND batch boundary, so the
+   encounter no longer spans two ADJACENT files. It spans THREE, and
+   the middle one carries neither half of it.
+
+   VERIFIED DIRECTLY rather than inferred from the timestamps:
+   `batch-001.hl7` contains no MRN000002 message at all (`grep -cF
+   MRN000002` returns 0), while `batch-000.hl7` holds the A01 and
+   `batch-002.hl7` holds the A03.
+
+   REDRAWN rather than marked :stale, and the reason is that the
+   drawing CAN be made true again by hand: it gained a third window, a
+   second boundary line, and a title moving from `two clean files` to
+   `three clean files, the middle one holds neither half`. Contrast
+   `two-clocks.svg` below, which is :stale precisely because its
+   banner's CLAIM cannot be repaired by redrawing. The new picture is a
+   STRONGER version of the lesson the cited section teaches: a receiver
+   holding batch-000 AND batch-001, two consecutive individually
+   BTS-verified files, still has only half the encounter.
+
+   Counts moved with it (batch-000 2 -> 5, batch-001 4 -> 9, batch-002
+   carries 16); the window boundaries and :interval-ms 3600000 did not;
+   and the admission's own transmit time, 00:37:39Z, has not moved
+   across any of the four redraws this row records.
+
+   FOUND BY CI, NOT BY THE PRE-PUSH SUITE, for the third time and for
+   the structural reason this row and the gt-emitters row both already
+   name: the tripwire reads `git log -1` on the SOURCE, so it cannot see
+   an uncommitted edit. `make test` was green at MAKE_EXIT=0 over the
+   very tree that reddened CI one commit later (run 33067974420). The
+   sweep edited `demos/scenarios/ed-tuesday/README.md` and should have
+   predicted this fire from that alone.
+
+   RIDE-ALONG, disclosed: the previous banner carried EIGHT `- -`
+   sequences (written closed up), which XML forbids inside a comment, so
+   that file had never been well-formed XML. The redraw uses em dashes
+   and now parses.
+
+   RE-REVIEWED 2026-08-26 (arc 3b sweep 1, ADR-0174 ruling A1's turn-on
    commit `ef563fe`). The trigger fired a FOURTH time and this time
    NOTHING THE ASSET DEPICTS MOVED -- no redraw, only this row.
    Re-witnessed value by value against the fresh run: MRN000002
@@ -150,7 +192,7 @@
    Prior review, 2026-08-19 (ADR-0158), kept: the ed-tuesday README had
    moved once at 214b0ec, the busy-tuesday -> clinic-decade scenario
    rename, and every changed line in that diff mentioned the rename."
-  :witness {:adr "ADR-0171" :date "2026-08-25"}}
+  :witness {:adr "ADR-0174" :date "2026-08-27"}}
 
  {:asset "docs/manual/assets/two-clocks.svg"
   :source "docs/dev/simulator-architecture.md"
