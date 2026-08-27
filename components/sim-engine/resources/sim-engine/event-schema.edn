@@ -11,7 +11,7 @@
 ;;
 ;; Regenerate with `make event-schema-export` (also run by `make
 ;; docsgen`, so CI's freshness diff catches a stale export).
-{:event-schema-version "1.6.0",
+{:event-schema-version "1.7.0",
  :schema
  [:multi
   {:dispatch :event,
@@ -178,7 +178,8 @@
            [:display {:optional true} :string]]]]]
        [:citation [:map [:module :string] [:state :keyword]]]
        [:references {:optional true} [:maybe :int]]]]]
-    [:person-event-id {:optional true} :string]]]
+    [:person-event-id {:optional true} :string]
+    [:appointment-id {:optional true} :string]]]
   [:transfer
    [:map
     {:doc
@@ -424,6 +425,121 @@
     [:from [:enum :ready :occupied :dirty :cleaning]]
     [:to [:enum :ready :occupied :dirty :cleaning]]
     [:last-patient-id {:optional true} :string]]]
+  [:appointment
+   [:map
+    {:doc
+     "A future visit is booked for a patient (HL7v2 SIU^S12 -- deliberately unrendered in 1.7.0, see ruling C).",
+     :transition
+     "Opens the patient's :appointment record; terminal only when an encounter keeps it, a cancel closes it, or a no-show closes it.",
+     :closed true}
+    [:event [:= :appointment]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
+    [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
+    [:active-mrn :string]
+    [:appointment-id :string]
+    [:scheduled-t :int]
+    [:appointment-class
+     [:enum
+      :inpatient
+      :emergency
+      :outpatient
+      :preadmit
+      :recurring
+      :obstetrics]]
+    [:reason {:optional true} :string]
+    [:citation
+     {:optional true}
+     [:map [:module :string] [:state :keyword]]]]]
+  [:reschedule
+   [:map
+    {:doc
+     "A booked appointment moves to a different instant (HL7v2 SIU^S14 -- deliberately unrendered in 1.7.0).",
+     :transition
+     "Moves :scheduled-t on the OPEN record and is NOT terminal; the id is kept rather than re-minted.",
+     :closed true}
+    [:event [:= :reschedule]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
+    [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
+    [:active-mrn :string]
+    [:appointment-id :string]
+    [:prior-scheduled-t :int]
+    [:scheduled-t :int]]]
+  [:appointment-cancel
+   [:map
+    {:doc
+     "A booked appointment is cancelled before its instant (HL7v2 SIU^S15 -- deliberately unrendered in 1.7.0).",
+     :transition
+     "Closes the open record TERMINALLY, outcome :cancelled. No encounter follows.",
+     :closed true}
+    [:event [:= :appointment-cancel]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
+    [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
+    [:active-mrn :string]
+    [:appointment-id :string]]]
+  [:no-show
+   [:map
+    {:doc
+     "A booked appointment's instant arrives and the patient does not (HL7v2 SIU^S26 -- deliberately unrendered in 1.7.0).",
+     :transition
+     "Closes the open record TERMINALLY, outcome :no-show, and opens NOTHING -- which is exactly why a no-show cannot be derived from an encounter.",
+     :closed true}
+    [:event [:= :no-show]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:or
+       [:map
+        {:closed true}
+        [:patient-id :string]
+        [:role [:enum :subject :survivor :merged]]]
+       [:map
+        {:closed true}
+        [:bed-id :string]
+        [:ward :string]
+        [:role [:enum :subject]]]]]]
+    [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
+    [:active-mrn :string]
+    [:appointment-id :string]]]
   [:merge
    [:map
     {:doc
@@ -589,7 +705,8 @@
            [:code :string]
            [:display {:optional true} :string]]]]]
        [:citation [:map [:module :string] [:state :keyword]]]
-       [:references {:optional true} [:maybe :int]]]]]]]
+       [:references {:optional true} [:maybe :int]]]]]
+    [:appointment-id {:optional true} :string]]]
   [:outpatient-visit-end
    [:map
     {:doc

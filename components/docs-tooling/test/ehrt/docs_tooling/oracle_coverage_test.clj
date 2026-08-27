@@ -142,11 +142,13 @@
           "an empty witnessed set would make every membership assertion below vacuously true")
       (is (seq types) "likewise for the message-type half"))
     (testing "every committed kind is a real event kind"
-      ;; 24 since contract 1.6.0 (arc 3b sweep 2, ADR-0174 section 2(c)):
-      ;; the bed cycle's own `:bed-status-change`.
-      (is (= 24 (count closed))
+      ;; 28 since contract 1.7.0 (arc 3b sweep 3, ADR-0174 section 2(b)):
+      ;; scheduling's four -- `:appointment`, `:reschedule`,
+      ;; `:appointment-cancel`, `:no-show` -- on top of 1.6.0's own
+      ;; `:bed-status-change`.
+      (is (= 28 (count closed))
           (str "sanity on this test's own population source: the committed export must still "
-               "hold the 24-kind closed vocabulary. Found " (count closed) "."))
+               "hold the 28-kind closed vocabulary. Found " (count closed) "."))
       (is (every? closed kinds)
           (str "a committed kind outside the closed vocabulary is a typo or a stale claim. "
                "Offenders: " (pr-str (remove closed kinds)))))

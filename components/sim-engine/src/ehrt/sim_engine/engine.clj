@@ -321,7 +321,44 @@
    [:status {:optional true} [:maybe [:enum :new :admitted :discharged :merged :expired]]]
    [:admitted-at {:optional true} [:maybe :int]]
    [:discharged-at {:optional true} [:maybe :int]]
-   [:cancelled {:optional true} :boolean]])
+   [:cancelled {:optional true} :boolean]
+   ;; ARC 3B SWEEP 3 (ADR-0174 section 2(b)): the appointment this
+   ;; encounter was KEPT against, present only on an encounter a
+   ;; scheduled arrival or a follow-up opened. It is the single field
+   ;; that makes `scheduled-encounter-follows-its-appointment`
+   ;; non-vacuous -- and it is non-vacuous only because sweep 1 landed,
+   ;; since without a SECOND encounter every appointment would trivially
+   ;; precede its patient's first and only visit.
+   [:appointment-id {:optional true} :string]])
+
+(def AppointmentRecord
+  "ONE appointment (ADR-0174 section 2(b), arc 3b sweep 3). `PatientState`
+  holds the OPEN one under `:appointment` and every TERMINAL one under
+  `:appointments` -- deliberately the same two-field shape
+  `:encounter`/`:encounters` establishes, because an appointment has the
+  same life cycle as an encounter: exactly one open at a time, and a
+  closed one that must never have its ordinal reused.
+
+  TERMINAL MEANS ONE OF THREE, AND ONLY EVER ONE. `:outcome` is `:kept`,
+  `:cancelled` or `:no-show`; `appointment-reaches-at-most-one-terminal`
+  is what asserts the exclusivity over the LOG, and this field is what
+  makes it exclusive in the STATE. A `:reschedule` is NOT terminal -- it
+  moves `:scheduled-t` and leaves the record open, which is exactly why
+  it keeps its own id rather than minting a second.
+
+  `:prior-scheduled-t` is present only on a record a reschedule moved,
+  and is the shape `demographic-update-reports-a-real-change` already
+  established for a change: prior and current on ONE record, never two."
+  [:map
+   [:appointment-id :string]
+   [:ordinal :int]
+   [:booked-at :int]
+   [:scheduled-t :int]
+   [:appointment-class [:enum :inpatient :emergency :outpatient
+                        :preadmit :recurring :obstetrics]]
+   [:reason {:optional true} [:maybe :string]]
+   [:prior-scheduled-t {:optional true} :int]
+   [:outcome {:optional true} [:enum :kept :cancelled :no-show]]])
 
 (def PatientState
   "The engine's per-patient accumulator -- what folding `evolve` over a
@@ -394,6 +431,21 @@
    ;; vacuously-true one.
    [:encounter {:optional true} [:maybe EncounterRecord]]
    [:encounters {:optional true} [:vector EncounterRecord]]
+   ;; ARC 3B SWEEP 3 (ADR-0174 section 2(b)): appointments, the same two
+   ;; layers for the same reason. `:appointment` is the OPEN one (nil
+   ;; between appointments), `:appointments` every TERMINAL one in the
+   ;; order it went terminal.
+   ;;
+   ;; UNLIKE `:encounter`/`:encounters` THESE ARE FOLDED ONLY WHERE THE
+   ;; EVENTS EXIST, and that asymmetry is not an oversight. The encounter
+   ;; records are folded unconditionally because their openers
+   ;; (`:admission`, `:outpatient-visit`) exist in EVERY run, so folding
+   ;; them is what keeps `admission-only-when-no-open-encounter` a real
+   ;; predicate on a legacy log. An `:appointment` event exists in no run
+   ;; that did not opt in, so there is nothing to fold and no invariant
+   ;; that could go vacuous by not folding it.
+   [:appointment {:optional true} [:maybe AppointmentRecord]]
+   [:appointments {:optional true} [:vector AppointmentRecord]]
    [:attributes {:optional true} [:map-of :keyword :any]]])
 
 (defn valid-patient?
@@ -489,6 +541,62 @@
   for two openers."
   [patient]
   (+ (count (:encounters patient)) (if (:encounter patient) 1 0)))
+
+(defn appointment-id-for
+  "The internal, deterministic appointment-id (ADR-0174 section 2(b),
+  ruling B1's law applied one level sideways, arc 3b sweep 3).
+
+  EXACTLY `encounter-id-for`'s contract with a different prefix: a PURE
+  function of this run's seed, the patient's arrival ordinal (0-indexed)
+  and that patient's own 0-indexed appointment ordinal, deliberately OFF
+  the seeded RNG streams -- so an appointment costs sim/ADR-0009's draw
+  accounting nothing, exactly as an encounter id does.
+
+  It takes the ORDINAL rather than hashing the patient-id STRING for
+  `encounter-id-for`'s own stated reason: `stream-family-tag`'s docstring
+  forbids a hash this repo does not own from being load-bearing, and
+  `mix64` is this repo's own. `APT-` is a fourth distinct prefix beside
+  `PID-`, `MRN` and `ENC-`, so no two id spaces are ever visually
+  confusable, and the zero-padded arrival ordinal leads for the same
+  lexical-order reason the other three do.
+
+  A RESCHEDULE KEEPS THIS ID rather than minting a second one and
+  pointing back at the first (ADR-0174 section 2(b)): SCH-1/SCH-2 are
+  stable placer/filler ids across the SIU family, and `:prior-value`/
+  `:value` on ONE record is already this repo's shape for a change."
+  [seed ordinal appointment-ordinal]
+  (format "APT-%06d-%02d-%08x" ordinal appointment-ordinal
+          (bit-and (mix64 (mix64 (mix64 seed ordinal) appointment-ordinal) 0x4150545F)
+                   0xffffffff)))
+
+(defn next-appointment-ordinal
+  "The 0-indexed ordinal this patient's NEXT appointment takes: every
+  appointment they have ever opened, counted -- `next-encounter-ordinal`
+  applied to the appointment records.
+
+  Monotone by construction for the same reason: a CANCELLED or NO-SHOWED
+  appointment stays in `:appointments` precisely so its ordinal is never
+  handed out twice."
+  [patient]
+  (+ (count (:appointments patient)) (if (:appointment patient) 1 0)))
+
+(defn- minted-appointment-id-field
+  "What an appointment's own `decide` merges in: `{:appointment-id ...}`
+  for a run that opted into `:scheduling`, `{}` for one that did not.
+
+  Deliberately a SEPARATE world key from `:encounter-minting` rather than
+  a shared one: `:scheduling` and `:encounters` are independent opt-ins,
+  and a run may take either without the other. The hand-built-world
+  tolerance is on the KEY and never on a missing ordinal entry -- every
+  patient `run` creates is in `:ordinals`, so a nil there is a defect and
+  reads as one (`project_equivalence_proof_pattern`'s own rule, and the
+  same shape `minted-encounter-id-field` uses)."
+  [world patient-id]
+  (if-let [{:keys [seed ordinals]} (:appointment-minting world)]
+    {:appointment-id (appointment-id-for seed (get ordinals patient-id)
+                                         (next-appointment-ordinal
+                                          (get-in world [:patients patient-id])))}
+    {}))
 
 (defn- minted-encounter-id-field
   "What an encounter OPENER's own `decide` merges in: `{:encounter-id
@@ -1160,11 +1268,128 @@
   ;; what keeps `registered-is-every-patients-first-event` true by
   ;; construction: a second encounter is a second VISIT by one patient,
   ;; not a second patient.
-  [_streams _t world patient-id {:keys [steps]}]
-  (let [patient (get-in world [:patients patient-id])]
+  ;;
+  ;; ARC 3B SWEEP 3: a SCHEDULED repeat arrival is booked behind an
+  ;; `:appointment`, so this step can arrive already stamped -- and the
+  ;; stamp has to reach the OPENER inside, not stop here, or an opener
+  ;; would carry no reference and `scheduled-encounter-follows-its-
+  ;; appointment` would go quietly vacuous on exactly the arrivals it
+  ;; most needs to judge.
+  [_streams _t world patient-id {:keys [steps appointment-id]}]
+  (let [patient (get-in world [:patients patient-id])
+        stamped (if (and appointment-id (seq steps))
+                  (into [(assoc (first steps) :appointment-id appointment-id)] (rest steps))
+                  steps)]
     (if (encounter-openable? world patient)
-      {:events [] :advance 0 :prepend-steps steps}
+      {:events [] :advance 0 :prepend-steps stamped}
       {:events [] :advance 0})))
+
+
+;; --- ARC 3B SWEEP 3 (ADR-0174 section 2(b)): SCHEDULING as skeleton
+;; STATE. Four kinds, none of which renders a message in v1 (ruling C --
+;; MSH-12 says "2.3" and the SIU structures are v2.4, which stays rowed
+;; for arc 4).
+;;
+;; ONE STEP CARRIES A WHOLE ARRIVAL, exactly as `:repeat-arrival`'s does
+;; and for exactly its reason: the visit behind an appointment happens or
+;; it does not, and a `:delay` plus a `:discharge` queued behind an
+;; opener that never fired would be a discharge with no admission. So the
+;; appointment is ONE decision, not a list of steps that each guard
+;; themselves.
+;;
+;; TWO `:patient` DRAWS PER APPOINTMENT, ALWAYS, IN THIS ORDER -- one
+;; uniform for the outcome and one for the reschedule offset, the second
+;; taken whether or not the first selected a reschedule. That is the
+;; FIXED-CONSUMPTION law (`turnaround-seconds`' own choice, and
+;; deliberately unlike `decide :delay`'s dead-draw skip): a site that
+;; retunes `:cancel-rate` must not shift any OTHER patient's stream, and
+;; under a per-patient stream it cannot shift this one's either.
+;;
+;; THE THREE RATES ARE BANDS OF THE ONE UNIFORM, which is what makes
+;; `appointment-reaches-at-most-one-terminal` true by construction: one
+;; draw cannot land in two bands, so cancelled/no-showed/kept are
+;; mutually exclusive in the STATE and not merely asserted over the log.
+
+(defn- appointment-outcome
+  "Which band this appointment's outcome uniform fell in. The order is
+  part of the contract, because moving a boundary moves every band after
+  it: cancel, then reschedule, then no-show, then kept as the remainder.
+  `valid-scheduling?` is what guarantees the remainder is not negative."
+  [u {:keys [cancel-rate reschedule-rate no-show-rate]}]
+  (cond (< u cancel-rate)                                          :cancelled
+        (< u (+ cancel-rate reschedule-rate))                      :rescheduled
+        (< u (+ cancel-rate reschedule-rate no-show-rate))         :no-show
+        :else                                                      :kept))
+
+(defn- days->seconds [d] (* 86400 (long d)))
+
+(defmethod decide :appointment
+  ;; The step carries WHAT is being booked (`:lead-seconds`,
+  ;; `:appointment-class`, `:reason`) and WHAT RUNS at `:scheduled-t` if
+  ;; it is kept (`:steps`). Both of this sweep's two producers build the
+  ;; same step: the pre-loop, for an arrival the scheduled-vs-walk-in
+  ;; Bernoulli made a booking, and `decide :discharge`, for a follow-up.
+  ;;
+  ;; A RESCHEDULE SHARES THE BOOKING'S INSTANT, and that is stated rather
+  ;; than hidden: booking and re-booking are one decide, so the two events
+  ;; land in one batch. Log ORDER distinguishes them -- the `:appointment`
+  ;; is emitted first, which is what
+  ;; `appointment-reference-resolves` reads -- and `:prior-scheduled-t`
+  ;; carries what moved. Placing the reschedule partway to the original
+  ;; instant would need a second queue entry and would buy no invariant.
+  [{rng :patient} t world patient-id {:keys [lead-seconds appointment-class reason steps]}]
+  (let [patient (get-in world [:patients patient-id])
+        scheduling (:scheduling world)
+        [lo hi] (:lead-time-days scheduling)
+        appointment-id (:appointment-id (minted-appointment-id-field world patient-id))
+        ;; THE TWO DRAWS. Both, always, in this order.
+        u (.nextDouble ^Random rng)
+        move-days (rand-int-in rng lo hi)
+        outcome (appointment-outcome u scheduling)
+        scheduled-t (+ t lead-seconds)
+        moved-t (+ scheduled-t (days->seconds move-days))
+        final-t (if (= :rescheduled outcome) moved-t scheduled-t)
+        booking (cond-> {:event :appointment :t t :active-mrn (:active-mrn patient)
+                         :appointment-id appointment-id
+                         :scheduled-t scheduled-t
+                         :appointment-class appointment-class
+                         :participants [{:patient-id patient-id :role :subject}]}
+                  reason (assoc :reason reason))
+        terminal (fn [kind]
+                   {:event kind :t t :active-mrn (:active-mrn patient)
+                    :appointment-id appointment-id
+                    :participants [{:patient-id patient-id :role :subject}]})
+        ;; The opener is the FIRST of the carried steps, and it is the
+        ;; one that names the appointment -- section 2(b)'s "a scheduled
+        ;; arrival references its appointment".
+        stamped (when (seq steps)
+                  (into [(assoc (first steps) :appointment-id appointment-id)]
+                        (rest steps)))]
+    (case outcome
+      :cancelled  {:events [booking (terminal :appointment-cancel)] :advance 0}
+      :no-show    {:events [booking] :advance lead-seconds
+                   :prepend-steps [{:type :no-show :appointment-id appointment-id}]}
+      :rescheduled {:events [booking
+                             {:event :reschedule :t t :active-mrn (:active-mrn patient)
+                              :appointment-id appointment-id
+                              :prior-scheduled-t scheduled-t
+                              :scheduled-t moved-t
+                              :participants [{:patient-id patient-id :role :subject}]}]
+                    :advance (- final-t t)
+                    :prepend-steps stamped}
+      {:events [booking] :advance lead-seconds :prepend-steps stamped})))
+
+(defmethod decide :no-show
+  ;; Emitted AT `:scheduled-t` (ADR-0174 section 2(b)'s own table) and
+  ;; opening nothing -- which is precisely why a no-show cannot be
+  ;; DERIVED from an encounter, the alternative that section rejects.
+  ;; It draws nothing: its outcome was decided at the booking.
+  [_streams t world patient-id {:keys [appointment-id]}]
+  (let [patient (get-in world [:patients patient-id])]
+    {:events [{:event :no-show :t t :active-mrn (:active-mrn patient)
+               :appointment-id appointment-id
+               :participants [{:patient-id patient-id :role :subject}]}]
+     :advance 0}))
 
 (defn- identity-fill-outcome
   "The `:fill` branch's own outcome, factored because TWO decides reach
@@ -1380,6 +1605,16 @@
        (sort-by (fn [[pid p]] [(:admitted-at p) pid]))
        ffirst))
 
+(defn- appointment-ref-field
+  "What an opener carrying a scheduled arrival's own appointment merges
+  in: `{:appointment-id ...}`, or `{}` for a walk-in. The step is stamped
+  by `decide :appointment` (never by the pre-loop), so an opener can only
+  carry an id an `:appointment` event already minted EARLIER in this
+  patient's own log -- which is `scheduled-encounter-follows-its-
+  appointment` holding by construction rather than by assertion."
+  [step]
+  (if-let [id (:appointment-id step)] {:appointment-id id} {}))
+
 (defmethod decide :admission
   [{world-rng :world facility-rng :facility} t world patient-id
    {:keys [location force-placement] :as step}]
@@ -1407,7 +1642,10 @@
                          ;; id (ADR-0174 ruling B1); every later event of
                          ;; that encounter is stamped with it by `run`'s
                          ;; own loop, off the open record.
-                         (minted-encounter-id-field world patient-id))]
+                         (minted-encounter-id-field world patient-id)
+                         ;; ARC 3B SWEEP 3: and NAMES the appointment it
+                         ;; was kept against, when it had one.
+                         (appointment-ref-field step))]
          :advance 0}))))
 
 (defmethod decide :delay
@@ -1547,7 +1785,14 @@
   ;; the cycle: today's coupling picks the longest-waiting boarder at
   ;; the discharge instant and hands them a bed they occupy in the same
   ;; second, with no opportunity for the world to have changed.
-  [{world-rng :world facility-rng :facility} t world patient-id step]
+  ;;
+  ;; ARC 3B SWEEP 3 (ADR-0174 section 2(b)): and `:patient` joins, for the
+  ;; FOLLOW-UP -- the first producer of a SCHEDULED second encounter this
+  ;; repository has had. TWO draws, always, whenever the run opted into
+  ;; `:scheduling`: the follow-up Bernoulli and the interval, the second
+  ;; taken whether or not the first fired. Same fixed-consumption law the
+  ;; appointment's own two draws follow, and for the same reason.
+  [{world-rng :world facility-rng :facility rng :patient} t world patient-id step]
   (let [patient (get-in world [:patients patient-id])
         ;; C3: an expired-disposition discharge vacates NO bed --
         ;; patient-state-model.md's own "clinically absorbing but
@@ -1566,15 +1811,38 @@
         ;; bed goes `:dirty` here and NOBODY is pulled into it yet.
         vacated (when-not expired? (vacate-bed facility-rng world t vacated-location patient-id))
         waiting-id (when (and (not expired?) (nil? (:beds world)))
-                     (waiting-boarder world patient-id vacated-ward))]
-    (merge
+                     (waiting-boarder world patient-id vacated-ward))
+        ;; A follow-up is booked at the DISCHARGE INSTANT and its visit
+        ;; runs at an ABSOLUTE later one, so it rides `:schedule-followup`
+        ;; exactly as the auto-paired `:result` and the bed cycle's own
+        ;; two legs do. An EXPIRED discharge books nothing: a return visit
+        ;; for somebody who died is the one shape this must not produce.
+        follow-up (when-let [{:keys [rate interval-days]} (:follow-up (:scheduling world))]
+                    (let [u (.nextDouble ^Random rng)
+                          days (rand-int-in rng (first interval-days) (second interval-days))]
+                      (when (and (< u rate) (not expired?))
+                        {:t t :patient-id patient-id
+                         :steps [{:type :appointment
+                                  :lead-seconds (days->seconds days)
+                                  :appointment-class :outpatient
+                                  :reason "Follow-up"
+                                  :steps [{:type :outpatient-visit :reason "Follow-up"}
+                                          {:type :delay :from 20 :to 20}
+                                          {:type :outpatient-visit-end}]}]})))
+        ;; TWO followups can now be owed by ONE decide -- the bed the
+        ;; discharge dirtied, and the return visit it booked -- so this
+        ;; hands the loop a VECTOR. See the loop's own comment: it takes
+        ;; one map or many, and one map is what every other site still
+        ;; hands it.
+        followups (into [] (remove nil?) [(:schedule-followup vacated) follow-up])]
+    (cond->
      {:events (cond-> [discharge-event]
                 waiting-id
                 (conj (bed-ready-transfer-event world-rng world patient-id waiting-id vacated-location t))
                 (seq (:events vacated))
                 (into (:events vacated)))
       :advance 0}
-     (select-keys vacated [:schedule-followup]))))
+      (seq followups) (assoc :schedule-followup followups))))
 
 ;; --- ARC 3B SWEEP 2: the cycle's own two steps. Neither names a
 ;; patient: their queue entries carry `:patient-id` nil, they draw on
@@ -1893,7 +2161,11 @@
                      (reason-field step) (citation-fields step)
                      ;; ARC 3B SWEEP 1: the second opener, minting the
                      ;; same way `:admission` does.
-                     (minted-encounter-id-field world patient-id))]
+                     (minted-encounter-id-field world patient-id)
+                     ;; ARC 3B SWEEP 3: and the opener a FOLLOW-UP
+                     ;; produces, so this is the headline reference --
+                     ;; a second encounter that is SCHEDULED.
+                     (appointment-ref-field step))]
      :advance 0}))
 
 (defmethod decide :outpatient-visit-end
@@ -2153,9 +2425,14 @@
   opener's own instant, and nothing else. The seven projection fields
   stay on `PatientState` and ARE this encounter's placement while it is
   open (`EncounterRecord`'s own docstring)."
-  [patient {:keys [t encounter-id]}]
+  [patient {:keys [t encounter-id appointment-id]}]
   (cond-> {:ordinal (next-encounter-ordinal patient) :admitted-at t}
-    encounter-id (assoc :encounter-id encounter-id)))
+    encounter-id (assoc :encounter-id encounter-id)
+    ;; ARC 3B SWEEP 3 (ADR-0174 section 2(b)): a SCHEDULED opener names
+    ;; the appointment it was kept against, and the open record carries
+    ;; it too -- the ADR asks for both, because the state half is what a
+    ;; consumer reads and the event half is what the invariant judges.
+    appointment-id (assoc :appointment-id appointment-id)))
 
 (defn- close-encounter
   "Move the open record onto `:encounters`, snapshotting the projection
@@ -2273,12 +2550,41 @@
   (cond-> patient
     (some? (:demographics patient)) (assoc-in [:demographics :payer] payer)))
 
+(defn- close-appointment
+  "Move the open appointment onto `:appointments` with its outcome. A
+  terminal record is KEPT rather than dropped so `:ordinal` can never be
+  reused -- the same reason a cancelled encounter stays in `:encounters`."
+  [patient outcome]
+  (if-let [apt (:appointment patient)]
+    (-> patient
+        (update :appointments (fnil conj []) (assoc apt :outcome outcome))
+        (assoc :appointment nil))
+    patient))
+
+(defn- keep-appointment
+  "What an ENCOUNTER OPENER does to the appointment it names: closes it
+  `:kept`. Guarded on the id MATCHING the open record, so an opener
+  carrying a stale id closes nothing and
+  `scheduled-encounter-follows-its-appointment` sees the defect rather
+  than having it folded away."
+  [patient appointment-id]
+  (if (and appointment-id (= appointment-id (:appointment-id (:appointment patient))))
+    (close-appointment patient :kept)
+    patient))
+
 (defmethod evolve :admission
   ;; ARC 3B SWEEP 1: opens the encounter. `open-encounter` reads the
   ;; PRE-admission patient, so the ordinal it takes counts what this
   ;; patient had before, never including the encounter being opened.
-  [patient {:keys [location home-ward attending t conditions encounter-id] :as event}]
+  ;; ARC 3B SWEEP 3: and closes the APPOINTMENT it names, `:kept`. The
+  ;; kept terminal is not an event of its own -- it IS the encounter
+  ;; happening -- so the opener's fold is the only place it can be
+  ;; written. `keep-appointment` runs BEFORE `open-encounter` reads the
+  ;; patient, which is deliberate and costs nothing: the encounter
+  ;; ordinal counts encounters, never appointments.
+  [patient {:keys [location home-ward attending t conditions encounter-id appointment-id] :as event}]
   (-> patient
+      (keep-appointment appointment-id)
       (assoc :status :admitted
              :class :inpatient
              :home-ward home-ward
@@ -2401,8 +2707,12 @@
 ;; model.md's event-validity table, the conditional row this milestone adds).
 
 (defmethod evolve :outpatient-visit
-  [patient {:keys [attending t conditions encounter-id] :as event}]
+  ;; ARC 3B SWEEP 3: the SECOND opener, and the one a follow-up produces
+  ;; -- so this is where a scheduled return visit closes its own
+  ;; appointment `:kept`.
+  [patient {:keys [attending t conditions encounter-id appointment-id] :as event}]
   (-> patient
+      (keep-appointment appointment-id)
       (assoc :status :admitted :class :outpatient :attending attending
              :encounter (open-encounter patient event))
       (fold-conditions t encounter-id conditions)))
@@ -2412,6 +2722,41 @@
   (-> patient
       (assoc :status :discharged :discharged-at t)
       close-encounter))
+
+;; --- the four kinds' own folds. An `:appointment` opens the record; a
+;; `:reschedule` MOVES it and is not terminal; a cancel and a no-show
+;; close it. The KEPT terminal is written by the opener's own evolve
+;; (`keep-appointment`, below), because "kept" is not an event -- it is
+;; the encounter happening.
+
+(defmethod evolve :appointment
+  [patient {:keys [t appointment-id scheduled-t appointment-class reason]}]
+  (assoc patient :appointment
+         (cond-> {:appointment-id appointment-id
+                  :ordinal (next-appointment-ordinal patient)
+                  :booked-at t
+                  :scheduled-t scheduled-t
+                  :appointment-class appointment-class}
+           reason (assoc :reason reason))))
+
+(defmethod evolve :reschedule
+  [patient {:keys [appointment-id prior-scheduled-t scheduled-t]}]
+  (if (= appointment-id (:appointment-id (:appointment patient)))
+    (update patient :appointment assoc
+            :prior-scheduled-t prior-scheduled-t :scheduled-t scheduled-t)
+    patient))
+
+(defmethod evolve :appointment-cancel
+  [patient {:keys [appointment-id]}]
+  (if (= appointment-id (:appointment-id (:appointment patient)))
+    (close-appointment patient :cancelled)
+    patient))
+
+(defmethod evolve :no-show
+  [patient {:keys [appointment-id]}]
+  (if (= appointment-id (:appointment-id (:appointment patient)))
+    (close-appointment patient :no-show)
+    patient))
 
 ;; --- M5b: :procedure -- a log-only fact, no PatientState field change
 ;; (Procedure is deliberately outside EmitState's own rendered resource
@@ -2793,7 +3138,17 @@
    ;; bed-ready transfer from the discharge instant to the READY instant;
    ;; ABSENT ENTIRELY is the byte-identical path, the same opt-in law
    ;; `:encounters` and `:persons` establish.
-   :bed-cycle])
+   :bed-cycle
+   ;; ARC 3B SWEEP 3 (ADR-0174 section 2(b), rulings C/E1): SCHEDULING's
+   ;; own opt-in. Present splits arrivals scheduled-vs-walk-in, mints
+   ;; appointments as skeleton state, and schedules follow-up visits at
+   ;; discharge; ABSENT ENTIRELY is the byte-identical path, the same
+   ;; opt-in law `:bed-cycle`, `:encounters` and `:persons` establish.
+   ;;
+   ;; `R-mix-7` says a mix RATIO reshuffles nothing. This is NOT a mix
+   ;; ratio -- it is a fact generator, so it DRAWS, and the reshuffle it
+   ;; causes belongs entirely to the turn-on commit.
+   :scheduling])
 
 (def Persons
   "`run`'s ENGINE-FACING `:persons` value (ADR-0173 section 2(a), arc 3a
@@ -2833,6 +3188,64 @@
    [:personas [:map-of :string sim-model/Persona]]
    [:alive [:map-of :string :int]]
    [:events [:vector [:map [:event :keyword] [:t :int] [:person-id :string]]]]])
+
+(def Scheduling
+  "`run`'s `:scheduling` value (ADR-0174 section 2(b), arc 3b sweep 3) --
+  the six sub-keys the ADR names, and nothing else.
+
+    :scheduled-fraction  P(an arrival was BOOKED rather than walked in).
+                         `:world`, pre-loop, one Bernoulli per arrival
+                         ordinal.
+    :lead-time-days      [lo hi], the range an appointment is booked
+                         AHEAD of its own visit. Drawn on `:world` in the
+                         same pre-loop pass, and RE-USED as the range a
+                         reschedule moves an appointment by, so a
+                         reschedule needs no seventh key of its own.
+    :no-show-rate        P(booked, never arrived). Emitted AT
+                         `:scheduled-t`; opens nothing.
+    :reschedule-rate     P(moved once before being kept). NOT terminal.
+    :cancel-rate         P(cancelled before the visit). Terminal.
+    :follow-up           {:rate p :interval-days [lo hi]} -- the return
+                         visit booked at `decide :discharge`, and the
+                         FIRST producer of a SCHEDULED second encounter
+                         this repository has had.
+
+  THE THREE OUTCOME RATES ARE BANDS OF ONE UNIFORM, not three
+  independent Bernoullis, and that is what makes
+  `appointment-reaches-at-most-one-terminal` true in the STATE rather
+  than merely asserted over the log: cancelled, no-showed and kept
+  cannot co-occur because one draw cannot land in two bands. They must
+  therefore SUM TO AT MOST 1 -- `valid-scheduling?` enforces it, because
+  a config whose rates sum past 1 would silently starve the last band.
+
+  ABSENT ENTIRELY -- not nil, not a map of zeroes -- is the
+  byte-identical path."
+  [:map
+   [:scheduled-fraction [:and number? [:>= 0] [:<= 1]]]
+   [:lead-time-days [:tuple :int :int]]
+   [:no-show-rate [:and number? [:>= 0] [:<= 1]]]
+   [:reschedule-rate [:and number? [:>= 0] [:<= 1]]]
+   [:cancel-rate [:and number? [:>= 0] [:<= 1]]]
+   [:follow-up [:map
+                [:rate [:and number? [:>= 0] [:<= 1]]]
+                [:interval-days [:tuple :int :int]]]]])
+
+(defn valid-scheduling?
+  "Whether `run`'s `:scheduling` value is well-formed. Result-not-throw:
+  `run` returns `result/error :invalid-scheduling` rather than blowing up
+  inside the pre-loop, the same guard-clause-at-entry shape
+  `:invalid-persons` and `:invalid-seed` (sim/ADR-0116 R9) already have.
+
+  The band-sum check is HERE and not in the malli schema because malli
+  cannot express a constraint ACROSS three sibling keys without a custom
+  predicate, and a custom predicate in the schema would not survive the
+  EDN export the way the per-key ranges do."
+  [scheduling]
+  (and (m/validate Scheduling scheduling)
+       (<= (+ (:no-show-rate scheduling)
+              (:reschedule-rate scheduling)
+              (:cancel-rate scheduling))
+           1.0)))
 
 (defn valid-persons?
   "Whether `run`'s engine-facing `:persons` value is well-formed. Result-
@@ -2930,7 +3343,7 @@
   is then the expression that was there before arc 3a part 3."
   [{:keys [seed patients pathway pathways arrival-gap facility churn-profile
            persona-config modules module-assignment module-horizon-days history persons
-           encounters]
+           encounters scheduling]
     ;; The SAME defaults `run`'s own parameter list declares, restated
     ;; here because `person-plan` is a second entry point and a caller
     ;; that omitted `:patients` would otherwise reach `(range nil)`.
@@ -2975,6 +3388,63 @@
                    (mapv (fn [t] (select-person world-rng (:population persons) (:alive persons) t))
                          arrivals)
                    (vec (repeat patients nil)))
+        ;; ARC 3B SWEEP 3 (ADR-0174 section 2(b)): the scheduled-vs-walk-in
+        ;; SPLIT, on `:world`, in ORDINAL ORDER, AFTER the person-selection
+        ;; uniform above -- exactly where the ADR puts it, and for the
+        ;; reason it gives: an arrival is `:world` by the partition's own
+        ;; definition (*"arrivals, and every cross-patient decision"*,
+        ;; `stream-family-tag`), these two draws POSITION an arrival, and
+        ;; their count is conditional on the population, which is the exact
+        ;; reason `:world` is run-scoped rather than per-patient.
+        ;;
+        ;; TWO DRAWS PER ORDINAL, ALWAYS, both taken before any of them is
+        ;; consulted -- so the split's own stream position is fixed by
+        ;; `:patients` alone, exactly as the arrival gaps above are, and a
+        ;; site retuning `:scheduled-fraction` shifts no bed choice.
+        ;;
+        ;; A run with no `:scheduling` key takes NEITHER, which is what
+        ;; leaves this stream where it has always stood by the time the
+        ;; loop's own `:world` draws start.
+        scheduled-arrivals
+        (if scheduling
+          (let [[lo hi] (:lead-time-days scheduling)
+                f (:scheduled-fraction scheduling)]
+            (mapv (fn [_]
+                    (let [u (.nextDouble ^Random world-rng)
+                          days (rand-int-in world-rng lo hi)]
+                      (when (< u f) (days->seconds days))))
+                  (range patients)))
+          (vec (repeat patients nil)))
+        ;; What a SCHEDULED arrival's step list becomes: the whole arrival
+        ;; carried behind ONE `:appointment` step, exactly as
+        ;; `:repeat-arrival` already carries one behind one step and for
+        ;; exactly its reason -- the visit behind a booking happens or it
+        ;; does not, and half of it happening would be a discharge with no
+        ;; admission. A WALK-IN is returned untouched, which is the opt-in
+        ;; law expressed one arrival at a time.
+        ;;
+        ;; `:appointment-class` MATCHES THE ENCOUNTER CLASSES (the ADR's
+        ;; own table) and is read off the OPENER TYPE, never off the ward:
+        ;; `evolve :admission` sets `:class :inpatient` and `evolve
+        ;; :outpatient-visit` sets `:class :outpatient`, unconditionally
+        ;; and regardless of where the bed is. Deriving it from the ward
+        ;; would make the booking disagree with the encounter it books.
+        opener-class (fn [steps]
+                       (let [first-step (first steps)
+                             t (:type first-step)]
+                         (case t
+                           :admission :inpatient
+                           :outpatient-visit :outpatient
+                           :repeat-arrival (recur (:steps first-step))
+                           :outpatient)))
+        book (fn [i steps]
+               (let [lead (nth scheduled-arrivals i)]
+                 (if (and lead (seq steps))
+                   [{:type :appointment
+                     :lead-seconds lead
+                     :appointment-class (opener-class steps)
+                     :steps (vec steps)}]
+                   (vec steps))))
         ;; person-id -> the ordinal that person FIRST arrived at. A person
         ;; selected twice is the point of having a pool: the second
         ;; arrival resolves to the patient the first one minted.
@@ -3103,7 +3573,8 @@
                                  {:closure closure
                                   :steps (cond
                                            (first-arrival? i)
-                                           (into [{:type :registered :closure closure}] steps)
+                                           (into [{:type :registered :closure closure}]
+                                                 (book i steps))
                                            ;; ARC 3B SWEEP 1: the wall,
                                            ;; lifted -- but behind ONE
                                            ;; gated step, never spliced
@@ -3119,7 +3590,7 @@
                                            ;; reshuffle belongs to the
                                            ;; loop.
                                            (and encounters (seq steps))
-                                           [{:type :repeat-arrival :steps (vec steps)}]
+                                           (book i [{:type :repeat-arrival :steps (vec steps)}])
 
                                            :else [])}))
         initial-entries (into [] (map-indexed (fn [i _] (registered-entry-for i))) arrivals)
@@ -3700,7 +4171,7 @@
   decision, not because it's a second source of truth."
   [{:keys [seed patients pathway pathways arrival-gap warm-up-seconds facility providers churn-profile order-profiles
            persona-config modules module-assignment module-horizon-days history persons encounters
-           bed-cycle]
+           bed-cycle scheduling]
     :or {patients 1
          pathway sim-model/sample-admission-discharge
          arrival-gap 60
@@ -3732,6 +4203,19 @@
                      :expected (str "{:population [{:person-id <string> :id-tag <int>} ...] "
                                     ":personas {person-id Persona} :alive {person-id <int>} "
                                     ":events [{:event <keyword> :t <int> :person-id <string>} ...]}")})
+    (if (and (some? scheduling) (not (valid-scheduling? scheduling)))
+      ;; ARC 3B SWEEP 3: `:scheduling` is the second key whose value is a
+      ;; whole authored map rather than a scalar, so it is checked at
+      ;; entry the same result-not-throw way `:persons` and `:seed` are.
+      ;; The band-sum half matters most: rates summing past 1 would
+      ;; silently starve the last band rather than fail.
+      (result/error :invalid-scheduling
+                    {:key :scheduling
+                     :expected (str "{:scheduled-fraction <0..1> :lead-time-days [lo hi] "
+                                    ":no-show-rate <0..1> :reschedule-rate <0..1> "
+                                    ":cancel-rate <0..1> :follow-up {:rate <0..1> "
+                                    ":interval-days [lo hi]}}, the three outcome rates "
+                                    "summing to at most 1")})
     (let [;; ADR-0173 section 2(a) (arc 3a part 3): the pre-loop lives in
         ;; `prelude`, one function, because `ehrt.sim.run` must be able to
         ;; ask the same question `run` answers -- which person each
@@ -3746,7 +4230,13 @@
                   :persona-config persona-config :modules modules
                   :module-assignment module-assignment
                   :module-horizon-days module-horizon-days :history history
-                  :persons persons :encounters encounters})
+                  :persons persons :encounters encounters
+                  ;; ARC 3B SWEEP 3: the split's own two `:world` draws
+                  ;; happen inside `prelude`, so `person-plan` -- the
+                  ;; second caller -- sees the IDENTICAL stream position
+                  ;; `run` does. That agreement is the whole reason the
+                  ;; pre-loop lives in one function.
+                  :scheduling scheduling})
         facility-rng (stream seed :facility 0)
         ;; Provider NPIs are generated from this run's seed (sim/ADR-0007),
         ;; drawn once up front -- before arrival staggering -- so
@@ -3886,7 +4376,20 @@
                     ;; `vacate-bed` returns nil, and no tick is ever
                     ;; queued. Same tolerance as every index above: on
                     ;; the KEY, never on a missing bed entry.
-                    :beds (when bed-cycle (sim-model/initial-beds facility))}
+                    :beds (when bed-cycle (sim-model/initial-beds facility))
+                    ;; ARC 3B SWEEP 3 (ADR-0174 section 2(b)): the six
+                    ;; sub-keys, verbatim, plus the minting index that
+                    ;; carries `appointment-id-for`'s two arguments.
+                    ;;
+                    ;; NIL UNLESS THE RUN OPTED IN, on the same law as
+                    ;; the three above: no split, no appointment, no
+                    ;; follow-up, no draw, and therefore the bytes this
+                    ;; engine has always produced.
+                    :scheduling scheduling
+                    :appointment-minting (when scheduling
+                                           {:seed seed
+                                            :ordinals (into {} (for [i (concat firsts hook-patient-ordinals)]
+                                                                 [(pid-for i) i]))})}
         mark-warmup (fn [ev] (assoc ev :warm-up (< (:t ev) warm-up-seconds)))
         ;; ADR-0171: what `decide` receives. The two run-scoped families
         ;; are fixed for the whole loop; `:patient` is swapped per queue
@@ -4040,11 +4543,29 @@
                   ;; is what keeps ground-truth in true global time order
                   ;; even though the result's CONTENT was fully decided
                   ;; back when the order was placed.
-                  [queue'' seq-no'] (if schedule-followup
-                                      [(assoc queue' [(:t schedule-followup) seq-no]
-                                             (select-keys schedule-followup [:patient-id :steps]))
-                                       (inc seq-no)]
-                                      [queue' seq-no])
+                  ;;
+                  ;; ARC 3B SWEEP 3 (ADR-0174 section 2(b)): ONE decide can
+                  ;; now owe TWO -- `decide :discharge` under `:scheduling`
+                  ;; dirties a bed AND books a follow-up -- so a decide may
+                  ;; hand back a SEQUENCE here. A single map is normalised
+                  ;; to a one-element sequence and takes the identical
+                  ;; path, which is why every other site is untouched and
+                  ;; why this cannot drift into two readings.
+                  ;;
+                  ;; THE ADR SAID NOTHING ABOUT THE MAIN LOOP WOULD CHANGE
+                  ;; and this contradicts it, minimally and on purpose: its
+                  ;; section 2(b) was written before sweep 2 gave the
+                  ;; discharge a followup of its own, so the collision it
+                  ;; did not foresee is real. Each entry still lands at its
+                  ;; own `[t seq-no]`, in the order the decide listed them.
+                  [queue'' seq-no']
+                  (reduce (fn [[q n] sf]
+                            [(assoc q [(:t sf) n] (select-keys sf [:patient-id :steps]))
+                             (inc n)])
+                          [queue' seq-no]
+                          (cond (nil? schedule-followup) nil
+                                (map? schedule-followup) [schedule-followup]
+                                :else schedule-followup))
                   ;; M5b Task 4: :registered's own decide call may ask for
                   ;; compiled module steps to run BEFORE whatever was
                   ;; already queued (this patient's own authored pathway,
@@ -4057,4 +4578,4 @@
               (if (seq remaining')
                 (recur (assoc queue'' [(+ t advance) seq-no'] {:patient-id patient-id :steps remaining'})
                        (inc seq-no') world'' ground-truth' state-history')
-                (recur queue'' seq-no' world'' ground-truth' state-history')))))))))))))
+                (recur queue'' seq-no' world'' ground-truth' state-history'))))))))))))))

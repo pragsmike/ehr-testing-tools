@@ -1,6 +1,6 @@
 (ns ehrt.sim-engine.event-fleet
-  "The deterministic fixture fleet: six small engine runs whose union
-  produces EXACTLY the 23 kinds `ehrt.sim-engine.event-schema` declares.
+  "The deterministic fixture fleet: eight small engine runs whose union
+  produces EXACTLY the 28 kinds `ehrt.sim-engine.event-schema` declares.
 
   Lives on the test path, and is shared by two consumers that must not
   be allowed to disagree:
@@ -336,6 +336,40 @@
                                  {:type :delay :from 60 :to 60}
                                  {:type :discharge}]}}))
 
+(defn scheduling-run
+  "Arc 3b sweep 3 (ADR-0174 section 2(b)): SCHEDULING, and the only fleet
+  member that opts into `:scheduling`. It is the sole producer of
+  `:appointment`, `:reschedule`, `:appointment-cancel` and `:no-show`.
+
+  THE RATES ARE FAT ON PURPOSE -- a fifth each -- because the fleet is
+  small and every one of the four kinds must appear in EVERY run of it,
+  not merely on average. A realistic corpus rate would make the schema
+  coverage gate seed-fragile, which is exactly the failure this file's
+  own header rejects fixtures-over-corpora to avoid.
+
+  `:encounters` rides along because sweep 1's horizon is what makes a
+  follow-up's SECOND encounter possible at all; without it the
+  follow-up visit would open nothing and two of the four kinds would
+  still appear but the reference they carry would not.
+
+  APPENDED AT THE END of `fleet`, after `bed-cycle`, for that member's
+  own stated reason: `examples` takes the FIRST event of each kind in
+  fleet order, so every kind that already had an example keeps it."
+  []
+  (engine/run {:seed 7 :patients 8 :arrival-gap 0
+               :facility crowded-facility
+               :encounters true
+               :scheduling {:scheduled-fraction 0.9
+                            :lead-time-days [1 5]
+                            :no-show-rate 0.2
+                            :reschedule-rate 0.2
+                            :cancel-rate 0.2
+                            :follow-up {:rate 0.6 :interval-days [7 21]}}
+               :pathway {:name "admit-discharge"
+                         :steps [{:type :admission :location "Renal"}
+                                 {:type :delay :from 60 :to 60}
+                                 {:type :discharge}]}}))
+
 (defn fleet
   []
   [["clinical" (clinical-run)]
@@ -344,7 +378,8 @@
    ["death" (death-run)]
    ["person" (person-run)]
    ["identification" (identification-run)]
-   ["bed-cycle" (bed-cycle-run)]])
+   ["bed-cycle" (bed-cycle-run)]
+   ["scheduling" (scheduling-run)]])
 
 ;; --- examples for docs/formats.md -----------------------------------------
 

@@ -20,6 +20,22 @@
   :t 0,
   :location {:ward "ED", :bed "ED-H01", :placement :surge},
   :forced false},
+ :appointment
+ {:event :appointment,
+  :t 0,
+  :active-mrn "MRN000003",
+  :appointment-id "APT-000002-00-53068423",
+  :scheduled-t 432000,
+  :appointment-class :inpatient,
+  :participants [{:patient-id "PID-000002-ae4a6586", :role :subject}],
+  :warm-up false},
+ :appointment-cancel
+ {:event :appointment-cancel,
+  :t 0,
+  :active-mrn "MRN000004",
+  :appointment-id "APT-000003-00-d8a9101a",
+  :participants [{:patient-id "PID-000003-cbbefdb8", :role :subject}],
+  :warm-up false},
  :bed-status-change
  {:ward "Renal",
   :participants [{:bed-id "RENAL-01", :ward "Renal", :role :subject}],
@@ -186,6 +202,13 @@
   :merged-mrn "MRN000002",
   :merged-mrns #{"MRN000002"},
   :warm-up false},
+ :no-show
+ {:event :no-show,
+  :t 86400,
+  :active-mrn "MRN000005",
+  :appointment-id "APT-000004-00-a18fc750",
+  :participants [{:patient-id "PID-000004-f75e1f5e", :role :subject}],
+  :warm-up false},
  :observation
  {:category "vital-signs",
   :unit "Cel",
@@ -256,6 +279,15 @@
    :ssn "900-97-1836",
    :payer {:id "self-pay", :name "Self-Pay", :type :self-pay}},
   :participants [{:patient-id "PID-000000-3cb13d09", :role :subject}],
+  :warm-up false},
+ :reschedule
+ {:event :reschedule,
+  :t 0,
+  :active-mrn "MRN000008",
+  :appointment-id "APT-000007-00-1885e567",
+  :prior-scheduled-t 259200,
+  :scheduled-t 604800,
+  :participants [{:patient-id "PID-000007-33c2d0f6", :role :subject}],
   :warm-up false},
  :result-available
  {:participants [{:patient-id "PID-000000-055bdef6", :role :subject}],

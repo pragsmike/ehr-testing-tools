@@ -881,10 +881,23 @@
                      "; the byte gate above carries the diagnostic."))))))))
 
 (def ^:private arc0-invariant-catalog
-  "The 39 invariant names `check-all` reports, in reporting order --
+  "The 43 invariant names `check-all` reports, in reporting order --
   pinned so the findings assertion below is a full-value `=` rather than
   a check of one key. Catalog drift is itself a change in what \"identical
   findings\" means, so it belongs inside the gate, not outside it.
+
+  RE-PINNED AGAIN 2026-08-27, 39 -> 43, by arc 3b sweep 3 (ADR-0174
+  section 2(b)), and disclosed on the same terms as every re-pin below.
+  WHICH INVARIANT MOVED: none of the FINDINGS. `:status` is `:ok` on all
+  four corpora and `:events` is unchanged -- 1,131 / 1,660 / 1,342 / 92,
+  the identical counts the dark commit must not move -- and the four rows
+  that joined (`appointment-reference-resolves`,
+  `scheduled-encounter-follows-its-appointment`,
+  `no-show-has-no-encounter`,
+  `appointment-reaches-at-most-one-terminal`) are VACUOUS on a log with
+  no `:appointment` in it, which every corpus this pin covers still is at
+  the dark commit. They are appended at the END of `catalog`, which is
+  where `catalog` itself puts them.
 
   RE-PINNED AGAIN 2026-08-27, 36 -> 39, by arc 3b sweep 2 (ADR-0174
   section 2(c)), and disclosed the same way. WHICH INVARIANT MOVED:
@@ -943,6 +956,8 @@
     person-scoped-provenance-is-a-stamp-not-a-reference
     no-assignment-to-a-non-ready-bed every-ready-follows-a-cleaning
     bed-cycle-transitions-are-legal
+    appointment-reference-resolves scheduled-encounter-follows-its-appointment
+    no-show-has-no-encounter appointment-reaches-at-most-one-terminal
     occupancy-within-capacity
     surge-only-when-earlier-rungs-exhausted warm-up-mark-matches-window
     result-analytes-match-order-profile])

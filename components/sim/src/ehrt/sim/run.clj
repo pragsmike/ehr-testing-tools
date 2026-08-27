@@ -547,9 +547,17 @@
                  ;; manifest should say so on its own face rather than
                  ;; leaving a reader to infer it from a `:bed-status-
                  ;; change` they happen to notice.
+                 ;; ARC 3B SWEEP 3 (ADR-0174 section 2(b)): `:scheduling`
+                 ;; joins for the same reason again -- a corpus whose
+                 ;; arrivals are split scheduled-vs-walk-in, and whose
+                 ;; discharges book return visits, is a different artifact
+                 ;; from one where every arrival is a walk-in, and the
+                 ;; manifest should say so on its own face rather than
+                 ;; leaving a reader to infer it from an `:appointment`
+                 ;; they happen to notice.
                  engine-params (-> (select-keys opts [:patients :arrival-gap :warm-up-seconds
                                                       :persons :persona-config :encounters
-                                                      :bed-cycle])
+                                                      :bed-cycle :scheduling])
                                     (assoc :reference-date reference-date :utc-offset utc-offset))
                  engine-opts (cond-> (merge (select-keys opts engine/config-keys)
                                             {:seed seed :churn-profile effective-churn-profile})

@@ -1427,6 +1427,181 @@
         :when (and (= :registered (:event event)) (not (sim-model/valid-persona? (:persona event))))]
     {:invariant :registered-persona-is-schema-valid :at (:t event)}))
 
+
+;; --- ARC 3B SWEEP 3 (ADR-0174 section 2(b)): SCHEDULING's own four.
+;;
+;; ALL FOUR ARE VACUOUS ON A LOG WITH NO `:appointment`, and that is
+;; stated here rather than left to be discovered -- the same treatment
+;; `bed-cycle-log?` gives the cycle's three. A run that did not opt into
+;; `:scheduling` mints no appointment, so there is nothing to resolve,
+;; nothing to follow and nothing to no-show.
+;;
+;; THE SECOND IS NON-VACUOUS ONLY BECAUSE SWEEP 1 LANDED, which the ADR
+;; says in as many words: without a SECOND encounter every appointment
+;; would trivially precede its patient's first and only visit, and the
+;; row would assert nothing about anything. `scheduling-test` asserts
+;; the COUNT of openers it actually judges, not merely that it is green.
+
+(defn- scheduling-log?
+  "Whether this log carries appointments at all."
+  [ground-truth]
+  (boolean (some #(= :appointment (:event %)) ground-truth)))
+
+(defn- appointment-fold
+  "Per patient, per appointment-id, what the LOG says happened to it --
+  `{[patient-id appointment-id] {:booked-at .. :terminals [..] :order ..}}`.
+
+  Reconstructed from the log and not read off the engine, for this
+  namespace's own standing reason: a check that asked the engine what it
+  did would agree with the engine by construction."
+  [ground-truth]
+  (persistent!
+   (reduce
+    (fn [acc [i ev]]
+      (let [pid (:patient-id (first (:participants ev)))
+            aid (:appointment-id ev)
+            k [pid aid]]
+        (case (:event ev)
+          :appointment (assoc! acc k {:booked-at i :scheduled-t (:scheduled-t ev) :terminals []})
+          (:appointment-cancel :no-show)
+          (if-let [rec (get acc k)]
+            (assoc! acc k (update rec :terminals conj {:kind (:event ev) :at i}))
+            acc)
+          acc)))
+    (transient {})
+    (map-indexed vector ground-truth))))
+
+(defn appointment-reference-resolves
+  "ADR-0174 section 2(b), invariant 1: every `:reschedule`,
+  `:appointment-cancel` and `:no-show` names an `:appointment-id` that an
+  `:appointment` EARLIER in the SAME patient's log minted.
+
+  Same-patient is the whole point: an id that resolves against somebody
+  else's appointment is exactly the cross-patient reference this row
+  exists to forbid. VACUOUS on a log with no appointments.
+
+  A PURE LEFT FOLD, not a scan with an accumulator beside it -- this
+  namespace may not call `atom`/`volatile!` at all
+  (`sim-purity-lint-test`, ADR-0108), and the reading state here is a
+  set that grows in log order, which is exactly what `reduce` is."
+  [ground-truth]
+  (when (scheduling-log? ground-truth)
+    (:violations
+     (reduce
+      (fn [{:keys [booked] :as acc} ev]
+        (let [pid (:patient-id (first (:participants ev)))
+              k [pid (:appointment-id ev)]]
+          (case (:event ev)
+            :appointment (update acc :booked conj k)
+            (:reschedule :appointment-cancel :no-show)
+            (if (contains? booked k)
+              acc
+              (update acc :violations conj
+                      {:invariant :appointment-reference-resolves
+                       :event (:event ev) :t (:t ev)
+                       :patient-id pid :appointment-id (:appointment-id ev)}))
+            acc)))
+      {:booked #{} :violations []}
+      ground-truth))))
+
+(defn scheduled-encounter-follows-its-appointment
+  "ADR-0174 section 2(b), invariant 2: an opener carrying an
+  `:appointment-id` has that appointment earlier in its OWN patient's
+  log, at or before its `:t`, and NOT already terminal.
+
+  Not merely present-earlier: an opener keeping an appointment a cancel
+  already closed is the defect that makes invariant 3 insufficient on
+  its own, and an opener firing BEFORE its own `:scheduled-t` is a visit
+  that jumped its appointment.
+
+  NON-VACUOUS ONLY BECAUSE SWEEP 1 LANDED -- the ADR says so in as many
+  words. Without a SECOND encounter every appointment would trivially
+  precede its patient's first and only visit, and this row would assert
+  nothing about anything. `scheduling-test` asserts the COUNT of openers
+  it judges rather than merely that it is green."
+  [ground-truth]
+  (when (scheduling-log? ground-truth)
+    (:violations
+     (reduce
+      (fn [{:keys [state] :as acc} ev]
+        (let [pid (:patient-id (first (:participants ev)))
+              k [pid (:appointment-id ev)]]
+          (case (:event ev)
+            :appointment (assoc-in acc [:state k] {:scheduled-t (:scheduled-t ev)})
+            :reschedule (update-in acc [:state k] merge {:scheduled-t (:scheduled-t ev)})
+            (:appointment-cancel :no-show) (assoc-in acc [:state k :terminal] (:event ev))
+            (:admission :outpatient-visit)
+            (if-not (:appointment-id ev)
+              acc
+              (let [rec (get state k)]
+                (if (or (nil? rec)
+                        (some? (:terminal rec))
+                        (> (:scheduled-t rec) (:t ev)))
+                  (update acc :violations conj
+                          {:invariant :scheduled-encounter-follows-its-appointment
+                           :event (:event ev) :t (:t ev)
+                           :patient-id pid :appointment-id (:appointment-id ev)
+                           :appointment rec})
+                  acc)))
+            acc)))
+      {:state {} :violations []}
+      ground-truth))))
+
+(defn no-show-has-no-encounter
+  "ADR-0174 section 2(b), invariant 3: no opener carries a NO-SHOWED
+  appointment's id.
+
+  Weaker than invariant 2 on its own -- 2 already forbids an opener
+  against any terminal appointment -- and kept as its own row because it
+  is the one the design's whole no-show argument rests on: a no-show is
+  precisely an appointment with no encounter to derive it from, which is
+  why appointments could not be retro-derived from encounters."
+  [ground-truth]
+  (when (scheduling-log? ground-truth)
+    (let [no-showed (into #{} (for [ev ground-truth
+                                    :when (= :no-show (:event ev))]
+                                [(:patient-id (first (:participants ev))) (:appointment-id ev)]))]
+      (for [ev ground-truth
+            :when (and (#{:admission :outpatient-visit} (:event ev))
+                       (:appointment-id ev)
+                       (contains? no-showed [(:patient-id (first (:participants ev)))
+                                             (:appointment-id ev)]))]
+        {:invariant :no-show-has-no-encounter :t (:t ev)
+         :patient-id (:patient-id (first (:participants ev)))
+         :appointment-id (:appointment-id ev)}))))
+
+(defn appointment-reaches-at-most-one-terminal
+  "ADR-0174 section 2(b), invariant 4 -- the one the ADR marks OWED
+  because rows 1-3 are each satisfiable by a log where an appointment is
+  both cancelled AND kept.
+
+  Kept, cancelled and no-showed are mutually exclusive. In the engine
+  they are bands of ONE uniform and so cannot co-occur; this row is what
+  says that over a log the engine did not necessarily write.
+
+  A `:reschedule` is deliberately NOT counted: it moves an appointment
+  and leaves it open, which is why it keeps its own id."
+  [ground-truth]
+  (when (scheduling-log? ground-truth)
+    (let [kept (frequencies (for [ev ground-truth
+                                  :when (and (#{:admission :outpatient-visit} (:event ev))
+                                             (:appointment-id ev))]
+                              [(:patient-id (first (:participants ev))) (:appointment-id ev)]))
+          closed (reduce (fn [m ev]
+                           (if (#{:appointment-cancel :no-show} (:event ev))
+                             (update m [(:patient-id (first (:participants ev)))
+                                        (:appointment-id ev)]
+                                     (fnil conj []) (:event ev))
+                             m))
+                         {} ground-truth)]
+      (for [[k terminals] (merge-with into
+                                      (into {} (for [[k n] kept] [k (vec (repeat n :kept))]))
+                                      closed)
+            :when (> (count terminals) 1)]
+        {:invariant :appointment-reaches-at-most-one-terminal
+         :patient-id (first k) :appointment-id (second k)
+         :terminals terminals}))))
+
 (def catalog
   "The full invariant catalog needing only a ground-truth log, in
   reporting order."
@@ -1482,7 +1657,17 @@
    ;; reader counting the catalog will look.
    #'no-assignment-to-a-non-ready-bed
    #'every-ready-follows-a-cleaning
-   #'bed-cycle-transitions-are-legal])
+   #'bed-cycle-transitions-are-legal
+   ;; ARC 3B SWEEP 3 (ADR-0174 section 2(b)): scheduling's own FOUR --
+   ;; three the ADR tables plus the one it marks OWED, because rows 1-3
+   ;; are each satisfiable by a log where an appointment is both
+   ;; cancelled and kept. All four are VACUOUS on a log with no
+   ;; `:appointment` -- `scheduling-log?` says so where a reader counting
+   ;; the catalog will look.
+   #'appointment-reference-resolves
+   #'scheduled-encounter-follows-its-appointment
+   #'no-show-has-no-encounter
+   #'appointment-reaches-at-most-one-terminal])
 
 (def facility-catalog
   "Invariants that need the facility config, not just the log (checked

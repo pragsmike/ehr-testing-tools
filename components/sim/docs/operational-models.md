@@ -240,6 +240,82 @@ correctness law the engine enforces. Baking a census floor into the
 invariant catalog would make it impossible to ever generate the
 messy-but-real traffic of a hospital ignoring its own policy.
 
+## Scheduling (arc 3b sweep 3, ADR-0174 section 2(b))
+
+**Not a scheduler.** Behind the run-config opt-in `:scheduling`, the
+simulator carries appointments as **state** — booked, moved, cancelled,
+no-showed, kept — and nothing else. There is no facility-level resource
+calendar: no slots, no provider availability, no contention. That was a
+real candidate and is deliberately not taken; it opens capacity
+modelling on a second axis, and what this slice asks for is state, not
+a scheduler. Named, not built.
+
+**The split.** Every arrival is either **scheduled** or a **walk-in**,
+decided by one Bernoulli per arrival ordinal drawn on the `:world`
+stream, followed by a lead-time draw from `:lead-time-days`. Both are
+taken in the pre-loop block, in ordinal order, immediately after the
+person-selection uniform — so their count is fixed by `:patients`
+alone, and retuning `:scheduled-fraction` moves the split and nothing
+that happens later. A scheduled arrival's whole step list is carried
+behind one gated `:appointment` step, exactly as a repeat arrival's is,
+for exactly that reason: the visit behind a booking happens or it does
+not, and half of it happening would be a discharge with no admission.
+
+**The outcome is the patient's own.** Kept, rescheduled, cancelled or
+no-showed is decided by **one uniform on that patient's own `:patient`
+stream**, banded — cancel, then reschedule, then no-show, then kept as
+the remainder. The bands are why an appointment cannot reach two
+terminals: one draw cannot land in two bands. A second draw, the
+reschedule offset, is taken **whether or not a reschedule fired**, so a
+site retuning one rate shifts no other patient's stream and no other
+appointment's own.
+
+**The follow-up is the first producer of a scheduled second encounter.**
+At `decide :discharge`, a Bernoulli and an interval on the same patient
+stream book a return visit at the discharge instant; if kept, it opens
+a second encounter that names its appointment. An **expired** discharge
+books nothing. This is what makes
+`scheduled-encounter-follows-its-appointment` mean anything — and it
+means anything only because sweep 1's encounter horizon landed first.
+
+```
+walk-in:    arrival@t ─────────────────────────────► encounter@t
+scheduled:  registered@t → appointment@t ──lead──► encounter@t+lead
+no-show:    registered@t → appointment@t ──lead──► no-show@t+lead, and nothing opens
+follow-up:  discharge@t → appointment@t ─interval─► second encounter@t+interval
+```
+
+**Invariants (`ehrt.sim-check.check`), all vacuous without the opt-in:**
+
+- Every `:reschedule`, `:appointment-cancel` and `:no-show` names an
+  appointment an `:appointment` **earlier in the same patient's log**
+  minted. Same-patient is the point: an id resolving against somebody
+  else's booking is the cross-patient reference this forbids.
+- An opener carrying an `:appointment-id` has that appointment earlier
+  in its own patient's log, at or before its `:t`, and **not already
+  terminal**.
+- No opener carries a **no-showed** appointment's id.
+- An appointment reaches **at most one** terminal — kept, cancelled and
+  no-showed are mutually exclusive.
+
+**What this does NOT buy, stated rather than discovered: none of the
+four kinds reaches the wire.** They map onto the SIU family
+(S12/S14/S15/S26), which is v2.4 structure, and every message this
+project emits carries MSH-12 `"2.3"`. Emitting a structure the version
+field disclaims would be worse than emitting nothing, so the kinds are
+ground truth only and the MSH-12 question is rowed for a later arc. A
+consumer reading the log sees appointments; a consumer reading the wire
+does not.
+
+**And the capacity consequence, because scheduling ADDS arrivals.**
+`allocate` returning `{:exhausted true}` does not produce a visible
+rejection — it **halts the run**, and `run-command` surfaces
+`:error :capacity-exhausted` with no corpus and no self-check at all.
+So a corpus opting into `:scheduling` owes a **measured** ladder margin
+first, and the margin that matters is not per-ward occupancy but the
+union of beds the four rungs can reach: a ward at 100% of its own beds
+is not exhausted while rung 3 still has one.
+
 ## Providers model (shared)
 
 **Config.** `sim-config` carries a `:providers` pool:

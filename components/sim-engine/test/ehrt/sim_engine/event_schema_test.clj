@@ -57,10 +57,11 @@
       (is (empty? (set/difference produced declared))
           (str "produced but not declared in the Event schema: "
                (sort (set/difference produced declared))))
-      (is (= 24 (count declared))
+      (is (= 28 (count declared))
           (str "the census reconciled source and corpora at exactly 21 kinds,"
                " contract 1.3.0 (ADR-0173) added the two the person stream mints,"
-               " and 1.6.0 (ADR-0174 section 2(c)) added the bed cycle's own one")))))
+               " 1.6.0 (ADR-0174 section 2(c)) added the bed cycle's own one,"
+               " and 1.7.0 (ADR-0174 section 2(b)) added scheduling's four")))))
 
 (deftest every-event-of-every-fixture-run-validates
   (doseq [[label {:keys [ground-truth]}] (fleet/fleet)]

@@ -88,6 +88,24 @@
    ;; `bed-status-message`'s own docstring, including what this clone
    ;; can and cannot check.
    :bed-status-change {:type "ADT" :trigger "A20"}
+   ;; ARC 3B SWEEP 3 (ADR-0174 ruling C, 2026-08-27): SCHEDULING'S FOUR
+   ;; KINDS GET NO ENTRY HERE, and the omission is a DECISION with a
+   ;; reason, not an oversight.
+   ;;
+   ;; `:appointment`, `:reschedule`, `:appointment-cancel` and `:no-show`
+   ;; map onto the SIU family -- S12, S14, S15, S26 -- and every message
+   ;; this emitter produces carries MSH-12 "2.3", while the SIU
+   ;; structures are v2.4. Sweep 2's own `:bed-status-change` above could
+   ;; be added because ADT^A20 exists in 2.3; SIU does not, so an entry
+   ;; here would emit a structure the version field disclaims, which is
+   ;; worse than emitting nothing at all.
+   ;;
+   ;; The four are therefore GROUND TRUTH ONLY in 1.7.0. A consumer
+   ;; reading the log sees appointments; a consumer reading the wire does
+   ;; not. That gap is REAL, it is rowed for arc 4 alongside the MSH-12
+   ;; question ADR-0174 section 2(d) raised, and it is stated in all
+   ;; three places the conformance gate demands: each kind's own `:doc`,
+   ;; here, and `event-conformance-test`'s silent set.
    ;; M5b (components/patient-simulator/docs/gmf-interpreter.md section 1's table): :observation is an
    ;; UNSOLICITED finding, not an order's result -- same ORU^R01 message
    ;; family as :result-available, rendered WITHOUT the ORC/OBR order

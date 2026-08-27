@@ -275,8 +275,43 @@
   Nothing was removed, so the deprecation clause has nothing to
   protect here in any case -- but the participant widening is the
   first change under the waiver that a consumer could actually notice
-  on the wire, and saying so is what the waiver's trail is for."
-  "1.6.0")
+  on the wire, and saying so is what the waiver's trail is for.
+
+  1.7.0 (2026-08-27, ADR-0174 section 2(b), arc 3b sweep 3) is
+  SCHEDULING: FOUR new kinds -- `:appointment`, `:reschedule`,
+  `:appointment-cancel`, `:no-show` -- plus one new OPTIONAL key,
+  `:appointment-id`, on the two encounter openers (`:admission` and
+  `:outpatient-visit`).
+
+  NO BUMP IS OWED, AND THIS ONE IS TAKEN -- exactly 1.3.0's situation
+  and for exactly 1.3.0's reason. `classify-change` against the frozen
+  1.6.0 baseline returns `{:additive? true :breaking []}`: a new event
+  kind and a new optional key are the two shapes its own docstring
+  names as non-breaking, and all five changes are one or the other.
+  The bump is taken anyway because `:event-schema-version` is a
+  consumer's only handle on what a log it is holding can CONTAIN, and a
+  1.7.0 log may carry four kinds a 1.6.0-era consumer has never seen
+  and will dispatch on `:event` for. MINOR is the semver level for new,
+  backward-compatible functionality.
+
+  A 1.6.0-ERA LOG VALIDATES UNCHANGED AGAINST 1.7.0, in the strong
+  sense this time and not merely the widening sense 1.6.0 could claim:
+  nothing existing moved at all. `:appointment-id` is optional on both
+  openers and absent from every log produced without the `:scheduling`
+  opt-in.
+
+  NONE OF THE FOUR KINDS REACHES THE WIRE in 1.7.0, and that gap is
+  declared here rather than left for a reader to discover. Ruling C:
+  the SIU family (S12/S14/S15/S26) is v2.4 structure, and every message
+  this repository emits carries MSH-12 `\"2.3\"`. Emitting a structure
+  the version field disclaims would be worse than emitting nothing, so
+  the kinds are ground truth only and the MSH-12/SIU question is ROWED
+  for arc 4. A consumer reading the log sees appointments; a consumer
+  reading the wire does not.
+
+  MADE UNDER THE WAIVER, disclosed: no deprecation release was run, and
+  none is owed in any case, since nothing was removed."
+  "1.7.0")
 
 ;; --- shared leaf schemas --------------------------------------------------
 ;;
@@ -604,7 +639,15 @@
            ;; admission. A provenance STAMP, gated as one by
            ;; `person-scoped-provenance-is-a-stamp-not-a-reference`, and
            ;; what makes hook-created traffic countable in a corpus.
-           [:person-event-id {:optional true} :string])]
+           [:person-event-id {:optional true} :string]
+           ;; 1.7.0 (ADR-0174 section 2(b)): present when this opener was
+           ;; KEPT against a booking, absent on every walk-in. That single
+           ;; field is what makes `scheduled-encounter-follows-its-
+           ;; appointment` non-vacuous -- and it is non-vacuous only
+           ;; because sweep 1's encounter horizon landed, since without a
+           ;; SECOND encounter every appointment would trivially precede
+           ;; its patient's first and only visit.
+           [:appointment-id {:optional true} :string])]
 
     [:transfer
      (kind :transfer
@@ -695,6 +738,58 @@
            ;; the patient's own state folds nothing from this event.
            [:last-patient-id {:optional true} :string])]
 
+    ;; --- 1.7.0 (arc 3b sweep 3, ADR-0174 section 2(b)): SCHEDULING, as
+    ;; four skeleton kinds. NONE OF THE FOUR RENDERS A MESSAGE in this
+    ;; version (ruling C): the SIU family is v2.4 structure and every
+    ;; message this repo emits carries MSH-12 "2.3", which is a real gap
+    ;; and is ROWED for arc 4 rather than papered over by emitting a
+    ;; structure the version field disclaims.
+    ;;
+    ;; They are EVENTS and not `PatientState` fields alone because
+    ;; `R-skeleton-or-emission` decides it: downstream invariants must
+    ;; respect them, so they are generated AND judged.
+
+    [:appointment
+     (kind :appointment
+           {:doc "A future visit is booked for a patient (HL7v2 SIU^S12 -- deliberately unrendered in 1.7.0, see ruling C)."
+            :transition "Opens the patient's :appointment record; terminal only when an encounter keeps it, a cancel closes it, or a no-show closes it."}
+           [:active-mrn :string]
+           [:appointment-id :string]
+           ;; The instant the visit is DUE, always in the future of :t.
+           [:scheduled-t :int]
+           [:appointment-class [:enum :inpatient :emergency :outpatient
+                                :preadmit :recurring :obstetrics]]
+           [:reason {:optional true} :string]
+           [:citation {:optional true} sim-model/Citation])]
+
+    [:reschedule
+     (kind :reschedule
+           {:doc "A booked appointment moves to a different instant (HL7v2 SIU^S14 -- deliberately unrendered in 1.7.0)."
+            :transition "Moves :scheduled-t on the OPEN record and is NOT terminal; the id is kept rather than re-minted."}
+           [:active-mrn :string]
+           ;; THE SAME ID, never a new one pointing back at the old.
+           ;; SCH-1/SCH-2 are stable placer/filler ids across the SIU
+           ;; family, and :prior-value/:value on ONE record is already
+           ;; this repo's shape for a change
+           ;; (`demographic-update-reports-a-real-change`).
+           [:appointment-id :string]
+           [:prior-scheduled-t :int]
+           [:scheduled-t :int])]
+
+    [:appointment-cancel
+     (kind :appointment-cancel
+           {:doc "A booked appointment is cancelled before its instant (HL7v2 SIU^S15 -- deliberately unrendered in 1.7.0)."
+            :transition "Closes the open record TERMINALLY, outcome :cancelled. No encounter follows."}
+           [:active-mrn :string]
+           [:appointment-id :string])]
+
+    [:no-show
+     (kind :no-show
+           {:doc "A booked appointment's instant arrives and the patient does not (HL7v2 SIU^S26 -- deliberately unrendered in 1.7.0)."
+            :transition "Closes the open record TERMINALLY, outcome :no-show, and opens NOTHING -- which is exactly why a no-show cannot be derived from an encounter."}
+           [:active-mrn :string]
+           [:appointment-id :string])]
+
     [:merge
      (kind :merge
            {:doc "Two patient records are found to be one person; the survivor absorbs the merged record's MRNs (HL7v2 A40)."
@@ -749,7 +844,15 @@
            ;; module-compiled and so emit no key at all now.
            [:reason {:optional true} [:maybe [:or :string sim-model/Concept]]]
            [:citation {:optional true} sim-model/Citation]
-           [:conditions {:optional true} [:vector sim-model/ConditionAnnotation]])]
+           [:conditions {:optional true} [:vector sim-model/ConditionAnnotation]]
+           ;; 1.7.0 (ADR-0174 section 2(b)): present when this opener was
+           ;; KEPT against a booking, absent on every walk-in. That single
+           ;; field is what makes `scheduled-encounter-follows-its-
+           ;; appointment` non-vacuous -- and it is non-vacuous only
+           ;; because sweep 1's encounter horizon landed, since without a
+           ;; SECOND encounter every appointment would trivially precede
+           ;; its patient's first and only visit.
+           [:appointment-id {:optional true} :string])]
 
     [:outpatient-visit-end
      (kind :outpatient-visit-end
