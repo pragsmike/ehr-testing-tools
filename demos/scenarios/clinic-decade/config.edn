@@ -104,4 +104,42 @@
  ;; a scenario a reader runs by hand and a gated corpus must not
  ;; disagree about what is in them.
  :bed-cycle true
+
+ ;; ARC 3B SWEEP 3 (ADR-0174 section 2(b) plus ruling C, 2026-08-27):
+ ;; SCHEDULING, ON. Arrivals split scheduled-vs-walk-in, appointments
+ ;; carry their own outcome, and a discharge may book a return visit.
+ ;;
+ ;; :scheduled-fraction IS HIGH HERE, and it is the one sub-key this
+ ;; scenario genuinely disagrees with ed-tuesday about. A DECADE OF
+ ;; AMBULATORY CARE IS BOOKED TRAFFIC: people make appointments and keep
+ ;; them, and the walk-in tail is the minority. 0.70 says roughly seven
+ ;; arrivals in ten arrived against a booking; ed-tuesday's single ED
+ ;; shift says 0.15 for exactly the opposite reason. ADR-0174 section
+ ;; 2(b) names the six sub-keys and states NO VALUES for any of them, so
+ ;; every number here is this session's own choice, made on clinical
+ ;; grounds and disclosed as a choice rather than cited as a default
+ ;; that does not exist.
+ ;;
+ ;; The lead times and the follow-up interval are LONGER than the ED's
+ ;; for the same reason the horizon is 3650 days and not 90: a clinic
+ ;; books weeks out and follows up in months, an ED books days out and
+ ;; follows up in weeks.
+ ;;
+ ;; THE CAPACITY MARGIN, MEASURED BEFORE THE OPT-IN AND AFTER IT.
+ ;; `:exhausted` HALTS a run (ADR-0174 section 2(c)'s own withdrawn
+ ;; premise), so this opt-in owes a measured margin against the union of
+ ;; beds the four rungs can reach. This scenario is nowhere near it and
+ ;; the numbers say so plainly -- worst home ward, both seeds, before
+ ;; AND after: 13 of 16 free (81.3%) at seed 424242, 14 of 16 (87.5%) at
+ ;; seed 5. The ladder never reaches rung 3 in either. Sparse traffic
+ ;; over ten years is what makes this scenario the roomy one; the
+ ;; measurement is recorded anyway, because a margin nobody measured is
+ ;; the thing the ADR's withdrawn premise cost sweep 2 three rejected
+ ;; configurations to learn.
+ :scheduling {:scheduled-fraction 0.70
+              :lead-time-days [3 21]
+              :no-show-rate 0.15
+              :reschedule-rate 0.10
+              :cancel-rate 0.08
+              :follow-up {:rate 0.35 :interval-days [30 120]}}
  :module-horizon-days 3650}

@@ -235,8 +235,8 @@
         docstring (subs source 0 (str/index-of source "(:require"))]
     (testing "sanity: the roots map parses"
       (is (pos? roots) "must find at least one root in the map")
-      (is (= 38 roots)
-          (str "38 roots today; a root added or removed moves this number and the docstring "
+      (is (= 39 roots)
+          (str "39 roots today; a root added or removed moves this number and the docstring "
                "paragraph together. Found " roots ".")))
     (testing "the docstring states the CURRENT population (L1-5)"
       (is (str/includes? docstring (str roots " roots"))

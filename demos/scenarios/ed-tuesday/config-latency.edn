@@ -163,6 +163,21 @@
  ;; ADR-0109). Any engine-facing key that lands in one has to land in
  ;; the other or that identity breaks.
  :bed-cycle true
+ ;; ARC 3B SWEEP 3 (ADR-0174 section 2(b), 2026-08-27): `:scheduling` is
+ ;; here for the SAME single reason `:encounters` and `:bed-cycle` are,
+ ;; and it is not a third opt-in decision. It must be VALUE-IDENTICAL to
+ ;; `config.edn`'s block, not merely present: the split's own draws are
+ ;; `:world` and a different `:scheduled-fraction` would reshuffle this
+ ;; file's arrivals away from its sibling's, which is precisely the
+ ;; byte-identity `bin/demo-exerciser-ed-tuesday` asserts. Copied
+ ;; verbatim rather than re-derived, and verified by that exerciser
+ ;; rather than by inspection.
+ :scheduling {:scheduled-fraction 0.15
+              :lead-time-days [1 3]
+              :no-show-rate 0.10
+              :reschedule-rate 0.08
+              :cancel-rate 0.07
+              :follow-up {:rate 0.25 :interval-days [7 30]}}
  :latency {:admission {:from-minutes 15 :to-minutes 90}
            :transfer {:from-minutes 15 :to-minutes 60}
            :discharge {:from-minutes 15 :to-minutes 60}

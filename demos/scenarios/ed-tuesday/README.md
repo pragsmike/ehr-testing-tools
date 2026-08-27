@@ -58,17 +58,39 @@ bin/ehrt play out/scenarios/ed-tuesday/events.edn --rate 10000000
 ## What to look for
 
 Witnessed 2026-08-27 (seed 20260811, 100 patients, `--config` as
-above, `--churn` on): **1,151 ground-truth events, 739 HL7 v2 messages,
-128 board snapshots** over a 603,761,136,000 ms stream span.
+above, `--churn` on): **1,269 ground-truth events, 782 HL7 v2 messages,
+177 board snapshots** over a 603,762,276,000 ms stream span.
 
-**BEDS TAKE TIME TO TURN OVER NOW.** `config.edn` opted this scenario
+**PATIENTS BOOK NOW, AND SOME DO NOT COME.** `config.edn` opted this
+scenario into SCHEDULING on 2026-08-27 (arc 3b sweep 3, ADR-0174
+section 2(b) and ruling C), and that is where these figures moved from
+the previous witness's 1,151/739/128. Arrivals split scheduled-vs-
+walk-in; a booking can be moved, cancelled or no-showed; and a
+discharge can book a return visit. This run holds **44 appointments, 5
+rescheduled, 3 cancelled and 5 no-showed**, with **35 encounter openers
+naming the appointment they were kept against**.
+
+**TWENTY-ONE OF THOSE ARE SECOND ENCOUNTERS THAT WERE SCHEDULED** --
+the 21 `:outpatient-visit` / `:outpatient-visit-end` pairs above, each
+booked at its own patient's discharge and each carrying its
+appointment's id. No corpus in this repository could hold a second
+encounter at all before arc 3b sweep 1 lifted the encounter horizon,
+and none held one produced BY BOOKING before this sweep.
+
+**NONE OF THE FOUR SCHEDULING KINDS REACHES THE WIRE**, which is why
+the event count rose by 118 while the message count rose by only 43.
+They map onto the SIU family, which is v2.4 structure, and every
+message here carries MSH-12 `2.3`; emitting a structure the version
+field disclaims would be worse than emitting nothing. The appointments
+are in `events.edn` and nowhere in the HL7.
+
+**BEDS TAKE TIME TO TURN OVER.** `config.edn` opted this scenario
 into the BED-STATUS CYCLE on 2026-08-27 (arc 3b sweep 2, ADR-0174
-section 2(c) and ruling C), and that is where these figures moved from
-the previous witness's 745/333/105. A vacated bed is no longer free the
+section 2(c) and ruling C). A vacated bed is no longer free the
 instant its occupant leaves: it goes `:dirty`, then `:cleaning`, then
 `:ready`, and the allocation ladder will not hand out a bed that is not
-ready. **406 of this run's messages are ADT^A20 bed-status updates** --
-one per transition, over 136 turnovers -- and they are the reason the
+ready. **421 of this run's messages are ADT^A20 bed-status updates** --
+one per transition, over 141 turnovers -- and they are the reason the
 message count nearly doubled while the clinical traffic barely moved.
 
 **Every bed-ready transfer used to fire in the same second as the
@@ -84,17 +106,21 @@ A1), and that is where these figures moved from the previous witness's
 got exactly ONE encounter, ever -- `check.clj`'s own
 `admission-only-when-new` was that horizon written as an invariant, and
 a returning person's arrival simply queued nothing. This run now
-carries **127 encounter openers across 116 patients: 14 patients with
-more than one, 15 encounters the pre-sweep engine threw away, and a
-maximum of THREE on a single patient** -- every one of those five
-figures unchanged by the bed cycle, which moves WHEN a bed changes
-hands and not who is admitted. Same patient, same patient-id,
+carries **147 encounter openers across 111 patients: 30 patients with
+more than one, 36 encounters the pre-sweep engine threw away, and a
+maximum of THREE on a single patient** -- figures that were unchanged
+by the bed cycle, which moves WHEN a bed changes hands and not who is
+admitted, and that MORE THAN DOUBLED with the scheduling opt-in of
+2026-08-27 (from 127/116/14/15). Scheduling is where the second
+encounters now mostly come from: 21 of those 36 are follow-up visits
+booked at a discharge, which is a different producer from a returning
+person walking in again. Same patient, same patient-id,
 same MRN each time -- which is the whole point, because an MPI under
 test has to see the same MRN twice.
 
 **And every message now carries a visit number.** PV1-19 was EMPTY on
 every message this project had ever produced; it now renders the
-encounter's own `ENC-` id (ADR-0174 ruling C1). 340 of this run's 341
+encounter's own `ENC-` id (ADR-0174 ruling C1). 369 of this run's 370
 PV1 segments carry one. The ONE that does not is an ORU^R01 result
 arriving after its patient's discharge -- the pending-labs-at-discharge
 case, which belongs to no open encounter and correctly says so. (The
@@ -103,8 +129,8 @@ those five messages now fall inside an open encounter instead.)
 
 Note that the A20 bed-status messages carry NO PV1 at all -- an
 `ADT^A20` is `[MSH EVN NPU]`, no PID and no PV1, because a bed that
-nobody is in has no patient to name. That is why 739 messages carry
-only 341 PV1 segments between them.
+nobody is in has no patient to name. That is why 782 messages carry
+only 370 PV1 segments between them.
 
 **THE SHIFT IS STILL A SHIFT; THE STREAM IS NOT.** `config.edn` opted
 this scenario into `ehrt.sim-engine.engine`'s demographic fold on
@@ -290,12 +316,16 @@ not merely asserted:
 ```
 $ diff out/scenarios/ed-tuesday-base/events.edn out/scenarios/ed-tuesday-latency/events.edn
 $ sha256sum out/scenarios/ed-tuesday-base/events.edn out/scenarios/ed-tuesday-latency/events.edn
-729f07ad1cecbb770682633e668f2247dce57769c443fe46206d928ce9fd8afe  out/scenarios/ed-tuesday-base/events.edn
-729f07ad1cecbb770682633e668f2247dce57769c443fe46206d928ce9fd8afe  out/scenarios/ed-tuesday-latency/events.edn
+fe13a7ba59939e548be8d98589b005ff7c14e33ef8e82d4d54d47ad388bbb8d8  out/scenarios/ed-tuesday-base/events.edn
+fe13a7ba59939e548be8d98589b005ff7c14e33ef8e82d4d54d47ad388bbb8d8  out/scenarios/ed-tuesday-latency/events.edn
 ```
 
 `diff` reports no differences; the digests match exactly -- the same
-1,151 ground-truth events either way. (That figure read `375` until
+1,269 ground-truth events either way. THIS IS WHY `config-latency.edn`
+CARRIES `:scheduling` TOO, value for value: the split's own two draws
+per arrival ordinal are `:world`, so a different `:scheduled-fraction`
+in one file would reshuffle its arrivals away from the other's and
+break exactly the identity this block witnesses. (That figure read `375` until
 2026-08-27: it was witnessed before ADR-0171's stream partition and
 nothing kept it true -- one of the stale tokens
 `.agents/plans/roadmap.md#post-partition-narrative-refresh` counts in
@@ -396,8 +426,8 @@ saying which 112 would understate it.
 
 Closing summary: `{:unparseable-count 0, :snapshot-count 132,
 :skip-count 2, :rate 1.0E7, :idle-cap-ms 5000, :wallclock-ms 58191,
-:stream-span-ms 603759087000, :clamped-count 0, :emitted 739,
-:unfolded-count 0, :sink "ticker"}` -- the same 739 messages as the
+:stream-span-ms 603760090000, :clamped-count 0, :emitted 782,
+:unfolded-count 0, :sink "ticker"}` -- the same 782 messages as the
 base run, FOUR more snapshots than it (132 against 128), and a stream
 span 2,049 seconds SHORTER. It has gone both ways across four
 witnesses -- 430 seconds longer before ADR-0171, 306 shorter after it,
@@ -438,11 +468,17 @@ bin/ehrt corpus batch out/scenarios/ed-tuesday-latency --interval 60 \
   --out-dir out/scenarios/ed-tuesday-latency-batches
 ```
 
-Witnessed 2026-08-27 (same seed-20260811 run as above, 739 messages
-across 135 occupied hourly buckets, `2026-08-11T00:00Z` through
-`2045-09-27T23:00Z`). The bucket count moved 106 -> 135 with the bed
-cycle: A20 bed-status traffic lands in hours that previously carried
-nothing, so more hours are occupied AND the busy ones are fuller.
+Witnessed 2026-08-27 (same seed-20260811 run as above, 782 messages
+across 186 occupied hourly buckets, `2026-08-11T00:00Z` through
+`2045-09-27T23:00Z`). The bucket count moved 135 -> 186 with the
+SCHEDULING opt-in, and the mechanism is worth naming because it is not
+the one the bed cycle used: scheduling does not add much traffic (43
+more messages), it MOVES traffic -- a lead time displaces an arrival's
+whole encounter by days, and a follow-up plants one months later. The
+same messages land in more distinct hours, so occupied buckets rise
+far faster than the message count does. The bucket count had moved
+106 -> 135 one sweep earlier, with the bed cycle, for the opposite
+reason: A20 traffic lands in hours that previously carried nothing.
 CORRECTED at the 2026-08-26 re-witness and still true: the closing
 bucket used to be printed as `13:00Z` here, which was wrong by ten
 hours -- `:start-ms` 2390166000000 is 23:00Z, and that figure itself
@@ -458,19 +494,19 @@ has never moved.
     :start-ms 1786406400000, :end-ms 1786410000000, :verified true}
    {:file "batch-001.hl7", :count 9,
     :start-ms 1786410000000, :end-ms 1786413600000, :verified true}
-   {:file "batch-002.hl7", :count 16,
+   {:file "batch-002.hl7", :count 11,
     :start-ms 1786413600000, :end-ms 1786417200000, :verified true}
-   ;; ... batch-003.hl7 through batch-133.hl7 ...
-   {:file "batch-133.hl7", :count 1,
+   ;; ... batch-003.hl7 through batch-184.hl7 ...
+   {:file "batch-184.hl7", :count 1,
     :start-ms 2390162400000, :end-ms 2390166000000, :verified true}
-   {:file "batch-134.hl7", :count 3,
+   {:file "batch-185.hl7", :count 3,
     :start-ms 2390166000000, :end-ms 2390169600000, :verified true}],
   :span {:earliest-ms 1786406400000, :latest-ms 2390169600000}}}
 ```
 
 **Epoch-aligned, and the interior gaps are enormous.** The first thirty
-or so batches are the ED shift itself, packed hour after hour with 2 to
-35 messages each -- the upper end tripled with the bed cycle, because
+or so batches are the ED shift itself, packed hour after hour with 4 to
+34 messages each -- the upper end tripled with the bed cycle, because
 every bed turnover puts three more A20s into the hour it falls in.
 Everything after them is the population tail, and they are almost all
 `:count 1` -- one birth, one injury, one unidentified arrival, in an
@@ -478,11 +514,11 @@ hour that carried nothing else, years apart from the batch before it.
 `batch-133` and `batch-134` sit in 2045. The empty hours between are
 simply ABSENT, never written as empty files (ADR-0111's own named v1
 deferral: an interior empty batch is not represented, only skipped),
-which is why nineteen years partition into 135 files rather than
-168,000. Every one of the 135 written files self-verified:
+which is why nineteen years partition into 186 files rather than
+168,000. Every one of the 186 written files self-verified:
 `write-and-verify-batch!` (`bases/cli`) decodes what it just wrote
 straight back and checks `BTS-1` against the real message count before
-ever reporting success -- `:verified true` on all 135 is that check,
+ever reporting success -- `:verified true` on all 186 is that check,
 exercised, not merely claimed.
 
 **The wrapper itself**, `batch-000.hl7`, head and tail:
@@ -512,11 +548,15 @@ holds trivially rather than by threading one through).
 **A straddling encounter.** MRN000002 (Hernandez, Sandra, bed ED-H09):
 admitted (A01, MSH-7 transmit time `2026-08-11T00:37:39Z`) lands in
 `batch-000.hl7`; discharged (A03, MSH-7 transmit time
-`2026-08-11T02:13:46Z`) lands in `batch-002.hl7` -- TWO clock-hours
+`2026-08-11T02:10:37Z`) lands in `batch-002.hl7` -- TWO clock-hours
 later, skipping a whole batch in between. (It was the very next batch
 until 2026-08-27; the bed cycle's reshuffle redrew this discharge's own
 transmit delay and pushed it a bucket further out, which makes the
-point harder rather than softer.) A downstream receiver holding
+point harder rather than softer. The scheduling opt-in later that day
+redrew the same delay again -- 02:13:46Z became 02:10:37Z -- and the
+STRUCTURE survived it: still three windows, still nothing for this
+patient in the middle one. The admission's own 00:37:39Z has not
+moved through any of it.) A downstream receiver holding
 `batch-000.hl7` AND `batch-001.hl7` still has that admission and
 nothing else for that patient: by every transport-level measure it is
 looking at two complete, BTS-verified batches, exactly as declared --
@@ -528,7 +568,7 @@ finished.
 **The lesson** (the author's own charter, ADR-0107/ADR-0109, quoted
 above, restated for batching specifically): transport-level
 completeness -- every `BTS-1` count checks out, exactly as this run's
-own 135-for-135 self-verification shows -- says nothing about
+own 186-for-186 self-verification shows -- says nothing about
 clinical-level completeness -- whether an encounter's own full record
 set has actually arrived yet. A downstream receiver deciding "do I
 have all of this encounter?" gets exactly the case it needs to test

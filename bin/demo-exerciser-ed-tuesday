@@ -171,8 +171,8 @@ if [ -z "$sha_d1" ] || [ "$sha_d1" != "$sha_d2" ]; then
   fail "second-clock identity: sha256sum digests differ (base=$sha_d1 latency=$sha_d2) -- README's own 'Ground truth is invariant' claim does not hold on this run"
 fi
 
-# "The 135-batch :verified true listing" -- README's own "Batched
-# delivery" section: 135 batches, every one self-verified, none
+# "The 186-batch :verified true listing" -- README's own "Batched
+# delivery" section: 186 batches, every one self-verified, none
 # unverified. (34 until ADR-0171's RNG stream partition moved this
 # run's own message set, then 32, then 105 when arc 3a part 4's
 # demographic-fold opt-in stretched this run from a 35-hour shift to a
@@ -180,20 +180,24 @@ fi
 # longer stream is more batches -- 106 when arc 3b sweep 1's
 # encounter-horizon opt-in gave returning patients a second visit, and
 # 135 when arc 3b sweep 2's bed-cycle opt-in put ADT^A20 bed-status
-# traffic into hours that had carried nothing. Re-derived each time,
+# traffic into hours that had carried nothing, and 186 when arc 3b
+# sweep 3's SCHEDULING opt-in began MOVING traffic rather than adding
+# it -- a lead time displaces a whole encounter by days and a follow-up
+# plants one months later, so the same messages occupy more distinct
+# hours. Re-derived each time,
 # never relaxed: the assertion is still an exact equality against the
 # README's own witnessed number.)
 verified_true_count="$(grep -o ':verified true' "$LOG_DIR/step-9.out" | wc -l | tr -d ' ')"
 verified_false_count="$(grep -c ':verified false' "$LOG_DIR/step-9.out" || true)"
-if [ "$verified_true_count" -ne 135 ]; then
-  fail "batch listing: expected 135 ':verified true' entries, got $verified_true_count"
+if [ "$verified_true_count" -ne 186 ]; then
+  fail "batch listing: expected 186 ':verified true' entries, got $verified_true_count"
 fi
 if [ "${verified_false_count:-0}" -ne 0 ]; then
   fail "batch listing: expected zero ':verified false' entries, got $verified_false_count"
 fi
 batch_file_count="$(ls out/scenarios/ed-tuesday-latency-batches/*.hl7 2>/dev/null | wc -l | tr -d ' ')"
-if [ "$batch_file_count" -ne 135 ]; then
-  fail "batch listing: expected 135 batch-*.hl7 files on disk, got $batch_file_count"
+if [ "$batch_file_count" -ne 186 ]; then
+  fail "batch listing: expected 186 batch-*.hl7 files on disk, got $batch_file_count"
 fi
 
 # "The straddle membership" -- README's own "A straddling encounter":

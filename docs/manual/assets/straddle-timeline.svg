@@ -9,7 +9,7 @@
   plus the same section's own "A straddling encounter" prose:
   Hernandez, Sandra (MRN000002)'s admission (A01) transmits at
   2026-08-11T00:37:39Z, landing in batch-000; her discharge (A03)
-  transmits at 2026-08-11T02:13:46Z, landing in batch-002. Both
+  transmits at 2026-08-11T02:10:37Z, landing in batch-002. Both
   timestamps re-verified by fresh regeneration (seed 20260811,
   config-latency.edn), byte-identical to the README's own witnessed
   run.
@@ -30,8 +30,20 @@
   not a weaker one: a receiver holding batch-000 AND batch-001 — two
   consecutive, individually BTS-verified files — still has only half
   the encounter. Counts moved with it: batch-000 2 -> 5, batch-001
-  4 -> 9, and batch-002 carries 16. The admission's own transmit time,
-  00:37:39Z, has not moved across any of the four redraws.
+  4 -> 9, and batch-002 carried 16. The admission's own transmit time,
+  00:37:39Z, has not moved across any of the redraws.
+
+  RE-WITNESSED AND PARTIALLY REDRAWN 2026-08-27 (arc 3b sweep 3,
+  ADR-0174 section 2(b)'s turn-on commit). The trigger fired a SIXTH
+  time, and THE DEPICTED FACT IS UNCHANGED: three windows, the middle
+  one still holding neither half. Verified directly rather than
+  inferred — batch-001.hl7 still contains no MRN000002 message at all,
+  batch-000.hl7 still holds the A01 and batch-002.hl7 still holds the
+  A03. TWO PRINTED VALUES MOVED and are redrawn: batch-002's count
+  16 -> 11, and the discharge's own transmit time 02:13:46Z ->
+  02:10:37Z, both because the scheduling opt-in reshuffled this run.
+  batch-000 (5) and batch-001 (9) did not move, and neither did the
+  admission's 00:37:39Z — now unmoved across five redraws.
 
   REDRAWN 2026-08-26 (arc 3b sweep 1, ADR-0174 ruling A1): reviewed and
   NOT redrawn — every value this diagram depicts survived the encounter
@@ -73,7 +85,7 @@
   <text x="319" y="195" text-anchor="middle" font-size="13" font-weight="600" fill="#22492a">batch-001.hl7</text>
   <text x="319" y="213" text-anchor="middle" font-size="11" fill="#3d6b46">[01:00Z, 02:00Z) — 9/9 verified</text>
   <text x="505" y="195" text-anchor="middle" font-size="13" font-weight="600" fill="#22492a">batch-002.hl7</text>
-  <text x="505" y="213" text-anchor="middle" font-size="11" fill="#3d6b46">[02:00Z, 03:00Z) — 16/16 verified</text>
+  <text x="505" y="213" text-anchor="middle" font-size="11" fill="#3d6b46">[02:00Z, 03:00Z) — 11/11 verified</text>
 
   <!-- Wall-clock boundaries, cutting through both the windows and the encounter bar -->
   <line x1="226" y1="90" x2="226" y2="230" stroke="#8a2f2f" stroke-width="2" stroke-dasharray="5 4" />
@@ -89,7 +101,7 @@
   <text x="157" y="105" text-anchor="middle" font-size="12" fill="#22314f">admitted A01</text>
   <text x="157" y="145" text-anchor="middle" font-size="11" fill="#44506b">00:37:39Z</text>
   <text x="455" y="105" text-anchor="middle" font-size="12" fill="#22314f">discharged A03</text>
-  <text x="455" y="145" text-anchor="middle" font-size="11" fill="#44506b">02:13:46Z</text>
+  <text x="455" y="145" text-anchor="middle" font-size="11" fill="#44506b">02:10:37Z</text>
 
   <!-- Ties from encounter-bar endpoints down into their own batch window -->
   <line x1="157" y1="127" x2="157" y2="170" stroke="#22314f" stroke-width="1" stroke-dasharray="2 2" />

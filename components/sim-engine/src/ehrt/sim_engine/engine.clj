@@ -574,9 +574,21 @@
   appointment they have ever opened, counted -- `next-encounter-ordinal`
   applied to the appointment records.
 
-  Monotone by construction for the same reason: a CANCELLED or NO-SHOWED
-  appointment stays in `:appointments` precisely so its ordinal is never
-  handed out twice."
+  Monotone by construction for the same reason: NOTHING EVER LEAVES
+  `:appointments`, so an ordinal cannot be handed out twice.
+
+  THAT INVARIANT WAS FOUND, NOT ASSUMED, and the way it failed is worth
+  the sentence. Appointments CAN OVERLAP -- a repeat arrival books at its
+  own instant, which may fall while a previous encounter is still open,
+  and a follow-up books at a discharge -- so `:appointment` (the open
+  slot) can be displaced by a second booking. When a displaced record was
+  simply dropped, `:appointments` did not grow, this function returned the
+  SAME ordinal a second time, and one id ended up naming two appointments:
+  `bin/demo-exerciser-ed-tuesday` reported
+  `appointment-reaches-at-most-one-terminal` with `:terminals [:kept :kept
+  :no-show]` on a single id. `evolve :appointment` now ARCHIVES the
+  displaced record (outcome absent -- it never resolved) instead of
+  discarding it, which is what makes this count monotone."
   [patient]
   (+ (count (:appointments patient)) (if (:appointment patient) 1 0)))
 
@@ -1359,12 +1371,37 @@
                    {:event kind :t t :active-mrn (:active-mrn patient)
                     :appointment-id appointment-id
                     :participants [{:patient-id patient-id :role :subject}]})
-        ;; The opener is the FIRST of the carried steps, and it is the
-        ;; one that names the appointment -- section 2(b)'s "a scheduled
-        ;; arrival references its appointment".
+        ;; THE CARRIED STEPS GO BEHIND `:repeat-arrival`, ALWAYS, and this
+        ;; is the one thing here that was FOUND rather than designed.
+        ;;
+        ;; The visit behind a booking runs at `:scheduled-t`, not at the
+        ;; booking instant -- so whether an encounter may open then is a
+        ;; question about a world THIS decide cannot see. Prepending the
+        ;; opener unguarded produced exactly the defect the guard exists
+        ;; for: `bin/demo-exerciser-ed-tuesday` went
+        ;; `:self-check-failed` on `admission-only-when-no-open-encounter`
+        ;; for a follow-up visit that opened while its patient's own
+        ;; encounter was still open, with a cascade of
+        ;; `outpatient-patients-occupy-no-bed` behind it.
+        ;;
+        ;; `:repeat-arrival` is ALREADY that guard, asked at the right
+        ;; instant, and it already propagates this stamp inward -- so the
+        ;; steps are routed through it rather than through a second copy
+        ;; of the same question. A step list that is already wrapped (the
+        ;; pre-loop's own repeat-arrival case) is left alone rather than
+        ;; double-wrapped.
+        ;;
+        ;; AN APPOINTMENT WHOSE VISIT THE GUARD REFUSES STAYS OPEN and
+        ;; reaches no terminal, which is correct and not a gap: a booking
+        ;; whose visit could not happen is a real thing, and
+        ;; `appointment-reaches-at-most-one-terminal` asks for AT MOST
+        ;; one, never exactly one.
         stamped (when (seq steps)
-                  (into [(assoc (first steps) :appointment-id appointment-id)]
-                        (rest steps)))]
+                  (let [inner (if (= :repeat-arrival (:type (first steps)))
+                                (vec steps)
+                                [{:type :repeat-arrival :steps (vec steps)}])]
+                    (into [(assoc (first inner) :appointment-id appointment-id)]
+                          (rest inner))))]
     (case outcome
       :cancelled  {:events [booking (terminal :appointment-cancel)] :advance 0}
       :no-show    {:events [booking] :advance lead-seconds
@@ -2550,27 +2587,45 @@
   (cond-> patient
     (some? (:demographics patient)) (assoc-in [:demographics :payer] payer)))
 
-(defn- close-appointment
-  "Move the open appointment onto `:appointments` with its outcome. A
-  terminal record is KEPT rather than dropped so `:ordinal` can never be
-  reused -- the same reason a cancelled encounter stays in `:encounters`."
-  [patient outcome]
-  (if-let [apt (:appointment patient)]
+(defn- resolve-appointment
+  "Write `outcome` onto whichever record carries `appointment-id`.
+
+  IT LOOKS IN BOTH PLACES, and that is the correction the overlap defect
+  forced (`next-appointment-ordinal`'s own docstring carries the failure).
+  An appointment is normally resolved while it is the OPEN one, but a
+  second booking can displace it into `:appointments` before its own
+  visit comes round -- and the displaced record is still the one a later
+  opener, cancel or no-show is talking about. Looking only at the open
+  slot silently dropped those resolutions.
+
+  Guarded on the outcome being ABSENT, so a record that already reached a
+  terminal is never overwritten by a second one: the STATE cannot record
+  two, and `appointment-reaches-at-most-one-terminal` is what reports the
+  LOG that tried."
+  [patient appointment-id outcome]
+  (cond
+    (nil? appointment-id) patient
+
+    (= appointment-id (:appointment-id (:appointment patient)))
     (-> patient
-        (update :appointments (fnil conj []) (assoc apt :outcome outcome))
+        (update :appointments (fnil conj []) (assoc (:appointment patient) :outcome outcome))
         (assoc :appointment nil))
-    patient))
+
+    :else
+    (update patient :appointments
+            (fn [as]
+              (mapv (fn [a]
+                      (if (and (= appointment-id (:appointment-id a)) (nil? (:outcome a)))
+                        (assoc a :outcome outcome)
+                        a))
+                    (or as []))))))
 
 (defn- keep-appointment
   "What an ENCOUNTER OPENER does to the appointment it names: closes it
-  `:kept`. Guarded on the id MATCHING the open record, so an opener
-  carrying a stale id closes nothing and
-  `scheduled-encounter-follows-its-appointment` sees the defect rather
-  than having it folded away."
+  `:kept`. \"Kept\" is not an event -- it IS the encounter happening -- so
+  the opener's own fold is the only place it can be written."
   [patient appointment-id]
-  (if (and appointment-id (= appointment-id (:appointment-id (:appointment patient))))
-    (close-appointment patient :kept)
-    patient))
+  (resolve-appointment patient appointment-id :kept))
 
 (defmethod evolve :admission
   ;; ARC 3B SWEEP 1: opens the encounter. `open-encounter` reads the
@@ -2730,33 +2785,45 @@
 ;; the encounter happening.
 
 (defmethod evolve :appointment
+  ;; A SECOND BOOKING ARCHIVES THE OPEN ONE rather than dropping it --
+  ;; appointments can overlap (see `next-appointment-ordinal`), and a
+  ;; dropped record both loses its resolution and un-monotones the
+  ;; ordinal. The archived record carries NO `:outcome`, because it has
+  ;; not reached one; `resolve-appointment` can still find it there when
+  ;; its own opener, cancel or no-show arrives.
   [patient {:keys [t appointment-id scheduled-t appointment-class reason]}]
-  (assoc patient :appointment
-         (cond-> {:appointment-id appointment-id
-                  :ordinal (next-appointment-ordinal patient)
-                  :booked-at t
-                  :scheduled-t scheduled-t
-                  :appointment-class appointment-class}
-           reason (assoc :reason reason))))
+  (let [ordinal (next-appointment-ordinal patient)
+        archived (if-let [open (:appointment patient)]
+                   (update patient :appointments (fnil conj []) open)
+                   patient)]
+    (assoc archived :appointment
+           (cond-> {:appointment-id appointment-id
+                    :ordinal ordinal
+                    :booked-at t
+                    :scheduled-t scheduled-t
+                    :appointment-class appointment-class}
+             reason (assoc :reason reason)))))
 
 (defmethod evolve :reschedule
+  ;; NOT terminal: it moves `:scheduled-t` and leaves the record open,
+  ;; which is why the id is kept rather than re-minted. Like the three
+  ;; resolutions it must reach a DISPLACED record too, for
+  ;; `resolve-appointment`'s own stated reason.
   [patient {:keys [appointment-id prior-scheduled-t scheduled-t]}]
-  (if (= appointment-id (:appointment-id (:appointment patient)))
-    (update patient :appointment assoc
-            :prior-scheduled-t prior-scheduled-t :scheduled-t scheduled-t)
-    patient))
+  (let [move #(assoc % :prior-scheduled-t prior-scheduled-t :scheduled-t scheduled-t)]
+    (if (= appointment-id (:appointment-id (:appointment patient)))
+      (update patient :appointment move)
+      (update patient :appointments
+              (fn [as] (mapv #(if (= appointment-id (:appointment-id %)) (move %) %)
+                             (or as [])))))))
 
 (defmethod evolve :appointment-cancel
   [patient {:keys [appointment-id]}]
-  (if (= appointment-id (:appointment-id (:appointment patient)))
-    (close-appointment patient :cancelled)
-    patient))
+  (resolve-appointment patient appointment-id :cancelled))
 
 (defmethod evolve :no-show
   [patient {:keys [appointment-id]}]
-  (if (= appointment-id (:appointment-id (:appointment patient)))
-    (close-appointment patient :no-show)
-    patient))
+  (resolve-appointment patient appointment-id :no-show))
 
 ;; --- M5b: :procedure -- a log-only fact, no PatientState field change
 ;; (Procedure is deliberately outside EmitState's own rendered resource

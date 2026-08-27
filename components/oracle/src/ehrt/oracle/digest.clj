@@ -42,11 +42,12 @@
   component-code versions, and hashing itself happens in the calling
   shell (`sha256sum`), not in-process.
 
-  CURRENT STATE, 2026-08-27 (arc 3b sweep 2, ADR-0174 section 2(c)'s
-  turn-on commit; before it, arc 3b sweep 1, ADR-0174 ruling A1; before
+  CURRENT STATE, 2026-08-27 (arc 3b sweep 3, ADR-0174 section 2(b)'s
+  turn-on commit; before it, arc 3b sweep 2, ADR-0174 section 2(c);
+  before that, arc 3b sweep 1, ADR-0174 ruling A1; before
   that, arc 3a part 4, ADR-0173 ruling D1's commit 2; previously
   2026-08-19, ADR-0156, review-4 register row L1-5).
-  `roots` holds 38 roots in two families:
+  `roots` holds 39 roots in two families:
 
     3 INTERPRETER-LAYER batches -- appendicitis/sore-throat/
       ear-infections. 100 well-mixed seeds x both sexes = 200 walks per
@@ -56,7 +57,7 @@
       well-distributed for their own first draw, confirmed repeatedly
       across GMF coverage waves.
 
-   35 ENGINE-LAYER pairs -- engine/run plus emit-hl7/emit, ground truth
+   36 ENGINE-LAYER pairs -- engine/run plus emit-hl7/emit, ground truth
       AND emitted HL7 both captured, at the run-config each root's own
       vendored/engine test already established as producing real
       content. The 33rd, `demographic-fold`, is the first root to turn
@@ -68,7 +69,15 @@
       event kinds and three MSH-9s with it. The 35th, `bed-cycle`, is
       the first to turn `:bed-cycle` ON, and it is the first root of any
       kind to reach the allocation ladder's FOURTH RUNG -- the gap the
-      COVERAGE block below said sweep 2 would have to close.
+      COVERAGE block below said sweep 2 would have to close. The 36th,
+      `scheduling`, is the first to turn `:scheduling` ON: the only root
+      carrying `:appointment`, `:reschedule`, `:appointment-cancel` or
+      `:no-show`, and the only one where a second encounter is produced
+      BY BOOKING rather than by a person walking in again. It renders no
+      message for any of the four -- ruling C, the v2.4 SIU structures
+      against MSH-12 `2.3` -- so it adds four EVENT kinds and ZERO
+      message types, the first root to widen one vocabulary without the
+      other.
 
   This paragraph replaced an opening that read `Six roots, matching this
   session's own J1 ruling verbatim` -- true when written and never
@@ -77,7 +86,7 @@
   false; a cold reader simply got a third of the population and no
   signal that it was a third. The count is gated now
   (`ehrt.docs-tooling.oracle-coverage-test`), and the COVERAGE block
-  beside `roots` states what these 38 can and cannot witness.
+  beside `roots` states what these 39 can and cannot witness.
 
   Dated note (2026-08-03, ADR-0033 AR-4b): three more roots join at the
   ENGINE layer -- ear-infections-engine/urinary-tract-infections-engine/
@@ -721,6 +730,83 @@
     {:ground-truth (:ground-truth (:payload r))
      :hl7 (vec (:messages (:payload r)))}))
 
+(defn- scheduling-pair
+  "Arc 3b sweep 3's own root (ADR-0174 section 2(b)), and the FIRST to
+  turn `:scheduling` on. FIRST BASELINE, not a regression check: no side
+  before this commit has a `:scheduling` key to run under at all.
+
+  IT GOES THROUGH `run-command` for the SELF-CHECK, for `bed-cycle-pair`'s
+  own reason: `:scheduling` reaches `engine/run` untranslated and an
+  `engine-pair` would render the same bytes, so what `run-command` adds is
+  `check-all` -- and this root is the only place scheduling's FOUR new
+  invariants are exercised at population scale by the oracle rather than
+  by a unit fixture.
+
+  IT IS `bed-cycle-pair`'s FACILITY AND PATHWAYS VERBATIM, at a different
+  seed, and that is deliberate rather than lazy: holding the operational
+  half fixed makes every byte of the delta between the two roots
+  attributable to scheduling alone, and it means this root inherits a
+  facility already PROBED to contend without exhausting. `--churn` is on
+  for the same reason it is there -- it is the only way `:bed-swap` and
+  the reinstating cancels occur at all.
+
+  `:encounters` IS ON AND IS LOAD-BEARING, not decoration. Without sweep
+  1's horizon a follow-up's return visit would open nothing, and
+  `scheduled-encounter-follows-its-appointment` -- the one invariant the
+  ADR says is non-vacuous ONLY because sweep 1 landed -- would be judging
+  an empty set here.
+
+  Measured at the config below, not predicted: 487 events, 331 messages,
+  60 appointments over 60 patients, with all four outcomes witnessed --
+  4 cancelled, 4 no-showed, 4 rescheduled, and 51 kept. 79 encounter
+  openers of which 51 carry an `:appointment-id`, and TWENTY-ONE of those
+  are `:outpatient-visit` openers, i.e. SCHEDULED SECOND ENCOUNTERS: 21
+  distinct patients hold more than one encounter, which no root in this
+  repository could produce before sweep 1 and none produced BY BOOKING
+  before this one.
+
+  THE COVERAGE IT ADDS: the four scheduling kinds, which no other root
+  emits, and the first population-scale exercise of a follow-up-produced
+  second encounter. It adds NO message type -- none of the four reaches
+  the wire (ruling C, MSH-12 vs the v2.4 SIU structures), which is why
+  its message count is lower than its event count by more than the bed
+  cycle's alone accounts for."
+  []
+  (let [r (sim/run-command
+           {:seed 20260829 :patients 60 :churn true :arrival-gap 90
+            :facility {:id :scheduling-oracle
+                       :wards [{:id :ed :name "Emergency" :beds 0 :surge-slots 16
+                                :surge-format "%s-H%02d" :class :ed
+                                :turnaround-minutes [5 15]}
+                               {:id :renal :name "Renal" :beds 4 :surge-slots 2
+                                :surge-format "%s-H%02d" :class :inpatient
+                                :turnaround-minutes [15 30]}
+                               {:id :cardiology :name "Cardiology" :beds 4 :surge-slots 2
+                                :surge-format "%s-H%02d" :class :inpatient
+                                :turnaround-minutes [15 30]}]}
+            :pathways [{:pathway {:name "renal-stay"
+                                  :steps [{:type :admission :location "Renal"}
+                                          {:type :delay :from 180 :to 900}
+                                          {:type :discharge}]}
+                        :weight 1}
+                       {:pathway {:name "cardio-stay"
+                                  :steps [{:type :admission :location "Cardiology"}
+                                          {:type :delay :from 180 :to 900}
+                                          {:type :discharge}]}
+                        :weight 1}]
+            :emit "hl7" :reference-date "2024-01-01" :utc-offset "+00:00"
+            :bed-cycle true :encounters true
+            :scheduling {:scheduled-fraction 0.55
+                         :lead-time-days [1 14]
+                         :no-show-rate 0.12
+                         :reschedule-rate 0.10
+                         :cancel-rate 0.08
+                         :follow-up {:rate 0.45 :interval-days [14 90]}}})]
+    (when-not (= :ok (:status r))
+      (throw (ex-info "scheduling root did not run cleanly" {:result r})))
+    {:ground-truth (:ground-truth (:payload r))
+     :hl7 (vec (:messages (:payload r)))}))
+
 (defn- injuries-pair
   "Injuries arc close (2026-08-11, ADR-0107): FIRST BASELINE, not a
   regression check -- this closure never completed a round trip before
@@ -812,9 +898,10 @@
 ;;     on one root, never what it reported.
 ;;
 ;; THE STRUCTURAL CAUSE, re-derived rather than inferred from the
-;; instrumentation: 36 of the 38 roots pass `:pathway {:name
-;; "module-only" :steps []}` -- `encounter-horizon` and `bed-cycle` are
-;; the two exceptions and pass real admit/delay/discharge pathways,
+;; instrumentation: 36 of the 39 roots pass `:pathway {:name
+;; "module-only" :steps []}` -- `encounter-horizon`, `bed-cycle` and
+;; `scheduling` are the three exceptions and pass real
+;; admit/delay/discharge pathways,
 ;; which is why the churn family and the allocation ladder reach them --
 ;; and 8 of 19 components plus `bases/cli` are off the
 ;; oracle classpath entirely (`bin/regression-oracle`'s own deps block).
@@ -964,6 +1051,7 @@
    "veteran-ptsd"                       veteran-ptsd-pair
    "encounter-horizon"                  encounter-horizon-pair
    "bed-cycle"                          bed-cycle-pair
+   "scheduling"                         scheduling-pair
    "veteran-self-harm"                  veteran-self-harm-pair
    "veteran-substance-abuse-treatment"  veteran-substance-abuse-treatment-pair
    "injuries"                           injuries-pair

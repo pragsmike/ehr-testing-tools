@@ -96,7 +96,44 @@
   :reviewed-at "cb81dff"
   :verdict :fresh
   :note
-  "REDRAWN 2026-08-27 (arc 3b sweep 2, ADR-0174 section 2(c)'s turn-on
+  "RE-WITNESSED AND PARTIALLY REDRAWN 2026-08-27 (arc 3b sweep 3,
+   ADR-0174 section 2(b)'s turn-on commit). The trigger fired a SIXTH
+   time, and unlike the fifth THE DEPICTED FACT DID NOT CHANGE: the
+   encounter still spans three windows with the middle one holding
+   neither half.
+
+   VERIFIED DIRECTLY rather than inferred from the timestamps:
+   `batch-001.hl7` still contains no MRN000002 message at all
+   (`grep -cF MRN000002` returns 0), `batch-000.hl7` still holds the A01
+   and `batch-002.hl7` still holds the A03.
+
+   TWO PRINTED VALUES MOVED and are redrawn -- batch-002's count 16 ->
+   11, and the discharge's transmit time 02:13:46Z -> 02:10:37Z, both
+   because the scheduling opt-in reshuffled this run. batch-000 (5) and
+   batch-001 (9) did not move, and the admission's own 00:37:39Z has now
+   held across five redraws.
+
+   THIS ROW'S OWN `:reviewed-at` IS BUMPED BY THE IMMEDIATE SUCCESSOR
+   COMMIT, and that is structural rather than sloppy. The tripwire reads
+   `git log -1` on the SOURCE, and the source is a file the turn-on
+   commit itself edits -- so no value written INSIDE that commit can be
+   its own sha, and no single commit can leave this row fresh. The
+   turn-on is therefore a RED-FIRST commit under
+   `rulings.md#R-red-pushed-with-green`: it is pushed together with the
+   one-line successor that bumps this string, never alone, and the
+   pushed TIP is green. Disclosed here rather than left for a reader to
+   infer from two adjacent commits.
+
+   AND THE SWEEP THAT FIRED IT PREDICTED IT, which is the difference
+   from the fifth fire. The previous row ends by saying the sweep
+   'should have predicted this fire' from the fact that it edited
+   `demos/scenarios/ed-tuesday/README.md` at all. This one did: the
+   registry's sources were read BEFORE the README was touched, the
+   asset was re-witnessed against a fresh exerciser run, and this row
+   was written in the SAME commit as the source edit rather than one
+   commit later after CI went red.
+
+   REDRAWN 2026-08-27 (arc 3b sweep 2, ADR-0174 section 2(c)'s turn-on
    commit `cb81dff`). The trigger fired a FIFTH time, and for the FIRST
    time THE DEPICTED FACT ITSELF CHANGED rather than only the values
    printed on it. The bed-cycle opt-in reshuffled this run, which redrew

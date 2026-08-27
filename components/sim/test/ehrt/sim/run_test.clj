@@ -506,7 +506,24 @@
            ;; is the `:bed-status-change` stream over its own admissions
            ;; and nothing else; it is taken anyway so that all six
            ;; corpora agree about what a gated corpus contains.
-           :bed-cycle true}}])
+           :bed-cycle true
+           ;; ARC 3B SWEEP 3 (ADR-0174 section 2(b), 2026-08-27):
+           ;; SCHEDULING, same reason again, and again in its own opts
+           ;; because this run names no config. The values are
+           ;; `clinic-decade`'s verbatim, because this run is what
+           ;; `clinic-decade` is -- ambulatory content over a decade --
+           ;; at ten patients instead of two hundred.
+           ;;
+           ;; MARGIN, MEASURED: worst home ward 14 of 16 beds free
+           ;; (87.5%) before the opt-in and after it, ladder never past
+           ;; rung 2. Recorded rather than waved through, on the same
+           ;; terms the two scenario configs record theirs.
+           :scheduling {:scheduled-fraction 0.70
+                        :lead-time-days [3 21]
+                        :no-show-rate 0.15
+                        :reschedule-rate 0.10
+                        :cancel-rate 0.08
+                        :follow-up {:rate 0.35 :interval-days [30 120]}}}}])
 
 (def ^:private corpora
   "run id -> that run's own `run-command` result, populated once by
@@ -584,7 +601,40 @@
   (edn/read-string (pr-str gt))))` -- value AND bytes both survive, so
   the committed baseline is a faithful pin for BOTH gates below.
 
-  RE-PINNED AGAIN 2026-08-27, all four, by ADR-0174 section 2(c)'s
+  RE-PINNED AGAIN 2026-08-27, all four, by ADR-0174 section 2(b)'s
+  TURN-ON commit -- arc 3b sweep 3, the ONE declared sweep THAT sweep is
+  allowed, and the reason scheduling landed dark in a prior commit
+  (`bin/regression-oracle` IDENTICAL over 38 roots, no declaration) so
+  that this diff would have exactly one possible cause. `:scheduling` is
+  now ON in all four, from the same two places `:encounters` and
+  `:bed-cycle` are. No seed moved: every counted witness in this
+  namespace survived the opt-in.
+
+  WHAT MOVED. Two things, separable by kind. FIRST, the appointment
+  stream itself -- 50, 42, 27 and 2 `:appointment` events that did not
+  exist before, with their own reschedules, cancels and no-shows.
+  SECOND, a genuine reshuffle at every corpus: the split's two draws per
+  arrival ordinal consume `:world`, so arrival POSITIONS move, and a
+  scheduled arrival's own encounter is displaced by its lead time. The
+  counts, before -> after: seed-202 1,131 -> 1,213 events, seed-424242
+  1,660 -> 1,774, seed-5 1,342 -> 1,412, adhd 92 -> 97.
+
+  THE HEADLINE IS THE SECOND ENCOUNTER THAT IS SCHEDULED, not the count.
+  34, 29, 15 and 1 follow-up visits are booked at a discharge and kept,
+  each opening an encounter that NAMES its own appointment -- traffic no
+  corpus in this repository could produce before sweep 1 lifted the
+  encounter horizon, and none produced BY BOOKING before this commit.
+
+  AND THE OPT-IN LOOSENED THE ONE TIGHT CORPUS rather than tightening
+  it, which is the opposite of what a scheduling-adds-arrivals reading
+  predicts. seed-202's worst ladder margin went from 7 of 26 beds free
+  at peak (26.9%) to 10 of 26 (38.5%): cancels and no-shows REMOVE
+  admissions, lead times SPREAD arrivals, and a follow-up produces an
+  `:outpatient-visit`, which takes no bed. Recorded because it is not
+  obvious and because ADR-0174 section 2(c) item 4's withdrawn premise
+  is what made the question worth asking.
+
+  RE-PINNED 2026-08-27, all four, by ADR-0174 section 2(c)'s
   TURN-ON commit -- arc 3b sweep 2, the ONE declared sweep THAT sweep is
   allowed, and the reason the bed cycle landed dark in a prior commit
   (`bin/regression-oracle` IDENTICAL over 37 roots) so that this diff
@@ -649,10 +699,10 @@
   1,058, adhd 12 -> 66. The growth is the fold: `:demographic-update`,
   `:coverage-change`, hook-created encounters and unidentified
   arrivals, none of which existed in any corpus before this commit."
-  {:seed-202-ed-tuesday       "8b749b247ae8f6e9b866c0cee98e34f2c4e28754b1303b0496c3be3a31072eaf"
-   :seed-424242-clinic-decade "a6ca474fca36dff9928059f35bb1460e63e93181d95e5a4d2cb3dbba2ef635b2"
-   :seed-5-clinic-decade      "64be85ce5d9d5944532595c8b4eb59f68e0b842f9fd6759580dac7500daca2af"
-   :adhd-seed-45              "f22c2225bcfc2e89a85109d989b238d5e011454850772be8f7d4e165509c0af0"})
+  {:seed-202-ed-tuesday       "34e69570be6a86de4367ca489a66b97aabb25a8dfb32941644cf73e9d077accd"
+   :seed-424242-clinic-decade "2d5a4274fb5ebbab8fdb22eacf36b4ee37b55a7df4e37190071cd4a9408d64d0"
+   :seed-5-clinic-decade      "8acde4736af97be3a5d842e44f37d50a546988799401efd09417bf1e45269e4c"
+   :adhd-seed-45              "c5491b4b640587380392449e870b457aaa96ece4ba42f9743a6cf0add92970bf"})
 
 (defn- arc0-baseline
   "The committed baseline ground-truth vector for one gated run."
@@ -1043,24 +1093,29 @@
               (seed-202: 8 :cancel-transfer + 1 :cancel-discharge = NINE; the
               two clinic-decade runs and adhd-seed-45 carry none, and
               seed-202's own 1 :cancel-admit reinstates nothing). RE-COUNTED
-              THREE times now, and every time because a licensed reshuffle
+              FIVE times now, and every time because a licensed reshuffle
               moved this corpus rather than because anything about churn
               changed: TEN (9 + 1, 2 :cancel-admit) before ADR-0171's stream
               partition, NINE (8 + 1) after it, SEVEN after arc 3a part 4's
-              `:persons` opt-in, and NINE again (8 + 1) after arc 3b sweep
-              1's `:encounters` opt-in -- which is the first of the four
+              `:persons` opt-in, NINE again (8 + 1) after arc 3b sweep
+              1's `:encounters` opt-in -- which is the first of the
               re-counts to move this witness UP, and it moves up for a
               reason worth naming: churn is injected per ARRIVAL, and the
               lifted horizon means a repeat arrival's injected steps are now
-              queued instead of discarded. The gated-corpus half of this gate
-              therefore rests on nine events in one run;
+              queued instead of discarded -- and EIGHT (7 + 1) after arc 3b
+              sweep 3's `:scheduling` opt-in, which moves it back down for
+              the mirror-image reason: churn is still injected per arrival,
+              but a scheduled arrival whose appointment is CANCELLED or
+              NO-SHOWED never runs its steps at all, so the churn injected
+              into them is never reached. The gated-corpus half of this gate
+              therefore rests on eight events in one run;
               `cancel-reinstatement-survives-the-fold-carried-index` in
               engine-test is what carries it at population scale."
       (let [counted (into {} (map (fn [{:keys [id]}]
                                     [id (count (filter #(contains? reinstating-cancel-fields (:event %))
                                                        (arc0-baseline id)))]))
                           gated-runs)]
-        (is (= 9 (get counted :seed-202-ed-tuesday))
+        (is (= 8 (get counted :seed-202-ed-tuesday))
             (str "seed-202's reinstating-cancel count moved: " (pr-str counted)))
         (is (pos? (reduce + (vals counted)))
             (str "NO gated corpus carries a reinstating cancel -- this gate has "

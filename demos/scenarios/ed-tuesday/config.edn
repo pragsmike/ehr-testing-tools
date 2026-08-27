@@ -210,4 +210,51 @@
  ;; the same commit that lands the cycle would leave any corpus delta
  ;; with two possible causes.
  :bed-cycle true
+
+ ;; ARC 3B SWEEP 3 (ADR-0174 section 2(b) plus ruling C, 2026-08-27):
+ ;; SCHEDULING, ON. Arrivals split scheduled-vs-walk-in, appointments
+ ;; carry their own outcome, and a discharge may book a return visit.
+ ;;
+ ;; :scheduled-fraction IS LOW HERE ON PURPOSE, and it is the one
+ ;; sub-key this scenario genuinely disagrees with clinic-decade about.
+ ;; An ED SHIFT IS WALK-IN TRAFFIC. A scheduled ED arrival is a direct
+ ;; admit or an expected transfer -- real, and a minority. 0.15 says
+ ;; roughly one arrival in seven walked in with a booking already made;
+ ;; clinic-decade's ambulatory decade says 0.70 for exactly the opposite
+ ;; reason. ADR-0174 section 2(b) names the six sub-keys and states NO
+ ;; VALUES for any of them, so every number here is this session's own
+ ;; choice, made on clinical grounds and disclosed as a choice rather
+ ;; than cited as a default that does not exist.
+ ;;
+ ;; THE CAPACITY MARGIN, MEASURED BEFORE THE OPT-IN AND AFTER IT.
+ ;; `:exhausted` HALTS a run -- `run-command` surfaces
+ ;; :error :capacity-exhausted with no corpus and no self-check at all,
+ ;; not the visible rejection ADR-0174 section 2(c) item 4 assumed (that
+ ;; premise is WITHDRAWN in the ADR's own 2(c) ratifications). So this
+ ;; opt-in owes a measured margin, and the margin that matters is the
+ ;; union of beds the four rungs can reach, never one ward's own count:
+ ;; Renal peaks at 6 of its own 6 beds non-ready both before and after,
+ ;; and is not exhausted either time because rungs 3 and 4 still have
+ ;; beds. Against that union, worst home ward at seed 202:
+ ;;
+ ;;   before  Renal 7 of 26 free (26.9%)   Emergency 7 of 24 (29.2%)
+ ;;   after   Renal 10 of 26 free (38.5%)  Emergency 10 of 24 (41.7%)
+ ;;
+ ;; SCHEDULING LOOSENS THIS SCENARIO RATHER THAN TIGHTENING IT, which
+ ;; is the opposite of what "scheduling adds arrivals" predicts and is
+ ;; recorded because it is not obvious: cancels and no-shows REMOVE
+ ;; admissions, lead times SPREAD arrivals off their original instants,
+ ;; and a follow-up produces an `:outpatient-visit`, which occupies no
+ ;; bed at all. The ladder reaches rung 3 once (was three times) and
+ ;; never rung 4.
+ ;;
+ ;; THE PACING ABOVE IS UNCHANGED, for the same reason sweep 2 left it
+ ;; unchanged: re-tuning in the commit that lands the mechanism would
+ ;; leave any corpus delta with two possible causes.
+ :scheduling {:scheduled-fraction 0.15
+              :lead-time-days [1 3]
+              :no-show-rate 0.10
+              :reschedule-rate 0.08
+              :cancel-rate 0.07
+              :follow-up {:rate 0.25 :interval-days [7 30]}}
  :module-horizon-days 90}

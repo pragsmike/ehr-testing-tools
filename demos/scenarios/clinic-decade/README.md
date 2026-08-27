@@ -43,8 +43,27 @@ bin/ehrt play out/scenarios/clinic-decade/events.edn --rate 10000000
 ## What to look for
 
 Witnessed 2026-08-27 (seed 20260807, 200 patients, `--config` as
-above): **1,456 ground-truth events, 548 HL7 v2 messages, 222 board
-snapshots** over a 611,763,467,000 ms (~19.4-year) stream span.
+above): **1,569 ground-truth events, 575 HL7 v2 messages, 248 board
+snapshots** over a 611,763,107,000 ms (~19.4-year) stream span.
+
+**AND THIS DECADE BOOKS ITS VISITS.** `config.edn` opted in to
+SCHEDULING on 2026-08-27 (arc 3b sweep 3, ADR-0174 section 2(b) and
+ruling C), and that is where these figures moved from the previous
+witness's 1,456/548/222. A decade of ambulatory care is BOOKED traffic,
+so `:scheduled-fraction` is 0.70 here against `ed-tuesday`'s 0.15 --
+the one sub-key the two scenarios genuinely disagree about. This run
+holds **40 appointments, 6 rescheduled, 9 cancelled and 4 no-showed**,
+with **27 encounter openers naming the appointment they were kept
+against -- every single one of them an `:outpatient-visit`, i.e. a
+SECOND encounter booked at a discharge.**
+
+That last figure is the point of the whole sweep, and it reads
+differently here than at `ed-tuesday`: this scenario admits people who
+then come back to clinic, so its scheduled openers are follow-ups
+almost by definition. NONE of the four scheduling kinds reaches the
+wire (the SIU family is v2.4 structure; every message here says MSH-12
+`2.3`), which is why the event count rose by 113 while the message
+count rose by only 27.
 
 **AND BEDS TAKE TIME TO TURN OVER**, though in this scenario that buys
 less than it does at `ed-tuesday`. `config.edn` opted in to the
@@ -86,7 +105,7 @@ timeline IS. Every figure in this section moved with it, and the
 previous witness is recorded at the bottom of this block rather than
 overwritten.
 
-**The board-snapshot census, 222 snapshots:** `inpatients: 0` 122,
+**The board-snapshot census, 248 snapshots:** `inpatients: 0` 148,
 `inpatients: 1` 98, `inpatients: 2` 1, `inpatients: 3` 1.
 `bin/demo-exerciser-clinic-decade` re-derives that whole distribution
 from this paragraph at runtime and asserts every count exactly, plus
@@ -100,7 +119,14 @@ which is precisely the ten recovered parent deliveries occupying a bed
 -- and a FOURTH time on 2026-08-27, when the bed cycle added 39
 snapshots, 38 of them `inpatients: 0`. Those are hours in which the
 only traffic is an A20 saying a bed finished being cleaned: real
-messages, on a board with nobody on it.
+messages, on a board with nobody on it. A FIFTH time later the same
+day, when scheduling added 26 more, EVERY ONE of them `inpatients: 0`
+(122 -> 148) while the three occupied buckets held at 98/1/1 exactly.
+That is the sweep's own signature and it is worth reading: a follow-up
+opens an `:outpatient-visit`, which takes no bed, so every snapshot
+scheduling adds is by construction an empty board. The bed cycle
+widened the quiet hours; scheduling widened them again for a
+completely different reason.
 
 **Where the inpatients come from is entirely new.** All 100 admissions
 in this run are HOOK-created -- the person stream's own clinical
@@ -126,9 +152,9 @@ sentinel, because HL7 v2 has no code for it and every literal is one
 site's local convention).
 
 The run's own closing summary: `{:unparseable-count 0, :snapshot-count
-222, :skip-count 0, :rate 1.0E7, :idle-cap-ms 5000, :wallclock-ms
-61631, :stream-span-ms 611763467000, :clamped-count 0, :emitted 548,
-:unfolded-count 0, :sink "ticker"}` -- 222 of the 548 messages rendered
+248, :skip-count 0, :rate 1.0E7, :idle-cap-ms 5000, :wallclock-ms
+61719, :stream-span-ms 611763107000, :clamped-count 0, :emitted 575,
+:unfolded-count 0, :sink "ticker"}` -- 248 of the 575 messages rendered
 a snapshot; the others landed in a board window a prior message had
 already opened. NOT ONE inter-message wait exceeded `--idle-cap`'s
 default 5 seconds, so nothing was skipped and the whole ~19.4-year
