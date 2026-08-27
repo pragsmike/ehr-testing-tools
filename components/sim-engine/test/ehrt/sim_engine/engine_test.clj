@@ -406,8 +406,22 @@
       (testing "the accumulator holds NO prior-location shadow field -- only :location itself"
         (is (not (contains? reinstated :prior-location)))
         (is (not (contains? reinstated :location-before-cancel)))
-        (is (= #{:patient-id :mrns :active-mrn :status :class :home-ward :location :attending :admitted-at}
-               (set (keys reinstated))))))))
+        ;; ARC 3B SWEEP 1 (ADR-0174 section 2(a)): `:encounter` joins the
+        ;; pinned key set, and it is NOT a shadow field of the kind this
+        ;; test forbids -- it holds the OPEN encounter's own id and
+        ;; ordinal, never a prior value of `:location`, which is exactly
+        ;; why `evolve :transfer` and `evolve :cancel-transfer` were
+        ;; untouched by that sweep. The pin moves rather than the
+        ;; assertion weakening to a subset check: a NEW key here is a
+        ;; change in what this accumulator holds and belongs inside the
+        ;; gate.
+        (is (= #{:patient-id :mrns :active-mrn :status :class :home-ward :location :attending
+                 :admitted-at :encounter}
+               (set (keys reinstated))))
+        (is (= #{:ordinal :admitted-at} (set (keys (:encounter reinstated))))
+            "and it carries no location of any kind -- nor an
+             `:encounter-id`, since this hand-built world took no
+             `:encounters` opt-in and nothing minted one")))))
 
 (deftest cancel-transfer-on-never-transferred-patient-is-rejected
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})

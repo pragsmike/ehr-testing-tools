@@ -137,7 +137,8 @@ with them.
   only put an encounter on a patient whose own queue is otherwise empty, which
   is why `demos/scenarios/ed-tuesday` witnesses ZERO parent-delivery encounters
   while `clinic-decade` witnesses 23. Tabled as ADR-0173's first deviation
-  (2026-08-26) and counted by `repeat-arrivals-resolve-and-queue-nothing-test`
+  (2026-08-26) and counted by
+  `repeat-arrivals-resolve-and-queue-nothing-without-the-encounters-opt-in-test`
   so it is visible rather than silent. OWNER UNASSIGNED and this PRIORITY is
   provisional -- for the author to place. Candidates: arc 3b
   (`rulings.md#R-mix-5`, where a scheduled return IS a second encounter) or an

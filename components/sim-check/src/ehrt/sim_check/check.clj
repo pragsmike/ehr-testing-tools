@@ -51,6 +51,43 @@
                     acc (:participants event)))
           {} ground-truth))
 
+;; --- ADR-0174 section 2(a) (arc 3b sweep 1): the encounter, judged -----
+;;
+;; Every invariant below reads the encounter through these three, so
+;; there is ONE reading of "which encounter is this event's" and not
+;; one per row.
+
+(def ^:private encounter-openers
+  "The two event kinds that OPEN an encounter -- and therefore mint its
+  id (`ehrt.sim-engine.engine/encounter-id-for`)."
+  #{:admission :outpatient-visit})
+
+(def ^:private encounter-closers
+  "The two event kinds that CLOSE one. `:cancel-admit` is deliberately
+  absent: it un-does an admission rather than ending a stay, and the
+  encounter it cancels is marked, never closed."
+  #{:discharge :outpatient-visit-end})
+
+(defn- encounter-id-of
+  "The encounter-id an event carries FOR one patient: its top-level
+  `:encounter-id`, or -- for a `:bed-swap`, the one kind that names two
+  encounters at once -- that patient's own side of the `:swap`
+  (`ehrt.sim-engine.event-schema/BedSwapSide`). nil on every event of
+  every run that did not opt into `:encounters`, which is what makes
+  each row below fall back to the patient-scoped rule it always was."
+  [event patient-id]
+  (or (:encounter-id event) (get-in event [:swap patient-id :encounter-id])))
+
+(defn- carried-encounter-is-not-the-open-one?
+  "Whether an event names an encounter that was NOT the subject's open
+  one immediately before it -- the per-encounter half of the three
+  validity rows ADR-0174's table moves per-encounter. An event carrying
+  no id at all is not a violation: that is a legacy log, and the
+  status half of each row is what judges it there."
+  [event before patient-id]
+  (when-let [id (encounter-id-of event patient-id)]
+    (not= id (:encounter-id (:encounter before)))))
+
 (defn timestamps-monotone
   "Within a patient, event times never decrease (log order is emission
   order, which the engine guarantees is time order)."
@@ -117,13 +154,95 @@
 
 ;; --- M1 event-validity rows (docs/patient-state-model.md) ---------------
 
-(defn admission-only-when-new
-  "docs/patient-state-model.md's event-validity table: :admission is
-  legal only when the patient's prior state is :new."
+(defn admission-only-when-no-open-encounter
+  "docs/patient-state-model.md's event-validity table, RE-READ PER
+  ENCOUNTER (ADR-0174 section 2(a) item 3, arc 3b sweep 1). Was
+  `admission-only-when-new` -- `(not= :new (:status before))` -- which
+  was this project's SINGLE-ENCOUNTER HORIZON (sim/ADR-0007 point 3)
+  expressed as an invariant: `evolve :discharge` never returned a
+  patient to `:new`, so a patient got one encounter, ever.
+
+  An encounter opener is now legal iff NO encounter is open and the
+  patient is not in one of the two absorbing terminals. What that buys
+  is a second visit by the same patient, with the same MRN, which is the
+  whole point of an MPI under test; what it deliberately does NOT buy is
+  anything after `:merged` or `:expired` -- both stay absorbing, which
+  is `no-events-after-merged-terminal` and
+  `expired-patient-retains-location` preserved verbatim.
+
+  IT ABSORBS `outpatient-visit-only-when-new`, which was the same rule's
+  second copy. The two were always one rule written twice, and folding
+  them is why the catalog is one shorter here and two longer overall.
+
+  NOT VACUOUS ON A LEGACY LOG. `engine/evolve` folds the encounter
+  records whether or not a run opted into `:encounters`, so
+  `(:encounter before)` is a real predicate on a corpus generated before
+  this sweep existed: an opener while an encounter is open fires here
+  exactly as it did before."
   [ground-truth]
   (for [{:keys [event before patient-id]} (engine/replay ground-truth)
-        :when (and (= :admission (:event event)) (not= :new (:status before)))]
-    {:invariant :admission-only-when-new :patient-id patient-id :at (:t event)}))
+        :when (and (encounter-openers (:event event))
+                   (or (some? (:encounter before))
+                       (#{:merged :expired} (:status before))))]
+    {:invariant :admission-only-when-no-open-encounter
+     :event (:event event) :patient-id patient-id :at (:t event)}))
+
+(defn discharge-closes-an-open-encounter
+  "The PER-ENCOUNTER half of the split ADR-0174's table makes of
+  `discharge-follows-admission` (which keeps the per-patient half above,
+  unchanged): a closer closes an encounter that is OPEN.
+
+  This is where *\"and not twice\"* actually lands. That phrase has been
+  in `discharge-follows-admission`'s own docstring since v0 and was
+  never in its code -- that function tests only that no discharge
+  precedes the patient's FIRST admission -- so the claim it makes has
+  been unenforced for its whole life. Measured, not assumed: the
+  function's body is four lines and none of them counts anything."
+  [ground-truth]
+  (for [{:keys [event before patient-id]} (engine/replay ground-truth)
+        :when (and (encounter-closers (:event event)) (nil? (:encounter before)))]
+    {:invariant :discharge-closes-an-open-encounter
+     :event (:event event) :patient-id patient-id :at (:t event)}))
+
+(defn every-encounter-is-opened-and-closed-or-still-open
+  "Every `:encounter-id` in the log is a real encounter of the patient
+  carrying it: it appears on EXACTLY ONE opener, that opener is the
+  first event of that patient's own log to carry it, and it is closed at
+  most once more often than it is REINSTATED.
+
+  The same referential shape as
+  `medication-end-references-existing-order-and-follows-it-in-time`, and
+  the reinstatement clause is the same accommodation the churn family
+  already needs everywhere else: a `:cancel-discharge` un-does a close,
+  so an encounter discharged, reinstated and discharged again is ONE
+  encounter closed twice, not two encounters. Without that clause this
+  row would go red on every reinstating cancel in every corpus.
+
+  VACUOUS BY DESIGN on a log with no ids -- there is nothing to resolve
+  in a corpus that did not opt into `:encounters`, and saying so here is
+  better than a predicate that pretends otherwise. What is NOT vacuous
+  there is every other row above, which reads the folded record rather
+  than the id."
+  [ground-truth]
+  (apply
+   concat
+   (for [[patient-id events] (events-by-patient ground-truth)]
+     (let [rows (vec (map-indexed (fn [i ev] [i ev (encounter-id-of ev patient-id)]) events))
+           by-id (group-by (fn [[_ _ id]] id) (filter (fn [[_ _ id]] (some? id)) rows))]
+       (for [[id id-rows] by-id
+             :let [kind-of (fn [[_ ev _]] (:event ev))
+                   openers (filterv (comp encounter-openers kind-of) id-rows)
+                   closers (filterv (comp encounter-closers kind-of) id-rows)
+                   reinstatements (filterv #(= :cancel-discharge (kind-of %)) id-rows)
+                   reason (cond
+                            (not= 1 (count openers)) :not-exactly-one-opener
+                            (not= (ffirst id-rows) (ffirst openers)) :event-precedes-its-opener
+                            (> (count closers) (inc (count reinstatements))) :closed-more-than-once
+                            :else nil)]
+             :when reason]
+         {:invariant :every-encounter-is-opened-and-closed-or-still-open
+          :patient-id patient-id :encounter-id id :reason reason
+          :at (:t (second (first id-rows)))})))))
 
 (defn transfer-only-when-admitted
   "docs/patient-state-model.md's event-validity table: :transfer
@@ -131,7 +250,13 @@
   is :admitted (Admitted or Boarding)."
   [ground-truth]
   (for [{:keys [event before patient-id]} (engine/replay ground-truth)
-        :when (and (= :transfer (:event event)) (not= :admitted (:status before)))]
+        :when (and (= :transfer (:event event))
+                   (or (not= :admitted (:status before))
+                       ;; ADR-0174's table, per-encounter: and the
+                       ;; transfer's own `:encounter-id` is the OPEN one,
+                       ;; so a transfer cannot be attributed to a visit
+                       ;; that had already ended.
+                       (carried-encounter-is-not-the-open-one? event before patient-id)))]
     {:invariant :transfer-only-when-admitted :patient-id patient-id :at (:t event)}))
 
 (defn transfer-from-matches-state
@@ -300,14 +425,13 @@
 ;; --- M5b: :outpatient-visit / :outpatient-visit-end (components/patient-simulator/docs/gmf-interpreter.md
 ;; section 4's sketch, item 8's own invariant list) --------------------------
 
-(defn outpatient-visit-only-when-new
-  "docs/patient-state-model.md's event-validity table, extended: an
-  :outpatient-visit is legal only when the patient's prior state is
-  :new -- the same treatment :admission's own row already gets."
-  [ground-truth]
-  (for [{:keys [event before patient-id]} (engine/replay ground-truth)
-        :when (and (= :outpatient-visit (:event event)) (not= :new (:status before)))]
-    {:invariant :outpatient-visit-only-when-new :patient-id patient-id :at (:t event)}))
+;; ADR-0174 section 2(a) (arc 3b sweep 1): `outpatient-visit-only-when-
+;; new` STOOD HERE and is gone, absorbed into
+;; `admission-only-when-no-open-encounter` above, which now judges BOTH
+;; openers. It was the same rule's second copy -- the two were always
+;; one rule written twice -- and the tombstone is left rather than the
+;; line silently vanishing, because a reader of this file's M5b section
+;; would otherwise find the invariant its own comment above promises.
 
 (defn- outpatient-with-bed? [{:keys [class location]}]
   (and (= class :outpatient) (some? location)))
@@ -583,7 +707,11 @@
   itself legitimate."
   [ground-truth]
   (for [{:keys [event before patient-id]} (engine/replay ground-truth)
-        :when (and (= :order-placed (:event event)) (not= :admitted (:status before)))]
+        :when (and (= :order-placed (:event event))
+                   (or (not= :admitted (:status before))
+                       ;; ADR-0174's table, per-encounter (see
+                       ;; `transfer-only-when-admitted`'s own note).
+                       (carried-encounter-is-not-the-open-one? event before patient-id)))]
     {:invariant :order-only-when-admitted :patient-id patient-id :at (:t event)}))
 
 (defn result-references-existing-order-and-follows-it-in-time
@@ -655,7 +783,12 @@
   [ground-truth]
   (for [{:keys [event before patient-id]} (engine/replay ground-truth)
         :when (and (#{:procedure :observation :medication-order :diagnostic-report :care-plan-start} (:event event))
-                   (not= :admitted (:status before)))]
+                   (or (not= :admitted (:status before))
+                       ;; ADR-0174's table, per-encounter: and the stamp
+                       ;; names the OPEN encounter, so a condition
+                       ;; recorded during visit 2 is not silently
+                       ;; attributed to visit 1.
+                       (carried-encounter-is-not-the-open-one? event before patient-id)))]
     {:invariant :clinical-content-only-when-admitted :patient-id patient-id :at (:t event)}))
 
 (defn- pre-horizon-medication-order-citations-by-patient
@@ -1003,7 +1136,14 @@
    #'discharge-follows-admission
    #'every-event-has-participants
    #'participant-ids-exist-in-run
-   #'admission-only-when-new
+   #'admission-only-when-no-open-encounter
+   ;; ADR-0174 section 2(a) (arc 3b sweep 1): the two encounter rows,
+   ;; registered beside the guard they split from rather than appended
+   ;; at the end -- the catalog is documented as being in REPORTING
+   ;; order, so a reader comparing the three should find them adjacent
+   ;; (the same placement argument ADR-0166's twin span made).
+   #'discharge-closes-an-open-encounter
+   #'every-encounter-is-opened-and-closed-or-still-open
    #'transfer-only-when-admitted
    #'transfer-from-matches-state
    #'no-double-occupancy
@@ -1018,7 +1158,6 @@
    #'abnormal-flags-consistent-with-value-vs-range
    #'registered-is-every-patients-first-event
    #'registered-persona-is-schema-valid
-   #'outpatient-visit-only-when-new
    #'outpatient-patients-occupy-no-bed
    #'clinical-content-only-when-admitted
    #'medication-end-references-existing-order-and-follows-it-in-time

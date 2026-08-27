@@ -37,18 +37,174 @@
 
 ;; --- Event-validity rows (patient-state-model.md) -----------------------
 
-(deftest admission-only-when-new-detects-double-admission
-  (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
-              :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
-             {:event :admission :t 10 :home-ward "Renal" :participants (subject "P1")
-              :location {:ward "Renal" :bed "RENAL-02" :placement :licensed}}]]
-    (is (seq (check/admission-only-when-new log)))))
+;; --- ADR-0174 section 2(a) (arc 3b sweep 1): the horizon, lifted -------
+;;
+;; `admission-only-when-new` became `admission-only-when-no-open-
+;; encounter` and absorbed `outpatient-visit-only-when-new`. Both of
+;; that row's old cases are kept below, unchanged in intent, plus the
+;; case the rewrite is FOR -- a second encounter, which used to be the
+;; violation and is now the point.
 
-(deftest admission-only-when-new-holds-for-legit-log
-  (is (empty? (check/admission-only-when-new
-               [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
-                 :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
-                {:event :discharge :t 10 :participants (subject "P1")}]))))
+(defn- admit [t bed] {:event :admission :t t :home-ward "Renal" :participants (subject "P1")
+                      :location {:ward "Renal" :bed bed :placement :licensed}})
+
+(deftest admission-only-when-no-open-encounter-detects-an-admission-while-one-is-open
+  (is (seq (check/admission-only-when-no-open-encounter [(admit 0 "RENAL-01") (admit 10 "RENAL-02")]))))
+
+(deftest admission-only-when-no-open-encounter-detects-an-outpatient-visit-while-one-is-open
+  (testing "the absorbed `outpatient-visit-only-when-new`: ONE predicate
+            now judges both openers"
+    (is (seq (check/admission-only-when-no-open-encounter
+              [{:event :outpatient-visit :t 0 :participants (subject "P1")}
+               {:event :outpatient-visit :t 10 :participants (subject "P1")}])))))
+
+(deftest admission-only-when-no-open-encounter-holds-for-legit-log
+  (is (empty? (check/admission-only-when-no-open-encounter
+               [(admit 0 "RENAL-01")
+                {:event :discharge :t 10 :participants (subject "P1")}])))
+  (is (empty? (check/admission-only-when-no-open-encounter
+               [{:event :outpatient-visit :t 0 :participants (subject "P1")}
+                {:event :outpatient-visit-end :t 10 :participants (subject "P1")}]))))
+
+(deftest admission-only-when-no-open-encounter-permits-a-second-encounter
+  (testing "THE LIFT ITSELF: a discharged patient admitted again is
+            legal, which under `admission-only-when-new` it never was"
+    (is (empty? (check/admission-only-when-no-open-encounter
+                 [(admit 0 "RENAL-01")
+                  {:event :discharge :t 10 :participants (subject "P1")}
+                  (admit 20 "RENAL-02")
+                  {:event :discharge :t 30 :participants (subject "P1")}])))))
+
+(deftest admission-only-when-no-open-encounter-keeps-both-terminals-absorbing
+  (testing ":expired and :merged suppress a further encounter even though
+            a merged patient holds no open one -- the second clause of
+            ADR-0174 section 2(a) item 3"
+    (is (seq (check/admission-only-when-no-open-encounter
+              [(admit 0 "RENAL-01")
+               {:event :discharge :t 10 :disposition :expired :participants (subject "P1")}
+               (admit 20 "RENAL-02")])))
+    (is (seq (check/admission-only-when-no-open-encounter
+              [(admit 0 "RENAL-01")
+               {:event :discharge :t 10 :participants (subject "P1")}
+               {:event :merge :t 15 :surviving-mrn "M2" :merged-mrn "M1" :merged-mrns #{"M1"}
+                :participants [{:patient-id "P0" :role :survivor}
+                               {:patient-id "P1" :role :merged}]}
+               (admit 20 "RENAL-02")])))))
+
+(deftest discharge-closes-an-open-encounter-detects-a-closer-with-nothing-open
+  (is (seq (check/discharge-closes-an-open-encounter
+            [(admit 0 "RENAL-01")
+             {:event :discharge :t 10 :participants (subject "P1")}
+             {:event :discharge :t 20 :participants (subject "P1")}])))
+  (testing "and this is where `and not twice` finally lands --
+            `discharge-follows-admission` has claimed it in its own
+            docstring since v0 and never enforced it"
+    (is (empty? (check/discharge-follows-admission
+                 [(admit 0 "RENAL-01")
+                  {:event :discharge :t 10 :participants (subject "P1")}
+                  {:event :discharge :t 20 :participants (subject "P1")}])))))
+
+(deftest discharge-closes-an-open-encounter-holds-for-legit-logs
+  (is (empty? (check/discharge-closes-an-open-encounter
+               [(admit 0 "RENAL-01")
+                {:event :discharge :t 10 :participants (subject "P1")}
+                (admit 20 "RENAL-02")
+                {:event :discharge :t 30 :participants (subject "P1")}])))
+  (testing "a reinstating cancel re-opens the SAME encounter, so the
+            second discharge closes something"
+    (is (empty? (check/discharge-closes-an-open-encounter
+                 [(admit 0 "RENAL-01")
+                  {:event :discharge :t 10 :participants (subject "P1")}
+                  {:event :cancel-discharge :t 15 :home-ward "Renal" :attending "A"
+                   :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}
+                   :participants (subject "P1")}
+                  {:event :discharge :t 20 :participants (subject "P1")}])))))
+
+;; --- the referential row: one opener, at most one net closer -----------
+
+(def ^:private e1 "ENC-000000-00-aaaaaaaa")
+(def ^:private e2 "ENC-000000-01-bbbbbbbb")
+
+(deftest every-encounter-is-opened-and-closed-or-still-open-holds-for-two-real-visits
+  (is (empty? (check/every-encounter-is-opened-and-closed-or-still-open
+               [(assoc (admit 0 "RENAL-01") :encounter-id e1)
+                {:event :discharge :t 10 :encounter-id e1 :participants (subject "P1")}
+                (assoc (admit 20 "RENAL-02") :encounter-id e2)]))))
+
+(deftest every-encounter-is-opened-and-closed-or-still-open-detects-two-openers-on-one-id
+  (let [v (check/every-encounter-is-opened-and-closed-or-still-open
+           [(assoc (admit 0 "RENAL-01") :encounter-id e1)
+            {:event :discharge :t 10 :encounter-id e1 :participants (subject "P1")}
+            (assoc (admit 20 "RENAL-02") :encounter-id e1)])]
+    (is (seq v))
+    (is (= :not-exactly-one-opener (:reason (first v))))))
+
+(deftest every-encounter-is-opened-and-closed-or-still-open-detects-an-event-before-its-opener
+  (let [v (check/every-encounter-is-opened-and-closed-or-still-open
+           [{:event :order-placed :t 0 :encounter-id e1 :participants (subject "P1")}
+            (assoc (admit 10 "RENAL-01") :encounter-id e1)])]
+    (is (seq v))
+    (is (= :event-precedes-its-opener (:reason (first v))))))
+
+(deftest every-encounter-is-opened-and-closed-or-still-open-detects-a-second-close
+  (let [v (check/every-encounter-is-opened-and-closed-or-still-open
+           [(assoc (admit 0 "RENAL-01") :encounter-id e1)
+            {:event :discharge :t 10 :encounter-id e1 :participants (subject "P1")}
+            {:event :discharge :t 20 :encounter-id e1 :participants (subject "P1")}])]
+    (is (seq v))
+    (is (= :closed-more-than-once (:reason (first v)))))
+  (testing "unless a `:cancel-discharge` carrying the same id un-did the
+            first one -- a reinstated stay is ONE encounter closed twice"
+    (is (empty? (check/every-encounter-is-opened-and-closed-or-still-open
+                 [(assoc (admit 0 "RENAL-01") :encounter-id e1)
+                  {:event :discharge :t 10 :encounter-id e1 :participants (subject "P1")}
+                  {:event :cancel-discharge :t 15 :encounter-id e1 :home-ward "Renal" :attending "A"
+                   :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}
+                   :participants (subject "P1")}
+                  {:event :discharge :t 20 :encounter-id e1 :participants (subject "P1")}])))))
+
+(deftest every-encounter-is-opened-and-closed-or-still-open-reads-a-bed-swaps-own-side
+  (testing "a `:bed-swap` names two encounters and carries neither at top
+            level, so the id is read from that patient's own `:swap`
+            entry -- the same place PV1-3 comes from"
+    (let [bed {:ward "Renal" :bed "RENAL-01" :placement :licensed}
+          bed2 {:ward "Renal" :bed "RENAL-02" :placement :licensed}
+          swap-ev {:event :bed-swap :t 5
+                   :participants [{:patient-id "P1" :role :subject}
+                                  {:patient-id "P2" :role :subject}]
+                   :swap {"P1" {:active-mrn "M1" :from bed :to bed2 :attending "A"
+                                :encounter-id e2}
+                          "P2" {:active-mrn "M2" :from bed2 :to bed :attending "A"}}}
+          v (check/every-encounter-is-opened-and-closed-or-still-open
+             [(assoc (admit 0 "RENAL-01") :encounter-id e1) swap-ev])]
+      (is (seq v) "a swap side naming an encounter that was never opened is a violation")
+      (is (= e2 (:encounter-id (first v)))))))
+
+;; --- the three rows ADR-0174's table moves per-encounter ---------------
+
+(deftest the-per-encounter-half-fires-on-a-stamp-naming-a-closed-encounter
+  (let [log [(assoc (admit 0 "RENAL-01") :encounter-id e1)
+             {:event :discharge :t 10 :encounter-id e1 :participants (subject "P1")}
+             (assoc (admit 20 "RENAL-02") :encounter-id e2)]
+        transfer {:event :transfer :t 25 :encounter-id e1 :home-ward "Renal"
+                  :from {:ward "Renal" :bed "RENAL-02" :placement :licensed}
+                  :location {:ward "Renal" :bed "RENAL-03" :placement :licensed}
+                  :participants (subject "P1")}
+        order {:event :order-placed :t 25 :encounter-id e1 :participants (subject "P1")}
+        content {:event :procedure :t 25 :encounter-id e1 :participants (subject "P1")}]
+    (testing "each row is red when the stamp names visit 1 during visit 2"
+      (is (seq (check/transfer-only-when-admitted (conj log transfer))))
+      (is (seq (check/order-only-when-admitted (conj log order))))
+      (is (seq (check/clinical-content-only-when-admitted (conj log content)))))
+    (testing "and green when it names the open one"
+      (is (empty? (check/transfer-only-when-admitted (conj log (assoc transfer :encounter-id e2)))))
+      (is (empty? (check/order-only-when-admitted (conj log (assoc order :encounter-id e2)))))
+      (is (empty? (check/clinical-content-only-when-admitted (conj log (assoc content :encounter-id e2))))))
+    (testing "and green when nothing is stamped at all -- a legacy log,
+              judged by the status half exactly as before"
+      (is (empty? (check/transfer-only-when-admitted (conj log (dissoc transfer :encounter-id)))))
+      (is (empty? (check/order-only-when-admitted (conj log (dissoc order :encounter-id)))))
+      (is (empty? (check/clinical-content-only-when-admitted (conj log (dissoc content :encounter-id))))))))
 
 (deftest transfer-only-when-admitted-detects-transfer-before-admission
   (let [log [{:event :transfer :t 0 :home-ward "Renal" :participants (subject "P1")
@@ -163,16 +319,6 @@
       (is (empty? (check/participant-ids-exist-in-run log))))))
 
 ;; --- M5b: outpatient-visit / outpatient-visit-end -------------------------
-
-(deftest outpatient-visit-only-when-new-detects-a-double-visit
-  (let [log [{:event :outpatient-visit :t 0 :participants (subject "P1")}
-             {:event :outpatient-visit :t 10 :participants (subject "P1")}]]
-    (is (seq (check/outpatient-visit-only-when-new log)))))
-
-(deftest outpatient-visit-only-when-new-holds-for-legit-log
-  (is (empty? (check/outpatient-visit-only-when-new
-               [{:event :outpatient-visit :t 0 :participants (subject "P1")}
-                {:event :outpatient-visit-end :t 10 :participants (subject "P1")}]))))
 
 (deftest admitted-occupies-one-slot-does-not-flag-a-nil-location-outpatient-visit
   (testing "item 6's conditional validity row: :location = nil is LEGAL

@@ -93,20 +93,31 @@ gaps and one design lesson:
   exactly the axis boarding needs: a boarding patient's `:class` is
   whatever it was at admission (typically `:inpatient`) throughout,
   regardless of which physical ward they're sitting in.
-- **`VisitID`** per encounter (PV1-19) — not landed yet; flagged for
-  whenever encounters become first-class (readmission scenarios, M2b
-  or later). Not part of the schema below. This gap is now
-  evidence-backed, not merely anticipated: the research pair's own
+- **`VisitID`** per encounter (PV1-19) — **LANDED 2026-08-26**, arc 3b
+  sweep 1 (`notes/adr/0174-*.md` section 2(a), rulings A1/B1/C1). It is
+  `:encounter-id`, minted at every opener by
+  `ehrt.sim-engine.engine/encounter-id-for` off every RNG stream,
+  carried on every event of that encounter, rendered in PV1-19 and as
+  the FHIR `Encounter.id`'s second half. It IS part of the schema
+  below (`:encounter`/`:encounters`), behind the run-config opt-in
+  `:encounters` — absent, this whole paragraph's original text still
+  describes the run byte for byte. The paragraph that follows was the
+  gap's evidence and is kept, because what it predicts is exactly what
+  the opt-in now makes reachable. This gap was
   mining (`docs/research/SimHospital-Synthea-limitations-considered.md`
   §5.4) surfaces SimHospital's own in-code admission that a first
   pending encounter "will never be finished, since only the latest
   Encounter is checked" — direct proof that a single-current-encounter
   assumption breaks once multiple pending encounters can overlap.
-  Encounters-as-first-class (visit ids, readmission, and *multiple
-  concurrent pending* encounters, not just one) is captured in
-  `.agents/plans/roadmap.md` to land with or immediately before
-  whichever future milestone introduces `:pending-*` step types, for
-  exactly this reason.
+  Encounters-as-first-class landed in three halves, and only two of
+  them are done: visit ids and READMISSION are arc 3b sweep 1's own
+  content, while *multiple concurrent pending* encounters are NOT --
+  `admission-only-when-no-open-encounter` still permits exactly one
+  OPEN encounter per patient, and an arrival landing inside one opens
+  nothing (`decide :repeat-arrival`). That remaining half stays
+  captured in `.agents/plans/roadmap.md`, to land with or immediately
+  before whichever future milestone introduces `:pending-*` step
+  types, for exactly this reason.
 - **Pending locations and expected admit/discharge/transfer
   datetimes** (the A14/A15-family pending events) carry *expected*
   times, a field class this project's events don't have yet. Flagged
@@ -158,12 +169,19 @@ than each growing their own shadow state.
 | `:attending` | `:string`, provider id, nil until admission | References `docs/operational-models.md`'s provider pool by id; rendered PV1-7 as `id^family^given` at emit time, not stored denormalized. |
 | `:persona` | `ehrt.sim.persona/Persona`, nil until the `:registered` event folds | **Landed, M4.** Name, DOB, sex, address, phone, an SSN-shaped id, and payer — ALL of it, sampled together by `ehrt.sim.persona/persona` and folded in by the engine-internal `:registered` event every patient's step queue is now prepended with (never authorable IR, the same treatment `:result-followup` already gets). This RETIRES the standalone `:payer` field this table used to carry: there was no code actually populating it (always nil, an aspiration this document itself named as an engine-patient-init stand-in), so retiring it is a schema simplification, not a behavior removal — payer now lives at `(:payer (:persona patient))`. Never re-sampled after — the attribute-pool contract (sim/ADR-0007) extended to every persona field, not just payer. |
 | `:admitted-at` | `:int`, simulated **seconds** (was minutes pre-M2a — sim/ADR-0011), nil until admission | The moment this patient was admitted. Landed with Milestone M1 for exactly one purpose: breaking ties among multiple patients boarding for the same ward — the bed-ready transfer relieves the longest-waiting one first (earliest `:admitted-at`, `:patient-id` as a further tiebreak — `:patient-id`'s zero-padded ordinal prefix keeps this tiebreak's lexical-order property `:mrn` used to give it for free). Not a SimHospital-style shadow field — set once, never rewritten. |
+| `:encounter` | `EncounterRecord`, nil between encounters | **Landed 2026-08-26, arc 3b sweep 1** (`notes/adr/0174-*.md` section 2(a)). THE OPEN encounter, and deliberately THIN: `:encounter-id` (the VisitID above), `:ordinal`, and the opener's own instant. The seven fields above it — `:status`, `:class`, `:home-ward`, `:location`, `:attending`, `:admitted-at`, `:discharged-at` — stay exactly where they are and ARE this encounter's projection while it is open, which is why no reader in either emitter, in `check.clj`, or in the corpus player had to move. Duplicating them here would create a second place a transfer must update. |
+| `:encounters` | `[:vector EncounterRecord]`, default absent | **Landed 2026-08-26, arc 3b sweep 1.** Every CLOSED encounter, in the order they closed, accumulating exactly the way `:conditions` and `:care-plans` do. Each is that projection SNAPSHOT at its closer, taken after the closer's own field changes — so a discharged encounter's `:location` is nil, exactly as the discharged patient's is. A `:cancel-admit` leaves a record here marked `:cancelled` rather than dropping it, so an ordinal can never be handed out twice. This is what `evolve :discharge` now has somewhere to put instead of throwing away. |
 | `:attributes` | `[:map-of :keyword :any]`, default `{}` | **The namespacing rule is live, M5a; the engine's own accumulator still doesn't populate this field until M5b.** The open blackboard Synthea's modules coordinate through (mined above): `ehrt.patient-simulator.gmf`'s loader now REALLY enforces module-namespaced keys (`components/patient-simulator/docs/gmf-interpreter.md` section 5 — a module's raw `SetAttribute`/`Symptom` name compiles to `:module-id/kebab-name`, never a bare keyword; a module writing a bare engine-reserved name, e.g. `donor`, is rejected at load time), and `ehrt.patient-simulator.gmf-interpreter`'s own `step` only ever writes through that exact transform — this is no longer a documented convention awaiting code, it is the shape the interpreter's own attribute-registry property test (`gmf-interpreter-test/attribute-writes-are-always-in-the-declared-registry`) checks directly. What's still M5b scope: folding a module instance's own attribute map INTO this accumulator field for a real, running patient (`RunModules` meeting `Execute`, `docs/sim-theory.edn`'s own `:trajectory` stage) — M5a's interpreter carries its own attributes map per module-instance, engine-adjacent but not yet engine-integrated. |
 
 Deliberately absent, per the mining above: no visit-history field (the
-log is the history — M5's interpreter queries it directly), no
-`VisitID` (encounters aren't first-class yet), no shadow prior-location
-fields (M2b's cancel-family reads priors from the log).
+log is the history — M5's interpreter queries it directly) and no
+shadow prior-location fields (M2b's cancel-family reads priors from the
+log). `VisitID` used to be listed here too, on the grounds that
+encounters were not first-class; arc 3b sweep 1 made them first-class
+and it moved into the table above as `:encounter`/`:encounters`
+(2026-08-26). The visit-history exclusion is untouched by that and
+still binds: `:encounters` holds each closed encounter's own placement
+snapshot, never the events that happened during it.
 
 **Landed.** `ehrt.sim-engine.engine/PatientState` carries every field
 in the table above, including `:location`'s `{:ward :bed :placement}`
@@ -497,8 +515,9 @@ class wherever a single event type doesn't map to a single class.
 
 | Event / event-class | Legal when (status) | Attribute condition | Illegal example |
 |---|---|---|---|
-| `:admission` | `:status = :new` | — | Admitting an already-admitted or already-discharged patient. |
-| `:outpatient-visit` (M5b) | `:status = :new` | — | Visiting an already-visiting or already-discharged patient (same row-shape as `:admission`, `components/patient-simulator/docs/gmf-interpreter.md` section 4 item 5). |
+| `:admission` | no OPEN encounter, and `:status` not `:merged`/`:expired` | — | Admitting a patient whose encounter is still open, or one past either absorbing terminal. **CHANGED 2026-08-26** by arc 3b sweep 1 (`notes/adr/0174-*.md` section 2(a) item 3): the precondition was `:status = :new`, which WAS this project's single-encounter horizon (`sim/ADR-0007` point 3) expressed as a validity row — a patient got one encounter, ever, because `evolve :discharge` never returned them to `:new`. Re-admitting a DISCHARGED patient is now legal and is the point; the two terminals stay absorbing. |
+| `:outpatient-visit` (M5b) | the SAME precondition, judged by the SAME invariant | — | Visiting a patient whose encounter is still open. The two rows were always one rule written twice, and `outpatient-visit-only-when-new` was absorbed into `admission-only-when-no-open-encounter` in the same change. |
+| `:discharge`/`:outpatient-visit-end`, per-encounter | an encounter is OPEN | — | A closer with nothing to close. **NEW 2026-08-26**, `discharge-closes-an-open-encounter`: this is where `discharge-follows-admission`'s own long-standing *"and not twice"* finally lands, that clause having been in its docstring and never in its code. |
 | `:outpatient-visit-end` (M5b) | `:status = :admitted`, `:class = :outpatient` | — | Ending a visit for a patient who was never admitted as outpatient, or ending twice. |
 | `:transfer` (incl. bed-ready) | `:status = :admitted` (Admitted or Boarding) | — | Transferring a patient who hasn't been admitted yet, or who's already discharged. |
 | Encounter/therapeutic-intent classes' own `:location` field — **CONDITIONAL ROW (item 6, `components/patient-simulator/docs/gmf-interpreter.md` section 4)** | `:location = nil` is **legal** exactly when `:class = :outpatient`, for the events an outpatient visit spans; **illegal** (the ordinary "never nil-bed while admitted" rule) otherwise | gated on the `:class :outpatient` attribute | A `:transfer`/`:admission`-family event whose patient's `:class` is NOT `:outpatient` but whose `:location` is nil anyway — the pre-M5b rule, now stated as this table's own conditional-row mechanism (the same status × event-class × attribute-condition shape the post-mortem/donor rows below already use) rather than a plain, unconditional sentence. |

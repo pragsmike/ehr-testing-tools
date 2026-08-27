@@ -133,11 +133,26 @@
   are reserved enum values no step type produces yet)."
   {:inpatient "IMP" :emergency "EMER" :outpatient "AMB"})
 
+(defn- encounter-id-ref
+  "The Encounter resource id an encounter record resolves to, and the
+  ONE place this namespace mints it (law 3, the cross-emitter id
+  sub-law: `<patient-id>-<encounter-id>`, both halves already minted by
+  `ehrt.sim-engine.engine`, neither invented here).
+
+  `<patient-id>-encounter` -- the LEGACY id, one Encounter per patient
+  -- is what a record with no `:encounter-id` resolves to, which is
+  every record of every run that did not opt into `:encounters`. That
+  arm is not a convenience: it is what makes this sweep's dark commit
+  provably byte-identical on the FHIR side."
+  [patient-id encounter-id]
+  (if encounter-id (str patient-id "-" encounter-id) (str patient-id "-encounter")))
+
 (defn- encounter-resource
-  [reference-date utc-offset {:keys [patient-id status class location admitted-at discharged-at]}]
+  [reference-date utc-offset patient-id
+   {:keys [encounter-id status class location admitted-at discharged-at]}]
   (when admitted-at
     (cond-> {:resourceType "Encounter"
-             :id (str patient-id "-encounter")
+             :id (encounter-id-ref patient-id encounter-id)
              :status (if (= :discharged status) "finished" "in-progress")
              :class {:code (fhir-encounter-class class)}
              :subject {:reference (str "Patient/" patient-id)}
@@ -145,14 +160,43 @@
                        discharged-at (assoc :end (iso-timestamp reference-date discharged-at utc-offset)))}
       location (assoc :location [{:location {:display (:ward location)}}]))))
 
+(defn- encounter-records
+  "The encounter records this patient's state holds, in the order they
+  happened -- ADR-0174 section 2(a)'s \"one Encounter per closed record
+  plus the open one\", made into a list the renderer above can map.
+
+  THE LEGACY ARM IS FIRST AND IS EXACT. A patient whose records carry no
+  `:encounter-id` -- every patient of every run with no `:encounters`
+  key -- yields ONE pseudo-record read straight off the flat projection
+  fields, which is literally the map the single `encounter-resource`
+  call read before this sweep. Same fields, same order, same bytes, and
+  the fallback is on the KEY rather than on a missing entry.
+
+  Opted in, each CLOSED record renders from its own snapshot and the
+  OPEN one from the live projection those seven fields still are
+  (`engine.clj`'s `EncounterRecord`). A `:cancelled` record renders
+  nothing at all: a cancelled admission left no encounter behind, which
+  is what dropping `:admitted-at` used to express when there was only
+  one."
+  [{:keys [status class location admitted-at discharged-at encounter encounters]}]
+  (if (and (nil? (:encounter-id encounter)) (not-any? :encounter-id encounters))
+    [{:status status :class class :location location
+      :admitted-at admitted-at :discharged-at discharged-at}]
+    (concat
+     (for [e encounters :when (not (:cancelled e))] e)
+     (when encounter
+       [(merge {:status status :class class :location location
+                :admitted-at (:admitted-at encounter)}
+               (select-keys encounter [:encounter-id]))]))))
+
 (defn- condition-resources
   [reference-date utc-offset {:keys [patient-id conditions]}]
   (map-indexed
-   (fn [i {:keys [codes onset-t end-t clinical-status]}]
+   (fn [i {:keys [codes onset-t end-t clinical-status encounter-id]}]
      (cond-> {:resourceType "Condition"
               :id (str patient-id "-condition-" i)
               :subject {:reference (str "Patient/" patient-id)}
-              :encounter {:reference (str "Encounter/" patient-id "-encounter")}
+              :encounter {:reference (str "Encounter/" (encounter-id-ref patient-id encounter-id))}
               :clinicalStatus {:coding [{:code (name clinical-status)}]}
               :onsetDateTime (iso-timestamp reference-date onset-t utc-offset)}
        (seq codes) (assoc :code (codeable-concept codes))
@@ -162,12 +206,12 @@
 (defn- observation-resources
   [reference-date utc-offset {:keys [patient-id observations]}]
   (map-indexed
-   (fn [i {:keys [codes t value unit reference-range interpretation]}]
+   (fn [i {:keys [codes t value unit reference-range interpretation encounter-id]}]
      (cond-> {:resourceType "Observation"
               :id (str patient-id "-obs-" i)
               :status "final"
               :subject {:reference (str "Patient/" patient-id)}
-              :encounter {:reference (str "Encounter/" patient-id "-encounter")}
+              :encounter {:reference (str "Encounter/" (encounter-id-ref patient-id encounter-id))}
               :code (codeable-concept codes)
               :effectiveDateTime (iso-timestamp reference-date t utc-offset)}
        (some? value) (assoc :valueQuantity (cond-> {:value value} unit (assoc :unit unit)))
@@ -180,13 +224,13 @@
 (defn- medication-request-resources
   [reference-date utc-offset {:keys [patient-id medication-orders]}]
   (map-indexed
-   (fn [i {:keys [codes ordered-t status]}]
+   (fn [i {:keys [codes ordered-t status encounter-id]}]
      (cond-> {:resourceType "MedicationRequest"
               :id (str patient-id "-med-" i)
               :status (name status)
               :intent "order"
               :subject {:reference (str "Patient/" patient-id)}
-              :encounter {:reference (str "Encounter/" patient-id "-encounter")}
+              :encounter {:reference (str "Encounter/" (encounter-id-ref patient-id encounter-id))}
               :authoredOn (iso-timestamp reference-date ordered-t utc-offset)}
        (seq codes) (assoc :medicationCodeableConcept (codeable-concept codes))))
    medication-orders))
@@ -233,7 +277,9 @@
   "One patient's own state -> a FHIR Bundle (type \"collection\") of
   every resource that state actually holds -- Patient/Coverage whenever
   a persona has folded (M4's :registered, always this patient's first
-  event); Encounter once admitted; Condition/Observation/
+  event); Encounter once admitted -- ONE per encounter the state holds
+  since arc 3b sweep 1, which is one per patient exactly as before for a
+  run that did not opt into `:encounters`; Condition/Observation/
   MedicationRequest exactly as many as the accumulator carries, zero
   otherwise. No resource is emitted speculatively. `run-id` (this run's
   own seed) is stamped onto every resource's own meta.security/meta.tag
@@ -242,7 +288,9 @@
   [reference-date utc-offset run-id patient-state]
   (let [resources (concat
                     (some-> (patient-resource patient-state) vector)
-                    (some-> (encounter-resource reference-date utc-offset patient-state) vector)
+                    (keep #(encounter-resource reference-date utc-offset
+                                               (:patient-id patient-state) %)
+                          (encounter-records patient-state))
                     (condition-resources reference-date utc-offset patient-state)
                     (observation-resources reference-date utc-offset patient-state)
                     (medication-request-resources reference-date utc-offset patient-state)

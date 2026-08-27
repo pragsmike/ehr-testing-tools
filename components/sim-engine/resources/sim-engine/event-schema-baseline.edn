@@ -10,7 +10,7 @@
 ;;
 ;; Re-freeze ONLY when bumping schema-version, with
 ;; `make event-schema-freeze`.
-{:event-schema-version "1.4.0",
+{:event-schema-version "1.5.0",
  :schema
  [:multi
   {:dispatch :event,
@@ -32,6 +32,7 @@
        [:patient-id :string]
        [:role [:enum :subject :survivor :merged]]]]]
     [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
     [:active-mrn :string]
     [:persona
      [:map
@@ -126,6 +127,7 @@
        [:patient-id :string]
        [:role [:enum :subject :survivor :merged]]]]]
     [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
     [:active-mrn :string]
     [:attending :string]
     [:home-ward :string]
@@ -179,6 +181,7 @@
        [:patient-id :string]
        [:role [:enum :subject :survivor :merged]]]]]
     [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
     [:active-mrn :string]
     [:attending :string]
     [:from
@@ -213,6 +216,7 @@
        [:patient-id :string]
        [:role [:enum :subject :survivor :merged]]]]]
     [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
     [:active-mrn :string]
     [:attending :string]
     [:location
@@ -247,6 +251,7 @@
        [:patient-id :string]
        [:role [:enum :subject :survivor :merged]]]]]
     [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
     [:active-mrn :string]
     [:cancels-event-id :int]]]
   [:cancel-transfer
@@ -265,6 +270,7 @@
        [:patient-id :string]
        [:role [:enum :subject :survivor :merged]]]]]
     [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
     [:active-mrn :string]
     [:cancels-event-id :int]
     [:home-ward [:maybe :string]]
@@ -292,6 +298,7 @@
        [:patient-id :string]
        [:role [:enum :subject :survivor :merged]]]]]
     [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
     [:active-mrn :string]
     [:cancels-event-id :int]
     [:home-ward [:maybe :string]]
@@ -319,6 +326,7 @@
        [:patient-id :string]
        [:role [:enum :subject :survivor :merged]]]]]
     [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
     [:swap
      [:map-of
       :string
@@ -337,7 +345,8 @@
          [:ward :string]
          [:bed :string]
          [:placement [:enum :licensed :surge]]]]
-       [:attending :string]]]]]]
+       [:attending :string]
+       [:encounter-id {:optional true} :string]]]]]]
   [:merge
    [:map
     {:doc
@@ -354,6 +363,7 @@
        [:patient-id :string]
        [:role [:enum :subject :survivor :merged]]]]]
     [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
     [:surviving-mrn :string]
     [:merged-mrn :string]
     [:merged-mrns [:set :string]]
@@ -373,6 +383,7 @@
        [:patient-id :string]
        [:role [:enum :subject :survivor :merged]]]]]
     [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
     [:active-mrn :string]
     [:profile :keyword]
     [:concept
@@ -402,6 +413,7 @@
        [:patient-id :string]
        [:role [:enum :subject :survivor :merged]]]]]
     [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
     [:active-mrn :string]
     [:profile :keyword]
     [:order-event-id :int]
@@ -447,6 +459,7 @@
        [:patient-id :string]
        [:role [:enum :subject :survivor :merged]]]]]
     [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
     [:active-mrn :string]
     [:attending :string]
     [:reason
@@ -491,6 +504,7 @@
        [:patient-id :string]
        [:role [:enum :subject :survivor :merged]]]]]
     [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
     [:active-mrn :string]
     [:attending [:maybe :string]]
     [:citation
@@ -511,6 +525,7 @@
        [:patient-id :string]
        [:role [:enum :subject :survivor :merged]]]]]
     [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
     [:active-mrn :string]
     [:codes
      [:vector
@@ -537,6 +552,7 @@
        [:patient-id :string]
        [:role [:enum :subject :survivor :merged]]]]]
     [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
     [:active-mrn :string]
     [:codes
      [:vector
@@ -575,6 +591,7 @@
        [:patient-id :string]
        [:role [:enum :subject :survivor :merged]]]]]
     [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
     [:active-mrn :string]
     [:observations
      [:vector
@@ -623,6 +640,7 @@
        [:patient-id :string]
        [:role [:enum :subject :survivor :merged]]]]]
     [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
     [:active-mrn :string]
     [:codes
      [:vector
@@ -648,6 +666,7 @@
        [:patient-id :string]
        [:role [:enum :subject :survivor :merged]]]]]
     [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
     [:active-mrn :string]
     [:order-event-id [:maybe :int]]
     [:order-citation
@@ -671,6 +690,7 @@
        [:patient-id :string]
        [:role [:enum :subject :survivor :merged]]]]]
     [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
     [:active-mrn :string]
     [:codes
      [:vector
@@ -703,6 +723,7 @@
        [:patient-id :string]
        [:role [:enum :subject :survivor :merged]]]]]
     [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
     [:active-mrn :string]
     [:start-event-id [:maybe :int]]
     [:care-plan-citation
@@ -725,6 +746,7 @@
        [:patient-id :string]
        [:role [:enum :subject :survivor :merged]]]]]
     [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
     [:reason
      [:enum
       :illegal-bed-swap
@@ -751,6 +773,7 @@
        [:patient-id :string]
        [:role [:enum :subject :survivor :merged]]]]]
     [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
     [:active-mrn :string]
     [:cause
      [:enum
@@ -885,6 +908,7 @@
        [:patient-id :string]
        [:role [:enum :subject :survivor :merged]]]]]
     [:warm-up :boolean]
+    [:encounter-id {:optional true} :string]
     [:active-mrn :string]
     [:cause [:enum :employment :age-65 :loss :eligibility]]
     [:payer

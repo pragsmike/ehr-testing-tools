@@ -496,8 +496,18 @@
   `disposition-state` is non-nil -- callers pass a state keyword
   (:discharged-to-home) only for :discharge events; every other event
   type passes nil, rendering PV1-36 empty, exactly as before this
-  milestone (no disposition concept existed to render at all)."
-  [site-profile patient-class facility-name location from provider disposition-state]
+  milestone (no disposition concept existed to render at all).
+
+  ARC 3B SWEEP 1 (ADR-0174 ruling C1): PV1-19, the VISIT NUMBER, is the
+  encounter's one wire face and the only field this sweep adds to any
+  message. It was one of the 28 blanks below, on every message this
+  project had ever produced -- `emit_hl7.clj`'s own registry comment
+  calls traffic invisible to every consumer a failure mode, and an
+  encounter with no visit number was exactly that. `visit-number` is
+  nil for every event of every run that did not opt into `:encounters`,
+  and nil renders the SAME empty field that stood here before, so the
+  blank count moves 28 -> 27 while the byte count does not."
+  [site-profile patient-class facility-name location from provider disposition-state visit-number]
   (apply parser/create-segment
          "PV1"
          (parser/create-field ["1"])
@@ -508,7 +518,14 @@
          (parser/create-field [])
          (location-field facility-name from)
          (provider-field provider)
-         (concat (blank-fields 28)
+         ;; PV1-8 .. PV1-18, then PV1-19 (visit number), then
+         ;; PV1-20 .. PV1-35: 11 + 1 + 16 = the 28 fields that stood
+         ;; between PV1-7 and PV1-36 before this sweep.
+         (concat (blank-fields 11)
+                 [(if visit-number
+                    (parser/create-field [visit-number])
+                    (parser/create-field []))]
+                 (blank-fields 16)
                  [(if disposition-state
                     (parser/create-field (site-profile/code-for site-profile :discharge-disposition
                                                                  site-profile/standard-discharge-disposition-codes
@@ -633,7 +650,8 @@
         (msh-segment site-profile type+trigger control-id transmit-ts)
         (evn-segment (:trigger type+trigger) clinical-ts)
         (pid-segment active-mrn persona)
-        (pv1-segment site-profile patient-class facility-name location from provider disposition-state)
+        (pv1-segment site-profile patient-class facility-name location from provider disposition-state
+                     (:encounter-id ev))
         (concat (when (and (= :admission event) (:payer persona))
                   [(in1-segment (:payer persona))])
                 (z-segments-for site-profile demographics ev)))))))
@@ -655,17 +673,20 @@
         transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
         facility-name (name (:id facility))
         [p1 p2] (mapv :patient-id participants)
-        {mrn1 :active-mrn from1 :from to1 :to att1 :attending} (get swap p1)
-        {mrn2 :active-mrn from2 :from to2 :to att2 :attending} (get swap p2)]
+        ;; ARC 3B SWEEP 1: PV1-19 comes from the same per-side entry
+        ;; PV1-3 does -- a two-patient event names two encounters and
+        ;; carries neither at top level (`BedSwapSide`'s own docstring).
+        {mrn1 :active-mrn from1 :from to1 :to att1 :attending enc1 :encounter-id} (get swap p1)
+        {mrn2 :active-mrn from2 :from to2 :to att2 :attending enc2 :encounter-id} (get swap p2)]
     (parser/str-message
      (apply parser/create-message
       parser/DEFAULT-DELIMITERS
       (msh-segment site-profile type+trigger control-id transmit-ts)
       (evn-segment (:trigger type+trigger) clinical-ts)
       (pid-segment mrn1 (demographics-at demographics p1 t))
-      (pv1-segment site-profile :inpatient facility-name to1 from1 (provider-by-id providers att1) nil)
+      (pv1-segment site-profile :inpatient facility-name to1 from1 (provider-by-id providers att1) nil enc1)
       (pid-segment mrn2 (demographics-at demographics p2 t))
-      (pv1-segment site-profile :inpatient facility-name to2 from2 (provider-by-id providers att2) nil)
+      (pv1-segment site-profile :inpatient facility-name to2 from2 (provider-by-id providers att2) nil enc2)
       (z-segments-for site-profile demographics ev)))))
 
 (defn- merge-message
@@ -688,7 +709,7 @@
       (msh-segment site-profile type+trigger control-id transmit-ts)
       (evn-segment (:trigger type+trigger) clinical-ts)
       (pid-segment surviving-mrn (demographics-at demographics survivor-id t))
-      (pv1-segment site-profile :inpatient facility-name nil nil nil nil)
+      (pv1-segment site-profile :inpatient facility-name nil nil nil nil (:encounter-id ev))
       (mrg-segment merged-mrn)
       (z-segments-for site-profile demographics ev)))))
 
@@ -837,7 +858,7 @@
       parser/DEFAULT-DELIMITERS
       (msh-segment site-profile type+trigger control-id transmit-ts)
       (pid-segment active-mrn (demographics-at demographics (:patient-id (first participants)) t))
-      (pv1-segment site-profile :inpatient facility-name location nil provider nil)
+      (pv1-segment site-profile :inpatient facility-name location nil provider nil (:encounter-id ev))
       (orc-segment control-id)
       (obr-segment 1 concept)
       (z-segments-for site-profile demographics ev)))))
@@ -871,7 +892,7 @@
       parser/DEFAULT-DELIMITERS
       (msh-segment site-profile type+trigger control-id transmit-ts)
       (pid-segment active-mrn (demographics-at demographics (:patient-id (first participants)) t))
-      (pv1-segment site-profile :inpatient facility-name location nil provider nil)
+      (pv1-segment site-profile :inpatient facility-name location nil provider nil (:encounter-id ev))
       (orc-segment control-id)
       (obr-segment 1 concept clinical-ts)
       (concat obx-segments (z-segments-for site-profile demographics ev))))))
@@ -964,7 +985,7 @@
       parser/DEFAULT-DELIMITERS
       (msh-segment site-profile type+trigger control-id transmit-ts)
       (pid-segment active-mrn (demographics-at demographics (:patient-id (first participants)) t))
-      (pv1-segment site-profile :inpatient facility-name location nil provider nil)
+      (pv1-segment site-profile :inpatient facility-name location nil provider nil (:encounter-id ev))
       (observation-obx-segment 1 clinical-ts ev)
       (z-segments-for site-profile demographics ev)))))
 
@@ -999,7 +1020,7 @@
       parser/DEFAULT-DELIMITERS
       (msh-segment site-profile type+trigger control-id transmit-ts)
       (pid-segment active-mrn (demographics-at demographics (:patient-id (first participants)) t))
-      (pv1-segment site-profile :inpatient facility-name location nil provider nil)
+      (pv1-segment site-profile :inpatient facility-name location nil provider nil (:encounter-id ev))
       (orc-segment control-id)
       (obr-segment 1 (first codes) clinical-ts)
       (concat obx-segments (z-segments-for site-profile demographics ev))))))

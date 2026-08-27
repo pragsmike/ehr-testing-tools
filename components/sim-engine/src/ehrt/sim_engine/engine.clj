@@ -113,7 +113,14 @@
    [:citation sim-model/Citation]
    [:onset-t :int]
    [:clinical-status [:enum :active :resolved]]
-   [:end-t {:optional true} :int]])
+   [:end-t {:optional true} :int]
+   ;; ADR-0174 section 2(a) (arc 3b sweep 1): WHICH encounter this
+   ;; condition was recorded during. Absent on every record of every run
+   ;; that did not opt into `:encounters`, which is what keeps
+   ;; `sim-emit-fhir`'s Condition.encounter reference byte-identical
+   ;; there; present, it is what stops a condition recorded during
+   ;; visit 2 being attributed to visit 1.
+   [:encounter-id {:optional true} :string]])
 
 (def ObservationRecord
   "One observation -- a GMF `:observation` event, a single analyte
@@ -136,7 +143,9 @@
    [:value-code {:optional true} sim-model/Concept]
    [:category {:optional true} :string]
    [:reference-range {:optional true} [:map [:low number?] [:high number?]]]
-   [:interpretation {:optional true} [:enum :normal :low :high]]])
+   [:interpretation {:optional true} [:enum :normal :low :high]]
+   ;; ADR-0174 section 2(a) -- see ConditionRecord's own entry.
+   [:encounter-id {:optional true} :string]])
 
 (def MedicationOrderRecord
   "One medication order, folded from :medication-order and closed by a
@@ -148,7 +157,9 @@
    [:citation sim-model/Citation]
    [:ordered-t :int]
    [:status [:enum :active :completed]]
-   [:ended-t {:optional true} :int]])
+   [:ended-t {:optional true} :int]
+   ;; ADR-0174 section 2(a) -- see ConditionRecord's own entry.
+   [:encounter-id {:optional true} :string]])
 
 (def CarePlanRecord
   "GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R2(b)): one care
@@ -163,7 +174,9 @@
    [:citation sim-model/Citation]
    [:started-t :int]
    [:status [:enum :active :completed]]
-   [:ended-t {:optional true} :int]])
+   [:ended-t {:optional true} :int]
+   ;; ADR-0174 section 2(a) -- see ConditionRecord's own entry.
+   [:encounter-id {:optional true} :string]])
 
 (def Demographics
   "STATE-AT-T demographics -- what a patient's demographic facts are AT
@@ -255,6 +268,61 @@
   [alias-name]
   {:name alias-name :residence {:status :unknown} :identity :placeholder})
 
+(def PatientLocation
+  "The {:ward :bed :placement} map an admitted patient's `:location`
+  holds -- factored out of `PatientState` (where it was inline) so
+  `EncounterRecord` below can name the SAME shape rather than restate
+  it. No value moves: this is the identical schema, given a name."
+  [:map
+   [:ward :string]
+   [:bed :string]
+   [:placement [:enum :licensed :surge]]])
+
+(def EncounterRecord
+  "ONE encounter (ADR-0174 section 2(a), arc 3b sweep 1). `PatientState`
+  holds the OPEN one under `:encounter` and every CLOSED one under
+  `:encounters`, accumulating exactly the way `:conditions` and
+  `:care-plans` already do.
+
+  THE OPEN RECORD IS DELIBERATELY THIN -- `:encounter-id`, `:ordinal`
+  and the opener's own instant, and nothing else. The seven
+  single-encounter-assumed fields of `PatientState` (`:status`,
+  `:class`, `:home-ward`, `:location`, `:attending`, `:admitted-at`,
+  `:discharged-at`) STAY where they are and ARE the open encounter's
+  projection, unchanged in shape and unchanged in value while an
+  encounter is open, which is why every reader in the emitters, the
+  checks and the board is untouched by this field's arrival. Duplicating
+  them onto the open record would create a second place for a transfer
+  to have to update.
+
+  A CLOSED record is that projection, SNAPSHOT at the closing event --
+  taken after the closer's own field changes, so a discharged
+  encounter's `:location` is nil exactly as the discharged patient's is.
+  That snapshot is what `evolve :discharge` now has somewhere to put
+  instead of throwing away.
+
+  `:cancelled` marks an encounter a `:cancel-admit` un-did. It is kept
+  in `:encounters` rather than dropped so `:ordinal` can never be
+  REUSED -- an id minted for an admission that was cancelled must not be
+  minted again for the patient's next one, or
+  `every-encounter-is-opened-and-closed-or-still-open` would see two
+  openers carrying one id."
+  [:map
+   ;; Absent on every record of every run with no `:encounters` key: the
+   ;; records are folded either way (so the invariants below are never
+   ;; vacuous), but nothing MINTS an id unless the run opted in.
+   [:encounter-id {:optional true} :string]
+   [:ordinal :int]
+   [:class {:optional true} [:maybe [:enum :inpatient :emergency :outpatient
+                                     :preadmit :recurring :obstetrics]]]
+   [:home-ward {:optional true} [:maybe :string]]
+   [:location {:optional true} [:maybe PatientLocation]]
+   [:attending {:optional true} [:maybe :string]]
+   [:status {:optional true} [:maybe [:enum :new :admitted :discharged :merged :expired]]]
+   [:admitted-at {:optional true} [:maybe :int]]
+   [:discharged-at {:optional true} [:maybe :int]]
+   [:cancelled {:optional true} :boolean]])
+
 (def PatientState
   "The engine's per-patient accumulator -- what folding `evolve` over a
   patient's own event subsequence produces (docs/patient-state-model.md
@@ -299,10 +367,7 @@
    [:class {:optional true} [:enum :inpatient :emergency :outpatient
                               :preadmit :recurring :obstetrics]]
    [:home-ward {:optional true} [:maybe :string]]
-   [:location {:optional true} [:maybe [:map
-                                         [:ward :string]
-                                         [:bed :string]
-                                         [:placement [:enum :licensed :surge]]]]]
+   [:location {:optional true} [:maybe PatientLocation]]
    [:attending {:optional true} [:maybe :string]]
    [:persona {:optional true} [:maybe sim-model/Persona]]
    ;; ADR-0173 section 2(b) (arc 3a): state-at-t, seeded at :registered
@@ -318,6 +383,17 @@
    [:observations {:optional true} [:vector ObservationRecord]]
    [:medication-orders {:optional true} [:vector MedicationOrderRecord]]
    [:care-plans {:optional true} [:vector CarePlanRecord]]
+   ;; ADR-0174 section 2(a) (arc 3b sweep 1): the encounter, made
+   ;; explicit. `:encounter` is the OPEN one (nil between encounters),
+   ;; `:encounters` every CLOSED one in the order they closed. BOTH are
+   ;; folded whether or not the run opted into `:encounters` -- the
+   ;; records cost no emitted byte without an id (nothing renders them,
+   ;; `sim-emit-fhir`'s own legacy arm), and folding them
+   ;; unconditionally is what keeps `admission-only-when-no-open-
+   ;; encounter` a real predicate on a legacy log instead of a
+   ;; vacuously-true one.
+   [:encounter {:optional true} [:maybe EncounterRecord]]
+   [:encounters {:optional true} [:vector EncounterRecord]]
    [:attributes {:optional true} [:map-of :keyword :any]]])
 
 (defn valid-patient?
@@ -373,6 +449,133 @@
   [:admitted-at patient-id]."
   [seed ordinal]
   (format "PID-%06d-%08x" ordinal (bit-and (mix64 seed ordinal) 0xffffffff)))
+
+(defn encounter-id-for
+  "The internal, deterministic encounter-id (ADR-0174 ruling B1, arc 3b
+  sweep 1): `patient-id-for`'s own contract applied one level down -- a
+  PURE function of this run's seed, the patient's arrival ordinal
+  (0-indexed) and that patient's own 0-indexed encounter ordinal, and
+  deliberately OFF the seeded RNG streams, so lifting the
+  single-encounter horizon adds no draws for sim/ADR-0009's accounting
+  to track.
+
+  It takes the ORDINAL the patient-id already encodes rather than
+  hashing the patient-id STRING, because `stream-family-tag`'s own
+  docstring is explicit that a hash this repo does not own must not be
+  load-bearing -- and `mix64` is this repo's own (PUBLIC since ADR-0171
+  ruling A1). Distinct prefix from :mrn and from patient-id (`ENC-`,
+  never `PID-` or `MRN`) so the three id spaces are never visually
+  confusable, and the zero-padded arrival ordinal leads for the same
+  lexical-order reason patient-id's does.
+
+  The two REJECTED derivations, kept here because what was declined is
+  why this one means anything (ADR-0174 ruling B): a run-scoped
+  monotonic counter is order-dependent, the exact property ADR-0171
+  rejected `SplittableRandom`'s split order for; the opening event's LOG
+  INDEX is free and unique but brittle, and a visit number is an
+  IDENTIFIER a consumer persists, not a REFERENCE like
+  `:order-event-id`/`:placeholder-event-id` -- any reshuffle would
+  renumber every one of them."
+  [seed ordinal encounter-ordinal]
+  (format "ENC-%06d-%02d-%08x" ordinal encounter-ordinal
+          (bit-and (mix64 (mix64 seed ordinal) encounter-ordinal) 0xffffffff)))
+
+(defn next-encounter-ordinal
+  "The 0-indexed ordinal this patient's NEXT encounter takes: every
+  encounter they have ever opened, counted. Monotone by construction --
+  a cancelled encounter STAYS in `:encounters` (marked `:cancelled`)
+  precisely so its ordinal is never handed out twice, which is what
+  stops `:cancel-admit` followed by a re-admission from minting one id
+  for two openers."
+  [patient]
+  (+ (count (:encounters patient)) (if (:encounter patient) 1 0)))
+
+(defn- minted-encounter-id-field
+  "What an encounter OPENER's own `decide` merges in: `{:encounter-id
+  ...}` for a run that opted into `:encounters`, `{}` for one that did
+  not (ADR-0174's opt-in law -- absent means today's bytes, so the field
+  is not merely nil, it is not there).
+
+  `run` puts `:encounter-minting {:seed .. :ordinals ..}` into `world`
+  IFF the run opted in, and the hand-built-world tolerance is on THAT
+  KEY and never on a missing ordinal entry: every patient `run` creates
+  is in `:ordinals`, so a nil there is a defect and reads as one rather
+  than as a silently id-less encounter."
+  [world patient-id]
+  (if-let [{:keys [seed ordinals]} (:encounter-minting world)]
+    {:encounter-id (encounter-id-for seed (get ordinals patient-id)
+                                     (next-encounter-ordinal (get-in world [:patients patient-id])))}
+    {}))
+
+(defn- encounter-openable?
+  "Whether a NEW encounter may open on this patient right now -- the
+  RUNTIME half of `admission-only-when-no-open-encounter`
+  (`check.clj`'s is the same rule asserted over a finished log).
+
+  Opted in (ADR-0174 section 2(a) item 3): legal iff no encounter is
+  OPEN, and the patient is not in one of the two absorbing terminals.
+  `:merged` and `:expired` stay absorbing, which is
+  `no-events-after-merged-terminal` and `expired-patient-retains-
+  location` preserved verbatim.
+
+  ABSENT: `(= :new (:status patient))` -- this project's
+  single-encounter horizon, the expression that was here before, so a
+  run with no `:encounters` key behaves byte-for-byte as it always
+  has."
+  [world patient]
+  (if (:encounter-minting world)
+    (and (nil? (:encounter patient))
+         (not (#{:merged :expired} (:status patient))))
+    (= :new (:status patient))))
+
+(def ^:private two-encounter-event-types
+  "The event kinds naming TWO patients, and therefore two encounters.
+  `run`'s stamp skips them: one top-level `:encounter-id` cannot name
+  both, and inventing a per-participant vocabulary for it is a
+  participant-schema widening ADR-0174 reserves for sweep 2.
+
+  `:bed-swap` carries each side's id inside its own `:swap` entry
+  instead. `:merge` is NOT here, deliberately -- its message renders the
+  SURVIVOR's PID/PV1 only, and the survivor is its first participant, so
+  the ordinary stamp names exactly the encounter the wire shows."
+  #{:bed-swap})
+
+(defn- stamp-encounter
+  "Carry the open encounter's id onto an event of that encounter
+  (ADR-0174 section 2(a): \"minted at each encounter opener, carried on
+  every event of that encounter\").
+
+  `world` here is the state BEFORE this batch, so the id is the one that
+  was open when the event happened: a CLOSER is stamped with the
+  encounter it closes, an opener already carries its own minted id and
+  is left alone (`contains?`, not `some?` -- a key that is there is
+  there), and an event after a discharge -- a pending lab result, a
+  medication end at home -- is stamped with nothing, which is correct
+  and is why this is a stamp and not a patient-wide field.
+
+  With no `:encounters` opt-in NOTHING mints an id, so this function is
+  the identity on every event of every legacy run, by construction."
+  [world event]
+  (if (or (contains? event :encounter-id) (two-encounter-event-types (:event event)))
+    event
+    (let [subject (:patient-id (first (:participants event)))
+          patient (get-in world [:patients subject])]
+      (if-let [id (or (:encounter-id (:encounter patient))
+                      ;; A `:cancel-discharge` is decided while the
+                      ;; encounter its own `:discharge` CLOSED is closed
+                      ;; -- that is what it is undoing -- so the open
+                      ;; record cannot name it. It belongs to that
+                      ;; encounter all the same, and saying so is what
+                      ;; lets `every-encounter-is-opened-and-closed-or-
+                      ;; still-open` allow a second `:discharge` for one
+                      ;; encounter: a reinstated stay is one encounter
+                      ;; closed twice, not two encounters.
+                      (when (= :cancel-discharge (:event event))
+                        (let [last-enc (peek (:encounters patient))]
+                          (when-not (:cancelled last-enc)
+                            (:encounter-id last-enc)))))]
+        (assoc event :encounter-id id)
+        event))))
 
 (def stream-scheme
   "The RNG stream partition's own version marker (ADR-0171 ruling D1),
@@ -900,13 +1103,17 @@
   ;; method decides WHETHER it may happen at all, and prepends the
   ;; ordinary three-step encounter when it may.
   ;;
-  ;; THE `:new` GUARD IS THIS PROJECT'S SINGLE-ENCOUNTER HORIZON, met a
-  ;; second time. `check.clj`'s `admission-only-when-new` (sim/ADR-0007
-  ;; point 3) means a patient gets ONE inpatient encounter, ever --
-  ;; `evolve :discharge` leaves them `:discharged`, never back at
-  ;; `:new`. So a hook landing on a patient who has already had their
-  ;; encounter mints nothing, exactly as ADR-0173's own first tabled
-  ;; deviation says a repeat arrival queues nothing. `run` also refuses
+  ;; THE GUARD WAS THIS PROJECT'S SINGLE-ENCOUNTER HORIZON, met a
+  ;; second time -- `(not= :new (:status patient))`, which
+  ;; `check.clj`'s `admission-only-when-new` (sim/ADR-0007 point 3)
+  ;; asserted over the finished log. ARC 3B SWEEP 1 LIFTS IT, behind
+  ;; the `:encounters` opt-in: `encounter-openable?` is the same
+  ;; question asked of the ENCOUNTER rather than of the patient, and
+  ;; with no opt-in it IS the `:new` test, verbatim. So a hook landing
+  ;; on a patient who has already been DISCHARGED now opens their second
+  ;; encounter -- and one landing while their first is still OPEN still
+  ;; mints nothing, which is the half of the old rule that survives.
+  ;; `run` also refuses
   ;; these statically, before the run, for a patient whose own queue
   ;; contains an encounter at all (`prelude`'s `encounter-free?`); this
   ;; guard is the runtime half, and the two are deliberately both
@@ -921,7 +1128,7 @@
   ;; themselves.
   [_streams _t world patient-id {:keys [reason ward-class stay-minutes person-event-id]}]
   (let [patient (get-in world [:patients patient-id])]
-    (if (not= :new (:status patient))
+    (if-not (encounter-openable? world patient)
       {:events [] :advance 0}
       {:events [] :advance 0
        :prepend-steps [{:type :admission
@@ -930,6 +1137,34 @@
                         :person-event-id person-event-id}
                        {:type :delay :from stay-minutes :to stay-minutes}
                        {:type :discharge}]})))
+
+(defmethod decide :repeat-arrival
+  ;; ARC 3B SWEEP 1 (ADR-0174 section 2(a), ruling A1). A REPEAT ARRIVAL
+  ;; -- an arrival ordinal whose person already has a patient -- queued
+  ;; NOTHING before this sweep, because a second `:admission` for a
+  ;; `:discharged` patient violated `admission-only-when-new`
+  ;; (ADR-0173's own first tabled deviation, and 22 of ed-tuesday's 100
+  ;; configured arrivals plus 39 of clinic-decade's 200).
+  ;;
+  ;; With `:encounters` on, that arrival's whole step list is queued
+  ;; behind THIS one step, which is the runtime guard: THE WHOLE ARRIVAL
+  ;; IS PREPENDED OR NONE OF IT IS, exactly as `decide :person-encounter`
+  ;; prepends its whole triple or nothing. A repeat arrival landing while
+  ;; the patient's FIRST encounter is still open opens no second one --
+  ;; a delay and a discharge queued behind an admission that did not
+  ;; happen would be a discharge closing the wrong encounter, so the
+  ;; arrival is one decision rather than a list of steps that each guard
+  ;; themselves.
+  ;;
+  ;; It emits NO event and it mints no second `:registered`, which is
+  ;; what keeps `registered-is-every-patients-first-event` true by
+  ;; construction: a second encounter is a second VISIT by one patient,
+  ;; not a second patient.
+  [_streams _t world patient-id {:keys [steps]}]
+  (let [patient (get-in world [:patients patient-id])]
+    (if (encounter-openable? world patient)
+      {:events [] :advance 0 :prepend-steps steps}
+      {:events [] :advance 0})))
 
 (defn- identity-fill-outcome
   "The `:fill` branch's own outcome, factored because TWO decides reach
@@ -1056,7 +1291,12 @@
         {:events [(merge {:event :admission :t t :active-mrn active-mrn :attending attending
                           :participants [{:patient-id patient-id :role :subject}]}
                          alloc (reason-field step) (citation-fields step)
-                         (person-stamp-field step))]
+                         (person-stamp-field step)
+                         ;; ARC 3B SWEEP 1: an opener MINTS its encounter
+                         ;; id (ADR-0174 ruling B1); every later event of
+                         ;; that encounter is stamped with it by `run`'s
+                         ;; own loop, off the open record.
+                         (minted-encounter-id-field world patient-id))]
          :advance 0}))))
 
 (defmethod decide :delay
@@ -1306,13 +1546,24 @@
         peer (get patients peer-id)]
     (if (or (nil? peer-id) (nil? peer) (not= :admitted (:status peer)) (nil? (:location peer)))
       (rejected-outcome :illegal-bed-swap patient-id t step {:with with})
+      ;; ARC 3B SWEEP 1: a bed-swap names TWO encounters, and one
+      ;; top-level `:encounter-id` cannot carry both -- so it carries
+      ;; NEITHER (`run`'s stamp skips this kind), and each side's id
+      ;; rides that side's own `:swap` entry, beside the `:active-mrn`,
+      ;; `:from`, `:to` and `:attending` that are already per-patient
+      ;; there. `bed-swap-message` renders two PID/PV1 pairs and reads
+      ;; PV1-19 from the same place it reads PV1-3.
       {:events [{:event :bed-swap :t t
                  :participants [{:patient-id patient-id :role :subject}
                                 {:patient-id peer-id :role :subject}]
-                 :swap {patient-id {:active-mrn (:active-mrn self) :from (:location self)
-                                    :to (:location peer) :attending (:attending self)}
-                        peer-id {:active-mrn (:active-mrn peer) :from (:location peer)
-                                :to (:location self) :attending (:attending peer)}}}]
+                 :swap {patient-id (cond-> {:active-mrn (:active-mrn self) :from (:location self)
+                                            :to (:location peer) :attending (:attending self)}
+                                     (:encounter-id (:encounter self))
+                                     (assoc :encounter-id (:encounter-id (:encounter self))))
+                        peer-id (cond-> {:active-mrn (:active-mrn peer) :from (:location peer)
+                                         :to (:location self) :attending (:attending peer)}
+                                  (:encounter-id (:encounter peer))
+                                  (assoc :encounter-id (:encounter-id (:encounter peer))))}}]
        :advance 0})))
 
 (defmethod decide :merge
@@ -1436,7 +1687,10 @@
     {:events [(merge {:event :outpatient-visit :t t :active-mrn (:active-mrn patient)
                       :attending attending
                       :participants [{:patient-id patient-id :role :subject}]}
-                     (reason-field step) (citation-fields step))]
+                     (reason-field step) (citation-fields step)
+                     ;; ARC 3B SWEEP 1: the second opener, minting the
+                     ;; same way `:admission` does.
+                     (minted-encounter-id-field world patient-id))]
      :advance 0}))
 
 (defmethod decide :outpatient-visit-end
@@ -1660,10 +1914,15 @@
   rather than each carrying its own, a documented simplification of
   this scope, not a claim that a condition's real onset and resolution
   were simultaneous."
-  [t conditions {:keys [event codes citation]}]
+  [t encounter-id conditions {:keys [event codes citation]}]
   (case event
     :condition-onset
-    (conj (or conditions []) {:codes codes :citation citation :onset-t t :clinical-status :active})
+    (conj (or conditions [])
+          (cond-> {:codes codes :citation citation :onset-t t :clinical-status :active}
+            ;; ADR-0174 section 2(a): which encounter recorded it. Absent
+            ;; with no `:encounters` opt-in, so a legacy record's bytes
+            ;; are the bytes it always had.
+            encounter-id (assoc :encounter-id encounter-id)))
 
     :condition-end
     (if-let [idx (last (keep-indexed (fn [i c] (when (and (= :active (:clinical-status c)) (= codes (:codes c))) i))
@@ -1672,9 +1931,75 @@
       conditions)))
 
 (defn- fold-conditions
-  [patient t annotations]
+  [patient t encounter-id annotations]
   (cond-> patient
-    (seq annotations) (update :conditions #(reduce (partial fold-condition-annotation t) % annotations))))
+    (seq annotations)
+    (update :conditions #(reduce (partial fold-condition-annotation t encounter-id) % annotations))))
+
+;; --- ADR-0174 section 2(a) (arc 3b sweep 1): the encounter, folded -------
+;;
+;; These three are the whole of the encounter's fold. They run on EVERY
+;; log, opted in or not: the records cost no emitted byte without an id
+;; (nothing renders them -- `sim-emit-fhir` keeps its legacy arm for a
+;; patient whose records carry none), and folding them unconditionally
+;; is what keeps `admission-only-when-no-open-encounter` a real
+;; predicate on a legacy log rather than a vacuously-true one.
+
+(defn- open-encounter
+  "The OPEN record an encounter opener writes -- id, ordinal, and the
+  opener's own instant, and nothing else. The seven projection fields
+  stay on `PatientState` and ARE this encounter's placement while it is
+  open (`EncounterRecord`'s own docstring)."
+  [patient {:keys [t encounter-id]}]
+  (cond-> {:ordinal (next-encounter-ordinal patient) :admitted-at t}
+    encounter-id (assoc :encounter-id encounter-id)))
+
+(defn- close-encounter
+  "Move the open record onto `:encounters`, snapshotting the projection
+  off `patient` -- which the caller has ALREADY evolved, so the snapshot
+  records the encounter as its closer leaves it (a discharged
+  encounter's `:location` is nil, exactly as the discharged patient's
+  is). An `:outpatient-visit` sets no `:admitted-at` on the patient at
+  all, so the record's own opener instant is what stands."
+  [patient]
+  (if-let [enc (:encounter patient)]
+    (-> patient
+        (update :encounters (fnil conj [])
+                (merge enc
+                       (select-keys patient [:class :home-ward :location :attending
+                                             :status :discharged-at])
+                       (when-let [at (or (:admitted-at enc) (:admitted-at patient))]
+                         {:admitted-at at})))
+        (dissoc :encounter))
+    patient))
+
+(defn- cancel-open-encounter
+  "`:cancel-admit` un-does an admission, so its encounter never really
+  happened -- but its ORDINAL was spent, and its id may already be on
+  the cancelled `:admission` event in the log. The record is therefore
+  kept, marked, rather than dropped."
+  [patient]
+  (if-let [enc (:encounter patient)]
+    (-> patient
+        (update :encounters (fnil conj []) (assoc enc :cancelled true))
+        (dissoc :encounter))
+    patient))
+
+(defn- reopen-encounter
+  "`:cancel-discharge` un-does the close its `:discharge` performed: the
+  last CLOSED, non-cancelled record becomes the open one again, keeping
+  its own id and ordinal rather than minting a second encounter for one
+  stay. Guarded on the shape rather than assumed -- a degenerate or
+  hand-built log with no closed record, or whose last one was cancelled,
+  keeps what it had."
+  [patient]
+  (let [encs (:encounters patient)
+        last-enc (peek encs)]
+    (if (and (nil? (:encounter patient)) (seq encs) (not (:cancelled last-enc)))
+      (-> patient
+          (assoc :encounter (select-keys last-enc [:encounter-id :ordinal :admitted-at]))
+          (assoc :encounters (pop encs)))
+      patient)))
 
 (defmulti evolve
   "Folds one ground-truth event into ONE patient it names:
@@ -1746,21 +2071,32 @@
     (some? (:demographics patient)) (assoc-in [:demographics :payer] payer)))
 
 (defmethod evolve :admission
-  [patient {:keys [location home-ward attending t conditions]}]
+  ;; ARC 3B SWEEP 1: opens the encounter. `open-encounter` reads the
+  ;; PRE-admission patient, so the ordinal it takes counts what this
+  ;; patient had before, never including the encounter being opened.
+  [patient {:keys [location home-ward attending t conditions encounter-id] :as event}]
   (-> patient
       (assoc :status :admitted
              :class :inpatient
              :home-ward home-ward
              :location location
              :attending attending
-             :admitted-at t)
-      (fold-conditions t conditions)))
+             :admitted-at t
+             :encounter (open-encounter patient event))
+      (fold-conditions t encounter-id conditions)))
 
 (defmethod evolve :transfer
   [patient {:keys [location home-ward]}]
   (assoc patient :location location :home-ward home-ward))
 
 (defmethod evolve :discharge
+  ;; ARC 3B SWEEP 1: the non-expired arm CLOSES the encounter -- conj the
+  ;; open record, stamped with the state the discharge itself leaves,
+  ;; onto `:encounters` and drop `:encounter`. THE `:expired` ARM IS
+  ;; UNTOUCHED and its encounter stays OPEN, because the body stays in
+  ;; the bed, which is exactly what `expired-patient-retains-location`
+  ;; asserts (ADR-0174 section 2(a) item 4).
+  ;;
   ;; Wave C (2026-08-02, ADR-0028, C3): an expired-disposition discharge
   ;; sets :status :expired, never :discharged -- and, unlike an ordinary
   ;; discharge, leaves :location/:attending UNCHANGED: the body remains
@@ -1773,13 +2109,18 @@
   [patient {:keys [t disposition]}]
   (if (= :expired disposition)
     (assoc patient :status :expired)
-    (assoc patient :status :discharged :location nil :discharged-at t)))
+    (-> patient
+        (assoc :status :discharged :location nil :discharged-at t)
+        close-encounter)))
 
 ;; --- M2b: churn family evolves -------------------------------------------
 
 (defmethod evolve :cancel-admit
   [patient _event]
-  (-> patient (assoc :status :new) (dissoc :class :home-ward :location :attending :admitted-at)))
+  (-> patient
+      (assoc :status :new)
+      (dissoc :class :home-ward :location :attending :admitted-at)
+      cancel-open-encounter))
 
 (defmethod evolve :cancel-transfer
   [patient {:keys [home-ward location]}]
@@ -1802,7 +2143,11 @@
   [patient {:keys [home-ward location attending]}]
   (-> patient
       (assoc :status :admitted :class :inpatient :home-ward home-ward :location location :attending attending)
-      (dissoc :discharged-at)))
+      (dissoc :discharged-at)
+      ;; ARC 3B SWEEP 1: and re-opens the encounter its own :discharge
+      ;; closed, keeping that encounter's id -- a reinstated stay is ONE
+      ;; encounter, not two.
+      reopen-encounter))
 
 (defmethod evolve :bed-swap
   [patient {:keys [swap]}]
@@ -1853,14 +2198,17 @@
 ;; model.md's event-validity table, the conditional row this milestone adds).
 
 (defmethod evolve :outpatient-visit
-  [patient {:keys [attending t conditions]}]
+  [patient {:keys [attending t conditions encounter-id] :as event}]
   (-> patient
-      (assoc :status :admitted :class :outpatient :attending attending)
-      (fold-conditions t conditions)))
+      (assoc :status :admitted :class :outpatient :attending attending
+             :encounter (open-encounter patient event))
+      (fold-conditions t encounter-id conditions)))
 
 (defmethod evolve :outpatient-visit-end
   [patient {:keys [t]}]
-  (assoc patient :status :discharged :discharged-at t))
+  (-> patient
+      (assoc :status :discharged :discharged-at t)
+      close-encounter))
 
 ;; --- M5b: :procedure -- a log-only fact, no PatientState field change
 ;; (Procedure is deliberately outside EmitState's own rendered resource
@@ -1876,9 +2224,10 @@
 ;; the log.
 
 (defmethod evolve :observation
-  [patient {:keys [t codes] :as event}]
+  [patient {:keys [t codes encounter-id] :as event}]
   (update patient :observations (fnil conj [])
-          (merge {:codes codes :t t} (observation-value-fields event))))
+          (cond-> (merge {:codes codes :t t} (observation-value-fields event))
+            encounter-id (assoc :encounter-id encounter-id))))
 
 ;; --- GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 P5): FLATTENS
 ;; each child into its own ObservationRecord -- the IDENTICAL pattern
@@ -1886,15 +2235,18 @@
 ;; (below), reused rather than a third accumulator shape invented.
 
 (defmethod evolve :diagnostic-report
-  [patient {:keys [t observations]}]
+  [patient {:keys [t observations encounter-id]}]
   (update patient :observations (fnil into [])
-          (mapv (fn [{:keys [codes] :as entry}] (merge {:codes codes :t t} (observation-value-fields entry)))
+          (mapv (fn [{:keys [codes] :as entry}]
+                  (cond-> (merge {:codes codes :t t} (observation-value-fields entry))
+                    encounter-id (assoc :encounter-id encounter-id)))
                 observations)))
 
 (defmethod evolve :medication-order
-  [patient {:keys [t codes citation]}]
+  [patient {:keys [t codes citation encounter-id]}]
   (update patient :medication-orders (fnil conj [])
-          {:codes codes :citation citation :ordered-t t :status :active}))
+          (cond-> {:codes codes :citation citation :ordered-t t :status :active}
+            encounter-id (assoc :encounter-id encounter-id))))
 
 (defmethod evolve :medication-end
   ;; Citation-based, position-independent resolution (this project's
@@ -1919,10 +2271,11 @@
 ;; exists for the fold and a future sim-emit-fhir consumer.
 
 (defmethod evolve :care-plan-start
-  [patient {:keys [t codes activities citation]}]
+  [patient {:keys [t codes activities citation encounter-id]}]
   (update patient :care-plans (fnil conj [])
           (cond-> {:codes codes :citation citation :started-t t :status :active}
-            activities (assoc :activities activities))))
+            activities (assoc :activities activities)
+            encounter-id (assoc :encounter-id encounter-id))))
 
 (defmethod evolve :care-plan-end
   [patient {:keys [t care-plan-citation]}]
@@ -2157,7 +2510,14 @@
   (caught only by the tools consumer loop, after the fact)."
   [:seed :patients :pathway :pathways :arrival-gap :warm-up-seconds
    :facility :providers :churn-profile :order-profiles :persona-config
-   :modules :module-assignment :module-horizon-days :history :persons])
+   :modules :module-assignment :module-horizon-days :history :persons
+   ;; ARC 3B SWEEP 1 (ADR-0174 ruling A1/E1): the encounter horizon's
+   ;; own opt-in. Truthy lifts the single-encounter wall and mints an
+   ;; `:encounter-id` at every opener; ABSENT ENTIRELY -- not false, not
+   ;; nil -- is the byte-identical path, the same opt-in law `:persons`,
+   ;; `:pathways`, `:churn-profile` and `:module-assignment` already
+   ;; establish.
+   :encounters])
 
 (def Persons
   "`run`'s ENGINE-FACING `:persons` value (ADR-0173 section 2(a), arc 3a
@@ -2293,7 +2653,8 @@
   so draws its own, and no person step is seeded. Every expression below
   is then the expression that was there before arc 3a part 3."
   [{:keys [seed patients pathway pathways arrival-gap facility churn-profile
-           persona-config modules module-assignment module-horizon-days history persons]
+           persona-config modules module-assignment module-horizon-days history persons
+           encounters]
     ;; The SAME defaults `run`'s own parameter list declares, restated
     ;; here because `person-plan` is a second entry point and a caller
     ;; that omitted `:patients` would otherwise reach `(range nil)`.
@@ -2464,9 +2825,27 @@
                                (let [closure (module-for i)
                                      steps (steps-for i)]
                                  {:closure closure
-                                  :steps (if (first-arrival? i)
+                                  :steps (cond
+                                           (first-arrival? i)
                                            (into [{:type :registered :closure closure}] steps)
-                                           [])}))
+                                           ;; ARC 3B SWEEP 1: the wall,
+                                           ;; lifted -- but behind ONE
+                                           ;; gated step, never spliced
+                                           ;; in raw (`decide
+                                           ;; :repeat-arrival`'s own
+                                           ;; docstring). Note what does
+                                           ;; NOT move: `module-for` and
+                                           ;; `steps-for` above are
+                                           ;; called for every ordinal
+                                           ;; either way, so the opt-in
+                                           ;; changes ZERO pre-loop
+                                           ;; draws and the whole
+                                           ;; reshuffle belongs to the
+                                           ;; loop.
+                                           (and encounters (seq steps))
+                                           [{:type :repeat-arrival :steps (vec steps)}]
+
+                                           :else [])}))
         initial-entries (into [] (map-indexed (fn [i _] (registered-entry-for i))) arrivals)
         ;; ADR-0173 ruling C1: the four run-config values `compile-patient`
         ;; reads, gathered here because the compile now happens BEFORE
@@ -3044,7 +3423,7 @@
   loop below because decide needs live world state to make its next
   decision, not because it's a second source of truth."
   [{:keys [seed patients pathway pathways arrival-gap warm-up-seconds facility providers churn-profile order-profiles
-           persona-config modules module-assignment module-horizon-days history persons]
+           persona-config modules module-assignment module-horizon-days history persons encounters]
     :or {patients 1
          pathway sim-model/sample-admission-discharge
          arrival-gap 60
@@ -3090,7 +3469,7 @@
                   :persona-config persona-config :modules modules
                   :module-assignment module-assignment
                   :module-horizon-days module-horizon-days :history history
-                  :persons persons})
+                  :persons persons :encounters encounters})
         facility-rng (stream seed :facility 0)
         ;; Provider NPIs are generated from this run's seed (sim/ADR-0007),
         ;; drawn once up front -- before arrival staggering -- so
@@ -3199,7 +3578,27 @@
                     ;; exactly this reason. Same hand-built-world
                     ;; tolerance, on the KEY and never on a missing
                     ;; entry.
-                    :registration-index {}}
+                    :registration-index {}
+                    ;; ARC 3B SWEEP 1 (ADR-0174 ruling B1): what an
+                    ;; opener needs to MINT an `:encounter-id` -- this
+                    ;; run's seed and every patient's arrival ordinal --
+                    ;; carried rather than re-derived, because a
+                    ;; patient-id is a STRING and parsing the ordinal
+                    ;; back out of it would make the id format
+                    ;; load-bearing in a second place.
+                    ;;
+                    ;; NIL UNLESS THE RUN OPTED IN, which is
+                    ;; indistinguishable from absent to every reader of
+                    ;; it and is exactly what a hand-built world already
+                    ;; looks like. That nil IS the opt-in law: no
+                    ;; minting, no `:encounter-id` on any event, and
+                    ;; therefore the bytes this engine has always
+                    ;; produced. Same tolerance as the four indexes above
+                    ;; -- on the KEY, never on a missing ordinal entry.
+                    :encounter-minting (when encounters
+                                         {:seed seed
+                                          :ordinals (into {} (for [i (concat firsts hook-patient-ordinals)]
+                                                               [(pid-for i) i]))})}
         mark-warmup (fn [ev] (assoc ev :warm-up (< (:t ev) warm-up-seconds)))
         ;; ADR-0171: what `decide` receives. The two run-scoped families
         ;; are fixed for the whole loop; `:patient` is swapped per queue
@@ -3271,7 +3670,15 @@
               (cond
                 exhausted (final-result ground-truth state-history {:exhausted exhausted})
                 :else
-            (let [events (mapv mark-warmup events)
+            (let [;; ARC 3B SWEEP 1: the encounter stamp rides here, off
+                  ;; `world` as it stands BEFORE this batch, for the same
+                  ;; reason `:reinstate-index` is written in the fold
+                  ;; below -- the pre-event state exists at this point
+                  ;; and nowhere later. Per event, not once for the
+                  ;; batch: a `:discharge` decide can emit a bed-ready
+                  ;; `:transfer` for a DIFFERENT patient, whose own open
+                  ;; encounter is the one that transfer belongs to.
+                  events (mapv (comp mark-warmup (partial stamp-encounter world)) events)
                   base-idx (count (:ground-truth world))
                   ;; ADR-0169: the patient-state fold and the reinstate
                   ;; index are built in ONE pass, because the index's

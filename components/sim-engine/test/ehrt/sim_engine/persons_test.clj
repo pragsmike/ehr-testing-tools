@@ -774,14 +774,22 @@
 
 ;; --- ADR-0173's first tabled deviation, COUNTED -------------------------
 
-(deftest repeat-arrivals-resolve-and-queue-nothing-test
+(deftest repeat-arrivals-resolve-and-queue-nothing-without-the-encounters-opt-in-test
   ;; ADR-0173's own first tabled deviation, made VISIBLE rather than
   ;; left silent. A second `:admission` for a patient whose status is
-  ;; `:discharged` violates `admission-only-when-new`, which is this
+  ;; `:discharged` violated `admission-only-when-new`, which was this
   ;; project's single-encounter horizon (sim/ADR-0007 point 3) expressed
-  ;; as an invariant, so a repeat arrival queues NOTHING. What the
-  ;; repeat is FOR survives: the person resolves to the patient they
-  ;; already are.
+  ;; as an invariant, so a repeat arrival queued NOTHING. What the
+  ;; repeat is FOR survived even then: the person resolves to the
+  ;; patient they already are.
+  ;;
+  ;; RENAMED 2026-08-26 by arc 3b sweep 1 (ADR-0174 ruling A1), which
+  ;; LIFTS that horizon -- and this row keeps gating, unchanged in
+  ;; substance, the path where the lift was not opted into. It is the
+  ;; ABSENT half of the opt-in law, and `ehrt.sim-engine.encounters-
+  ;; test/a-repeat-arrival-with-no-open-encounter-opens-a-second-one` is
+  ;; the PRESENT half over this same fixture: same four arrivals, same
+  ;; one person, three encounters instead of one.
   (let [r (p4-run [] {:pathway {:name "brief"
                                 :steps [{:type :admission :location "Renal"}
                                         {:type :delay :from 30 :to 30}

@@ -72,7 +72,14 @@
    :order-profiles ::order-profiles-sentinel
    :module-assignment ::module-assignment-sentinel
    :module-horizon-days ::module-horizon-days-sentinel
-   :history ::history-sentinel})
+   :history ::history-sentinel
+   ;; ARC 3B SWEEP 1 (ADR-0174): `:encounters` joins `config-keys` in the
+   ;; SAME change that teaches `run` to read it, and earns a sentinel
+   ;; here so the forwarding assertion below is real rather than a
+   ;; nil-equals-nil pass. `run-command` forwards it untranslated -- it
+   ;; is a bare opt-in flag, not a two-layer value like `:persons` or
+   ;; `:modules`.
+   :encounters ::encounters-sentinel})
 
 (deftest run-command-forwards-every-engine-config-key
   (testing "the FULL ehrt.sim-engine.engine/config-keys set reaches
@@ -803,10 +810,23 @@
                      "; the byte gate above carries the diagnostic."))))))))
 
 (def ^:private arc0-invariant-catalog
-  "The 35 invariant names `check-all` reports, in reporting order --
+  "The 36 invariant names `check-all` reports, in reporting order --
   pinned so the findings assertion below is a full-value `=` rather than
   a check of one key. Catalog drift is itself a change in what \"identical
   findings\" means, so it belongs inside the gate, not outside it.
+
+  RE-PINNED AGAIN 2026-08-26, 35 -> 36, by arc 3b sweep 1 (ADR-0174
+  section 2(a)), and disclosed for the same reason the previous re-pin
+  is. WHICH INVARIANT MOVED: none of the FINDINGS. `:status` is `:ok` on
+  both sides and `:events` is unchanged on all four corpora, and the
+  ROSTER moved by three edits that net to one: `admission-only-when-new`
+  became `admission-only-when-no-open-encounter`,
+  `outpatient-visit-only-when-new` was ABSORBED into it (the two were
+  always one rule written twice), and two encounter rows joined --
+  `discharge-closes-an-open-encounter` and
+  `every-encounter-is-opened-and-closed-or-still-open`, placed beside
+  the guard they split from because this catalog is documented as being
+  in REPORTING order.
 
   RE-PINNED 2026-08-26, 29 -> 35, and the re-pin is disclosed because
   this gate's own failure message says a red here is a STOP and not a
@@ -820,14 +840,16 @@
   gate, so the gate moves with the catalog and keeps asserting a
   full-value `=` rather than being weakened to a subset check."
   '[timestamps-monotone discharge-follows-admission every-event-has-participants
-    participant-ids-exist-in-run admission-only-when-new transfer-only-when-admitted
+    participant-ids-exist-in-run admission-only-when-no-open-encounter
+    discharge-closes-an-open-encounter
+    every-encounter-is-opened-and-closed-or-still-open transfer-only-when-admitted
     transfer-from-matches-state no-double-occupancy admitted-occupies-one-slot
     cancel-references-existing-uncancelled-event bed-swap-both-admitted-before-swap
     merge-survivor-absorbs-merged-mrns no-events-after-merged-terminal
     step-rejected-reason-is-documented order-only-when-admitted
     result-references-existing-order-and-follows-it-in-time
     abnormal-flags-consistent-with-value-vs-range registered-is-every-patients-first-event
-    registered-persona-is-schema-valid outpatient-visit-only-when-new
+    registered-persona-is-schema-valid
     outpatient-patients-occupy-no-bed clinical-content-only-when-admitted
     medication-end-references-existing-order-and-follows-it-in-time
     care-plan-end-references-existing-start-and-follows-it-in-time

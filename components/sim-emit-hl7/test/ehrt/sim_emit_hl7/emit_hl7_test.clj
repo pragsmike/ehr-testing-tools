@@ -1194,3 +1194,68 @@
     (testing "and the MRN never moved -- a fill keeps the record it fills"
       (is (= (message/get-field-first-value (parser/parse admit) "PID" 3)
              (message/get-field-first-value (parser/parse transfer) "PID" 3))))))
+
+;; --- ADR-0174 ruling C1 (arc 3b sweep 1): PV1-19, the visit number ------
+;;
+;; The encounter's ONE wire face. Before this sweep PV1-19 was empty on
+;; every message this project had ever produced -- one of the 28 blanks
+;; `pv1-segment` laid down between PV1-7 and PV1-36 -- which is
+;; `emit_hl7.clj`'s own registry comment's definition of a failure mode:
+;; traffic invisible to every consumer.
+
+(defn- pv1-19-of [message] (or (message/get-field-first-value (parser/parse message) "PV1" 19) ""))
+
+(defn- pv1-field-count
+  "How many fields the PV1 line carries, counted off the wire rather than
+  off the source: PV1-36 is the last, so a `pv1-segment` that laid down
+  the wrong number of blanks moves this."
+  [message]
+  (->> (str/split message #"\r\n|\r|\n")
+       (filter #(str/starts-with? % "PV1"))
+       first
+       (#(str/split % #"\|" -1))
+       count
+       dec))
+
+(deftest pv1-19-is-empty-without-the-encounters-opt-in
+  (testing "the blank count moved 28 -> 27 and the BYTE count did not:
+            nil renders the same empty field that stood here before"
+    (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 3})
+          messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)]
+      (is (seq messages))
+      (is (every? #(= "" (pv1-19-of %)) messages))
+      (is (every? #(= 36 (pv1-field-count %)) messages)
+          "PV1 still ends at PV1-36 -- 7 explicit + 11 blank + PV1-19 + 16 blank + PV1-36"))))
+
+(deftest pv1-19-renders-the-encounter-id-when-the-run-opted-in
+  (let [{:keys [ground-truth facility providers]}
+        (engine/run {:seed 42 :patients 3 :encounters true})
+        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        by-message (mapv (juxt #(message/get-field-first-value (parser/parse %) "MSH" 9) pv1-19-of)
+                         messages)]
+    (is (seq messages))
+    (testing "every message carries its encounter's own visit number"
+      (is (every? (fn [[_ v]] (re-matches #"ENC-\d{6}-\d{2}-[0-9a-f]{8}" v)) by-message)
+          (str "a PV1 rendered no visit number: " (pr-str by-message))))
+    (testing "and it is the SAME id the ground-truth event carries -- the
+              cross-emitter id sub-law, one level down"
+      (is (= (mapv :encounter-id (filterv #(emit-hl7/message-type-registry (:event %)) ground-truth))
+             (mapv second by-message))))
+    (is (every? #(= 36 (pv1-field-count %)) messages))))
+
+(deftest a17-renders-each-patients-own-visit-number
+  (testing "a `:bed-swap` names TWO encounters and carries neither at top
+            level, so each PV1-19 comes from that patient's own `:swap`
+            entry -- the same place its PV1-3 comes from"
+    (let [world0 (assoc (world-of {"P1" (engine/initial-patient "P1" "MRN000001")
+                                   "P2" (engine/initial-patient "P2" "MRN000002")})
+                        :encounter-minting {:seed 7 :ordinals {"P1" 0 "P2" 1}})
+          world1 (-> world0 (admit 0 "P1" "Renal") (admit 5 "P2" "Renal"))
+          {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :bed-swap})
+          world2 (fold-events world1 events)
+          messages (emit-hl7/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)
+          parsed (parser/parse (last messages))
+          pv1-19s [(nth-field-value parsed "PV1" 19 0) (nth-field-value parsed "PV1" 19 1)]]
+      (is (= "ADT^A17" (message/get-field-first-value parsed "MSH" 9)))
+      (is (= [(engine/encounter-id-for 7 0 0) (engine/encounter-id-for 7 1 0)] pv1-19s)
+          "two patients, two visit numbers, neither borrowed from the other"))))

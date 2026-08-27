@@ -196,3 +196,106 @@
                               (:tag (:meta resource)))))
                     (:entry bundle))))
             bundles)))))
+
+;; --- ADR-0174 section 2(a) (arc 3b sweep 1): one Encounter per encounter -
+;;
+;; `encounter-resource` was hardcoded to ONE per patient -- id
+;; `<patient-id>-encounter`, period read off the single
+;; `:admitted-at`/`:discharged-at` pair -- and every Condition,
+;; Observation and MedicationRequest referenced that one id. The ADR
+;; names this as the one reader the field move BREAKS, correctly: with
+;; two visits, `:admitted-at`/`:discharged-at` describe the LATEST, so
+;; visit 2's period would have rendered under visit 1's id and visit 2's
+;; conditions would have pointed at visit 1.
+
+(def ^:private enc-a "ENC-000000-00-aaaaaaaa")
+(def ^:private enc-b "ENC-000000-01-bbbbbbbb")
+
+(defn- resources-of [state]
+  (map :resource (:entry (emit-fhir/patient-bundle ref-date utc-offset 42 state))))
+
+(defn- encounters-of [state]
+  (filterv #(= "Encounter" (:resourceType %)) (resources-of state)))
+
+(deftest a-legacy-state-still-renders-exactly-one-encounter-with-its-legacy-id
+  (testing "the fallback is on the KEY -- a state whose records carry no
+            `:encounter-id`, which is every state of every run that did
+            not opt into `:encounters`, renders the resource it always
+            rendered, id included"
+    (let [legacy {:patient-id "P1" :active-mrn "M1" :status :discharged :class :inpatient
+                  :admitted-at 100 :discharged-at 500 :persona a-persona
+                  :encounters [{:ordinal 0 :status :discharged :class :inpatient
+                                :admitted-at 100 :discharged-at 500}]}
+          [e :as all] (encounters-of legacy)]
+      (is (= 1 (count all)))
+      (is (= "P1-encounter" (:id e)))
+      (is (= "finished" (:status e))))))
+
+(deftest two-visits-render-two-encounters-with-their-own-ids-and-periods
+  (let [state {:patient-id "P1" :active-mrn "M1" :status :admitted :class :inpatient
+               :location {:ward "Renal" :bed "RENAL-02" :placement :licensed}
+               :admitted-at 900 :persona a-persona
+               :encounters [{:encounter-id enc-a :ordinal 0 :status :discharged :class :inpatient
+                             :admitted-at 100 :discharged-at 500}]
+               :encounter {:encounter-id enc-b :ordinal 1 :admitted-at 900}}
+        [first-visit second-visit :as all] (encounters-of state)]
+    (is (= 2 (count all)))
+    (testing "the CLOSED one renders from its own snapshot"
+      (is (= (str "P1-" enc-a) (:id first-visit)))
+      (is (= "finished" (:status first-visit)))
+      (is (some? (:end (:period first-visit))))
+      (is (nil? (:location first-visit)) "it vacated its bed"))
+    (testing "the OPEN one renders from the live projection those seven
+              fields still are"
+      (is (= (str "P1-" enc-b) (:id second-visit)))
+      (is (= "in-progress" (:status second-visit)))
+      (is (nil? (:end (:period second-visit))))
+      (is (= "Renal" (:display (:location (first (:location second-visit)))))))
+    (testing "and the two ids are distinct, which is the defect fix"
+      (is (not= (:id first-visit) (:id second-visit))))))
+
+(deftest clinical-content-references-the-encounter-it-was-recorded-during
+  (let [a-concept {:system :snomed :code "36971009" :display "Sinusitis (disorder)"}
+        state {:patient-id "P1" :active-mrn "M1" :status :discharged :class :inpatient
+               :admitted-at 900 :discharged-at 1200 :persona a-persona
+               :encounters [{:encounter-id enc-a :ordinal 0 :status :discharged :class :inpatient
+                             :admitted-at 100 :discharged-at 500}
+                            {:encounter-id enc-b :ordinal 1 :status :discharged :class :inpatient
+                             :admitted-at 900 :discharged-at 1200}]
+               :conditions [{:codes [a-concept] :citation {:module "m" :state :a}
+                             :onset-t 110 :clinical-status :resolved :end-t 480
+                             :encounter-id enc-a}
+                            {:codes [a-concept] :citation {:module "m" :state :b}
+                             :onset-t 910 :clinical-status :active
+                             :encounter-id enc-b}]}
+        conditions (filterv #(= "Condition" (:resourceType %)) (resources-of state))]
+    (is (= 2 (count conditions)))
+    (is (= [(str "Encounter/P1-" enc-a) (str "Encounter/P1-" enc-b)]
+           (mapv #(:reference (:encounter %)) conditions))
+        "today both would point at P1-encounter -- a real defect, not a widening")
+    (testing "and every reference resolves to an Encounter this bundle
+              actually carries"
+      (is (every? (set (map #(str "Encounter/" (:id %)) (encounters-of state)))
+                  (map #(:reference (:encounter %)) conditions))))))
+
+(deftest a-cancelled-encounter-renders-nothing
+  (testing "a cancelled admission left no encounter behind, which is what
+            dropping `:admitted-at` used to express when there was only
+            one to drop"
+    (let [state {:patient-id "P1" :active-mrn "M1" :status :new :persona a-persona
+                 :encounters [{:encounter-id enc-a :ordinal 0 :admitted-at 100 :cancelled true}]}]
+      (is (empty? (encounters-of state))))))
+
+(deftest the-whole-bundle-is-byte-identical-without-the-opt-in
+  (testing "the FHIR half of ADR-0174's opt-in law, proved over a real
+            run rather than over a hand-built state"
+    (let [cfg {:seed 42 :patients 4}
+          gt (:ground-truth (engine/run cfg))
+          bundles (emit-fhir/bundle-run gt ref-date utc-offset 42 :end)]
+      (is (seq bundles))
+      (is (every? (fn [[_ b]]
+                    (every? #(re-matches #"PID-\d{6}-[0-9a-f]{8}-encounter" (:id %))
+                            (filterv #(= "Encounter" (:resourceType %))
+                                     (map :resource (:entry b)))))
+                  bundles)
+          "every Encounter still carries the legacy one-per-patient id"))))

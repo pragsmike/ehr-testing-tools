@@ -191,8 +191,48 @@
   than reasoning about them.
 
   MADE UNDER THE WAIVER, disclosed: no deprecation release was run, and
+  none is owed in any case, since nothing was removed.
+
+  1.5.0 (2026-08-26, ADR-0174 section 2(a), arc 3b sweep 1) is the
+  ENCOUNTER: one new optional key, `:encounter-id`, on every kind, plus
+  the same key on `BedSwapSide` -- the per-side map inside a
+  `:bed-swap`'s own `:swap`, which is where a two-patient event has to
+  put an id that names one encounter per patient. No new kind, none
+  removed, nothing renamed.
+
+  THIS BUMP IS OWED, and `classify-change` is what says so rather than
+  the ADR, which had recommended taking 1.5.0 whether owed or not. Run
+  against the frozen 1.4.0 baseline it returns `:additive? false` with
+  exactly ONE reason:
+
+    :bed-swap: key changed: :swap (value schema changed)
+
+  Read it precisely: the twenty-three top-level `:encounter-id` entries
+  ARE additive and are reported as such -- a new optional key is one of
+  the two shapes `classify-change`'s own docstring names as
+  non-breaking. What it will not call additive is a change one level
+  DOWN, inside `[:map-of :string BedSwapSide]`, because it compares a
+  nested value schema whole rather than descending into it. That
+  conservatism is deliberate (see 1.4.0's own last paragraph) and is
+  taken at its word here rather than argued around.
+
+  A 1.4.0-ERA LOG VALIDATES UNCHANGED AGAINST 1.5.0, and here is how:
+  every key this version adds is `{:optional true}`, at both levels, so
+  an event that omits it -- which is every event of every run that did
+  not opt into `:encounters` -- validates exactly as before. The
+  breaking direction is the other one, a 1.4.0 schema meeting a 1.5.0
+  log carrying a key it has never seen inside a closed map, which is
+  what a version is FOR.
+
+  The key is OPTIONAL in the schema and MANDATORY in every
+  run-produced encounter, and the thing that makes it mandatory is a
+  gate, not this schema: `ehrt.sim-check.check/every-encounter-is-
+  opened-and-closed-or-still-open`. Optional here so a 1.4.0-era log
+  validates; required there so a live run cannot quietly stop stamping.
+
+  MADE UNDER THE WAIVER, disclosed: no deprecation release was run, and
   none is owed in any case, since nothing was removed."
-  "1.4.0")
+  "1.5.0")
 
 ;; --- shared leaf schemas --------------------------------------------------
 ;;
@@ -274,12 +314,18 @@
   "One of the two patients in a `:bed-swap`, keyed by patient-id inside
   the event's own `:swap` map -- the one place in this log where a map
   KEY is data rather than a fixed field name. `:bed-swap` carries no
-  top-level `:active-mrn` precisely because there are two."
+  top-level `:active-mrn` precisely because there are two.
+
+  ARC 3B SWEEP 1: and, for the same reason, no top-level
+  `:encounter-id` -- each side's own rides here, beside that side's own
+  `:from`/`:to`/`:attending`. `emit-hl7`'s A17 renders two PID/PV1
+  pairs and reads PV1-19 from the same entry it reads PV1-3 from."
   [:map {:closed true}
    [:active-mrn :string]
    [:from Location]
    [:to Location]
-   [:attending :string]])
+   [:attending :string]
+   [:encounter-id {:optional true} :string]])
 
 (def Residence
   "WHERE A PATIENT LIVES, AS A SUM (ADR-0173 section 2(b), arc 3a). A
@@ -359,13 +405,28 @@
 
   Closed on purpose: an unexpected key is schema drift, and a
   contract that silently tolerates drift cannot tell a consumer when
-  it has changed."
+  it has changed.
+
+  `:encounter-id` (arc 3b sweep 1, ADR-0174 section 2(a)) is declared
+  here rather than kind by kind because ANY kind can occur during an
+  open encounter, and because the alternative -- listing the twenty-two
+  that can -- is the hand-enumeration failure mode ADR-0158 caught
+  twice. It is `{:optional true}` on purpose and enforced by an
+  invariant instead (`every-encounter-is-opened-and-closed-or-still-
+  open`): optional in the schema so a pre-1.4.0 log validates unchanged,
+  mandatory in every run-produced encounter because a gate says so. It
+  is NOT in `common-entries` above, which is the set carried by every
+  event of every kind -- this one rides only an event that happened
+  while an encounter was open, so a run with no `:encounters` key
+  carries it nowhere, and `:registered` (always a patient's FIRST event,
+  before any encounter) carries it never."
   [k props & entries]
   (into [:map (assoc props :closed true)
          [:event [:= k]]
          [:t :int]
          [:participants [:vector Participant]]
-         [:warm-up :boolean]]
+         [:warm-up :boolean]
+         [:encounter-id {:optional true} :string]]
         entries))
 
 (def Event
