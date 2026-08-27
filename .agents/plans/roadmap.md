@@ -73,9 +73,16 @@ with them.
   then scheduling. **SWEEP 1 OF 3 IS CLOSED** 2026-08-26 (`ef563fe`): the
   encounter horizon, lifted, closing `roadmap.md#multi-encounter-horizon`;
   oracle IDENTICAL dark over 36 roots and one added root on the turn-on; event
-  contract 1.4.0 -> 1.5.0, owed. SWEEPS 2 AND 3 ARE OPEN -- the bed-status cycle
-  (`rulings.md#R-mix-6`, plus the A20) and scheduling state (`R-mix-5`), in that
-  order, and neither has started.
+  contract 1.4.0 -> 1.5.0, owed. **SWEEP 2 OF 3 IS CLOSED** 2026-08-27: the
+  BED-STATUS CYCLE (`rulings.md#R-mix-6`) plus ruling C's ADT^A20 -- oracle
+  IDENTICAL dark over 37 roots and one added root (`bed-cycle`, the 38th) on
+  the turn-on; event contract 1.5.0 -> 1.6.0, owed by twenty-three reasons
+  because `Participant` widened to admit a BED subject. It closes the bed-board
+  gap section 2(d) had left open (`ehrt play --board` renders `(dirty)` and
+  `(cleaning)` beds), and it moved the coverage hole sweep 1 rowed for it: rung
+  4 of the allocation ladder is no longer zero across the oracle, and
+  `:cancel-discharge`/ADT^A13 leave the unwitnessed set. SWEEP 3 IS OPEN --
+  scheduling state (`R-mix-5`), and it has not started.
   PART 2 LANDED 2026-08-26 (`dd4f9f7`): the REFACTOR half -- C1's
   compile-at-run-start move (with `compile-patient` exported for part 3's
   `:deaths`), `:person-index` carried and empty, `PatientState`'s
