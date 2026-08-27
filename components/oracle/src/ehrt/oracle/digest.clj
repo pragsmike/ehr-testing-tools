@@ -954,17 +954,35 @@
 ;; `ehrt.docs-tooling.oracle-coverage-test`.
 
 (def ^:private witnessed-event-kinds
-  "The 21 of 24 closed event kinds any root can produce. Adding a root
+  "The 26 of 28 closed event kinds any root can produce. Adding a root
   that reaches the order->result paths moves this set -- that is
   R4-Q6 (ii) (b), rowed and priced, deliberately not taken.
+
+  WIDENED AGAIN 2026-08-27, 21 of 24 -> 26 of 28, by `scheduling`. The
+  DENOMINATOR grew by the four kinds that root exists for
+  (`:appointment`, `:reschedule`, `:appointment-cancel`, `:no-show`,
+  contract 1.7.0), and the NUMERATOR by those four PLUS ONE THAT WAS NOT
+  PREDICTED: `:step-rejected`, which no root had ever witnessed and which
+  the next paragraph listed as unreachable.
+
+  THAT FIFTH KIND IS THE INTERESTING ONE, and it is recorded rather than
+  quietly absorbed. `:step-rejected` is what a churned step looks like
+  when it was legal when INSERTED and illegal by the time it EXECUTED --
+  and scheduling is the first thing in this repository that puts real
+  distance between those two instants. A lead time displaces a whole
+  arrival by days, so a churn step injected against the world at booking
+  meets a world days older when it runs. The order->result path is STILL
+  unwitnessed: `:order-placed` and `:result-available` are what is left,
+  two of 28 rather than three of 24.
 
   WIDENED AGAIN 2026-08-27, 19 of 23 -> 21 of 24, by `bed-cycle`. The
   DENOMINATOR grew by the kind that root exists for
   (`:bed-status-change`, contract 1.6.0), and the NUMERATOR by that kind
   plus `:cancel-discharge` -- which sweep 1 left unwitnessed and named
   as such rather than rounding up. THE CHURN FAMILY IS NOW WHOLE. What
-  is left unwitnessed is the order->result path alone:
-  `:order-placed`, `:result-available` and `:step-rejected`.
+  was left unwitnessed AT THAT POINT was the order->result path alone:
+  `:order-placed`, `:result-available` and `:step-rejected` -- the last
+  of which the sweep after this one reached, see above.
 
   WIDENED AGAIN 2026-08-26, 16 of 23 -> 19 of 23, by
   `encounter-horizon`: `:bed-swap`, `:cancel-admit` and
@@ -978,16 +996,19 @@
   WIDENED 2026-08-26, 13 of 21 -> 16 of 23, by `demographic-fold`: the
   denominator grew by the two kinds contract 1.3.0 added, and the
   numerator by those two plus `:merge`."
-  #{:admission :bed-status-change :bed-swap :cancel-admit
+  #{:admission :appointment :appointment-cancel :bed-status-change
+    :bed-swap :cancel-admit
     :cancel-discharge :cancel-transfer :care-plan-end
     :care-plan-start :coverage-change
     :demographic-update :diagnostic-report
-    :discharge :medication-end :medication-order :merge :observation
+    :discharge :medication-end :medication-order :merge :no-show
+    :observation
     :outpatient-visit :outpatient-visit-end :procedure :registered
+    :reschedule :step-rejected
     :transfer})
 
 (def ^:private witnessed-message-types
-  "Every MSH-9 the 35 engine-layer roots emit. ADT^A02 is death-fixture's
+  "Every MSH-9 the 36 engine-layer roots emit. ADT^A02 is death-fixture's
   alone, once. ADT^A08/A34 and ORM^O01 are emitted by no root at all.
 
   WIDENED AGAIN 2026-08-27 by `bed-cycle`: ADT^A20 (bed status update),

@@ -47,7 +47,7 @@ with them.
   untouched (ruling F1). What is left on this row is the ENGINE'S FOLD --
   nothing calls the component yet, and nothing may until
   `roadmap.md#engine-fold-extensions` (arc 3) lands it.
-- OPEN **[engine-fold-extensions]** PRIORITY 4 -- traffic-scale arc 3. Demographic
+- CLOSED **[engine-fold-extensions]** PRIORITY 4 -- traffic-scale arc 3. Demographic
   timeline, scheduling state (`rulings.md#R-mix-5`), bed-status cycle (`R-mix-6`),
   new invariant families. SCOPE NARROWED 2026-08-24 (ADR-0169, ruling S1): the
   quadratic removals the 08-24 spike measured are NOT draw-affecting and were taken
@@ -81,8 +81,27 @@ with them.
   gap section 2(d) had left open (`ehrt play --board` renders `(dirty)` and
   `(cleaning)` beds), and it moved the coverage hole sweep 1 rowed for it: rung
   4 of the allocation ladder is no longer zero across the oracle, and
-  `:cancel-discharge`/ADT^A13 leave the unwitnessed set. SWEEP 3 IS OPEN --
-  scheduling state (`R-mix-5`), and it has not started.
+  `:cancel-discharge`/ADT^A13 leave the unwitnessed set. **SWEEP 3 OF 3 IS
+  CLOSED** 2026-08-27: SCHEDULING state (`rulings.md#R-mix-5`) -- four
+  skeleton kinds, arrivals split scheduled-vs-walk-in on `:world`, an
+  appointment's outcome as bands of one `:patient` uniform, and
+  follow-ups at discharge producing the first SCHEDULED second encounters
+  this repository has had. Oracle IDENTICAL dark over 38 roots and one
+  added root (`scheduling`, the 39th) on the turn-on; event contract
+  1.6.0 -> 1.7.0, NOT owed (`classify-change` returns `:additive? true`)
+  and taken on 1.3.0's grounds. FOUR invariants, not the three section
+  2(b) tables -- the fourth is the one the ADR marks OWED, and it earned
+  its place by catching an ordinal-reuse defect on its first
+  population-scale run. Coverage moves 21 of 24 kinds to 26 of 28,
+  including `:step-rejected`, which no root had witnessed. Three ADR
+  premises the tree contradicted are in the record, the largest being
+  that the ADR states NO DEFAULT VALUES for any of the six sub-keys.
+  **THIS ROW IS THEREFORE CLOSED: arc 3 is complete.** Two things it
+  deliberately did not close, both rowed for arc 4: MSH-12 `"2.3"`
+  against the v2.4 SIU structures (ruling C), so none of the four kinds
+  reaches the wire; and whether `:exhausted` should degrade to a visible
+  rejection rather than HALT a run -- a question sweep 2 raised, this
+  sweep's capacity gate had to work around, and neither answered.
   PART 2 LANDED 2026-08-26 (`dd4f9f7`): the REFACTOR half -- C1's
   compile-at-run-start move (with `compile-patient` exported for part 3's
   `:deaths`), `:person-index` carried and empty, `PatientState`'s

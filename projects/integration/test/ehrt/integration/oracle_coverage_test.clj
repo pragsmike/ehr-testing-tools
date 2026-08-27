@@ -147,11 +147,11 @@
             roots (engine-roots out)]
         (testing "the digest ran at all -- a failed run must never read as agreement"
           (is (zero? exit) (str "the digest process must exit 0. stderr:\n" err))
-          (is (= 38 (count edns))
-              (str "38 roots today. A root added or removed lands here first. Found "
+          (is (= 39 (count edns))
+              (str "39 roots today. A root added or removed lands here first. Found "
                    (count edns) "."))
-          (is (= 35 (count roots))
-              (str "35 engine-layer roots produce `{:ground-truth :hl7}`; the other three are "
+          (is (= 36 (count roots))
+              (str "36 engine-layer roots produce `{:ground-truth :hl7}`; the other three are "
                    "interpreter batches. Found " (count roots) ".")))
         (let [kinds (witnessed-event-kinds roots)
               types (witnessed-message-types roots)]
@@ -170,24 +170,29 @@
             (is (= (committed "witnessed-message-types") types)
                 (str "fresh digest emits " (pr-str types) "; committed "
                      (pr-str (committed "witnessed-message-types")))))
-          (testing "the capacity witness is THREE roots deep, and the claim says so"
+          (testing "the capacity witness is FOUR roots deep, and the claim says so"
             ;; ARC 3B SWEEP 1 (ADR-0174, 2026-08-26): it was one --
             ;; `death-fixture` alone -- for the whole life of this gate,
             ;; and the `encounter-horizon` root made it two by being the
             ;; first to pass `:churn true` over a pathway that ADMITS.
-            ;; ARC 3B SWEEP 2 (2026-08-27) makes it THREE: `bed-cycle` is
+            ;; ARC 3B SWEEP 2 (2026-08-27) made it THREE: `bed-cycle` is
             ;; the first root to reach the ladder's fourth rung, and it
-            ;; carries 43 transfers of which 39 are bed-ready. The list
-            ;; is pinned rather than relaxed to a `pos?` count for the
-            ;; reason the original comment gives: WHICH roots carry it is
-            ;; the claim `digest.clj`'s coverage paragraph makes, and a
-            ;; bare count would let a fourth arrive unnoticed.
-            (is (= ["bed-cycle" "death-fixture" "encounter-horizon"]
+            ;; carries 43 transfers of which 39 are bed-ready.
+            ;; ARC 3B SWEEP 3 (2026-08-27) makes it FOUR: `scheduling`
+            ;; inherits `bed-cycle`'s facility and pathways verbatim, so
+            ;; it boards and transfers for the same reason that root
+            ;; does. THIS IS EXACTLY THE ARRIVAL THE PIN EXISTS TO CATCH
+            ;; -- a bare `pos?` count would have let it through unnoticed,
+            ;; which is what the original comment predicted and why the
+            ;; list was never relaxed. The list is pinned rather than
+            ;; relaxed for that reason: WHICH roots carry it is the claim
+            ;; `digest.clj`'s coverage paragraph makes.
+            (is (= ["bed-cycle" "death-fixture" "encounter-horizon" "scheduling"]
                    (vec (sort (for [[n v] roots
                                     :when (some #(= :transfer (:event %)) (:ground-truth v))] n))))
                 "`:transfer` -- and with it ADT^A02, :bed-ready and ladder rungs 3 and 4
-                -- is witnessed by `bed-cycle`, `death-fixture` and `encounter-horizon`,
-                and by nothing else. If this ever passes with a different root list, the
+                -- is witnessed by `bed-cycle`, `death-fixture`, `encounter-horizon` and
+                `scheduling`, and by nothing else. If this ever passes with a different root list, the
                 coverage paragraph in digest.clj is stale."))))
       (finally
         (doseq [f (.listFiles out)] (.delete ^java.io.File f))
