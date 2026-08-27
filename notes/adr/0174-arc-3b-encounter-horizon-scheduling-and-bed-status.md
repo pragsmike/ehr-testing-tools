@@ -621,6 +621,70 @@ carries them**, because `--board` is message-input-only
   than of the ward, which is backwards; it also puts the draw on the
   stream arrivals live on. This is ruling D's alternative.
 
+
+**Ratifications (2026-08-27).** Sweep 2 landed section (c) and left three
+judgment calls unratified in its own record
+(`.agents/session-records/2026-08-27-arc-3b-bed-cycle.md`, "Judgment calls,
+and their ratification status"). All three are RATIFIED here, and this
+section is amended to say what the tree does rather than what it was
+drafted to do.
+
+1. **A SIXTH transition arc, `:occupied -> :ready`, joins item 3's
+   relation.** Item 3 enumerates five arcs *"so a new writer cannot invent
+   a fifth"* and does not reach the two cancel classes that VACATE a bed.
+   `:cancel-admit`, and `:cancel-transfer`'s own erroneously-taken bed,
+   return straight to `:ready` with no event and no turnaround: an
+   occupancy a cancel RETRACTS never happened, so it leaves no dirt behind
+   it. Without the arc the bed stays `:occupied` for the rest of the run
+   and its ward silently loses capacity, which no reading of this section
+   intends. Carried in three places rather than added quietly --
+   `bed-correction-event-types`, `legal-bed-transitions`, and
+   `components/sim/docs/operational-models.md`. The relation is now SIX arcs, and the
+   enumeration stands against a seventh on the same terms.
+
+2. **`:turnaround-minutes` is ONE key drawn TWICE, `[lo hi]` per leg.**
+   Ruling D1 gives each `Ward` a `:turnaround-minutes` for *"the
+   dirty->cleaning delay and the cleaning->ready delay"* without saying
+   whether that is one value or two. It ships as a `[lo hi]` range that
+   EACH LEG draws from independently, so a ward's whole turnaround runs
+   `[2*lo, 2*hi]`. Two keys would have made a config author state a
+   decomposition of housekeeping that no real site reports separately.
+   `{:optional true}` with a per-class fallback (`{:ed [5 15] :inpatient
+   [15 30]}`), so a facility config written before sweep 2 keeps
+   validating.
+
+3. **Item 5's re-read was required, not optional.** Item 5 says
+   `surge-only-when-earlier-rungs-exhausted` *"changes meaning and must be
+   re-read"*, and the tree agreed mechanically: left unmodified the row
+   fired twice on the first opted-in run, because a surge placement made
+   while a rung-1 bed sits empty-but-`:dirty` is legitimate under the
+   cycle and a violation without it. Its three `(remove board ...)` calls
+   are now three `sim-model/free` calls -- the same predicate the ladder
+   itself asks. The CLAIM is unchanged; only the reading of "exhausted"
+   moved, and it moved to the ladder's own.
+
+**And item 4's premise is WITHDRAWN: `:exhausted` is not visible, it is
+FATAL.** Item 4 argues the effective-capacity risk is acceptable because
+*"`allocate` returns `{:exhausted true}` and the engine emits a
+`:step-rejected` with a documented reason -- so the failure is VISIBLE."*
+It does not. `decide` translates exhaustion into an `:exhausted` outcome
+(`exhausted-outcome`, `engine.clj:728`) that the run loop HALTS on --
+`engine.clj:3959` returns `final-result` instead of recurring, and the
+loop's own comment beside it says a `:rejected` outcome *"is NOT a
+run-halting condition, unlike `:exhausted`"*. `run-command` then surfaces
+`result/error :capacity-exhausted` (`run.clj:573`) and SKIPS `check-all`
+entirely, so an exhausted run yields no corpus and no self-check, not a
+flagged one. `:step-rejected` belongs to a different family (an illegal
+cancel/bed-swap/merge). Sweep 2 hit this for real: three candidate
+configurations for its new oracle root exhausted the ladder outright and
+were rejected before one was found that contends without dying.
+
+The consequence for any later slice that ADDS ARRIVALS -- section (b)'s
+scheduling first among them -- is that capacity headroom must be MEASURED
+before an opt-in, not discovered by a red gate. Whether exhaustion should
+instead degrade to a visible rejection is a real question and a separate
+one; it is rowed, not answered here.
+
 #### (d) The contract: what reaches the wire
 
 **Verified from this tree's own resolved dependencies, not from
