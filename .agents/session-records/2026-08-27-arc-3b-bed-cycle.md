@@ -2,8 +2,8 @@
 
 **Date:** 2026-08-27
 **Prompt:** [`.agents/prompts/2026-08-27-arc-3b-bed-cycle.md`](../prompts/2026-08-27-arc-3b-bed-cycle.md)
-**Base:** `9fc9df5` -- **Tip:** `cb81dff`, plus the two commits that can
-only follow it (this record, and the CI marker)
+**Base:** `9fc9df5` -- **Tip:** `36ea745`, the pushed tip CI ran against,
+plus the one commit that can only follow it: this CI marker
 **Mode:** payload session under the de-scaffold moratorium. R30 ceremony,
 no tag, CI green at the tip as the close marker.
 
@@ -19,7 +19,9 @@ Sweep 3 (scheduling) is untouched.
 |---|---|
 | `95302f6` | the bed cycle, DARK behind `:bed-cycle` -- oracle IDENTICAL, 37 roots, no declaration |
 | `cb81dff` | the cycle, TURNED ON in six corpora, plus `bed-cycle`, the 38th root |
-| *(this one)* | this record, the prompt, the roadmap |
+| `9b1a9b3` | this record, the prompt, the roadmap |
+| `36ea745` | the straddle asset, REDRAWN -- the stale-asset tripwire, fired by CI |
+| *(this one)* | the CI marker: run 33069950438, conclusion success |
 
 ## The two oracle lines, verbatim
 
@@ -41,13 +43,15 @@ line.** Not one pre-existing root moved a byte in either commit.
 
 | gate | result |
 |---|---|
-| `bin/preflight` | no findings, exit 0, at session start |
 | `bin/regression-oracle 9fc9df5 95302f6` | **IDENTICAL**, exit 0, no declaration, **37 roots** each side |
 | `make test` (dark, at `95302f6`) | **MAKE_EXIT=0**, 4,394 tests / 20,668 assertions, 0 failures, 0 errors, 1,202s |
 | `make test` (on) | **MAKE_EXIT=0**, 4,394 tests / 20,668 assertions, 0 failures, 0 errors, 1,214s |
 | `bin/regression-oracle 95302f6 cb81dff --declared-digest-change` | **DIFFERS by exactly ONE manifest line**, exit 1, 37 baseline + 38 target roots |
 | `make integration` at the tip | **INT_EXIT=0**, 1,313s, zero `FAIL:` lines, 1,656 tests / 5,983 assertions; both demo exercisers "every command asserted, every named invariant held, tree clean", and all five use-case scripts clean |
 | `clojure -M:poly check` | OK at both commits |
+| `make test` (after the asset redraw, at `36ea745`) | **MAKE_EXIT=0**, 4,394 tests / 20,668 assertions, 0 failures, 1,229s |
+| `bin/preflight` | no findings, exit 0, at session start |
+| CI at the pushed tip `36ea745` | **run 33069950438, workflow `test`, conclusion success** -- the close marker (`rulings.md#R-session-verifies-ci-via-gh`, kept as the marker after the tag was retired). ONE run at this sha |
 
 `make test` figures are the sum over BOTH project runs the polylith
 runner performs, which double-counts bricks shared by two projects --
@@ -404,6 +408,44 @@ rather than merely to be non-empty -- drop the READY leg and the next
 allocation is caught taking a `:cleaning` bed; drop the CLEANING leg and
 the ready transition is caught following a `:dirty` one; rewrite a
 transition's `:to` and the invented arc is named back.
+
+## THE PUSHED TIP WENT RED, and the miss was predictable
+
+CI at `9b1a9b3` failed (run 33067974420) on
+`hand-owned-asset-freshness-test`. The fire was CORRECT:
+`straddle-timeline.svg` cites `demos/scenarios/ed-tuesday/README.md` as
+its source, and this sweep edited that README.
+
+**The structural half is a known trap this repository has now hit three
+times, and two of the registry's own rows already describe it**: the
+tripwire reads `git log -1` on the SOURCE, so it cannot see an
+UNCOMMITTED edit. `make test` was green at `MAKE_EXIT=0` over the very
+tree that reddened CI one commit later. There is no local run that can
+catch this, by construction.
+
+**The avoidable half is mine.** The rule that would have caught it needs
+no tooling: *if this session edits a file that any hand-owned asset row
+cites as its source, that tripwire WILL fire on the next commit.* I read
+that registry's note during the sweep and did not run the prediction.
+
+THE FINDING ITSELF IS SUBSTANTIVE, and unusually so: of the five times
+this tripwire has fired, this is the FIRST where the DEPICTED FACT
+changed rather than only the values printed on it. MRN000002's discharge
+moved 01:59:02Z -> 02:13:46Z, across a SECOND batch boundary, so the
+encounter no longer spans two ADJACENT files -- it spans THREE, and the
+middle one carries neither half (verified directly: `grep -cF
+MRN000002 batch-001.hl7` returns 0).
+
+REDRAWN rather than marked `:stale`, on the registry's own distinction:
+`:stale` is for a drawing that CANNOT be made true by hand
+(`two-clocks.svg`, whose banner claim a field audit falsified). This one
+can, and the new picture states the section's lesson more sharply than
+the old one did -- a receiver holding two consecutive, individually
+BTS-verified files still has half an encounter.
+
+RIDE-ALONG, disclosed: the previous banner carried EIGHT double-dash
+sequences, which XML forbids inside a comment. That file had never been
+well-formed XML; the redraw parses.
 
 ## Performance, disclosed
 
