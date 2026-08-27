@@ -53,6 +53,16 @@ SHA-256 digests across a disposable worktree, never a test-count or
 assertion-count comparison** (`notes/ADRs.md` ADR-0030 J2, the
 `build-session` skill's own VERIFICATION section has the full rule).
 
+**Its sibling is `bin/ground-truth-bracket`, and it is NOT a
+regression-oracle claim** (`notes/ADRs.md` ADR-0175 ruling E1,
+2026-08-27). The oracle digests each root's `{:ground-truth :hl7}` pair
+as one hash, so a change to emission alone makes every engine-layer
+root DIFFER -- correct, and useless for the one thing an emission sweep
+must prove, that the FACTS did not move. The bracket runs the same
+worktrees, classpath and `digest.clj` and digests `:ground-truth`
+alone. An emission sweep owes BOTH lines: the bracket IDENTICAL, and
+the oracle's DIFFERS declared with its single cause.
+
 **The standing default is R30: a session commits and pushes at each
 checkpoint, unattended** (`notes/ADRs.md` ADR-0007, R-F ratified by
 ADR-0023, 2026-08-01) — the staging-hygiene ritual (`AUTHORS-GUIDE.md`

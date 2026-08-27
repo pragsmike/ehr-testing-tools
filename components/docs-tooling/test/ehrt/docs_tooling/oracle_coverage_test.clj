@@ -51,6 +51,19 @@
 
 (def ^:private oracle-script "bin/regression-oracle")
 
+(def ^:private gt-bracket-script "bin/ground-truth-bracket")
+
+(def ^:private oracle-lib
+  "Where `digest_body_of` and the rest of the per-side worktree
+  machinery LIVE since 2026-08-27 (arc 4 sweep 1, `notes/adr/0175-arc-4-
+  emission-add-ons.md` ruling E1): `bin/regression-oracle` and
+  `bin/ground-truth-bracket` both source this file rather than carry two
+  copies of it. This test extracts the function from wherever it lives,
+  and `the-two-brackets-share-one-copy-of-the-machinery-test` below
+  gates that both callers really do source it -- otherwise this file
+  would be testing a library nobody runs."
+  "bin/oracle-lib.sh")
+
 (def ^:private schema-path
   "The committed export, itself freshness-gated against the Clojure
   source by `ehrt.docs-tooling.event-schema-test`. Read the export
@@ -95,13 +108,16 @@
 ;; ---------------------------------------------------------------------
 
 (defn- digest-body-of
-  "`bin/regression-oracle`'s own `digest_body_of`, extracted from the
-  committed script and run over `file`. Extracted rather than
+  "The soundness check's own `digest_body_of`, extracted from the
+  committed shell source and run over `file`. Extracted rather than
   reimplemented: a reimplementation would test this test's idea of the
   rule, and the whole point of L1-4 is that the SCRIPT's idea of it was
-  narrower than the rule it was cited for."
+  narrower than the rule it was cited for. It moved out of
+  `bin/regression-oracle` and into `bin/oracle-lib.sh` on 2026-08-27
+  (ADR-0175 E1) without changing a byte; this test followed it there
+  rather than being reimplemented against the copy that stayed."
   [file]
-  (let [script (slurp oracle-script)
+  (let [script (slurp oracle-lib)
         start (str/index-of script "digest_body_of() {")
         end (str/index-of script "\n}" start)
         fn-text (subs script start (+ end 2))
@@ -249,3 +265,47 @@
                "backticks, as the history of what this paragraph replaced, is exactly what "
                "`rulings.md#R-dated-addendum-not-silent-edit` asks for -- so backtick-quoted "
                "spans are stripped before this check, and only a bare restatement is red.")))))
+
+;; ---------------------------------------------------------------------
+;; (e) the two brackets share ONE copy of the machinery -- ADR-0175 E1
+;; ---------------------------------------------------------------------
+
+(deftest the-two-brackets-share-one-copy-of-the-machinery-test
+  (let [lib (slurp oracle-lib)
+        ro (slurp oracle-script)
+        gt (slurp gt-bracket-script)
+        source-line ". \"$repo_root/bin/oracle-lib.sh\""
+        shared ["oracle_wiring_for" "sim_brick_dir_for" "person_sim_dep_for"
+                "oracle_source_path_for" "digest_body_of" "run_one"
+                "oracle_soundness_check"]]
+    ;; The literal SOURCE line, not the path anywhere in the file: both
+    ;; scripts also carry `# shellcheck source=bin/oracle-lib.sh` beside
+    ;; it, so a substring check on the path alone stays green over a
+    ;; script that only MENTIONS the library in a comment. Found by this
+    ;; gate's own red probe, which cut the source line and left the
+    ;; comment -- and the assertion passed.
+    (testing "both brackets source the library rather than redefining its machinery"
+      (is (str/includes? ro source-line)
+          (str "`" oracle-script "` must source `" oracle-lib "`; if it stops doing so, every "
+               "assertion in this namespace is testing a file nothing runs."))
+      (is (str/includes? gt source-line)
+          (str "`" gt-bracket-script "` must source `" oracle-lib "` too. The ground-truth "
+               "bracket exists precisely to run the SAME worktrees, the SAME synthetic "
+               "classpath and the SAME digest.clj as the oracle; a second copy of the "
+               "per-side resolution would let the two disagree about which components a ref "
+               "carries, and the disagreement would surface as an unexplained DIFFERS.")))
+    (testing "each shared function is defined exactly once, in the library"
+      (doseq [f shared]
+        (is (str/includes? lib (str f "() {"))
+            (str "`" f "` must be defined in `" oracle-lib "`."))
+        (is (not (str/includes? ro (str f "() {")))
+            (str "`" oracle-script "` must not redefine `" f "` -- that is the drift this "
+                 "extraction exists to prevent."))
+        (is (not (str/includes? gt (str f "() {")))
+            (str "`" gt-bracket-script "` must not redefine `" f "`."))))
+    (testing "the ground-truth bracket does not present itself as a regression-oracle claim"
+      (is (str/includes? gt "THIS IS NOT A REGRESSION-ORACLE CLAIM")
+          (str "`rulings.md#R-oracle-script-contract` reserves the phrase for "
+               "`bin/regression-oracle`'s own whole-pair output. The ground-truth bracket "
+               "digests half the content by construction and must say so on every run, or "
+               "its IDENTICAL will eventually be quoted as the oracle's.")))))

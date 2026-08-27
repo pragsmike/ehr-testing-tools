@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# Ground-truth-only regression bracket (arc 4 sweep 1, 2026-08-27,
+# `notes/adr/0175-arc-4-emission-add-ons.md` ruling E1).
+#
+# WHAT IT IS FOR, and why `bin/regression-oracle` cannot do it. Arc 4's
+# whole claim is that emission moves and GROUND TRUTH DOES NOT
+# (`rulings.md#R-mix-7`; ADR-0175 section 4). But `ehrt.oracle.digest`'s
+# own `-main` writes the `{:ground-truth :hl7}` pair as ONE file per
+# root, and `bin/regression-oracle` sha256s that whole file -- so an
+# emission-only change makes every engine-layer root DIFFER, which is
+# the CORRECT outcome and simultaneously destroys the oracle's ability
+# to say anything about the ground-truth half. ADR-0175 section 4 said
+# `bin/regression-oracle` "reports IDENTICAL on every root's
+# `:ground-truth`"; it never could, and this script is what that
+# sentence actually names.
+#
+# THIS IS NOT A REGRESSION-ORACLE CLAIM, and the distinction is
+# load-bearing: `rulings.md#R-oracle-script-contract` reserves that
+# phrase for `bin/regression-oracle`'s own whole-pair output. This
+# script reports on HALF the digested content by construction, and its
+# own banner says so on every run. An arc-4 sweep owes BOTH: this one
+# IDENTICAL, and the oracle's own DIFFERS declared.
+#
+# HOW. Identical machinery to `bin/regression-oracle` -- same worktrees,
+# same synthetic classpath, same per-side resolution, same digest.clj
+# soundness check -- all of it from `bin/oracle-lib.sh`, which the two
+# scripts share so they cannot drift. The only difference is the
+# manifest: `bin/ground-truth-bracket-src/manifest.clj` digests
+# `(pr-str (:ground-truth root))` and skips, BY NAME, every root that
+# carries no such key (the three interpreter-layer batch roots, which
+# write a vector of walks rather than a pair). The skipped set is
+# measured per run and required to match on both sides.
+#
+# Usage: bin/ground-truth-bracket <baseline-ref> <target-ref> [--declared-digest-change]
+#
+# Prints both manifests and the coverage line, then either "IDENTICAL"
+# (exit 0) or "DIFFERS" (exit 1, with a diff on stderr). A DIFFERS here
+# is the severe one: under ADR-0175's proof shape it means a sweep that
+# was supposed to touch only the wire moved the facts. STOP and
+# escalate; never patch under this script's own invocation.
+set -euo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+
+declared_change="no"
+positional=()
+for arg in "$@"; do
+  if [ "$arg" = "--declared-digest-change" ]; then
+    declared_change="yes"
+  else
+    positional+=("$arg")
+  fi
+done
+baseline_ref="${positional[0]:?usage: bin/ground-truth-bracket <baseline-ref> <target-ref> [--declared-digest-change]}"
+target_ref="${positional[1]:?usage: bin/ground-truth-bracket <baseline-ref> <target-ref> [--declared-digest-change]}"
+
+work="$(mktemp -d)"
+cleanup() {
+  rm -rf "$work"
+  git -C "$repo_root" worktree prune >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
+# shellcheck source=bin/oracle-lib.sh
+. "$repo_root/bin/oracle-lib.sh"
+
+# The manifest half, and the ONLY thing that differs from
+# `bin/regression-oracle`. Run from "$work" rather than the repo root so
+# the workspace `deps.edn` does not join the classpath: this reads EDN
+# and hashes strings, and needs nothing from the tree it is bracketing.
+gt_manifest_for() {
+  local out="$1"
+  (cd "$work" && clojure -J-Xmx6g -Sdeps '{:deps {org.clojure/clojure {:mvn/version "1.12.5"}}}' \
+      -M "$repo_root/bin/ground-truth-bracket-src/manifest.clj" "$out")
+}
+
+oracle_soundness_check "$work" "$baseline_ref" "$target_ref" "$declared_change"
+
+echo "== running oracle at baseline ($baseline_ref) ==" >&2
+run_one "$baseline_ref" baseline
+echo "== running oracle at target ($target_ref) ==" >&2
+run_one "$target_ref" target
+
+echo "== digesting the :ground-truth half only ==" >&2
+gt_manifest_for "$work/out-baseline" > "$work/baseline.gt.sha256"
+gt_manifest_for "$work/out-target" > "$work/target.gt.sha256"
+
+gt_bracket_verdict "$work/baseline.gt.sha256" "$work/target.gt.sha256" \
+                   "$baseline_ref" "$target_ref" "$declared_change" "$sound"

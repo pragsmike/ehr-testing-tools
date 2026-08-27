@@ -1,0 +1,326 @@
+#!/usr/bin/env bash
+# Shared machinery for this repo's two regression brackets, extracted
+# 2026-08-27 (arc 4 sweep 1, `notes/adr/0175-arc-4-emission-add-ons.md`
+# ruling E1). Sourced by `bin/regression-oracle` (whole-pair digests,
+# THE regression-oracle claim, `rulings.md#R-oracle-script-contract`)
+# and by `bin/ground-truth-bracket` (the `:ground-truth` half alone).
+#
+# WHY A LIBRARY RATHER THAN A SECOND COPY. Everything below resolves
+# something PER SIDE -- which oracle wiring a worktree carries, what the
+# patient-simulation brick is called there, whether
+# `components/person-simulator` exists yet -- and each of those
+# functions exists because a hard-coded literal stopped spanning the
+# refs this repo brackets. A second hand-maintained copy would be a
+# fresh instance of exactly that failure mode: the copies agree until
+# the next component lands, and the disagreement shows up as an
+# unexplained DIFFERS in whichever bracket was not updated.
+#
+# NOT AN ENTRY POINT. Sourcing this file defines functions and does
+# nothing else; both callers set `set -euo pipefail` themselves and own
+# their own argument parsing, reporting and exit status.
+#
+# EVERY FUNCTION BELOW IS BYTE-IDENTICAL TO THE `bin/regression-oracle`
+# it was cut from at `053012c`, comments included -- this extraction is
+# pure code motion, and `bin/regression-oracle`'s own behaviour does not
+# change with it.
+
+# --- Per-side digest-source resolution (AR-P-3) -----------------------------
+#
+# Returns, on stdout, two lines: the digest.clj path relative to a
+# worktree root, and the main namespace to invoke it with. A worktree
+# carrying `components/oracle` (post-promotion) uses the real component
+# and its interface; one that does not (a ref from before 2026-08-05)
+# falls back to ITS OWN `bin/oracle-src` copy and digest.clj's own
+# `-main` directly (that tree has no `ehrt.oracle.interface` to call
+# through). RETIREMENT CONDITION: delete this function's `else` branch,
+# and `oracle_source_path_for`/the soundness-check plumbing below that
+# exists only to support it, once no bracket this repo runs still needs
+# a pre-promotion baseline.
+oracle_wiring_for() {
+  local wt="$1"
+  if [ -f "$wt/components/oracle/deps.edn" ]; then
+    echo "components/oracle/src/ehrt/oracle/digest.clj"
+    echo "ehrt.oracle.interface"
+  else
+    echo "bin/oracle-src/ehrt/oracle/digest.clj"
+    echo "ehrt.oracle.digest"
+  fi
+}
+
+# The patient-simulation brick's own DIRECTORY NAME, per side -- the same
+# per-worktree resolution shape `oracle_wiring_for` (above) already uses,
+# and here for the same reason: the two sides can carry two different
+# layouts. `components/sim-trajectory` was renamed
+# `components/patient-simulator` at ADR-0162 (2026-08-21), so any bracket
+# whose BASELINE predates that rename reads the old directory on one side
+# and the new one on the other. A single hard-coded literal here served
+# both sides only for as long as the name never moved; it does not survive
+# the rename it is being asked to bracket.
+#
+# RETIREMENT CONDITION: delete the `else` branch once no bracket this repo
+# runs still needs a pre-rename baseline -- the same condition, and the
+# same wording, `oracle_wiring_for` carries for its own fallback.
+sim_brick_dir_for() {
+  local wt="$1"
+  if [ -d "$wt/components/patient-simulator" ]; then
+    echo "patient-simulator"
+  else
+    echo "sim-trajectory"
+  fi
+}
+
+# The person-process component's own dep line, per side -- EMPTY for a
+# worktree that predates it. `components/person-simulator` landed
+# 2026-08-25 (ADR-0172) and `components/sim` began requiring it
+# 2026-08-26 (arc 3a part 3), so any bracket whose BASELINE predates
+# either would name a `:local/root` that does not exist and clojure
+# would refuse the whole deps map -- on a side whose digest.clj never
+# loads `ehrt.sim.run` at all. Same per-worktree resolution shape
+# `oracle_wiring_for` and `sim_brick_dir_for` above already use, and
+# here for the same reason.
+#
+# RETIREMENT CONDITION: delete this function and inline the dep once no
+# bracket this repo runs still needs a pre-2026-08-25 baseline.
+#
+# `poly/sim-check` and `poly/sim-emit-fhir` join the deps block below at
+# the same time and unguarded (both components long predate any baseline
+# this repo brackets). They are there because arc 3a part 4's own
+# `demographic-fold` root goes through `ehrt.sim.run/run-command` rather
+# than `engine/run` -- the only way to reach the translated `:persons`
+# payload without widening `ehrt.sim.interface`, whose frozen-surface
+# gate exists for `components/corpus`'s sake -- and `run-command`'s own
+# require closure names both. The side effect is recorded in
+# digest.clj's COVERAGE block: `sim-check` stops being entirely vacuous,
+# because the new root SELF-CHECKS inside the bracket.
+person_sim_dep_for() {
+  local wt="$1"
+  if [ -d "$wt/components/person-simulator" ]; then
+    echo "poly/person-simulator {:local/root \"$wt/components/person-simulator\"}"
+  else
+    echo ""
+  fi
+}
+
+# The digest.clj blob path for `ref` at the REPO's own object store (no
+# worktree needed for this lookup) -- used only by the soundness check,
+# which compares source text, not runtime behavior.
+oracle_source_path_for() {
+  local ref="$1"
+  if git -C "$repo_root" cat-file -e "$ref:components/oracle/src/ehrt/oracle/digest.clj" 2>/dev/null; then
+    echo "components/oracle/src/ehrt/oracle/digest.clj"
+  elif git -C "$repo_root" cat-file -e "$ref:bin/oracle-src/ehrt/oracle/digest.clj" 2>/dev/null; then
+    echo "bin/oracle-src/ehrt/oracle/digest.clj"
+  else
+    echo ""
+  fi
+}
+
+# The whole digest.clj file MINUS its leading namespace docstring --
+# WIDENED 2026-08-19 (ADR-0156, author ruling R4-Q6 (iii) (c), register
+# row L1-4).
+#
+# It used to be "everything after the first line starting `(defn`", which
+# put the entire `(ns ...)` form -- 4 requires -- OUTSIDE the compared
+# region. Requires are not inert: the standing-equipment promotion
+# repointed every one of them from an implementation namespace to an
+# interface namespace, which turned `run-walk`'s call from 6-arg to
+# 8-arg. That is precisely the class this check exists to stop, and
+# precisely the class it could not see. `rulings.md#R-oracle-script-
+# contract` said the script "aborts on an undeclared digest-source diff";
+# until this widening, that overstated what it did.
+#
+# The leading docstring stays OUT. It is dated historical narrative, and
+# taxing every added note with a `--declared-digest-change` would push
+# the narrative out of the file. Everything that must not drift silently
+# -- the roots map, the COVERAGE block and its two committed sets --
+# lives below it, inside what is compared.
+#
+# Mechanics: print the `(ns ...)` line, skip the string literal that
+# follows it (tracked by counting `"` to an even total, so an interior
+# line ending in a quote does not close it early), print everything from
+# there on. A file whose ns form carries no docstring prints whole. The
+# old awk also matched BOTH of its rules on every `(defn` line and
+# printed each one twice; this one prints each line once, which is why
+# body line counts here no longer match register row L1-4's 524.
+#
+# A future digest.clj that breaks the `(ns ...)`-first convention makes
+# this awk produce empty output, which the diff below would still handle
+# honestly (two empty files diff identical, an unsound false pass) -- SO
+# the caller also requires a non-empty body, and STOPs rather than
+# silently trust an empty comparison.
+digest_body_of() {
+  awk '
+    ns_done { print; next }
+    /^\(ns / { print; ns = 1; next }
+    ns && !in_doc && /^[[:space:]]*"/ { in_doc = 1; q = 0 }
+    in_doc { q += gsub(/"/, "\""); if (q % 2 == 0) { in_doc = 0; ns_done = 1 } next }
+    { if (ns) ns_done = 1; print }
+  ' "$1"
+}
+
+run_one() {
+  local ref="$1" label="$2"
+  local wt="$work/wt-$label"
+  local out="$work/out-$label"
+  git -C "$repo_root" worktree add --detach "$wt" "$ref" >/dev/null
+
+  local wiring path main_ns
+  wiring="$(oracle_wiring_for "$wt")"
+  path="$(echo "$wiring" | sed -n 1p)"
+  main_ns="$(echo "$wiring" | sed -n 2p)"
+
+  local sim_brick
+  sim_brick="$(sim_brick_dir_for "$wt")"
+
+  local person_sim_dep
+  person_sim_dep="$(person_sim_dep_for "$wt")"
+
+  local oracle_deps oracle_paths
+  case "$path" in
+    components/oracle/*)
+      oracle_deps="poly/oracle {:local/root \"$wt/components/oracle\"}"
+      oracle_paths=""
+      ;;
+    bin/oracle-src/*)
+      oracle_deps=""
+      oracle_paths=":paths [\"$wt/bin/oracle-src\"]"
+      ;;
+  esac
+
+  local deps
+  deps=$(cat <<EOF
+{$oracle_paths
+ :deps {org.clojure/clojure {:mvn/version "1.12.5"}
+        poly/kernel {:local/root "$wt/components/kernel"}
+        $oracle_deps
+        poly/sim {:local/root "$wt/components/sim"}
+        $person_sim_dep
+        poly/sim-engine {:local/root "$wt/components/sim-engine"}
+        poly/sim-model {:local/root "$wt/components/sim-model"}
+        poly/$sim_brick {:local/root "$wt/components/$sim_brick"}
+        poly/sim-emit-hl7 {:local/root "$wt/components/sim-emit-hl7"}
+        poly/sim-check {:local/root "$wt/components/sim-check"}
+        poly/sim-emit-fhir {:local/root "$wt/components/sim-emit-fhir"}}
+ :aliases {:oracle-run {:extra-paths ["$wt/components/$sim_brick/test"]}}}
+EOF
+)
+  mkdir -p "$out"
+  (cd "$repo_root" && clojure -Sdeps "$deps" -M:oracle-run -m "$main_ns" "$out")
+  git -C "$repo_root" worktree remove --force "$wt"
+}
+
+# --- Soundness check (AR-P-3), before either side actually runs ------------
+#
+# Extracted verbatim from `bin/regression-oracle`'s own inline block so
+# BOTH brackets run it. A ground-truth bracket needs it for the same
+# reason the whole-pair one does: the two sides can genuinely run two
+# different `digest.clj` sources, and an undeclared difference there
+# makes either comparison unsound rather than merely surprising.
+#
+# Sets `sound` to "yes"/"no" in the CALLER's scope and writes its own
+# narration to stderr. Exits 1 on an unsound comparison that was not
+# declared, or on a body the awk convention could not parse.
+#
+# Usage: oracle_soundness_check <work-dir> <baseline-ref> <target-ref> <declared-change>
+oracle_soundness_check() {
+  local work="$1" baseline_ref="$2" target_ref="$3" declared_change="$4"
+
+  local baseline_source_path target_source_path
+  baseline_source_path="$(oracle_source_path_for "$baseline_ref")"
+  target_source_path="$(oracle_source_path_for "$target_ref")"
+  [ -n "$baseline_source_path" ] || { echo "no digest.clj found at $baseline_ref (neither components/oracle nor bin/oracle-src) -- STOP" >&2; exit 1; }
+  [ -n "$target_source_path" ] || { echo "no digest.clj found at $target_ref (neither components/oracle nor bin/oracle-src) -- STOP" >&2; exit 1; }
+
+  git -C "$repo_root" show "$baseline_ref:$baseline_source_path" > "$work/digest-baseline.clj"
+  git -C "$repo_root" show "$target_ref:$target_source_path" > "$work/digest-target.clj"
+  digest_body_of "$work/digest-baseline.clj" > "$work/digest-baseline.body"
+  digest_body_of "$work/digest-target.clj" > "$work/digest-target.body"
+
+  if [ ! -s "$work/digest-baseline.body" ] || [ ! -s "$work/digest-target.body" ] \
+     || ! grep -q '^(defn' "$work/digest-baseline.body" \
+     || ! grep -q '^(defn' "$work/digest-target.body"; then
+    echo "soundness check produced a body with no (defn ...) form for one of the two digest.clj files -- STOP, this script's own convention assumption broke" >&2
+    exit 1
+  fi
+
+  sound="yes"
+  if ! diff -q "$work/digest-baseline.body" "$work/digest-target.body" >/dev/null; then
+    sound="no"
+  fi
+
+  echo "== soundness check: digest.clj, whole file minus its leading docstring ==" >&2
+  if [ "$sound" = "yes" ]; then
+    echo "IDENTICAL outside the leading docstring -- proceeding" >&2
+  elif [ "$declared_change" = "yes" ]; then
+    echo "DIFFERS outside the leading docstring -- --declared-digest-change asserted, proceeding anyway (see the session's own record for the soundness argument):" >&2
+    diff -u "$work/digest-baseline.body" "$work/digest-target.body" >&2 || true
+  else
+    echo "DIFFERS outside the leading docstring -- STOP: pass --declared-digest-change to proceed anyway (and record why in the session's own ADR/record), or this comparison is unsound:" >&2
+    diff -u "$work/digest-baseline.body" "$work/digest-target.body" >&2 || true
+    exit 1
+  fi
+}
+
+# --- The ground-truth bracket's own verdict (ADR-0175 ruling E1) -----------
+#
+# Given two `:ground-truth`-only manifests, print them, print what the
+# bracket actually COVERED, and decide. Lives here rather than inline in
+# `bin/ground-truth-bracket` for one reason: a verdict function can be
+# called with fabricated manifests, and
+# `ehrt.docs-tooling.ground-truth-bracket-test` calls it with four --
+# empty, mismatched-skip-set, identical, and differing. Inline, the
+# guards below would be assertable only by reading the script.
+#
+# Three ways this exits 1 and only one of them is a digest difference:
+#
+#   (a) EMPTY POPULATION. Every root skipped means the bracket digested
+#       nothing and would otherwise report IDENTICAL over a set that
+#       contains none of the thing under test -- `rulings.md#R-empty-
+#       population-is-red`, which ADR-0175 section 2(b) already flags as
+#       the shape a later arc-4 sweep is most likely to ship.
+#   (b) SKIP-SET DRIFT. A root that carries `:ground-truth` on one side
+#       and not the other is a finding about the oracle's own shape, not
+#       a bracket result, and must not be averaged into a diff.
+#   (c) A REAL DIFFERENCE. Under ADR-0175's proof shape this is the
+#       severe one: a sweep that was supposed to move only the wire moved
+#       the facts.
+#
+# Usage: gt_bracket_verdict <baseline-manifest> <target-manifest> \
+#                           <baseline-ref> <target-ref> <declared> <sound>
+gt_bracket_verdict() {
+  local base_manifest="$1" target_manifest="$2"
+  local baseline_ref="$3" target_ref="$4" declared_change="$5" sound="$6"
+
+  local covered skipped_n skipped_list target_skipped_list
+  covered="$(grep -cv '^skipped-no-ground-truth' "$base_manifest" || true)"
+  skipped_n="$(grep -c '^skipped-no-ground-truth' "$base_manifest" || true)"
+  skipped_list="$(awk '/^skipped-no-ground-truth/ {printf "%s%s", sep, $2; sep=", "}' "$base_manifest")"
+  target_skipped_list="$(awk '/^skipped-no-ground-truth/ {printf "%s%s", sep, $2; sep=", "}' "$target_manifest")"
+
+  echo "--- baseline ($baseline_ref), :ground-truth only ---"
+  cat "$base_manifest"
+  echo "--- target ($target_ref), :ground-truth only ---"
+  cat "$target_manifest"
+  echo "--- coverage: $covered roots carry :ground-truth and are digested; $skipped_n skipped (no such key): ${skipped_list:-none} ---"
+  echo "--- declared-digest-change: $declared_change (soundness: $sound outside the leading docstring) ---"
+  echo "--- THIS IS NOT A REGRESSION-ORACLE CLAIM: the :hl7 half of every root is excluded by construction ---"
+
+  if [ "$covered" -eq 0 ]; then
+    echo "STOP: no root carried a :ground-truth key -- this bracket covered an EMPTY population and its verdict would be vacuous" >&2
+    return 1
+  fi
+
+  if [ "$skipped_list" != "$target_skipped_list" ]; then
+    echo "STOP: the two sides skip different roots -- baseline [${skipped_list:-none}] vs target [${target_skipped_list:-none}]; a root gaining or losing its :ground-truth key is a finding, not a bracket result" >&2
+    return 1
+  fi
+
+  if diff -u "$base_manifest" "$target_manifest" > "$base_manifest.diff"; then
+    echo "IDENTICAL: every digested root's :ground-truth matches between $baseline_ref and $target_ref ($covered roots)"
+    return 0
+  else
+    echo "DIFFERS: :ground-truth diverges between $baseline_ref and $target_ref -- STOP, escalate (do not fix under this script)" >&2
+    cat "$base_manifest.diff" >&2
+    return 1
+  fi
+}
