@@ -66,6 +66,16 @@ with them.
   bump, the two hooks, the identification minting, the six invariants, the
   provenance stamp) is unstarted and sized row by row in
   `.agents/session-records/2026-08-25-arc-3a-residence-loss.md`.
+  ARC 3B DESIGNED 2026-08-26 by ADR-0174, ACCEPTED the same day with all five
+  rulings taking the recommendation (A1 B1 C1 D1 E1) plus one author addition at
+  ruling C -- ADT^A20 for bed status, which C1 as recommended had declined. E1
+  splits it into THREE SWEEPS, each dark-then-on: encounter, then bed status,
+  then scheduling. **SWEEP 1 OF 3 IS CLOSED** 2026-08-26 (`ef563fe`): the
+  encounter horizon, lifted, closing `roadmap.md#multi-encounter-horizon`;
+  oracle IDENTICAL dark over 36 roots and one added root on the turn-on; event
+  contract 1.4.0 -> 1.5.0, owed. SWEEPS 2 AND 3 ARE OPEN -- the bed-status cycle
+  (`rulings.md#R-mix-6`, plus the A20) and scheduling state (`R-mix-5`), in that
+  order, and neither has started.
   PART 2 LANDED 2026-08-26 (`dd4f9f7`): the REFACTOR half -- C1's
   compile-at-run-start move (with `compile-patient` exported for part 3's
   `:deaths`), `:person-index` carried and empty, `PatientState`'s
@@ -126,26 +136,6 @@ with them.
   `roadmap.md#corpus-player-slices`. Reshuffles NOTHING and needs no stream work,
   so it is the one arc that may proceed independently once arc 3's skeleton
   contract is stable. Gating policy at scale owes a ruling here.
-- OPEN **[multi-encounter-horizon]** PRIORITY 6 -- a repeat arrival queues no
-  steps. `check.clj`'s `admission-only-when-new` is this project's
-  single-encounter horizon (sim/ADR-0007 point 3) expressed as an invariant, and
-  `evolve :discharge` never returns a patient to `:new`, so a returning patient
-  produces NO second encounter -- the person resolves to the patient they
-  already are and their later demographic events land there, which is what a
-  repeat arrival is for, but the encounter itself does not happen. It is the
-  same wall both arc 3a hooks meet: a delivery or an occupational injury may
-  only put an encounter on a patient whose own queue is otherwise empty, which
-  is why `demos/scenarios/ed-tuesday` witnesses ZERO parent-delivery encounters
-  while `clinic-decade` witnesses 23. Tabled as ADR-0173's first deviation
-  (2026-08-26) and counted by
-  `repeat-arrivals-resolve-and-queue-nothing-without-the-encounters-opt-in-test`
-  so it is visible rather than silent. OWNER UNASSIGNED and this PRIORITY is
-  provisional -- for the author to place. Candidates: arc 3b
-  (`rulings.md#R-mix-5`, where a scheduled return IS a second encounter) or an
-  arc of its own.
-  PLACED: ARC 3B (PROPOSED) -- ADR-0174 section 2(a) designs the lift and its
-  ruling A recommends taking it there, first and alone; until that ruling this
-  row stays OPEN and its owner provisional.
 - OPEN **[corpus-player-slices]** PRIORITY 7 -- the corpus-player slices
   chartered by ADR-0014 that have never had a row in any register. CORRECTED
   2026-08-26 (ADR-0174 section 1(ii)'s disclosure): the **bed-board sink LANDED
@@ -314,6 +304,7 @@ One line a row. `CLOSED` here means "no longer a roadmap row", not "the work
 was done" -- each line says which. The section is named `## Done` because that
 is where `ehrt.docs-tooling.roadmap-lint-test` requires a `CLOSED` row to live.
 
+- CLOSED 2026-08-26 ADR-0174 **[multi-encounter-horizon]** -- DONE, not retired: arc 3b sweep 1 lifted it. `admission-only-when-new` became `admission-only-when-no-open-encounter`, a repeat arrival with no open encounter opens a second one, and PV1-19 renders its id. Max encounter openers per patient was ONE at every corpus this repo had; it is now 2-4 across the six opted-in corpora, 64 encounters recovered in all. What is NOT lifted, and stays named in ADR-0174 rather than as a row: multiple CONCURRENT open encounters per patient.
 - CLOSED 2026-08-25 d6ad63a **[gated-corpus-churn-and-citation-depth]** -- retired: de-scaffold; its counted-witness half landed as a gate in `run_test.clj` on 2026-08-25.
 - CLOSED 2026-08-25 d6ad63a **[repo-review-5]** -- retired: de-scaffold; the register and plan stand as dated documents, the arc does not.
 - CLOSED 2026-08-25 d6ad63a **[register-gate-row-ownership]** -- retired: de-scaffold.
