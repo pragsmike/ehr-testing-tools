@@ -93,7 +93,7 @@
  {:asset "docs/manual/assets/straddle-timeline.svg"
   :source "demos/scenarios/ed-tuesday/README.md"
   :trigger "regenerate by hand if the cited section's own witnessed values change"
-  :reviewed-at "cb81dff"
+  :reviewed-at "d6e6546"
   :verdict :fresh
   :note
   "RE-WITNESSED AND PARTIALLY REDRAWN 2026-08-27 (arc 3b sweep 3,
