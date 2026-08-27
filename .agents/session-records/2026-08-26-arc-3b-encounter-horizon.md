@@ -2,7 +2,8 @@
 
 **Date:** 2026-08-26
 **Prompt:** [`.agents/prompts/2026-08-26-arc-3b-encounter-horizon.md`](../prompts/2026-08-26-arc-3b-encounter-horizon.md)
-**Base:** `b4e3048` -- **Tip:** `<TIP>`
+**Base:** `b4e3048` -- **Tip:** `1f046bd` plus the two commits that
+can only follow it: this sha-fill, and the CI marker below
 **Mode:** payload session under the de-scaffold moratorium. R30 ceremony,
 no tag, CI green at the tip as the close marker.
 
@@ -19,7 +20,8 @@ at ruling C) and 3 (scheduling) are untouched.
 | `1ad2d81` | the encounter, DARK behind `:encounters` -- oracle IDENTICAL, 36 roots, no declaration |
 | `ef563fe` | the encounter, TURNED ON in six corpora -- one declared sweep |
 | `611a285` | the 37th root's own three integration-tier pins |
-| `<RECORD>` | this record, the prompt, the roadmap, and the tripwire row |
+| `1f046bd` | this record, the prompt, the roadmap, and the tripwire row |
+| `<FILL>` | the shas above, which no commit can write about itself |
 
 ## The two oracle lines, verbatim
 
@@ -306,6 +308,23 @@ the asset does not.
 Worth keeping, because it is the reason a HORIZON LIFT left a STRADDLE
 diagram alone: the encounter that asset depicts is MRN000002's FIRST,
 and a first encounter is exactly what the lift does not touch.
+
+## One process deviation, disclosed
+
+`git commit --amend` was run once, on `1f046bd` and while it was
+UNPUSHED, to fill the two sha placeholders in this record. That is a
+CONTENT amend and `rulings.md#R-amend-unpushed-message-only` allows an
+amend only for a MESSAGE. Caught immediately, reverted by
+`git reset --hard 1f046bd` (the amended commit `7217775` was never
+pushed and exists only in this clone's reflog), and redone the way the
+rule requires: the fill is its own commit.
+
+The structural fact underneath it is the same one the
+`straddle-timeline.svg` tripwire row already records: a commit cannot
+carry the sha that names itself, so a record that names its own tip is
+always one commit behind. The remedy is a following commit, never an
+amend, and this paragraph is here so the next session does not have to
+rediscover that.
 
 ## Open, for the sweeps that follow
 
