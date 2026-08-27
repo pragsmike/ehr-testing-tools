@@ -277,6 +277,26 @@ silent when the stamp disappeared.
 
 ## Roadmap
 
-`[engine-fold-extensions]` CLOSED — arc 3 complete. The MSH-12/SIU
-question stays rowed for arc 4, alongside the halt-vs-reject question
-this sweep opened and did not answer.
+`[engine-fold-extensions]` **CLOSED 2026-08-27 ADR-0174** — arc 3
+complete. The 109-line OPEN row moved out of the backlog and into
+`## Done` as one line, per `roadmap-lint-test`'s two guards: a CLOSED
+row must carry `CLOSED <date> <ADR|sha>` as its first token AND must
+live under `## Done`. Retokening in place satisfied the first and failed
+the second; both were found by the suite, not reasoned about.
+
+Two things arc 3 deliberately did NOT close, both rowed for arc 4 in
+that one line: **MSH-12** `"2.3"` against the v2.4 SIU structures, so
+scheduling's four kinds reach ground truth and never the wire (ruling
+C); and **halt-vs-reject** — whether `:exhausted` should degrade to a
+visible rejection instead of HALTING a run. Sweep 2 raised it, this
+sweep's capacity gate had to work around it, and neither answered it.
+Per the prompt's own fence, `exhausted-outcome` was not touched.
+
+**One ride-along correction, disclosed.** `[person-simulator]`'s last
+sentence read *"nothing calls the component yet, and nothing may until
+`roadmap.md#engine-fold-extensions` (arc 3) lands it"* — a forward
+reference to the row this session just closed, and false since arc 3a.
+Corrected in place rather than left standing; it is exactly the shape
+repo review 5 named, a claim true when written that nothing keeps true.
+The row is NOT retokened — this session has no grounds to judge what
+else it owes.

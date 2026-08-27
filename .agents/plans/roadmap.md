@@ -44,118 +44,16 @@ with them.
   COMPONENT LANDED 2026-08-25 by arc 2b under rulings A1 B1 C1 D1 E1 F1 G1:
   all 14 kinds with a counted witness, 11 gated limitations, 18 draws per
   person-year from the `:person` family alone, and the corpus provably
-  untouched (ruling F1). What is left on this row is the ENGINE'S FOLD --
-  nothing calls the component yet, and nothing may until
-  `roadmap.md#engine-fold-extensions` (arc 3) lands it.
-- CLOSED **[engine-fold-extensions]** PRIORITY 4 -- traffic-scale arc 3. Demographic
-  timeline, scheduling state (`rulings.md#R-mix-5`), bed-status cycle (`R-mix-6`),
-  new invariant families. SCOPE NARROWED 2026-08-24 (ADR-0169, ruling S1): the
-  quadratic removals the 08-24 spike measured are NOT draw-affecting and were taken
-  by arc 0 (ADR-0169), which landed ahead of arc 1. What remains here is
-  the draw-affecting half, which still waits on the stream migration.
-  SPLIT 2026-08-25: arc 3a (the demographic fold, the two clinical hooks and the
-  identification flow) is DESIGNED by ADR-0173, ACCEPTED 2026-08-25 with all five
-  rulings taking the recommendation (A1 B1 C1 D1 E1) and `:residence-loss` landing
-  first; arc 3b (scheduling state, bed-status cycle) is untouched and inherits its
-  seams. PART 1 LANDED 2026-08-25 (`67270dd`): `:residence-loss`, the person-side
-  half of the residence sum, plus limitations row 13 the design did not price --
-  oracle IDENTICAL, so ADR-0172 ruling F1 still holds and the engine still has no
-  caller. THE FOLD ITSELF IS STILL OPEN: `:persons` is not a config key, and every
-  piece of ADR-0173 section 2 (C1's compile-at-run-start reordering, the
-  queue-seeding pass, the emitter re-key, the two new event kinds and the 1.3.0
-  bump, the two hooks, the identification minting, the six invariants, the
-  provenance stamp) is unstarted and sized row by row in
-  `.agents/session-records/2026-08-25-arc-3a-residence-loss.md`.
-  ARC 3B DESIGNED 2026-08-26 by ADR-0174, ACCEPTED the same day with all five
-  rulings taking the recommendation (A1 B1 C1 D1 E1) plus one author addition at
-  ruling C -- ADT^A20 for bed status, which C1 as recommended had declined. E1
-  splits it into THREE SWEEPS, each dark-then-on: encounter, then bed status,
-  then scheduling. **SWEEP 1 OF 3 IS CLOSED** 2026-08-26 (`ef563fe`): the
-  encounter horizon, lifted, closing `roadmap.md#multi-encounter-horizon`;
-  oracle IDENTICAL dark over 36 roots and one added root on the turn-on; event
-  contract 1.4.0 -> 1.5.0, owed. **SWEEP 2 OF 3 IS CLOSED** 2026-08-27: the
-  BED-STATUS CYCLE (`rulings.md#R-mix-6`) plus ruling C's ADT^A20 -- oracle
-  IDENTICAL dark over 37 roots and one added root (`bed-cycle`, the 38th) on
-  the turn-on; event contract 1.5.0 -> 1.6.0, owed by twenty-three reasons
-  because `Participant` widened to admit a BED subject. It closes the bed-board
-  gap section 2(d) had left open (`ehrt play --board` renders `(dirty)` and
-  `(cleaning)` beds), and it moved the coverage hole sweep 1 rowed for it: rung
-  4 of the allocation ladder is no longer zero across the oracle, and
-  `:cancel-discharge`/ADT^A13 leave the unwitnessed set. **SWEEP 3 OF 3 IS
-  CLOSED** 2026-08-27: SCHEDULING state (`rulings.md#R-mix-5`) -- four
-  skeleton kinds, arrivals split scheduled-vs-walk-in on `:world`, an
-  appointment's outcome as bands of one `:patient` uniform, and
-  follow-ups at discharge producing the first SCHEDULED second encounters
-  this repository has had. Oracle IDENTICAL dark over 38 roots and one
-  added root (`scheduling`, the 39th) on the turn-on; event contract
-  1.6.0 -> 1.7.0, NOT owed (`classify-change` returns `:additive? true`)
-  and taken on 1.3.0's grounds. FOUR invariants, not the three section
-  2(b) tables -- the fourth is the one the ADR marks OWED, and it earned
-  its place by catching an ordinal-reuse defect on its first
-  population-scale run. Coverage moves 21 of 24 kinds to 26 of 28,
-  including `:step-rejected`, which no root had witnessed. Three ADR
-  premises the tree contradicted are in the record, the largest being
-  that the ADR states NO DEFAULT VALUES for any of the six sub-keys.
-  **THIS ROW IS THEREFORE CLOSED: arc 3 is complete.** Two things it
-  deliberately did not close, both rowed for arc 4: MSH-12 `"2.3"`
-  against the v2.4 SIU structures (ruling C), so none of the four kinds
-  reaches the wire; and whether `:exhausted` should degrade to a visible
-  rejection rather than HALT a run -- a question sweep 2 raised, this
-  sweep's capacity gate had to work around, and neither answered.
-  PART 2 LANDED 2026-08-26 (`dd4f9f7`): the REFACTOR half -- C1's
-  compile-at-run-start move (with `compile-patient` exported for part 3's
-  `:deaths`), `:person-index` carried and empty, `PatientState`'s
-  `:demographics`, and the emitter re-key to `demographics-at` -- all
-  output-identical, oracle IDENTICAL at four separate points, every
-  pinned fixture and both conformance baselines byte-equal. `:persons` is
-  STILL not a config key and no person event reaches the engine. Two
-  corrections to ADR-0173 from the tree, both in
-  `.agents/session-records/2026-08-26-arc-3a-fold-refactors.md`: the
-  re-key is thirteen signatures and not twelve, and limitations row 6 did
-  NOT go red (the re-key without the fold leaves its substance intact),
-  so row 6's STRIKE is still owed by part 3.
-  PART 3 LANDED 2026-08-26 (`ba9126d`): THE FOLD -- `:persons` as a config
-  key on both layers, ruling A1's selection and the fold index, the
-  queue-seeding pass, the two new kinds at contract 1.3.0, the six
-  invariants, the provenance stamps, and ADR-0172 limitations row 6
-  STRUCK with its gate deleted. `:persons` is ABSENT from every existing
-  config, so the proof is still the dark one: oracle IDENTICAL over 35
-  roots with no declaration, every pinned fixture and both conformance
-  baselines byte-equal, not one trace byte moved. ADR-0172 ruling F1 is
-  LIFTED -- `ehrt.sim.run` calls the component for real, and row 10's
-  one-way edge is untouched. Six ADR premises the tree contradicted are
-  tabled as dated deviations in ADR-0173's own Consequences and named in
-  `.agents/session-records/2026-08-26-arc-3a-fold-part-3.md`.
-  PART 4 LANDED 2026-08-26 and ARC 3A IS CLOSED. Two commits: the hooks
-  and the identification flow DARK (oracle IDENTICAL over 35 roots, no
-  declaration, a fourth time), then ruling D1's COMMIT 2 -- `:persons`
-  ON in six corpora, one declared sweep, all four `arc0_gated_*`
-  fixtures and digests re-pinned together, and a 36th oracle root
-  (`demographic-fold`) that is the first to carry the payload and the
-  first to exercise `run-command` at all. Contract 1.3.0 -> 1.4.0, and
-  THIS bump is owed: `classify-change` reports four widenings on
-  `:demographic-update`.
-  Three defects were found by probing real corpora, none reachable from
-  any pre-existing fixture, and each is gated as a unit: a placeholder
-  whose person DIED inside their own identity window was promised a
-  close instant the run could never keep (`:self-check-failed` at
-  population scale); the resolution step sat on the survivor, where the
-  run loop's `:merged` short-circuit silently ate it; and
-  `v2-replay/hl7-date->iso` threw on the John Doe's own empty PID-7, so
-  `ehrt play` died mid-stream on a real corpus. A fourth finding was an
-  interface gap arc 2b had RECORDED rather than closed: no scenario
-  names the payer pools, so `:coverage-change` -- a kind contract 1.3.0
-  declares -- was produced ZERO times by any gated corpus; `sim-model`'s
-  real pools are now on its interface and defaulted to, rather than
-  forked into a config. ADR-0173's own placeholder rule turned out to be
-  unreachable as written and the measurement is in
-  `.agents/session-records/2026-08-26-arc-3a-fold-part-4.md`.
-  ARC 3B (scheduling state `rulings.md#R-mix-5`, bed-status cycle
-  `R-mix-6`) is what remains on this row, and it inherits the fold
-  index, the `:demographics` field and the queue-seeding pass.
-  ARC 3B IS DESIGNED by ADR-0174, PROPOSED 2026-08-26 -- both R-mix rows
-  plus the encounter horizon it argues belongs with them; five rulings
-  A-E await the author.
+  untouched (ruling F1). What was left on this row was the ENGINE'S FOLD --
+  nothing called the component, and nothing might until
+  `roadmap.md#engine-fold-extensions` (arc 3) landed it. THAT SENTENCE IS
+  NOW SPENT: arc 3a landed the fold across four parts (ADR-0173) and arc 3
+  closed 2026-08-27, so the engine DOES call this component and `:persons`
+  IS a config key, on in all six gated corpora. Corrected here rather than
+  left standing -- it is precisely the shape repo review 5 named, a claim
+  true when written that nothing keeps true. What remains on this row is
+  whatever the component still owes on its own terms, not a dependency on
+  a row that no longer exists.
 - OPEN **[emission-add-ons]** PRIORITY 5 -- traffic-scale arc 4
   (`rulings.md#R-mix-7`): order/result status ladders, DFT P03 charges,
   re-statement chatter under config ratios, fan-out/subscriber table; rides
@@ -330,6 +228,7 @@ One line a row. `CLOSED` here means "no longer a roadmap row", not "the work
 was done" -- each line says which. The section is named `## Done` because that
 is where `ehrt.docs-tooling.roadmap-lint-test` requires a `CLOSED` row to live.
 
+- CLOSED 2026-08-27 ADR-0174 **[engine-fold-extensions]** -- DONE, not retired: traffic-scale ARC 3 IS COMPLETE. Arc 3a landed the demographic fold, the two clinical hooks and the identification flow (ADR-0173, four parts); arc 3b landed the encounter horizon (sweep 1), the bed-status cycle plus ADT^A20 (sweep 2) and scheduling state (sweep 3), each dark-then-on with an IDENTICAL oracle on the dark half. The oracle went 32 roots to 39 and its witnessed vocabulary 13 of 21 kinds to 26 of 28; the event contract went 1.2.0 to 1.7.0. Two things arc 3 deliberately did NOT close, both for arc 4: MSH-12 "2.3" against the v2.4 SIU structures, so scheduling's four kinds reach ground truth and never the wire (ADR-0174 ruling C); and whether `:exhausted` should degrade to a visible rejection instead of HALTING a run -- sweep 2 raised it, sweep 3's capacity gate had to work around it, neither answered it. Per-sweep narrative in `.agents/session-records/2026-08-2{5,6,7}-arc-3*.md`.
 - CLOSED 2026-08-26 ADR-0174 **[multi-encounter-horizon]** -- DONE, not retired: arc 3b sweep 1 lifted it. `admission-only-when-new` became `admission-only-when-no-open-encounter`, a repeat arrival with no open encounter opens a second one, and PV1-19 renders its id. Max encounter openers per patient was ONE at every corpus this repo had; it is now 2-4 across the six opted-in corpora, 64 encounters recovered in all. What is NOT lifted, and stays named in ADR-0174 rather than as a row: multiple CONCURRENT open encounters per patient.
 - CLOSED 2026-08-25 d6ad63a **[gated-corpus-churn-and-citation-depth]** -- retired: de-scaffold; its counted-witness half landed as a gate in `run_test.clj` on 2026-08-25.
 - CLOSED 2026-08-25 d6ad63a **[repo-review-5]** -- retired: de-scaffold; the register and plan stand as dated documents, the arc does not.
