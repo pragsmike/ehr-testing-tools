@@ -74,9 +74,23 @@
   encounters at once -- that patient's own side of the `:swap`
   (`ehrt.sim-engine.event-schema/BedSwapSide`). nil on every event of
   every run that did not opt into `:encounters`, which is what makes
-  each row below fall back to the patient-scoped rule it always was."
+  each row below fall back to the patient-scoped rule it always was.
+
+  THE TOP-LEVEL FIELD BELONGS TO THE EVENT'S FIRST PARTICIPANT AND TO
+  NOBODY ELSE, and that is not a nicety -- it is what a population-scale
+  probe of `demos/scenarios/ed-tuesday` at seed 202 found on the day
+  this row landed. `run`'s stamp reads the first participant's own open
+  encounter (`engine.clj`'s `stamp-encounter`), while
+  `events-by-patient` above puts a multi-participant event in EVERY
+  participant's sequence -- so a `:merge` stamped with the SURVIVOR's
+  encounter also appears in the MERGED patient's own log, where that id
+  has no opener and never could. Two of them fired, correctly, against
+  an invariant that was reading the field as if it named every
+  participant at once."
   [event patient-id]
-  (or (:encounter-id event) (get-in event [:swap patient-id :encounter-id])))
+  (or (when (= patient-id (:patient-id (first (:participants event))))
+        (:encounter-id event))
+      (get-in event [:swap patient-id :encounter-id])))
 
 (defn- carried-encounter-is-not-the-open-one?
   "Whether an event names an encounter that was NOT the subject's open

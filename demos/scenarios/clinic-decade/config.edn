@@ -63,4 +63,26 @@
  ;; demographic timeline is, and this scenario's own README carries the
  ;; re-witnessed figures.
  :persons {:count 400 :years 20}
+
+ ;; ARC 3B SWEEP 1 (ADR-0174 rulings A1/E1, 2026-08-26): the ENCOUNTER
+ ;; HORIZON, LIFTED. This is the opt-in -- `:encounters` absent is the
+ ;; byte-identical path, and this file is one of the six corpora that
+ ;; stop taking it.
+ ;;
+ ;; IT CHANGES WHAT THE PARAGRAPH ABOVE MEANS, and that is said here
+ ;; rather than left for a reader to notice. A repeat arrival no longer
+ ;; queues NOTHING: with no encounter open it opens a SECOND one, on the
+ ;; same patient and the same MRN, which is what an MPI under test needs
+ ;; to see. So the pool-sizing argument above is no longer about
+ ;; DELETED clinical content -- the content a collision used to cost is
+ ;; now a return visit -- but the sizing itself is kept unchanged, for
+ ;; two reasons: the coverage gate it was tuned against still reads the
+ ;; same population, and re-tuning a pool in the same commit that lifts
+ ;; the horizon would leave any corpus delta with two possible causes.
+ ;;
+ ;; WHAT DOES NOT CHANGE: a repeat arrival landing while the patient's
+ ;; first encounter is still OPEN still opens nothing (`decide
+ ;; :repeat-arrival`), and one landing on a `:merged` or `:expired`
+ ;; patient still opens nothing either. Both terminals stay absorbing.
+ :encounters true
  :module-horizon-days 3650}

@@ -490,7 +490,12 @@
            ;; No `:config` to carry it, so the opt-in is here. Twice the
            ;; arrival count and twenty years, for the reasons the two
            ;; scenario configs state at length.
-           :persons {:count 20 :years 20}}}])
+           :persons {:count 20 :years 20}
+           ;; ARC 3B SWEEP 1 (ADR-0174 ruling A1, 2026-08-26): the
+           ;; encounter horizon, lifted -- here for the same reason
+           ;; `:persons` is, and this run is the fourth of the six
+           ;; corpora that opt in.
+           :encounters true}}])
 
 (def ^:private corpora
   "run id -> that run's own `run-command` result, populated once by
@@ -498,7 +503,14 @@
   (atom {}))
 
 (defn- generate-corpora-once [f]
-  (reset! corpora (into {} (map (juxt :id #(run/run-command (:opts %)))) gated-runs))
+  ;; ARC 3B SWEEP 1: `:emit "hl7"` is added HERE rather than in each
+  ;; `gated-runs` entry, because it is not part of what any run IS -- it
+  ;; asks the same finished run to also render, which costs milliseconds
+  ;; against the run itself and gives every gate below the WIRE as well
+  ;; as the ground truth. PV1-19 is the encounter's only wire face
+  ;; (ADR-0174 ruling C1), and a witness for it that could only read
+  ;; ground truth would be checking the stamp against itself.
+  (reset! corpora (into {} (map (juxt :id #(run/run-command (assoc (:opts %) :emit "hl7")))) gated-runs))
   (f))
 
 (use-fixtures :once generate-corpora-once)
@@ -561,6 +573,27 @@
   (edn/read-string (pr-str gt))))` -- value AND bytes both survive, so
   the committed baseline is a faithful pin for BOTH gates below.
 
+  RE-PINNED AGAIN 2026-08-26, all four, by ADR-0174 ruling A1's TURN-ON
+  commit -- arc 3b sweep 1, the ONE declared sweep that sweep is
+  allowed, and the reason the encounter landed dark in a prior commit
+  so that this diff would have exactly one possible cause.
+  `:encounters` is now ON in all four (from each scenario's own
+  `config.edn`, and from the adhd run's own opts). No seed moved this
+  time: every counted witness in this namespace survived the opt-in,
+  which is the check the previous two re-pins both failed and had to
+  answer with a seed sweep.
+
+  WHAT MOVED, and it is much less than last time: the arrivals the
+  single-encounter horizon used to DISCARD now open second encounters,
+  and everything downstream of the first one reshuffles. The counts,
+  before -> after: seed-202 648 -> 711 events, seed-424242 1,279 ->
+  1,309, seed-5 1,058 -> 1,072, adhd 66 -> 68. The growth is
+  RETURN VISITS and nothing else -- 16, 15, 7 and 1 encounters
+  respectively that the pre-sweep engine threw away, on 15, 11, 6 and 1
+  patients, with a maximum of THREE, FOUR, THREE and TWO encounters on
+  one patient against a maximum of ONE at every corpus this repo had
+  before the sweep.
+
   RE-PINNED 2026-08-26, all four, by ADR-0173 ruling D1's COMMIT 2 --
   the ONE declared sweep this arc is allowed, and the reason the fold
   landed dark in three prior commits so that this diff would have
@@ -578,10 +611,10 @@
   1,058, adhd 12 -> 66. The growth is the fold: `:demographic-update`,
   `:coverage-change`, hook-created encounters and unidentified
   arrivals, none of which existed in any corpus before this commit."
-  {:seed-202-ed-tuesday       "edcc7008125c0f5de24ea8751ce10adbcf6880270d3af5876d5b6ba9e7b779ba"
-   :seed-424242-clinic-decade "0f7e38e63c35a12865b46b5b79ada5bb36bb381bb3bbf8279e821b1ff9759d4d"
-   :seed-5-clinic-decade      "f754c3b7a346756357f7232016a4f170bf3d716a58cc4b6828c53a51dbf4651d"
-   :adhd-seed-45              "36530c9ab0123cd1a349d4f158bd152c00be5b09acca582f6af042a6f45c5950"})
+  {:seed-202-ed-tuesday       "8fd36e60e53c437d00d37e2798dfadf0ab60a410cbc84d4b0223bfdf45fd5913"
+   :seed-424242-clinic-decade "f3dfe0997ed192c15802bd34809bf4f40847fefeb657f03f84cf908f34234a69"
+   :seed-5-clinic-decade      "984b65804140b65090c2ea90fec6b766bb57bc71cf42ff6a4c8e2baa5dbec309"
+   :adhd-seed-45              "3f8d423cc7edcaf89953c71dca3e88a4234bfb323b2b0b28838d61ea3b1fc955"})
 
 (defn- arc0-baseline
   "The committed baseline ground-truth vector for one gated run."
@@ -942,22 +975,27 @@
         (is (= [] (vec (cancel-reinstatement-mismatches (arc0-baseline id)))))))
     (testing "and the check is not vacuous -- FINDING, disclosed: only ONE of
               the four gated corpora carries reinstating cancels at all
-              (seed-202: 6 :cancel-transfer + 1 :cancel-discharge = SEVEN; the
+              (seed-202: 8 :cancel-transfer + 1 :cancel-discharge = NINE; the
               two clinic-decade runs and adhd-seed-45 carry none, and
               seed-202's own 1 :cancel-admit reinstates nothing). RE-COUNTED
-              TWICE now, and both times because a licensed reshuffle moved
-              this corpus rather than because anything about churn changed:
-              TEN (9 + 1, 2 :cancel-admit) before ADR-0171's stream
+              THREE times now, and every time because a licensed reshuffle
+              moved this corpus rather than because anything about churn
+              changed: TEN (9 + 1, 2 :cancel-admit) before ADR-0171's stream
               partition, NINE (8 + 1) after it, SEVEN after arc 3a part 4's
-              `:persons` opt-in. The gated-corpus half of this gate
-              therefore rests on seven events in one run;
+              `:persons` opt-in, and NINE again (8 + 1) after arc 3b sweep
+              1's `:encounters` opt-in -- which is the first of the four
+              re-counts to move this witness UP, and it moves up for a
+              reason worth naming: churn is injected per ARRIVAL, and the
+              lifted horizon means a repeat arrival's injected steps are now
+              queued instead of discarded. The gated-corpus half of this gate
+              therefore rests on nine events in one run;
               `cancel-reinstatement-survives-the-fold-carried-index` in
               engine-test is what carries it at population scale."
       (let [counted (into {} (map (fn [{:keys [id]}]
                                     [id (count (filter #(contains? reinstating-cancel-fields (:event %))
                                                        (arc0-baseline id)))]))
                           gated-runs)]
-        (is (= 7 (get counted :seed-202-ed-tuesday))
+        (is (= 9 (get counted :seed-202-ed-tuesday))
             (str "seed-202's reinstating-cancel count moved: " (pr-str counted)))
         (is (pos? (reduce + (vals counted)))
             (str "NO gated corpus carries a reinstating cancel -- this gate has "
@@ -1407,3 +1445,128 @@
                  "scale, which is good news and means the disclosure above is "
                  "stale: re-read it before adjusting. Split: "
                  (pr-str (frequencies (map (juxt :corpus :due?) rows)))))))))
+
+;; --- ADR-0174 ruling A1's TURN-ON: the encounter witnesses ---------------
+;;
+;; `:encounters` is ON in all four gated corpora as of 2026-08-26, and
+;; this is what THAT buys. Same discipline as the part-4 block above:
+;; `pos?` floors, never pinned counts, because a pinned count turns a
+;; future retune into a false red while `pos?` catches the failure that
+;; matters -- a declared traffic family no corpus produces.
+;;
+;; The headline is the horizon's own cost, recovered. Before this sweep
+;; the maximum encounter openers per patient was ONE, at every corpus
+;; this repo had (ADR-0174 section 1's census), and a repeat arrival
+;; queued nothing at all.
+
+(defn- ground-truth-of [id] (:ground-truth (:payload (corpus id))))
+
+(defn- encounter-openers-by-patient [ground-truth]
+  (->> ground-truth
+       (filter #(#{:admission :outpatient-visit} (:event %)))
+       (group-by (comp :patient-id first :participants))))
+
+(deftest every-gated-corpus-carries-second-encounters
+  (let [rows (for [{:keys [id]} gated-runs
+                   :let [by-patient (encounter-openers-by-patient (ground-truth-of id))
+                         repeats (filter #(> (count %) 1) (vals by-patient))]]
+               {:corpus id
+                :patients-with-more-than-one (count repeats)
+                :extra-encounters (reduce + 0 (map (comp dec count) repeats))
+                :max-per-patient (reduce max 0 (map count (vals by-patient)))})]
+    (doseq [{:keys [corpus patients-with-more-than-one extra-encounters max-per-patient]} rows]
+      (is (pos? patients-with-more-than-one)
+          (str corpus " has no patient with a second encounter -- the horizon lift "
+               "is not reaching this corpus: " (pr-str rows)))
+      (is (pos? extra-encounters))
+      (is (> max-per-patient 1)
+          (str corpus " still tops out at one encounter per patient, which is the "
+               "measurement ADR-0174 section 1 took BEFORE the lift: " (pr-str rows))))))
+
+(deftest every-encounter-id-is-well-formed-and-per-patient-unique
+  (doseq [{:keys [id]} gated-runs]
+    (let [gt (ground-truth-of id)
+          ids (into [] (keep :encounter-id) gt)
+          openers (filter #(#{:admission :outpatient-visit} (:event %)) gt)
+          opener-ids (mapv :encounter-id openers)]
+      (is (pos? (count ids)) (str id " mints no encounter id at all"))
+      (is (every? #(re-matches #"ENC-\d{6}-\d{2}-[0-9a-f]{8}" %) ids)
+          (str id " carries a malformed encounter id"))
+      (is (every? some? opener-ids)
+          (str id " has an encounter opener carrying no id -- the mint is not
+               reaching every opener"))
+      (is (= (count opener-ids) (count (distinct opener-ids)))
+          (str id " mints one id for two openers")))))
+
+(deftest closed-encounters-account-for-every-closer
+  (testing "one closer per encounter, and every closer closes something --
+            `discharge-closes-an-open-encounter` asserted at population
+            scale rather than only over hand-built logs"
+    (doseq [{:keys [id]} gated-runs]
+      (let [gt (ground-truth-of id)
+            closers (filter #(#{:discharge :outpatient-visit-end} (:event %)) gt)
+            openers (filter #(#{:admission :outpatient-visit} (:event %)) gt)]
+        (is (pos? (count closers)))
+        (is (every? :encounter-id closers)
+            (str id " has a closer carrying no encounter id"))
+        (is (<= (count (distinct (map :encounter-id closers)))
+                (count (distinct (map :encounter-id openers))))
+            (str id " closed an encounter nothing opened"))
+        (is (every? (into #{} (map :encounter-id) openers)
+                    (map :encounter-id closers))
+            (str id " has a closer naming an encounter no opener minted"))
+        ;; The two encounter invariants themselves are NOT re-run here,
+        ;; and the reason is that they already ran: `run-command`
+        ;; SELF-CHECKS, so a corpus that exists in `corpora` at all is a
+        ;; corpus `check-all` passed. Re-running two rows of the catalog
+        ;; against the same log would assert the same thing twice and
+        ;; read like a second, independent check.
+        ))))
+
+(def ^:private encounterless-pv1-message-types
+  "The MSH-9s whose PV1 legitimately carries NO visit number, measured
+  across all four gated corpora rather than assumed -- every one of them
+  a message that belongs to no OPEN encounter:
+
+    ADT^A40  an identification merge on a patient whose stay had already
+             ended (its PV1-3 is empty for the same reason)
+    ORU^R01  a result arriving after discharge -- the pending-labs-at-
+             discharge case `order-only-when-admitted`'s own docstring
+             names as real clinical behaviour, deliberately not gated
+    ADT^A11  a `:cancel-admit` against an ALREADY-DISCHARGED patient's
+             original admission, the degenerate-but-legal churn sequence
+             `evolve :cancel-discharge`'s own comment records
+
+  Everything else -- A01, A02, A03, A04, A12, A13 and BOTH PV1s of an
+  A17 -- carries one on every message of every gated corpus."
+  #{"ADT^A40" "ORU^R01" "ADT^A11"})
+
+(defn- pv1-19s
+  "Every PV1-19 the corpus's own messages render, paired with the MSH-9
+  of the message it came from. Read off the WIRE, by splitting the ER7
+  the shipped writer emits -- never off the ground truth the stamp was
+  taken from, which would be checking the stamp against itself."
+  [id]
+  (for [message (:messages (:payload (corpus id)))
+        :let [segments (str/split message #"\r\n|\r|\n")
+              msh (nth (str/split (first (filter #(str/starts-with? % "MSH") segments)) #"\|" -1) 8 "")]
+        segment segments
+        :when (str/starts-with? segment "PV1")]
+    [msh (nth (str/split segment #"\|" -1) 19 "")]))
+
+(deftest pv1-19-carries-the-visit-number-on-every-message-of-an-open-encounter
+  (testing "ADR-0174 ruling C1: the encounter's one wire face. Before this
+            sweep PV1-19 was empty on every message this project had ever
+            produced."
+    (doseq [{:keys [id]} gated-runs]
+      (let [rows (pv1-19s id)
+            blank (filter (fn [[_ v]] (str/blank? v)) rows)]
+        (is (pos? (count rows)) (str id " rendered no PV1 at all"))
+        (is (pos? (count (remove (fn [[_ v]] (str/blank? v)) rows)))
+            (str id " rendered no visit number on any message"))
+        (is (every? #(re-matches #"ENC-\d{6}-\d{2}-[0-9a-f]{8}" %)
+                    (remove str/blank? (map second rows)))
+            (str id " rendered a malformed PV1-19"))
+        (is (empty? (remove (comp encounterless-pv1-message-types first) blank))
+            (str id " left PV1-19 empty on a message that HAS an open encounter: "
+                 (pr-str (frequencies (map first blank)))))))))

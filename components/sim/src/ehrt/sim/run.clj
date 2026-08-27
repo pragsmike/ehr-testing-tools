@@ -532,8 +532,16 @@
                  ;; corpus. `ManifestV1_1` is an open map, so this is
                  ;; additive at the same seam `:event-schema-version` and
                  ;; `:stream-scheme` already ride, and no schema moves.
+                 ;; ARC 3B SWEEP 1 (ADR-0174 section 2(a)): `:encounters`
+                 ;; joins for the SAME reason `:persons` did -- a corpus
+                 ;; whose patients can have more than one visit is a
+                 ;; different artifact from one whose patients cannot,
+                 ;; and its own face should say so rather than leaving a
+                 ;; reader to infer it from the presence of a second
+                 ;; `:admission`. Absent from `opts`, `select-keys`
+                 ;; leaves it absent here, so no legacy manifest moves.
                  engine-params (-> (select-keys opts [:patients :arrival-gap :warm-up-seconds
-                                                      :persons :persona-config])
+                                                      :persons :persona-config :encounters])
                                     (assoc :reference-date reference-date :utc-offset utc-offset))
                  engine-opts (cond-> (merge (select-keys opts engine/config-keys)
                                             {:seed seed :churn-profile effective-churn-profile})

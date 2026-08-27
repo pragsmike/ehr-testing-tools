@@ -58,8 +58,30 @@ bin/ehrt play out/scenarios/ed-tuesday/events.edn --rate 10000000
 ## What to look for
 
 Witnessed 2026-08-26 (seed 20260811, 100 patients, `--config` as
-above, `--churn` on): **695 ground-truth events, 286 HL7 v2 messages,
-104 board snapshots** over a 603,759,336,000 ms stream span.
+above, `--churn` on): **745 ground-truth events, 333 HL7 v2 messages,
+105 board snapshots** over a 603,759,336,000 ms stream span.
+
+**PATIENTS COME BACK NOW.** `config.edn` opted this scenario into the
+lifted ENCOUNTER HORIZON on 2026-08-26 (arc 3b sweep 1, ADR-0174 ruling
+A1), and that is where these figures moved from the previous witness's
+695/286/104. Until that day every patient in every corpus this repo had
+got exactly ONE encounter, ever -- `check.clj`'s own
+`admission-only-when-new` was that horizon written as an invariant, and
+a returning person's arrival simply queued nothing. This run now
+carries **127 encounter openers across 116 patients: 14 patients with
+more than one, 15 encounters the pre-sweep engine threw away, and a
+maximum of THREE on a single patient.** Same patient, same patient-id,
+same MRN each time -- which is the whole point, because an MPI under
+test has to see the same MRN twice.
+
+**And every message now carries a visit number.** PV1-19 was EMPTY on
+every message this project had ever produced; it now renders the
+encounter's own `ENC-` id (ADR-0174 ruling C1). 328 of this run's 333
+PV1 segments carry one. The five that do not are messages that belong
+to no OPEN encounter and correctly say so: an ADT^A40 identification
+merge on a patient whose stay had already ended, three ORU^R01 results
+arriving after discharge (the pending-labs-at-discharge case), and one
+ADT^A11 cancelling an already-discharged patient's original admission.
 
 **THE SHIFT IS STILL A SHIFT; THE STREAM IS NOT.** `config.edn` opted
 this scenario into `ehrt.sim-engine.engine`'s demographic fold on
@@ -75,8 +97,10 @@ the busy shift is the opening minute of the playback, and the long
 sparse tail after it is the population.
 
 **Inpatients rise and fall.** The first snapshot already shows 4
-occupied beds; the census climbs through the shift to a peak of 11
-concurrent inpatients, then drains to 1 by the run's own last snapshot:
+occupied beds; the census climbs through the shift to a peak of 15
+concurrent inpatients, then drains to 1 by the run's own last snapshot.
+The peak moved 11 -> 15 with the horizon lift, for the obvious reason:
+a returning patient occupies a bed the second time too.
 
 ```
 -- board snapshot: 2026-08-11T01:12:00Z --
@@ -94,16 +118,16 @@ inpatients: 4  active outpatients: 0  discharged: 1  merged: 0
 -- board snapshot: 2045-09-27T22:55:36Z --
 
 Emergency:
-  ED-H03  Lee, Jennifer  MRN MRN000040  inpatient  attending: 5761303028
+  ED-H08  Lee, Jennifer  MRN MRN000040  inpatient  attending: 5761303028
 
-inpatients: 1  active outpatients: 0  discharged: 108  merged: 1
+inpatients: 1  active outpatients: 0  discharged: 110  merged: 1
 ```
 
 Note the DATE on that second snapshot: 2045, not 2026. That is the
 population tail, not the shift.
 
 **Discharges accrue and churn fires.** `discharged` climbs from 1 to
-108 across the run; `merged` climbs from 0 to 1. That merge is now an
+110 across the run; `merged` climbs from 0 to 1. That merge is now an
 IDENTIFICATION merge rather than an `InjectChurn` one -- a John Doe
 record joined to the patient the same person already had -- and churn's
 own bed-merge lottery contributed none at this seed. Stated rather than
@@ -116,11 +140,19 @@ unidentified ED arrivals**, every one of them later filled in place
 each on a patient of their own whose `:registered` carries
 `:mother-patient-id`; **8 occupational-injury presentations**; **1
 parent delivery admission**; and **3 registrations for a patient with
-nowhere to live** (PID-11 absent). Only one parent delivery, because
-this scenario's patients nearly all walk a scripted ED pathway and a
-hook may only put an encounter on a patient whose own queue is
-otherwise empty -- the single-encounter horizon, doing exactly what it
-is for.
+nowhere to live** (PID-11 absent). Every one of those five counts is
+UNCHANGED by the horizon lift, which is the right answer: the person
+stream runs upstream of the encounter, so lifting the horizon adds
+return VISITS and not people.
+
+Still only one parent delivery, and the reason changed. It used to be
+the single-encounter horizon. That horizon is gone, and the remaining
+constraint is the STATIC one it always sat behind: a hook may put an
+encounter only on a patient whose own compiled and authored queue is
+otherwise empty (`prelude`'s `clinically-idle?`), and this scenario's
+patients nearly all walk a scripted ED pathway. Contrast
+`../clinic-decade/`, whose patients mostly walk nothing: its parent
+deliveries went 17 -> 27 on exactly this change.
 
 **Capacity held.** No `:capacity-exhausted` at any point in this
 run -- `config.edn`'s own facility bump (Emergency's surge slots,
@@ -350,9 +382,12 @@ bin/ehrt corpus batch out/scenarios/ed-tuesday-latency --interval 60 \
   --out-dir out/scenarios/ed-tuesday-latency-batches
 ```
 
-Witnessed 2026-08-26 (same seed-20260811 run as above, 286 messages
-across 105 occupied hourly buckets, `2026-08-11T00:00Z` through
-`2045-09-27T13:00Z`):
+Witnessed 2026-08-26 (same seed-20260811 run as above, 333 messages
+across 106 occupied hourly buckets, `2026-08-11T00:00Z` through
+`2045-09-27T23:00Z`). CORRECTED at the same re-witness: the closing
+bucket used to be printed as `13:00Z` here, which was wrong by ten
+hours and had been since this section was written -- `:start-ms`
+2390166000000 is 23:00Z, and that figure itself never moved.
 
 ```
 {:status :ok,
@@ -366,10 +401,10 @@ across 105 occupied hourly buckets, `2026-08-11T00:00Z` through
     :start-ms 1786410000000, :end-ms 1786413600000, :verified true}
    {:file "batch-002.hl7", :count 7,
     :start-ms 1786413600000, :end-ms 1786417200000, :verified true}
-   ;; ... batch-003.hl7 through batch-102.hl7 ...
-   {:file "batch-103.hl7", :count 1,
-    :start-ms 2389993200000, :end-ms 2389996800000, :verified true}
+   ;; ... batch-003.hl7 through batch-103.hl7 ...
    {:file "batch-104.hl7", :count 1,
+    :start-ms 2389993200000, :end-ms 2389996800000, :verified true}
+   {:file "batch-105.hl7", :count 1,
     :start-ms 2390166000000, :end-ms 2390169600000, :verified true}],
   :span {:earliest-ms 1786406400000, :latest-ms 2390169600000}}}
 ```
@@ -379,14 +414,14 @@ or so batches are the ED shift itself, packed hour after hour with 2 to
 12 messages each; everything after them is the population tail, and
 they are almost all `:count 1` -- one birth, one injury, one
 unidentified arrival, in an hour that carried nothing else, years apart
-from the batch before it. `batch-103` and `batch-104` sit in 2045. The
+from the batch before it. `batch-104` and `batch-105` sit in 2045. The
 empty hours between are simply ABSENT, never written as empty files
 (ADR-0111's own named v1 deferral: an interior empty batch is not
 represented, only skipped), which is why nineteen years partition into
-105 files rather than 168,000. Every one of the 105 written files
+106 files rather than 168,000. Every one of the 106 written files
 self-verified: `write-and-verify-batch!` (`bases/cli`) decodes what it
 just wrote straight back and checks `BTS-1` against the real message
-count before ever reporting success -- `:verified true` on all 105 is
+count before ever reporting success -- `:verified true` on all 106 is
 that check, exercised, not merely claimed.
 
 **The wrapper itself**, `batch-000.hl7`, head and tail:
@@ -397,7 +432,7 @@ BHS|^~\&
 
 MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811003626+0000||ADT^A01|MRN000001-A01-0|P|2.3EVN|A01|
 $ tail -c 45 out/scenarios/ed-tuesday-latency-batches/batch-000.hl7 | cat -A
-N1|1||commercial-hmo|Commercial HMO^M$
+|||||||^MIN1|1||medicare-65|Medicare^M$
 $
 BTS|2$
 $
@@ -425,7 +460,7 @@ finished.
 **The lesson** (the author's own charter, ADR-0107/ADR-0109, quoted
 above, restated for batching specifically): transport-level
 completeness -- every `BTS-1` count checks out, exactly as this run's
-own 105-for-105 self-verification shows -- says nothing about
+own 106-for-106 self-verification shows -- says nothing about
 clinical-level completeness -- whether an encounter's own full record
 set has actually arrived yet. A downstream receiver deciding "do I
 have all of this encounter?" gets exactly the case it needs to test

@@ -43,8 +43,26 @@ bin/ehrt play out/scenarios/clinic-decade/events.edn --rate 10000000
 ## What to look for
 
 Witnessed 2026-08-26 (seed 20260807, 200 patients, `--config` as
-above): **1,136 ground-truth events, 228 HL7 v2 messages, 183 board
+above): **1,156 ground-truth events, 248 HL7 v2 messages, 183 board
 snapshots** over a 611,762,027,000 ms (~19.4-year) stream span.
+
+**PATIENTS COME BACK NOW**, and in this scenario that shows up in one
+place: `config.edn` opted in to the lifted ENCOUNTER HORIZON on
+2026-08-26 (arc 3b sweep 1, ADR-0174 ruling A1), and the run went from
+90 admissions to 100. All ten are PARENT DELIVERIES -- 17 before, 27
+now. Until that day a hook could put an encounter only on a patient who
+had never had one, so a person delivering a second child in this
+population simply produced no admission for it; now they do, on the
+same patient-id and the same MRN. Seven patients here have more than
+one encounter, ten encounters the pre-sweep engine threw away, and one
+patient reaches FOUR. Everything else about the run's clinical content
+is unmoved, including all 28 outpatient visits and all seven merges.
+
+**And every message now carries a visit number** -- PV1-19, empty on
+every message this project had ever produced before that sweep, renders
+the encounter's own `ENC-` id (ADR-0174 ruling C1). The only PV1s
+without one here are the five ADT^A40 merges, whose patients' stays had
+already ended.
 
 **THE DECADE IS NOW TWO DECADES, and that is the point of the change
 that produced these figures.** `config.edn` opted this scenario into
@@ -58,18 +76,22 @@ timeline IS. Every figure in this section moved with it, and the
 previous witness is recorded at the bottom of this block rather than
 overwritten.
 
-**The board-snapshot census, 183 snapshots:** `inpatients: 0` 94,
-`inpatients: 1` 87, `inpatients: 2` 1, `inpatients: 3` 1.
+**The board-snapshot census, 183 snapshots:** `inpatients: 0` 84,
+`inpatients: 1` 97, `inpatients: 2` 1, `inpatients: 3` 1.
 `bin/demo-exerciser-clinic-decade` re-derives that whole distribution
 from this paragraph at runtime and asserts every count exactly, plus
 that they exhaust the snapshot lines -- so a future re-witness cannot
 silently desync from the check. It used to be a two-way 41/7 split, and
 before that a universal `inpatients: 0`; the claim's SHAPE has widened
-twice now, each time because the scenario genuinely gained traffic.
+twice now, each time because the scenario genuinely gained traffic. Its
+COUNTS moved a third time on 2026-08-26 without the shape changing --
+ten hours that used to read `inpatients: 0` now read `inpatients: 1`,
+which is precisely the ten recovered parent deliveries occupying a bed.
 
-**Where the inpatients come from is entirely new.** All 90 admissions
+**Where the inpatients come from is entirely new.** All 100 admissions
 in this run are HOOK-created -- the person stream's own clinical
-events, not any module's:
+events, not any module's (28 `Unidentified patient`, 29 `Live birth`,
+27 `Delivery`, 16 `Occupational injury`):
 
 | reason | what it is |
 |---|---|
@@ -78,7 +100,7 @@ events, not any module's:
 | `Delivery` | the parent's own admission at the same instant, when their record is clinically idle |
 | `Occupational injury: <class>` | an employed person's ED presentation |
 
-**And seven ADT^A40 merges.** Every one of them is an IDENTIFICATION
+**And seven ADT^A40 merges**, unchanged by the horizon lift. Every one of them is an IDENTIFICATION
 merge: a John Doe record joined to the patient the same person already
 had. The board's own summary line counts them (`merged: 7`), which is
 the first time either scenario has shown a nonzero merge count at all.
@@ -91,8 +113,8 @@ site's local convention).
 
 The run's own closing summary: `{:unparseable-count 0, :snapshot-count
 183, :skip-count 0, :rate 1.0E7, :idle-cap-ms 5000, :wallclock-ms
-61546, :stream-span-ms 611762027000, :clamped-count 0, :emitted 228,
-:unfolded-count 0, :sink "ticker"}` -- 183 of the 228 messages rendered
+61566, :stream-span-ms 611762027000, :clamped-count 0, :emitted 248,
+:unfolded-count 0, :sink "ticker"}` -- 183 of the 248 messages rendered
 a snapshot; the others landed in a board window a prior message had
 already opened. NOT ONE inter-message wait exceeded `--idle-cap`'s
 default 5 seconds, so nothing was skipped and the whole ~19.4-year

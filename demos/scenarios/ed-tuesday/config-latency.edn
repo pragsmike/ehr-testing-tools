@@ -139,6 +139,16 @@
  ;; demographic timeline is, and this scenario's own README carries the
  ;; re-witnessed figures.
  :persons {:count 200 :years 20}
+ ;; ARC 3B SWEEP 1 (ADR-0174 ruling A1, 2026-08-26): `:encounters` is
+ ;; here for ONE reason and it is not a second opt-in decision. This
+ ;; file is `config.edn` PLUS a `:latency` block, and
+ ;; `bin/demo-exerciser-ed-tuesday` asserts the two produce
+ ;; BYTE-IDENTICAL ground truth -- the second-clock zero-offset identity
+ ;; (`:latency` never reaches `engine/config-keys`, ADR-0109). Any
+ ;; engine-facing key that lands in one has to land in the other or that
+ ;; identity breaks, which is exactly how this line came to be added:
+ ;; the exerciser's own `diff` went red.
+ :encounters true
  :latency {:admission {:from-minutes 15 :to-minutes 90}
            :transfer {:from-minutes 15 :to-minutes 60}
            :discharge {:from-minutes 15 :to-minutes 60}
