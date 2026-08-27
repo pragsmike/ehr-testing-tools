@@ -1,8 +1,15 @@
 ## ADR-0175 — arc 4: emission add-ons (chatter, status ladders, charges, fan-out, transport)
 
-**Status:** Proposed (design session 2026-08-27, HEAD `8439416`). A
-payload session under the de-scaffold moratorium: **no code lands with
-this ADR**, and no `components/*/src` file is touched. Arc 4 is the
+**Status:** Accepted (design session 2026-08-27, HEAD `8439416`;
+**RULED 2026-08-27: A1 B1 C1 D1 E1** -- the recommendation on every one
+of the five, with no addition and no amendment). The design session was
+a payload session under the de-scaffold moratorium: **no code landed
+with this ADR**, and no `components/*/src` file was touched. Each
+ruling is quoted below at the option it selected; the declined options
+are kept verbatim and unstruck, because what was declined is the reason
+the selection means anything. Execution begins with ruling A1's own
+sweep, arc 4 sweep 1 (2026-08-27), which is where section 2(e) becomes
+code. Arc 4 is the
 program's last arc (`.agents/plans/2026-08-24-traffic-scale-program.md`,
 "Arc 4 -- emission add-ons"), and it is the one arc that
 **reshuffles nothing**: `rulings.md#R-mix-7` puts chatter and fan-out
@@ -625,6 +632,15 @@ the selection mean something (ADR-0174's own convention).
 
 **(A) MSH-12: 2.3 or 2.4?**
 
+**RULED A1, 2026-08-27.** *Recommendation: **A1 -- declare 2.4, in its
+own sweep, PID-13's rendering first.*** Section 2(e)'s measurement is
+what settles it: at `"2.3"` all 747 probe-corpus messages resolve to
+`GenericMessage$V23`, so the base-structural tier this project ships is
+vacuous over this project's own output; at `"2.4"` with PID-13 rendered
+`(NNN)NNN-NNNN`, all 747 resolve into real v2.4 structures. Landed by
+arc 4 sweep 1.
+
+
 * **A1 (RECOMMENDED) -- declare 2.4, in its own sweep, PID-13's
   rendering first.** Two commits, each a declared digest change with one
   cause. Buys: real structure resolution for every message (the table in
@@ -641,6 +657,12 @@ the selection mean something (ADR-0174's own convention).
   under 2.3's own TN rule.
 
 **(B) Which add-ons are v1?**
+
+**RULED B1, 2026-08-27.** *Recommendation: **B1 -- chatter
+(A08/A31/A28/IN1) and DFT^P03 first; status ladders second; SIU only
+after (A); fan-out and MLLP as the player slices, priced separately.***
+NK1 is out of v1 entirely, per section 2(d).
+
 
 * **B1 (RECOMMENDED) -- chatter (A08/A31/A28/IN1) and DFT^P03 first;
   status ladders second; SIU only after (A); fan-out and MLLP as the
@@ -662,6 +684,10 @@ the selection mean something (ADR-0174's own convention).
 
 **(C) Chatter ratios: run config or a separate emission profile file?**
 
+**RULED C1, 2026-08-27.** *Recommendation: **C1 -- `:chatter` rides
+`:config`, exactly as `:latency` and `:site-profile` do.***
+
+
 * **C1 (RECOMMENDED) -- `:chatter` rides `:config`, exactly as
   `:latency` and `:site-profile` do.** One precedent, already load-bearing,
   already documented in `ehrt.sim.run`'s own docstring, already
@@ -680,6 +706,11 @@ the selection mean something (ADR-0174's own convention).
 
 **(D) Gating policy at scale.**
 
+**RULED D1, 2026-08-27.** *Recommendation: **D1 -- full on skeleton
+kinds, MSH-10-ordered stratified sampling on add-ons, per-stratum counts
+printed, and a born-red determinism gate.*** Section 2(h).
+
+
 * **D1 (RECOMMENDED) -- full on skeleton kinds, MSH-10-ordered
   stratified sampling on add-ons, per-stratum counts printed, and a
   born-red determinism gate.** Section 2(h).
@@ -692,6 +723,23 @@ the selection mean something (ADR-0174's own convention).
   family from vanishing.
 
 **(E) Landing order and the per-add-on shape.**
+
+**RULED E1, 2026-08-27.** *Recommendation: **E1 -- every add-on gets
+its OWN opt-in key, absent by default, and lands in two commits: DARK
+then ON.*** Ground truth digests must be IDENTICAL at BOTH commits.
+**Arc 4 sweep 1 found that the oracle cannot state that half on its
+own**: `digest.clj`'s `-main` writes the `{:ground-truth :hl7}` pair as
+ONE file per root, so `bin/regression-oracle` hashes the two halves
+together and an emission-only change makes every engine-layer root
+DIFFER. Section 4's sentence *"`bin/regression-oracle <base> <target>`
+reports `IDENTICAL` on every root's `:ground-truth`"* therefore names
+something the script could not do when it was written. The instrument
+E1 needs is `bin/ground-truth-bracket <a> <b>`, landed by sweep 1 as
+its own output-identical commit: same worktrees, same classpath, same
+`digest.clj`, digesting `(:ground-truth root)` alone across the 36
+engine-layer roots. Every arc-4 sweep runs BOTH brackets --
+ground-truth IDENTICAL, message digests declared.
+
 
 * **E1 (RECOMMENDED) -- every add-on gets its OWN opt-in key, absent by
   default, and lands in two commits: DARK (mechanism plus gates, oracle

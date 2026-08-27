@@ -59,12 +59,12 @@ with them.
   order/result status ladders, DFT^P03 charges, the fan-out/subscriber table;
   rides `roadmap.md#corpus-player-slices`. Reshuffles NOTHING and needs no stream
   work, so it is the one arc that may proceed independently now that arc 3's
-  skeleton contract is stable. DESIGNED 2026-08-27 by ADR-0175 (Proposed): the
-  census, each add-on classified under `rulings.md#R-skeleton-or-emission` with
-  its rejected alternatives, and five rulings A-E awaiting the author -- MSH-12
-  2.3-vs-2.4, the v1 add-on set, where chatter ratios live, the
-  sampled/stratified gating policy at scale (the ruling this row already owed),
-  and the dark-then-on landing shape. Two measured findings the design turned up
+  skeleton contract is stable. DESIGNED 2026-08-27 by ADR-0175, **ACCEPTED
+  2026-08-27, RULED A1 B1 C1 D1 E1**: the census, each add-on classified under
+  `rulings.md#R-skeleton-or-emission` with its rejected alternatives, and five
+  rulings A-E now settled -- MSH-12 declared 2.4, the v1 add-on set, chatter
+  ratios ride `:config`, the sampled/stratified gating policy at scale (the
+  ruling this row already owed), and the dark-then-on landing shape. Two measured findings the design turned up
   rather than a sweep: at MSH-12 "2.3" every message this project emits resolves
   to HAPI's own generic message, so the base-structural tier is structurally
   vacuous over our own corpus (and one PID-13 rendering fix is all that stands
