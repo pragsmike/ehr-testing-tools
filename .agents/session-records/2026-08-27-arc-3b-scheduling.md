@@ -182,6 +182,19 @@ tripwire reads `git log -1` on a source that commit edits, so no value
 written inside it can be its own sha. Structurally impossible in one
 commit; the pushed TIP is green.
 
+**CORRECTION, measured after the push rather than predicted before it.**
+The turn-on commit message says its own CI will be red. It was not:
+GitHub Actions ran ONE workflow for this six-commit push, at the TIP
+(`33109790758` at `6f4ba02`), and none for the intermediate commits. The
+earlier per-commit runs this repo's history shows — `36ea745` and
+`9b1a9b3` each with their own — were separate PUSHES, not per-commit
+triggers. So `d6e6546`'s redness is a fact about that TREE, provable by
+checking out and running the suite, and never a CI event. The
+`R-red-pushed-with-green` disclosure stands and was the right call; the
+prediction about where the redness would SHOW was wrong, and correcting
+it is cheaper than leaving a commit message that a reader would check
+against the Actions tab and fail to confirm.
+
 **`check.clj` may not call `volatile!`.** Both order-dependent invariants
 were first written with a volatile accumulator; `sim_purity_lint_test`
 (ADR-0108) reddened. They are pure left folds now. The lint was right.
@@ -274,6 +287,25 @@ three places `event-conformance-test` demands — each kind's `:doc`,
 The second red capture is the one that matters: it proves the
 non-vacuity gate BITES. A gate asserting only greenness would have gone
 silent when the stamp disappeared.
+
+## CI
+
+`bin/post-push-verify ab156c3 6f4ba02`, all three checks:
+
+* remote tip matches HEAD (`6f4ba020ebabf942ee2dd81b12d7995d673cd1fd`);
+* every commit message in the range is pure ASCII;
+* CI reported once, not awaited — `33109790758`, then `in_progress`.
+
+**Awaited to conclusion afterwards, which is the close marker:
+run `33109790758`, conclusion `success`, at `6f4ba020`.**
+
+`bin/preflight` before the push carried two findings, both disclosed and
+both expected: the same red at `9b1a9b3` the opening preflight named
+(sweep 2's tripwire, already remediated by `36ea745`), and HEAD ahead of
+`origin/main`, which is what the push was for. No tag was paid —
+`bin/tag-ceremony` and the per-arc `stable-*` tag were retired by the
+de-scaffold ruling of 2026-08-25, and the surviving close marker is the
+`gh run view` line above.
 
 ## Roadmap
 
