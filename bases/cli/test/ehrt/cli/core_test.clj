@@ -2028,6 +2028,25 @@
                 so no existing report shape moves"
         (is (nil? (get-in full [:payload :run :sampling])))))))
 
+(deftest gate-v2-sample-add-ons-an-unclassifiable-file-is-gated-not-sampled-away-test
+  (testing "a file whose MSH-9 cannot be read lands in the `unknown`
+            stratum and is gated in FULL. A sampler that quietly
+            dropped what it could not parse would hide exactly the
+            damage the gate exists to find -- so this one is REJECTED
+            by the gate rather than sampled away by the code that was
+            only deciding what to gate."
+    (let [in-dir (temp-dir*)]
+      (doseq [i (range 4)]
+        (spit (io/file in-dir (str "a08-" i ".hl7")) (er7-message "A08" (str "MRN" i "-A08-" i "-0"))))
+      (spit (io/file in-dir "not-msh-led.hl7") "PID|1||MRN000001||Doe^Jane\r")
+      (let [r (cli/gate-v2-command {:path in-dir :sample-add-ons 1})
+            strata (get-in r [:payload :run :sampling :strata])]
+        (is (= {:n 4 :gated 1 :add-on? true} (get strata "ADT^A08")))
+        (is (= {:n 1 :gated 1 :add-on? false} (get strata report/sampling-unknown-stratum))
+            "unclassifiable is skeleton -- gated in full, never dropped")
+        (is (= 2 (count (:files (:payload r)))))
+        (is (result/rejected? r) "and the gate is what convicts it, not the sampler")))))
+
 (deftest gate-v2-sample-add-ons-classifies-against-the-live-emitter-registry-test
   (testing "every MSH-9 the emitter's own `message-type-registry`
             produces is SKELETON, and arc 4's own four families are

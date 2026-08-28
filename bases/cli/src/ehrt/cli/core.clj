@@ -1180,13 +1180,25 @@
   first line. The read is `report/sampling-header`'s two-field split,
   not a parse: this runs over a corpus that may be too expensive to
   gate in full, so it must cost far less than the gating it is deciding
-  about."
+  about.
+
+  THE `slurp` IS GUARDED (ADR-0096's own read-guard rule, and
+  `ehrt.cli.cli-parse-guard-lint-test` is what said so). A file that
+  cannot be read is not an error HERE: it becomes an entry with no
+  MSH-9, which `stratified-selection` puts in the `unknown` stratum and
+  gates in FULL -- so the failure is reported by the gate engine's own
+  categorized `:file-not-found {:reason :permission-denied}` path
+  rather than as a raw exception thrown past the CLI boundary by the
+  code that was only deciding what to gate. Fail-safe, not fail-open:
+  the unreadable file is gated, never sampled away."
   [dir]
   (->> (file-seq (io/file dir))
        (filter #(and (.isFile ^java.io.File %)
                      (str/ends-with? (.getName ^java.io.File %) ".hl7")))
        (mapv (fn [f]
-               (let [{:keys [msh-9 msh-10]} (report/sampling-header (slurp f))]
+               (let [{:keys [msh-9 msh-10]}
+                     (try (report/sampling-header (slurp f))
+                          (catch Exception _ nil))]
                  {:path (.getPath ^java.io.File f)
                   :msh-9 msh-9
                   :msh-10 (or msh-10 (.getName ^java.io.File f))})))))
