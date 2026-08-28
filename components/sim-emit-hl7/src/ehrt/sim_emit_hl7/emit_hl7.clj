@@ -1303,12 +1303,27 @@
 
   MSH-10 is `mrn-P03-t`: the trigger is part of every control id this
   emitter mints, so a DFT can never collide with the ADT^A03 rendered
-  from the SAME event at the same instant."
+  from the SAME event at the same instant.
+
+  THE OFFSET IS LOOKED UP UNDER THE BASIS EVENT'S OWN CONTROL ID, not
+  under the DFT's, and the two are deliberately different keys. A DFT is
+  a SECOND message for one ground-truth event, so ADR-0109's split clock
+  says it lags by that event's own lag; keying the lookup on
+  `mrn-P03-t` would find no entry, silently give the DFT a zero offset,
+  and make the financial message overtake the ADT^A03 it accompanies.
+  Measured before this was fixed, on the ed-tuesday latency demo:
+  MRN000002's DFT transmitted at 01:24:00 and its A03 at 02:10:37, 46
+  minutes later, with no configuration anywhere asking for that. It was
+  an accident of keying, not a decision -- there is no `:latency` entry
+  a config author could write for a message family that has no event
+  kind of its own, so `never late` was an undeclared special case."
   [reference-date utc-offset facility providers demographics site-profile offsets lines
    {:keys [event t active-mrn location attending participants] :as ev}]
   (let [control-id (str active-mrn "-P03-" t)
         clinical-ts (hl7-timestamp reference-date t utc-offset)
-        transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
+        transmit-ts (hl7-timestamp reference-date
+                                   (transmit-seconds offsets (control-id-for ev) t)
+                                   utc-offset)
         facility-name (name (:id facility))
         provider (provider-by-id providers attending)
         persona (demographics-at demographics (:patient-id (first participants)) t)

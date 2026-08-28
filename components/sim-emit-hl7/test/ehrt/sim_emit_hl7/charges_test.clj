@@ -247,6 +247,38 @@
         (is (str/includes? (first (dfts (wire))) "|1875.00|1875.00"))
         (finally (java.util.Locale/setDefault previous))))))
 
+(deftest a-dft-rides-its-own-basis-events-latency-not-a-clock-of-its-own
+  (testing "ADR-0109's split clock: a DFT is a SECOND message for ONE
+            ground-truth event, so it lags by that event's own lag. The
+            offset is therefore looked up under the BASIS EVENT's
+            control id, never under `mrn-P03-t`, which has no entry and
+            would silently give every financial message a zero offset --
+            letting it overtake the ADT^A03 it accompanies by whatever
+            that discharge's own lag happened to be, with nothing in any
+            config asking for it."
+    (let [latency {:discharge {:from-minutes 45 :to-minutes 45}}
+          offsets (emit-hl7/plan-latency (java.util.Random. 11) log latency)
+          messages (emit-hl7/emit-wire log ref-date utc-offset facility providers nil offsets
+                                       {:charges (:lines (plan))})
+          msh-7 (fn [m] (nth (str/split (first (str/split m #"\r")) #"\|") 6))
+          by-id (into {} (map (juxt msh-10 identity)) messages)]
+      (is (seq offsets) "the latency profile must actually bite, or this is vacuous")
+      (is (= (msh-7 (get by-id "MRN000001-A03-91000"))
+             (msh-7 (get by-id "MRN000001-P03-91000")))
+          "the DFT and the ADT^A03 for one discharge transmit together")
+      (testing "and EVN-2 stays CLINICAL on both -- MSH-7 alone moves"
+        (is (str/includes? (get by-id "MRN000001-P03-91000") "EVN|P03|20240102011640+0000")))))
+  (testing "an :outpatient-visit-end has no registry entry and so no
+            control id of its own -- there is no ADT to align with, and
+            the DFT transmits at its clinical instant"
+    (let [latency {:discharge {:from-minutes 45 :to-minutes 45}}
+          offsets (emit-hl7/plan-latency (java.util.Random. 11) log latency)
+          messages (emit-hl7/emit-wire log ref-date utc-offset facility providers nil offsets
+                                       {:charges (:lines (plan))})
+          m (first (filter #(= "MRN000001-P03-402000" (msh-10 %)) messages))]
+      (is (some? m))
+      (is (str/includes? m "|20240105154000+0000||DFT^P03|")))))
+
 ;; --- Determinism: no RNG anywhere in the charge path --------------------
 
 (deftest plan-charges-takes-no-rng-and-is-a-pure-function-of-log-and-table
