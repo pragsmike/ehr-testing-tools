@@ -147,7 +147,9 @@
      :positional-doc "a file or directory, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it"
      :verbs
      [{:verb "v2" :doc "Gate against HL7 v2 base-structural conformance (HAPI)."
-       :flags gate-common-flags}
+       :flags (conj gate-common-flags
+                    {:flag "--sample-add-ons"
+                     :doc "gating at scale: cap how many messages of each ADD-ON family (an MSH-9 outside the emitter's own message-type registry -- ADT^A08/A31/A28, DFT^P03) are gated, taking the first N by MSH-10. Skeleton-kind families are always gated in full. The report's :run carries the per-stratum n/gated census, so a cap is never silent."})}
       ;; verdict cache: ADR-0016.
       ;; F7 (R3-B1-1, RULED ADR-0115 RQ1, ADR-0117): --out-dir renamed
       ;; --scratch-dir, NO back-compat alias -- corpus generate/mutate/

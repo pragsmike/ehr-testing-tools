@@ -158,6 +158,24 @@
    ;; arc rather than leaving it as a silence a reader has to notice.
    })
 
+(def skeleton-message-types
+  "Every MSH-9 this emitter's own registry produces, as `TYPE^TRIGGER`.
+
+  ARC 4 SWEEP 2 (ADR-0175 design (h), ruling D1). `gate v2`'s sampling
+  policy splits the wire into SKELETON families -- gated in full,
+  always -- and ADD-ON families, which are stratified and capped. This
+  is the skeleton half, DERIVED from `message-type-registry` rather
+  than listed anywhere, so a registry entry a later sweep adds is gated
+  in full from the moment it exists rather than from the moment
+  somebody remembers to widen a set.
+
+  What is NOT here is the whole of what arc 4 puts on the wire:
+  chatter's ADT^A08/A31/A28 and charges' DFT^P03 have no registry entry
+  by design (each is derivable restatement, `rulings.md#R-skeleton-or-
+  emission`), so they are exactly the add-on half."
+  (into #{} (map (fn [{:keys [type trigger]}] (str type "^" trigger)))
+        (vals message-type-registry)))
+
 (def ^:private hl7-timestamp-formatter
   (java.time.format.DateTimeFormatter/ofPattern "yyyyMMddHHmmss"))
 

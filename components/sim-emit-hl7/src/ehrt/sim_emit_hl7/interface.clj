@@ -75,6 +75,12 @@
   [ground-truth charges]
   (emit-hl7/plan-charges ground-truth charges))
 
+(def skeleton-message-types
+  "Every MSH-9 the registry produces, as TYPE^TRIGGER -- `gate v2`'s
+  sampling policy's own skeleton half. See
+  ehrt.sim-emit-hl7.emit-hl7/skeleton-message-types."
+  emit-hl7/skeleton-message-types)
+
 (def room-and-board-code
   "The reserved price-table key for a per-inpatient-day charge line.
   See ehrt.sim-emit-hl7.emit-hl7/room-and-board-code."

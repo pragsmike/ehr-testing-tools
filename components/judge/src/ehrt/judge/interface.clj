@@ -32,7 +32,8 @@
   (:require [ehrt.judge.report :as report]
             [ehrt.judge.finding :as finding]
             [ehrt.judge.verdict-cache :as verdict-cache]
-            [ehrt.judge.pairing :as pairing]))
+            [ehrt.judge.pairing :as pairing]
+            [ehrt.judge.sampling :as sampling]))
 
 ;; judge.report (collides with judge.finding on valid? -- qualified report-*)
 (def Report report/Report)
@@ -59,3 +60,13 @@
 (def PairingJudgeId pairing/JudgeId)
 (def load-pairing-registry pairing/load-registry)
 (def pairing-coverage pairing/coverage)
+
+;; --- ARC 4 SWEEP 2 (ADR-0175 design (h), ruling D1): gating at scale ------
+;; A PURE selection over corpus metadata, exported for `bases/cli`'s own
+;; `gate v2 --sample-add-ons`. The classification set is the CALLER's,
+;; which is what keeps this component free of any dependency on the
+;; emitter whose registry defines it.
+(def sampling-unknown-stratum sampling/unknown-stratum)
+(defn sampling-header [content] (sampling/header content))
+(defn stratified-selection [entries opts] (sampling/stratified-selection entries opts))
+(defn render-strata [strata] (sampling/render-strata strata))

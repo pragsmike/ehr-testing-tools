@@ -10,6 +10,7 @@
             [ehrt.corpus.interface :as generators]
             [ehrt.corpus.interface :as generate]
             [ehrt.judge-v2-nist.interface :as gate-v2-nist]
+            [ehrt.sim-emit-hl7.interface :as emit-hl7]
             [ehrt.cli.core :as cli]
             [ehrt.cli.help :as help])
   (:import [java.io File]))
@@ -1990,6 +1991,54 @@
     (is (= :gate-rejected (:category r)))
     (is (= 1 (cli/result->exit-code r)))))
 
+
+;; ---- ARC 4 SWEEP 2 (ADR-0175 design (h), ruling D1): `--sample-add-ons`
+;; ---- The POLICY's own gates are pure and live in
+;; `ehrt.judge.sampling-test`; these are the WIRING: that the flag
+;; actually reaches `gate-command`, that the skeleton half is derived
+;; from the emitter's own registry rather than a list kept here, and
+;; that the per-stratum census reaches the report a caller reads.
+
+(defn- er7-message
+  [trigger control-id]
+  (str "MSH|^~\\&|EHR-TESTING-SIM|SIM|||20240101000000+0000||ADT^" trigger
+       "|" control-id "|P|2.4\rEVN|" trigger "|20240101000000+0000\r"
+       "PID|1||MRN000001||Jones^Samantha||19921103|F\r"))
+
+(deftest gate-v2-command-sample-add-ons-gates-skeleton-in-full-and-caps-add-ons-test
+  (let [in-dir (temp-dir*)]
+    (doseq [i (range 6)]
+      (spit (io/file in-dir (str "a01-" i ".hl7")) (er7-message "A01" (str "MRN" i "-A01-" i))))
+    (doseq [i (range 6)]
+      (spit (io/file in-dir (str "a08-" i ".hl7")) (er7-message "A08" (str "MRN" i "-A08-" i "-0"))))
+    (let [full (cli/gate-v2-command {:path in-dir})
+          sampled (cli/gate-v2-command {:path in-dir :sample-add-ons 2})
+          strata (get-in sampled [:payload :run :sampling :strata])]
+      (is (result/ok? full))
+      (is (result/ok? sampled))
+      (is (= 12 (count (:files (:payload full)))))
+      (is (= 8 (count (:files (:payload sampled))))
+          "six skeleton A01s in full, two of the six add-on A08s")
+      (is (= {:n 6 :gated 6 :add-on? false} (get strata "ADT^A01")))
+      (is (= {:n 6 :gated 2 :add-on? true} (get strata "ADT^A08")))
+      (testing "the census reaches the report a caller reads -- `no
+                silent caps` (ADR-0175 section 2(h))"
+        (is (= 2 (get-in sampled [:payload :run :sampling :cap]))))
+      (testing "and an unsampled run carries no :sampling key at all,
+                so no existing report shape moves"
+        (is (nil? (get-in full [:payload :run :sampling])))))))
+
+(deftest gate-v2-sample-add-ons-classifies-against-the-live-emitter-registry-test
+  (testing "every MSH-9 the emitter's own `message-type-registry`
+            produces is SKELETON, and arc 4's own four families are
+            not -- derived, so a registry entry a later sweep adds is
+            gated in full without anyone widening a list"
+    (is (contains? emit-hl7/skeleton-message-types "ADT^A01"))
+    (is (contains? emit-hl7/skeleton-message-types "ADT^A20"))
+    (is (contains? emit-hl7/skeleton-message-types "ORU^R01"))
+    (doseq [add-on ["ADT^A08" "ADT^A31" "ADT^A28" "DFT^P03"]]
+      (is (not (contains? emit-hl7/skeleton-message-types add-on)) add-on))))
+
 (deftest gate-v2-command-writes-report-file-when-requested-test
   (let [out-file (str (temp-dir*) "/report.edn")
         r (cli/gate-v2-command {:path "test-fixtures/v2/adt-a01-admit.hl7" :report out-file})]
@@ -3211,8 +3260,16 @@
         "both messages sit inside the same 60-minute window -- no boundary crossed, but the final snapshot always fires")))
 
 (deftest play-command-board-unfolded-trigger-is-a-counted-cued-skip-not-a-crash-test
+  ;; RE-POINTED A08 -> A34 by arc 4 sweep 2 (ADR-0175 design (a)), and
+  ;; the reason is the co-landing rather than a convenience. This test
+  ;; needs a trigger `ehrt.sim-emit-hl7.v2-replay/evolve-entry` does NOT
+  ;; handle, and A08 stopped being one the moment chatter landed its own
+  ;; fold arm -- which ADR-0175 section 1(iii) says every add-on owes.
+  ;; A34 (patient information correction) is a real HL7 family this
+  ;; project neither emits nor folds, so the skip it produces is the
+  ;; same counted, cued skip A08 used to stand for.
   (let [messages [(board-message "20260807000000" "A01" "1" "Alpha" "A" :class "I" :ward "W1" :bed "1")
-                  (board-message "20260807000100" "A08" "1" "Alpha" "A")
+                  (board-message "20260807000100" "A34" "1" "Alpha" "A")
                   (board-message "20260807000200" "A02" "1" "Alpha" "A" :ward "W1" :bed "2")]
         printed (atom [])
         r (cli/play-command {:path (temp-file-with-content (clojure.string/join "\n\n" messages))

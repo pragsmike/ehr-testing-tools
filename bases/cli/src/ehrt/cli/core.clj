@@ -57,7 +57,14 @@
             [ehrt.judge-v2-hapi.interface :as gate-v2]
             [ehrt.judge-fhir-official.interface :as gate-fhir]
             [ehrt.judge-v2-nist.interface :as gate-v2-nist]
-            [ehrt.judge.interface :as report])
+            [ehrt.judge.interface :as report]
+            ;; ARC 4 SWEEP 2 (ADR-0175 design (h)): `gate v2`'s sampling
+            ;; policy classifies a message family as skeleton or add-on
+            ;; against the EMITTER's own registry, so the base -- the
+            ;; composition root, and the one place allowed to see both
+            ;; sides -- is where the two meet. `components/judge` stays
+            ;; free of any emitter dependency; it takes the set.
+            [ehrt.sim-emit-hl7.interface :as emit-hl7])
   (:import [java.time LocalDate]
            [java.lang ProcessBuilder$Redirect]))
 
@@ -80,6 +87,10 @@
    :reference-date {:coerce :string}
    :version {:coerce :string}
    :no-verdict-cache {:coerce :boolean}
+   ;; ARC 4 SWEEP 2 (ADR-0175 design (h), ruling D1): `gate v2`'s own
+   ;; per-MSH-9-stratum cap on ADD-ON message families. Skeleton-kind
+   ;; families are always gated in full whatever this says.
+   :sample-add-ons {:coerce :long}
    :all {:coerce :boolean}
    ;; `ehrt sim run` (ADR-0005, ADR-0012 fulfilled): sim's own opt names,
    ;; unchanged -- ehrt.sim.interface/run-command's own :patients/
@@ -1164,6 +1175,35 @@
       (catch Exception e
         (result/error :path-unreadable {:path (.getPath f) :message (.getMessage e)})))))
 
+(defn- sampled-gate-entries
+  "Every *.hl7 file under `dir`, with its MSH-9/MSH-10 read off the
+  first line. The read is `report/sampling-header`'s two-field split,
+  not a parse: this runs over a corpus that may be too expensive to
+  gate in full, so it must cost far less than the gating it is deciding
+  about."
+  [dir]
+  (->> (file-seq (io/file dir))
+       (filter #(and (.isFile ^java.io.File %)
+                     (str/ends-with? (.getName ^java.io.File %) ".hl7")))
+       (mapv (fn [f]
+               (let [{:keys [msh-9 msh-10]} (report/sampling-header (slurp f))]
+                 {:path (.getPath ^java.io.File f)
+                  :msh-9 msh-9
+                  :msh-10 (or msh-10 (.getName ^java.io.File f))})))))
+
+(defn- sampled-gate-dir
+  "`gate-dir`'s sampled sibling (ADR-0175 ruling D1). Returns kernel/ok
+  `{:results [...] :sampling {:cap :strata}}` -- the per-stratum census
+  rides the result so `gate-command` can put it on the report's own
+  `:run` map. NO SILENT CAPS: every stratum's `n` and `gated` is in
+  there whether it was capped or not."
+  [gate-file-fn dir cap]
+  (let [entries (sampled-gate-entries dir)
+        {:keys [selected strata]} (report/stratified-selection
+                                   entries {:skeleton-types emit-hl7/skeleton-message-types :cap cap})]
+    (result/ok {:results (mapv #(:payload (gate-file-fn (:path %))) selected)
+                :sampling {:cap cap :strata strata}})))
+
 (defn gate-command
   "Builds an `ehrt gate <format>` command function from that format's
   gate-file/gate-dir functions (an engine interface, e.g. ehrt.judge-v2-hapi.interface, and
@@ -1201,14 +1241,16 @@
   distinct exit code for that case, so no workflow silently inherits a
   no-verdict-handling default."
   [gate-file-fn gate-dir-fn gate-label]
-  (fn [{:keys [path report baseline treat-no-verdict-as]}]
+  (fn [{:keys [path report baseline treat-no-verdict-as sample-add-ons]}]
     (let [policy-result (parse-treat-no-verdict-as treat-no-verdict-as)]
       (if-not (result/ok? policy-result)
         policy-result
         (let [policy (:payload policy-result)
               f (io/file path)
               results-result (if (.isDirectory f)
-                                (gate-dir-fn path)
+                                (if (and sample-add-ons (pos? sample-add-ons))
+                                  (sampled-gate-dir gate-file-fn path sample-add-ons)
+                                  (gate-dir-fn path))
                                 (or (gate-unreadable-file-error f)
                                     (let [r (gate-file-fn path)]
                                       (if (result/ok? r)
@@ -1217,7 +1259,14 @@
           (if-not (result/ok? results-result)
             results-result
             (let [results (:results (:payload results-result))
-                  run {:gate gate-label :path path}]
+                  ;; ARC 4 SWEEP 2 (ADR-0175 ruling D1): `no silent
+                  ;; caps`. The per-stratum census rides the report's
+                  ;; own `:run` map, so a sampled report says on its
+                  ;; face which families were capped and by how much --
+                  ;; a truncation nobody prints reads as full coverage.
+                  run (cond-> {:gate gate-label :path path}
+                        (:sampling (:payload results-result))
+                        (assoc :sampling (:sampling (:payload results-result))))]
               (if baseline
                 (let [baseline-result
                       (try
