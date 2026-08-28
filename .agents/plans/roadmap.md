@@ -54,6 +54,11 @@ with them.
   true when written that nothing keeps true. What remains on this row is
   whatever the component still owes on its own terms, not a dependency on
   a row that no longer exists.
+- OPEN **[oru-control-id-collision]** PRIORITY 4 -- `control-id-for` not
+  injective over `:result-available` -- 6 live duplicate MSH-10s in seed-424242,
+  1 in clinic-decade demo (sweep-3 record :290); fix moves every corpus, its own
+  declared sweep; sweep 5's fan-out must either wait for it or derive from log
+  indices.
 - OPEN **[emission-add-ons]** PRIORITY 5 -- traffic-scale arc 4
   (`rulings.md#R-mix-7`): re-statement chatter (A08/A31/A28, IN1-only),
   order/result status ladders, DFT^P03 charges, the fan-out/subscriber table;
