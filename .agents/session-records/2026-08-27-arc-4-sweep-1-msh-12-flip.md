@@ -1,6 +1,6 @@
 # Arc 4 sweep 1 — the 2.4 flip (ADR-0175 ruling A1)
 
-2026-08-27. Base `ba9c78c`, tip `<tip>`. Six commits. Ceremony: R30
+2026-08-27. Base `ba9c78c`, tip `a7e132f`. Seven commits. Ceremony: R30
 (commit and push at each checkpoint), taken from the session prompt.
 
 `bin/preflight` ran first, exit 0, no findings. One thing disclosed:
@@ -219,7 +219,27 @@ captures; `demos/traces/emit-state/README.md`'s FHIR `telecom`, still
 `messages-aldric.txt`, whose profile declares `2.5.1` explicitly — the
 override path proving itself; both conformance baselines.
 
-## Gates
+## Gates, and the close
 
-`make test` and `make integration` at the tip: see the close section
-below. `clojure -M:poly check` green throughout.
+* `make test` -- **`MAKE_EXIT=0`**, 381 namespaces, 0 failures, 0 errors.
+* `make integration` -- **`INT_EXIT=0`**, 0 failures, tree clean.
+* `clojure -M:poly check` green throughout.
+* `bin/post-push-verify ba9c78c a7e132f` -- remote tip matches, every
+  commit message in range pure ASCII, CI reported.
+* **CI run 33137655759, `conclusion=success` at `a7e132f`** -- the close
+  marker (`rulings.md#R-session-verifies-ci-via-gh`). No tag paid.
+
+THE SUITE FOUND THE LAST TWO RE-PINS, not reasoning about the diff:
+`absent-profile-renders-todays-hardcoded-msh-values` and
+`bed-cycle-test`'s `MSH-12 is unchanged by this family`. Three separate
+pins caught this flip in all (those two plus the judge tier), which is
+what they exist for -- and it is the argument for
+`feedback_repo_gate_ordering`'s rule that the full suite runs even when
+a diff looks obviously safe.
+
+A NOTE ON WHAT THE SWEEP DID NOT DO. ADR-0175's fences held: no draw,
+no persona, no engine change, no new message family, no SIU, no chatter.
+`engine/config-keys` is untouched. `person-simulator` limitations rows 5
+and 8 stand. Findings `gate v2` raises after the flip were to be ROWED
+rather than fixed -- there were none to row, which is itself the
+finding.
