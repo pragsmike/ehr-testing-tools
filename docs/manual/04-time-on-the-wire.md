@@ -176,12 +176,12 @@ patient, same message — the whole difference is which clock moved:
 
 ```
 --- out/scenarios/ed-tuesday-base/msg-020.hl7 (the instant wire)
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811032200+0000||ORU^R01|MRN000005-R01-12120|P|2.3
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811032200+0000||ORU^R01|MRN000005-R01-12120|P|2.4
 OBR|1|||58410-2^CBC panel - Blood by Automated count^LN|||20260811032200+0000
 OBX|1|NM|6690-2^Leukocytes [#/volume] in Blood by Automated count^LN||6.1|K/uL|4.5-11.0|N||||||20260811032200+0000
 
 --- out/scenarios/ed-tuesday-latency/msg-023.hl7 (the latency wire)
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811040740+0000||ORU^R01|MRN000005-R01-12120|P|2.3
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811040740+0000||ORU^R01|MRN000005-R01-12120|P|2.4
 OBR|1|||58410-2^CBC panel - Blood by Automated count^LN|||20260811032200+0000
 OBX|1|NM|6690-2^Leukocytes [#/volume] in Blood by Automated count^LN||6.1|K/uL|4.5-11.0|N||||||20260811032200+0000
 ```

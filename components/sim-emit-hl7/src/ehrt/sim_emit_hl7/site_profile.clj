@@ -54,8 +54,25 @@
   Task 4); a site profile may override it to \"T\"/\"D\" for a
   training/debugging feed instead. See docs/site-profiles.md's own
   realism-vs-caution paragraph on this specific knob before changing it
-  in a config a consumer's own routing logic depends on."
-  {:version "2.3"
+  in a config a consumer's own routing logic depends on.
+
+  MSH-12 IS `\"2.4\"` SINCE 2026-08-27 (arc 4 sweep 1,
+  `notes/adr/0175-arc-4-emission-add-ons.md` ruling A1, commit 2 of 2).
+  It was `\"2.3\"` from this project's first message until then, and the
+  flip is a CONFORMANCE EVENT rather than a cosmetic one: there is no
+  v2.3 structure library on any classpath in this tree, so HAPI
+  resolved every message this project emits to
+  `ca.uhn.hl7v2.model.GenericMessage$V23` -- no segment order, no
+  cardinality, no required-segment check, no primitive typing. The
+  base-structural gate this project SHIPS was structurally vacuous over
+  this project's OWN output for its whole life. At `\"2.4\"` every
+  message resolves to a real v2.4 structure, which is what
+  `ehrt.conformance.v2-structure-resolution-test` asserts corpus-wide.
+
+  A SITE THAT MUST SPEAK 2.3 KEEPS TODAY'S BYTES with `{:msh {:version
+  \"2.3\"}}` -- this is a site-profile field precisely so the flip costs
+  such a site nothing, and `effective-msh` below is the override path."
+  {:version "2.4"
    :sending-app "EHR-TESTING-SIM"
    :sending-facility "SIM"
    :receiving-app ""

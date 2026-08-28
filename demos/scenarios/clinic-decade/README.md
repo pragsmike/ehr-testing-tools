@@ -61,9 +61,12 @@ That last figure is the point of the whole sweep, and it reads
 differently here than at `ed-tuesday`: this scenario admits people who
 then come back to clinic, so its scheduled openers are follow-ups
 almost by definition. NONE of the four scheduling kinds reaches the
-wire (the SIU family is v2.4 structure; every message here says MSH-12
-`2.3`), which is why the event count rose by 113 while the message
-count rose by only 27.
+wire, which is why the event count rose by 113 while the message count
+rose by only 27. That used to be a VERSION objection -- the SIU family
+is v2.4 structure and every message here said MSH-12 `2.3` -- but arc
+4 sweep 1 (ADR-0175 ruling A1, 2026-08-27) declared `2.4`, so what
+remains is work not yet done rather than a structure the version field
+disclaims.
 
 **AND BEDS TAKE TIME TO TURN OVER**, though in this scenario that buys
 less than it does at `ed-tuesday`. `config.edn` opted in to the

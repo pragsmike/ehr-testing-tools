@@ -83,29 +83,43 @@
    ;; at all. `bed-status-message` is its sibling, added rather than
    ;; widening the single-subject builder with a patient-less branch.
    ;;
-   ;; MSH-12 STAYS "2.3" and this entry does not change it -- the
-   ;; version question ADR-0174 section 2(d) raised is answered in
-   ;; `bed-status-message`'s own docstring, including what this clone
-   ;; can and cannot check.
+   ;; MSH-12 IS NOW "2.4" (arc 4 sweep 1, ADR-0175 ruling A1, commit 2 of
+   ;; 2). This entry did not change it and does not depend on it: ADT^A20
+   ;; exists in both versions, which is why sweep 2 could add it while
+   ;; the version question was still open. It is settled now -- see the
+   ;; block below.
    :bed-status-change {:type "ADT" :trigger "A20"}
-   ;; ARC 3B SWEEP 3 (ADR-0174 ruling C, 2026-08-27): SCHEDULING'S FOUR
-   ;; KINDS GET NO ENTRY HERE, and the omission is a DECISION with a
-   ;; reason, not an oversight.
+   ;; SCHEDULING'S FOUR KINDS STILL GET NO ENTRY HERE, and the reason
+   ;; CHANGED on 2026-08-27 (arc 4 sweep 1, ADR-0175 ruling A1). Read
+   ;; this block before adding one.
    ;;
-   ;; `:appointment`, `:reschedule`, `:appointment-cancel` and `:no-show`
-   ;; map onto the SIU family -- S12, S14, S15, S26 -- and every message
-   ;; this emitter produces carries MSH-12 "2.3", while the SIU
-   ;; structures are v2.4. Sweep 2's own `:bed-status-change` above could
-   ;; be added because ADT^A20 exists in 2.3; SIU does not, so an entry
-   ;; here would emit a structure the version field disclaims, which is
-   ;; worse than emitting nothing at all.
+   ;; THE VERSION BLOCKER IS GONE. `:appointment`, `:reschedule`,
+   ;; `:appointment-cancel` and `:no-show` map onto the SIU family --
+   ;; S12, S14, S15, S26 -- which is v2.4 structure. Arc 3b sweep 3
+   ;; recorded, correctly for its day, that "every message this emitter
+   ;; produces carries MSH-12 \"2.3\", while the SIU structures are
+   ;; v2.4", so an entry "would emit a structure the version field
+   ;; disclaims". `site-profile/default-msh` now declares "2.4", and
+   ;; that sentence no longer holds: SIU is exactly as declarable as
+   ;; ADT^A20.
    ;;
-   ;; The four are therefore GROUND TRUTH ONLY in 1.7.0. A consumer
-   ;; reading the log sees appointments; a consumer reading the wire does
-   ;; not. That gap is REAL, it is rowed for arc 4 alongside the MSH-12
-   ;; question ADR-0174 section 2(d) raised, and it is stated in all
-   ;; three places the conformance gate demands: each kind's own `:doc`,
-   ;; here, and `event-conformance-test`'s silent set.
+   ;; WHAT THIS SWEEP CHANGED, AND WHAT IT DID NOT. It changed the
+   ;; version field and PID-13's rendering, nothing else. It did NOT add
+   ;; a message family -- ADR-0175 ruling B1 puts SIU after (A), not in
+   ;; it, and its own fences forbid a new family in this sweep. So the
+   ;; four stay GROUND TRUTH ONLY: a consumer reading the log sees
+   ;; appointments, a consumer reading the wire does not, and the gap is
+   ;; still REAL. What is different is that it is now a SCHEDULING-WORK
+   ;; gap and not a version gap, and it is arc 4 sweep 4's to close.
+   ;;
+   ;; ANY LATER SWEEP ADDING AN SIU ENTRY OWES a `v2-replay/evolve-entry`
+   ;; arm with it (ADR-0175 section 1(iii)): an unhandled MSH-9 THROWS
+   ;; there, which kills the emitter-coherence property rather than
+   ;; failing it softly.
+   ;;
+   ;; The silence is still stated in all three places the conformance
+   ;; gate demands: each kind's own `:doc`, here, and
+   ;; `event-conformance-test`'s silent set.
    ;; M5b (components/patient-simulator/docs/gmf-interpreter.md section 1's table): :observation is an
    ;; UNSOLICITED finding, not an order's result -- same ORU^R01 message
    ;; family as :result-available, rendered WITHOUT the ORC/OBR order
@@ -791,18 +805,28 @@
   aliased onto another structure, it has its own. NPU's two fields are
   NPU-1 `PL` (the datatype PV1-3 already renders) and NPU-2 `IS`.
 
-  AND THE VERSION QUESTION, ANSWERED HONESTLY RATHER THAN ASSERTED.
-  MSH-12 stays `\"2.3\"` (`site-profile/default-msh`), unchanged by this
-  message family. ADR-0174 section 2(d) asked whether a new trigger is
-  legal in 2.3 and said this ADR would not assert it from memory. This
-  clone still contains NO 2.3 trigger table: the only structure library
-  on any classpath is v2.4, `~/.m2` holds `hapi-structures-v24` alone,
-  and neither `hapi-base` nor any resource in this repository carries a
-  2.3 eventmap. So what is checkable here is A20 in 2.4, and that is
-  checked; A20 in 2.3 is the AUTHOR'S RULING (ADR-0174 ruling C, plus
-  this session's own fence), taken as a ruling and recorded as one. An
-  in-tree 2.3 trigger table would settle it and this sweep does not
-  add one."
+  AND THE VERSION QUESTION, NOW SETTLED -- this paragraph is kept and
+  amended rather than deleted, because what it could NOT check is the
+  reason the question was worth asking.
+
+  It used to read: MSH-12 stays `\"2.3\"`, and A20-in-2.3 is the
+  AUTHOR'S RULING (ADR-0174 ruling C) rather than something this clone
+  can verify, because there is NO 2.3 trigger table here -- the only
+  structure library on any classpath is v2.4, `~/.m2` holds
+  `hapi-structures-v24` alone, and neither `hapi-base` nor any resource
+  in this repository carries a 2.3 eventmap. All of that is still true
+  of 2.3.
+
+  WHAT CHANGED (arc 4 sweep 1, ADR-0175 ruling A1, 2026-08-27):
+  `site-profile/default-msh` declares `\"2.4\"`. The unverifiable claim
+  is retired rather than answered -- this message family no longer
+  needs A20-in-2.3 to be legal, because it no longer says 2.3. What was
+  checkable all along (A20 in 2.4, own structure, not aliased in
+  `2.4.properties`) is now what the version field actually declares,
+  and `ehrt.conformance.v2-structure-resolution-test` asserts the
+  resolution over a whole corpus rather than this docstring asserting
+  it. A site that must speak 2.3 keeps `{:msh {:version \"2.3\"}}` and
+  inherits the same unverifiability, knowingly."
   [reference-date utc-offset facility _providers _demographics site-profile offsets
    {:keys [t bed ward to] :as ev}]
   (let [type+trigger (message-type-registry :bed-status-change)

@@ -79,10 +79,14 @@ and none held one produced BY BOOKING before this sweep.
 
 **NONE OF THE FOUR SCHEDULING KINDS REACHES THE WIRE**, which is why
 the event count rose by 118 while the message count rose by only 43.
-They map onto the SIU family, which is v2.4 structure, and every
-message here carries MSH-12 `2.3`; emitting a structure the version
-field disclaims would be worse than emitting nothing. The appointments
-are in `events.edn` and nowhere in the HL7.
+They map onto the SIU family, which is v2.4 structure. Until
+2026-08-27 that was a VERSION problem -- every message here carried
+MSH-12 `2.3`, and emitting a structure the version field disclaims
+would be worse than emitting nothing. Arc 4 sweep 1 (`notes/adr/
+0175-arc-4-emission-add-ons.md` ruling A1) declared `2.4`, so the
+version objection is gone and what remains is simply work not yet
+done: the SIU entries are arc 4 sweep 4's. The appointments are still
+in `events.edn` and nowhere in the HL7.
 
 **BEDS TAKE TIME TO TURN OVER.** `config.edn` opted this scenario
 into the BED-STATUS CYCLE on 2026-08-27 (arc 3b sweep 2, ADR-0174
@@ -527,7 +531,7 @@ exercised, not merely claimed.
 $ head -c 100 out/scenarios/ed-tuesday-latency-batches/batch-000.hl7
 BHS|^~\&
 
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811003626+0000||ADT^A01|MRN000001-A01-0|P|2.3EVN|A01|
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811003626+0000||ADT^A01|MRN000001-A01-0|P|2.4EVN|A01|
 $ tail -c 45 out/scenarios/ed-tuesday-latency-batches/batch-000.hl7 | cat -A
 mergency^^ED-H16^general-hospital|U^M$
 $

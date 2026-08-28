@@ -62,7 +62,7 @@ has.
 ## Excerpt: patient 4 (MRN000004), admission — PID + IN1, verbatim from `messages.txt`
 
 ```
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20240101010100+0000||ADT^A01|MRN000004-A01-3660|P|2.3
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20240101010100+0000||ADT^A01|MRN000004-A01-3660|P|2.4
 EVN|A01|20240101010100+0000
 PID|1||MRN000004||Smith^Jennifer||19740918|F|||63 Pinehurst St^^Charlotte^NC^28202||(805)700-1990
 PV1|1|I|Renal^^RENAL-01^general-hospital||||0914424805^Reyes^Priya

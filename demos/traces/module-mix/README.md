@@ -95,13 +95,13 @@ merely a description of it.
 ## Excerpt: a real vendored-module emergency admission, glass-box cited
 
 ```
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20311217123500+0000||ADT^A01|MRN000022-A01-251210100|P|2.3
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20311217123500+0000||ADT^A01|MRN000022-A01-251210100|P|2.4
 EVN|A01|20311217123500+0000
 PID|1||MRN000022||Davis^Michael||20051216|M|||35 Aspen Way^^Albuquerque^NM^87102||(967)291-8344
 PV1|1|I|Emergency^^ED-H05^general-hospital||||7919726852^Reyes^Priya|||||||||||||||||||||||||||||
 IN1|1||commercial-hmo|Commercial HMO
 
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20311217123500+0000||ADT^A03|MRN000022-A03-251210100|P|2.3
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20311217123500+0000||ADT^A03|MRN000022-A03-251210100|P|2.4
 EVN|A03|20311217123500+0000
 PID|1||MRN000022||Davis^Michael||20051216|M|||35 Aspen Way^^Albuquerque^NM^87102||(967)291-8344
 PV1|1|I|Emergency^^ED-H05^general-hospital||||7919726852^Reyes^Priya|||||||||||||||||||||||||||||01

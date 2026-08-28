@@ -101,7 +101,7 @@ README:
 $ head -c 100 out/scenarios/ed-tuesday-latency-batches/batch-000.hl7
 BHS|^~\&
 
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811003026+0000||ADT^A01|MRN000002-A01-360|P|2.3EVN|A0
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811003026+0000||ADT^A01|MRN000002-A01-360|P|2.4EVN|A0
 $ tail -c 45 out/scenarios/ed-tuesday-latency-batches/batch-000.hl7 | cat -A
 dicare-advantage|Medicare Advantage^M$
 $
@@ -125,7 +125,7 @@ fresh regeneration (byte-identical to the values `ed-tuesday`'s own
 README states):
 
 ```
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811003026+0000||ADT^A01|MRN000002-A01-360|P|2.3
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811003026+0000||ADT^A01|MRN000002-A01-360|P|2.4
 ```
 
 ## The straddle: one encounter, two individually clean files
@@ -142,10 +142,10 @@ MSH segments byte-faithful:
 
 ```
 $ grep 'MRN000002-A01' out/scenarios/ed-tuesday-latency-batches/batch-000.hl7 | tr '\r' '\n' | head -1
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811003026+0000||ADT^A01|MRN000002-A01-360|P|2.3
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811003026+0000||ADT^A01|MRN000002-A01-360|P|2.4
 
 $ grep 'MRN000002-A03' out/scenarios/ed-tuesday-latency-batches/batch-001.hl7 | tr '\r' '\n' | head -1
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811013419+0000||ADT^A03|MRN000002-A03-2280|P|2.3
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811013419+0000||ADT^A03|MRN000002-A03-2280|P|2.4
 ```
 
 (HL7 v2 segments are `\r`-terminated, not `\n`-terminated — `tr` makes

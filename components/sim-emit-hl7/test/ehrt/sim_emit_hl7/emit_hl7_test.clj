@@ -874,12 +874,31 @@
     (is (= "D" (message/get-field-first-value (parsed-for "D") "MSH" 11)))))
 
 (deftest absent-profile-renders-todays-hardcoded-msh-values
+  "MSH-12 IS \"2.4\" SINCE 2026-08-27 (arc 4 sweep 1, ADR-0175 ruling
+  A1, commit 2 of 2). It read \"2.3\" from this project's first message
+  until then, and this assertion is the pin that made the flip visible
+  rather than silent -- it is re-pinned, once, and the escape hatch is
+  pinned beside it so the two move together or not at all."
   (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
-        parsed (parser/parse (first (emit-hl7/emit ground-truth ref-date utc-offset facility providers)))]
-    (is (= "2.3" (message/get-field-first-value parsed "MSH" 12)))
-    (is (= "P" (message/get-field-first-value parsed "MSH" 11)))
-    (is (= "EHR-TESTING-SIM" (message/get-field-first-value parsed "MSH" 3)))
-    (is (= "SIM" (message/get-field-first-value parsed "MSH" 4)))))
+        msh (fn [profile n]
+              (message/get-field-first-value
+               (parser/parse (first (emit-hl7/emit ground-truth ref-date utc-offset
+                                                   facility providers profile)))
+               "MSH" n))]
+    (testing "the DEFAULT profile declares 2.4"
+      (is (= "2.4" (msh nil 12))))
+    (testing "and a site that must speak 2.3 still can -- the flip's escape hatch"
+      ;; Without this, a later change could quietly stop honouring the
+      ;; override and only the default would be under test. What such a
+      ;; site GIVES UP is pinned separately, in
+      ;; `ehrt.conformance.v2-structure-resolution-test`: every 2.3
+      ;; message falls back to GenericMessage and is structurally
+      ;; unchecked.
+      (is (= "2.3" (msh {:msh {:version "2.3"}} 12))))
+    (testing "every other MSH default is untouched by the flip"
+      (is (= "P" (msh nil 11)))
+      (is (= "EHR-TESTING-SIM" (msh nil 3)))
+      (is (= "SIM" (msh nil 4))))))
 
 (deftest pv1-2-patient-class-renders-through-the-profiles-code-table
   (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})

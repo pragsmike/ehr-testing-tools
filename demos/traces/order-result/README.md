@@ -44,13 +44,13 @@ passthrough (Milestone M4 Task 0).
 ## Excerpt: ORM^O01 then ORU^R01 for patient 1 (MRN000001), verbatim from `messages.txt`
 
 ```
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20240101000000+0000||ORM^O01|MRN000001-O01-0|P|2.3
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20240101000000+0000||ORM^O01|MRN000001-O01-0|P|2.4
 PID|1||MRN000001||Garcia^Sandra||19520726|F|||914 Fairview Blvd^^Salt Lake City^UT^84101||(349)906-1132
 PV1|1|I|Renal^^RENAL-04^general-hospital||||4255631598^Chen^Amara|||||||||||||||||||||||||||||
 ORC|NW|MRN000001-O01-0
 OBR|1|||58410-2^CBC panel - Blood by Automated count^LN
 
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20240101012500+0000||ORU^R01|MRN000001-R01-5100|P|2.3
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20240101012500+0000||ORU^R01|MRN000001-R01-5100|P|2.4
 PID|1||MRN000001||Garcia^Sandra||19520726|F|||914 Fairview Blvd^^Salt Lake City^UT^84101||(349)906-1132
 PV1|1|I|Renal^^RENAL-04^general-hospital||||4255631598^Chen^Amara|||||||||||||||||||||||||||||
 ORC|NW|MRN000001-R01-5100

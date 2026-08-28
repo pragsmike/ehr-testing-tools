@@ -66,7 +66,7 @@ Patient 1's opening ADT^A01, verbatim from `messages.txt` (segments
 shown one per line for readability; the real wire format uses `\r`):
 
 ```
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20240101000000+0000||ADT^A01|MRN000001-A01-0|P|2.3
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20240101000000+0000||ADT^A01|MRN000001-A01-0|P|2.4
 EVN|A01|20240101000000+0000
 PID|1||MRN000001||Garcia^Sandra||19520726|F|||914 Fairview Blvd^^Salt Lake City^UT^84101||(349)906-1132
 PV1|1|I|Renal^^RENAL-04^general-hospital||||4255631598^Chen^Amara
