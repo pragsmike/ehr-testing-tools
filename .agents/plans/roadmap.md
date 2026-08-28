@@ -60,17 +60,18 @@ with them.
   rides `roadmap.md#corpus-player-slices`. Reshuffles NOTHING and needs no stream
   work, so it is the one arc that may proceed independently now that arc 3's
   skeleton contract is stable. DESIGNED 2026-08-27 by ADR-0175, **ACCEPTED
-  2026-08-27, RULED A1 B1 C1 D1 E1**: the census, each add-on classified under
-  `rulings.md#R-skeleton-or-emission` with its rejected alternatives, and five
-  rulings A-E now settled -- MSH-12 declared 2.4, the v1 add-on set, chatter
-  ratios ride `:config`, the sampled/stratified gating policy at scale (the
-  ruling this row already owed), and the dark-then-on landing shape. Two measured findings the design turned up
-  rather than a sweep: at MSH-12 "2.3" every message this project emits resolves
-  to HAPI's own generic message, so the base-structural tier is structurally
-  vacuous over our own corpus (and one PID-13 rendering fix is all that stands
-  between the tree and a clean 2.4 declaration); and NK1 is not available to this
-  arc at all, because household state reaches no ground-truth event, so ADR-0172
-  limitations row 8 stands and arc 4 lifts none of it.
+  2026-08-27, RULED A1 B1 C1 D1 E1**. **SWEEP 1 OF 6 LANDED 2026-08-27 and the
+  MSH-12 QUESTION IS CLOSED**: `default-msh` declares `"2.4"` and PID-13 renders
+  `(NNN)NNN-NNNN`, so every message now resolves to a real v2.4 structure
+  instead of `GenericMessage$V23` -- measured, and narrower than ADR-0175
+  section 1(iv) claimed: the flip buys PRIMITIVE TYPING and not
+  segment-order/cardinality/required-segment checking, which still needs the
+  profile tier. Ground truth held (`bin/ground-truth-bracket`, the instrument
+  E1 owed and sweep 1 built, IDENTICAL over 36 roots at both commits). Five
+  sweeps remain: chatter, DFT^P03, ladders, SIU (now unblocked), fan-out/MLLP. The design's OTHER measured finding still
+  stands and no sweep can lift it: NK1 is unavailable to this arc at all,
+  because household state reaches no ground-truth event -- ADR-0172 limitations
+  row 8 is untouched.
 - OPEN **[corpus-player-slices]** PRIORITY 7 -- the corpus-player slices
   chartered by ADR-0014 that have never had a row in any register. CORRECTED
   2026-08-26 (ADR-0174 section 1(ii)'s disclosure): the **bed-board sink LANDED

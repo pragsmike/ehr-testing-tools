@@ -149,7 +149,15 @@
       (is (re-find #"\|ADT\^A20\|" m))
       (is (= ["MSH" "EVN" "NPU"] (mapv #(subs % 0 3) (remove empty? (clojure.string/split m #"\r"))))
           "MSH EVN NPU and nothing else -- no PID, no PV1")
-      (is (re-find #"\|2\.3\r" m) "MSH-12 is unchanged by this family"))
+      ;; ARC 4 SWEEP 1 (ADR-0175 ruling A1, 2026-08-27): re-pinned "2.3"
+      ;; -> "2.4". Arc 3b sweep 2 wrote this assertion to say that adding
+      ;; ADT^A20 did NOT move the version field, and that claim is intact
+      ;; -- what moved the field is `site-profile/default-msh`, a
+      ;; different change for a different reason. The assertion is kept
+      ;; rather than deleted because the thing it guards is still true:
+      ;; this family renders whatever the profile declares and never
+      ;; overrides it.
+      (is (re-find #"\|2\.4\r" m) "MSH-12 is the profile's, never this family's"))
     (testing "NPU-1 is the PL PV1-3 already renders, NPU-2 the Table 0116 status"
       (let [dirty (first (filter #(re-find #"\|K\r?$" %) (map #(last (clojure.string/split % #"\r")) msgs)))]
         (is (re-matches #"NPU\|Renal\^\^RENAL-[0-9H]+\^bed-cycle-fixture\|K" dirty))))))
