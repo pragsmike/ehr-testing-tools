@@ -83,8 +83,29 @@ with them.
   IDENTICAL across all 40 roots while changing every order in every gated
   corpus -- `rulings.md#R-empty-population-is-red` one layer up. Sweep 2
   deliberately did NOT close it: its own root places no order, so that the
-  coverage claim it adds is exactly the four MSH-9s it exists for. The
-  design's OTHER measured finding still
+  coverage claim it adds is exactly the four MSH-9s it exists for.
+  **SWEEP 3 OF 6 LANDED 2026-08-28** -- ruling B1's second tranche,
+  design (b): order/result STATUS LADDERS, ORM^O01 restatements carrying
+  ORC-5 and ORU^R01 restatements carrying OBR-25/OBX-11 at fixed
+  fractions of an order's own interval, behind `:ladders`. **ITS STEP 0
+  PAID THE DEBT THE SENTENCE ABOVE ROWED**: `order-pathway`, the 41st
+  root and the first in this oracle's life to place an order, closes
+  `witnessed-event-kinds` at **28 of 28** -- R4-Q6 (ii) (b), rowed since
+  2026-08-19, is paid -- and puts `ORM^O01` on the witnessed list, so
+  the ladder's turn-on had a population to move rather than an IDENTICAL
+  over an empty one. The mechanism landed DARK with both brackets
+  IDENTICAL at every root, and the turn-on moved exactly ONE digest, the
+  opted-in root's. It takes NO RNG at all: a rung is a pure function of
+  `(log, config)`, since `:result-available` carries `:order-event-id`.
+  It is also the first arc-4 add-on that DECLARES a byte change to an
+  existing message -- the terminal ORU of an order that grew a rung
+  gains its final status codes, per-order, so an order with no rung is
+  byte-frozen. Its own measured headline: 50 new messages on the
+  ed-tuesday demo and the hourly BUCKET COUNT DID NOT MOVE, still 615,
+  because a rung lands inside an hour that already carried its own order
+  or result -- the exact opposite of chatter's 186 -> 615. Three sweeps
+  remain: **SIU next** (unblocked since sweep 1's 2.4 flip), then
+  fan-out and MLLP. The design's OTHER measured finding still
   stands and no sweep can lift it: NK1 is unavailable to this arc at all,
   because household state reaches no ground-truth event -- ADR-0172 limitations
   row 8 is untouched.
