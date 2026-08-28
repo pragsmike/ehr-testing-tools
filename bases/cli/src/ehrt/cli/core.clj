@@ -1938,7 +1938,7 @@
   concatenated in lexical filename order -- the exact candidate set
   `gate-dir`/`show`'s own directory dispatch already use
   (gate-candidate-files-in, already name-sorted), and exactly the
-  order the sim generator's own msg-%03d emission produces by
+  order the sim generator's own width-padded msg-NNN emission produces by
   construction. Each file is decoded on its own via
   player/split-er7-multi, then the per-file message sequences are
   concatenated in that same directory-listing order -- this IS the

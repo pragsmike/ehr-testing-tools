@@ -160,7 +160,24 @@
                               "(this entry's own pinned default) is required to produce a v2 corpus")})
     (do
       (kernel/mkdirs! (io/file out-dir))
-      (dorun (map-indexed (fn [i m] (spit (io/file out-dir (format "msg-%03d.hl7" i)) m)) messages))
+      ;; ARC 4 SWEEP 2 (2026-08-28): the index is padded to the width
+      ;; THIS corpus needs, never to a fixed three. `ehrt.corpus.intake`
+      ;; walks a spooled directory `sorted-by-path`, and
+      ;; `ehrt.corpus.player`'s own docstring says order is a semantic
+      ;; property of the input -- so at 1,000 messages a fixed `%03d`
+      ;; made `msg-1000.hl7` sort between `msg-100.hl7` and
+      ;; `msg-101.hl7` and the corpus replayed SCRAMBLED. Nothing in
+      ;; this repository had ever emitted 1,000 messages from one run
+      ;; until arc 4's emission add-ons; the ed-tuesday demo went 782 ->
+      ;; 1,447 and the defect surfaced as a bed board showing patients
+      ;; admitted years after their own discharge.
+      ;;
+      ;; `(max 3 ...)` keeps every corpus under 1,000 messages
+      ;; BYTE-IDENTICAL, filename for filename, which is why this is a
+      ;; fix and not a migration.
+      (let [width (max 3 (count (str (dec (count messages)))))
+            fmt (str "msg-%0" width "d.hl7")]
+        (dorun (map-indexed (fn [i m] (spit (io/file out-dir (format fmt i)) m)) messages)))
       (spit (io/file out-dir "manifest.edn") (pr-str manifest))
       (when ground-truth
         (spit (io/file out-dir "events.edn") (pr-str ground-truth)))

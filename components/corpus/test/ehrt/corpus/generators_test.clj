@@ -13,6 +13,7 @@
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
             [clojure.edn :as edn]
+            [clojure.string :as str]
             [ehrt.kernel.interface :as kernel]
             [ehrt.corpus.generate :as generate]
             [ehrt.corpus.generators :as generators])
@@ -173,6 +174,41 @@
         (is (some #(= "manifest.edn" (.getName %)) files))
         (is (some #(= "events.edn" (.getName %)) files))
         (is (= {:stage :simulated} (edn/read-string (slurp (io/file out-dir "manifest.edn")))))))))
+
+(deftest spool-sim-output-pads-the-index-to-the-width-this-corpus-needs-test
+  (testing "ARC 4 SWEEP 2: `ehrt.corpus.intake` walks a spooled corpus
+            SORTED BY PATH and `ehrt.corpus.player` treats that order as
+            the semantic one, so a fixed `%03d` made `msg-1000.hl7` sort
+            between `msg-100.hl7` and `msg-101.hl7` the moment a run
+            emitted a thousand messages -- and the corpus replayed
+            SCRAMBLED. Nothing here had ever emitted that many until
+            arc 4's emission add-ons took the ed-tuesday demo from 782
+            to 1,447."
+    (let [out-dir (str (temp-dir) "/wide")
+          messages (mapv (fn [i] (str "MSH|^~\\&|X|Y|||20240101000000+0000||ADT^A01|ID" i "|P|2.4\r"))
+                         (range 1001))]
+      (#'generators/spool-sim-output! {:messages messages :manifest {}} out-dir)
+      (let [names (sort (map #(.getName ^java.io.File %)
+                             (filter #(.isFile ^java.io.File %) (file-seq (io/file out-dir)))))
+            msgs (filterv #(str/starts-with? % "msg-") names)]
+        (is (= 1001 (count msgs)))
+        (is (= "msg-0000.hl7" (first msgs)))
+        (is (= "msg-1000.hl7" (last msgs)))
+        (testing "PATH ORDER IS MESSAGE ORDER -- the property the player
+                  depends on, asserted directly rather than inferred
+                  from the filename shape"
+          (is (= (mapv #(str "ID" %) (range 1001))
+                 (mapv (fn [n] (nth (str/split (slurp (io/file out-dir n)) #"\|") 9)) msgs)))))))
+  (testing "and a corpus under 1,000 messages keeps the exact
+            three-digit names every existing corpus already has -- this
+            is a fix, not a migration"
+    (let [out-dir (str (temp-dir) "/narrow")]
+      (#'generators/spool-sim-output! {:messages (mapv (fn [i] (str "MSH|^~\\&|X|Y|||1||ADT^A01|ID" i "|P|2.4\r"))
+                                                     (range 999))
+                                     :manifest {}}
+                                    out-dir)
+      (is (.exists (io/file out-dir "msg-000.hl7")))
+      (is (.exists (io/file out-dir "msg-998.hl7"))))))
 
 ;; ---- ADR-0100, Q2 a.: spool-sim-output! also writes events.edn --
 ;; the run's own :ground-truth vector, pr-str'd, byte-identical to

@@ -245,7 +245,7 @@
     ;; Pacer design: ADR-0014. Lexical-order contract: ADR-0015.
     ;; --sink designator vocabulary: ADR-0017; deferred sinks: ADR-0014.
     {:group "play"
-     :doc "Pace a corpus's own events against their own timestamps and render (or write) them over time -- `ehrt show` plus time. PATH is an HL7 v2 (ER7) file or directory (paced by MSH-7), or a sim event log (a single .edn file, paced by each event's own :t) -- see the PATH description below for both shapes. A directory's files must share the v2 format and are concatenated in LEXICAL FILENAME ORDER before pacing: that ordering is the contract, so name files so sort order is play order (the sim generator's msg-%03d output already is). FHIR or mixed message input is a named deferral (:play-input-unsupported)."
+     :doc "Pace a corpus's own events against their own timestamps and render (or write) them over time -- `ehrt show` plus time. PATH is an HL7 v2 (ER7) file or directory (paced by MSH-7), or a sim event log (a single .edn file, paced by each event's own :t) -- see the PATH description below for both shapes. A directory's files must share the v2 format and are concatenated in LEXICAL FILENAME ORDER before pacing: that ordering is the contract, so name files so sort order is play order (the sim generator pads its own msg-NNN index to the width that corpus needs, so its output always is). FHIR or mixed message input is a named deferral (:play-input-unsupported)."
      ;; B2 (R3-B3-1, ADR-0118): witnessed verbatim, README.md "See it
      ;; run" fence, line 33 -- source cited in notes/adr/0118-*.md.
      :example "bin/ehrt play out/corpus/clinic-decade --board 60 --rate 60"
