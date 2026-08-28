@@ -93,10 +93,48 @@
  {:asset "docs/manual/assets/straddle-timeline.svg"
   :source "demos/scenarios/ed-tuesday/README.md"
   :trigger "regenerate by hand if the cited section's own witnessed values change"
-  :reviewed-at "c7354d1"
+  :reviewed-at "ab4cda0"
   :verdict :fresh
   :note
-  "RE-REVIEWED 2026-08-27 (arc 4 sweep 1, ADR-0175 ruling A1's MSH-12
+  "RE-WITNESSED AND PARTIALLY REDRAWN 2026-08-28 (arc 4 sweep 2,
+   ADR-0175 designs (a) and (c), the chatter/charges turn-on). The
+   trigger fired an EIGHTH time, and THE DEPICTED FACT SURVIVED: the
+   encounter still spans three windows and the middle one still holds
+   neither half.
+
+   IT SURVIVED BY ONE COMMIT, which is the part worth recording.
+   MRN000002's encounter now also renders a DFT^P03 at its close, and
+   that DFT landed in `batch-001.hl7` -- the MIDDLE window, the one this
+   drawing exists to show empty -- because `dft-message` looked its
+   latency offset up under its own `mrn-P03-t` control id, found none,
+   and transmitted at its clinical instant while the ADT^A03 it
+   accompanies lagged 46 minutes behind. 87aa8d2 fixed the lookup to use
+   the BASIS event's control id, so both messages of that close now land
+   together in `batch-002.hl7`. Had the tripwire's sources not been read
+   before the README was touched, this drawing would have been quietly
+   wrong.
+
+   VERIFIED DIRECTLY rather than inferred: `grep -cF MRN000002
+   out/scenarios/ed-tuesday-latency-batches/batch-001.hl7` returns 0,
+   `batch-000.hl7` holds the A28 and the A01, `batch-002.hl7` holds the
+   A03 and the DFT.
+
+   THREE PRINTED VALUES MOVED and are redrawn -- the window counts 5, 9
+   and 11 became 9, 14 and 16, because chatter and charges put 665 more
+   messages onto this wire. The admission's own 00:37:39Z and the
+   discharge's own 02:10:37Z did NOT move, and could not have: arc 4
+   changes no draw and no ground truth, which
+   `bin/ground-truth-bracket` asserts across all 36 pre-existing roots
+   at every commit of this sweep.
+
+   PREDICTED, NOT DISCOVERED, for the second sweep running. This row is
+   again the IMMEDIATE SUCCESSOR to the commit that edits the source --
+   the tripwire compares against `git log -1` on the SOURCE, so no
+   commit can carry the sha that names itself, and ab4cda0 is therefore
+   a RED-FIRST commit under `rulings.md#R-red-pushed-with-green`, pushed
+   together with this one and never alone.
+
+   RE-REVIEWED 2026-08-27 (arc 4 sweep 1, ADR-0175 ruling A1's MSH-12
    commit). The trigger fired a SEVENTH time and NOTHING THIS ASSET
    DEPICTS MOVED -- no redraw, only this row.
 
