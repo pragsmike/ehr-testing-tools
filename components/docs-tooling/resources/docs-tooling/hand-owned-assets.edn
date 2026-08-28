@@ -93,10 +93,31 @@
  {:asset "docs/manual/assets/straddle-timeline.svg"
   :source "demos/scenarios/ed-tuesday/README.md"
   :trigger "regenerate by hand if the cited section's own witnessed values change"
-  :reviewed-at "ab4cda0"
+  :reviewed-at "11664e0"
   :verdict :fresh
   :note
-  "RE-WITNESSED AND PARTIALLY REDRAWN 2026-08-28 (arc 4 sweep 2,
+  "RE-WITNESSED 2026-08-28 (arc 4 sweep 3, ADR-0175 design (b), the
+   STATUS LADDER turn-on). The README moved at 11664e0 and this drawing
+   did NOT need to: the three window counts it pins are batch-000,
+   batch-001 and batch-002 of the ed-tuesday-latency corpus, and
+   `bin/demo-exerciser-ed-tuesday`'s own run at that commit reports them
+   as 9, 14 and 16 -- byte-for-byte the values already drawn.
+
+   WHY A SWEEP THAT ADDED 50 MESSAGES MOVED NO WINDOW. A ladder rung
+   sits STRICTLY INSIDE its order-to-result interval, and this
+   scenario's turnarounds are 30 to 120 minutes, so every rung lands in
+   an hour that already carried its own order or result. The whole
+   corpus's hourly bucket count is unchanged at 615 for the same reason.
+   The README hunks at 11664e0 are the headline message count, the PV1
+   arithmetic, two ticker excerpts and the batch section's own dated
+   note -- none of them a value this drawing renders.
+
+   Bumped in the turn-on's OWN successor commit rather than after CI,
+   which is what this tripwire's design requires: it reads `git log -1`
+   on the source, so it cannot see an uncommitted edit, and a bump that
+   waits reddens the pushed tip one commit later.
+
+   Prior review, kept: RE-WITNESSED AND PARTIALLY REDRAWN 2026-08-28 (arc 4 sweep 2,
    ADR-0175 designs (a) and (c), the chatter/charges turn-on). The
    trigger fired an EIGHTH time, and THE DEPICTED FACT SURVIVED: the
    encounter still spans three windows and the middle one still holds
