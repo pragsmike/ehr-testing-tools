@@ -329,4 +329,33 @@
                          "117015009" {:amount 62.00 :display "Throat culture"}
                          "23426006"  {:amount 210.00 :display "Respiratory function measurement"}
                          "441550005" {:amount 88.00 :display "Urinalysis with reflex to culture"}
-                         "ROOM-BOARD" {:amount 1875.00 :display "Room and board, per day"}}}}
+                         "ROOM-BOARD" {:amount 1875.00 :display "Room and board, per day"}}}
+
+ ;; ARC 4 SWEEP 3 (ADR-0175 design (b), ruling B1, 2026-08-28): STATUS
+ ;; LADDERS, ON. Between an order and its result the emitter now
+ ;; restates the order's progress -- one ORM^O01 carrying ORC-5 a
+ ;; quarter of the way through the wait, one ORU^R01 carrying OBR-25 and
+ ;; OBX-11 at the halfway mark -- and the RESULT message itself gains
+ ;; the final F in those two fields.
+ ;;
+ ;; THE FRACTIONS ARE A CLINICAL CHOICE AND ARE DISCLOSED AS ONE. A real
+ ;; lab feed's status traffic has no canonical cadence; two rungs per
+ ;; order is the smallest ladder that is a ladder, and putting the ORM
+ ;; rung first (0.25) and the ORU rung second (0.5) tells the sequence a
+ ;; reader expects: the order is picked up, then a preliminary result
+ ;; exists, then the final. A site wanting the analyzer chatter of a
+ ;; high-volume lab adds fractions; a site wanting none removes the key
+ ;; and gets today's bytes back exactly.
+ ;;
+ ;; NO DRAW, and no ground truth. A rung is a fixed fraction of an
+ ;; interval BOTH ends of which are already in the log
+ ;; (`:result-available` carries `:order-event-id`), so `plan-ladders`
+ ;; takes no RNG at all, claims no `:emission` id-tag, and cannot
+ ;; reshuffle anything. `:ladders` reaches no member of
+ ;; `ehrt.sim-engine.engine/config-keys`.
+ ;;
+ ;; THE STATUS CODES ARE SITE-PROFILE DATA, NOT A CITATION. HL7 tables
+ ;; 0038/0123/0085 appear in no jar and no resource in this tree, so
+ ;; `ehrt.sim-emit-hl7.site-profile` ships them as authored, overridable
+ ;; code tables beside `:bed-status`. See `docs/site-profiles.md`.
+ :ladders {:rungs [0.5] :order-rungs [0.25]}}

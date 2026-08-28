@@ -547,7 +547,21 @@
                                    "117015009" {:amount 62.00 :display "Throat culture"}
                                    "23426006"  {:amount 210.00 :display "Respiratory function measurement"}
                                    "441550005" {:amount 88.00 :display "Urinalysis with reflex to culture"}
-                                   "ROOM-BOARD" {:amount 1875.00 :display "Room and board, per day"}}}}}])
+                                   "ROOM-BOARD" {:amount 1875.00 :display "Room and board, per day"}}}
+           ;; ARC 4 SWEEP 3 (ADR-0175 design (b), 2026-08-28): STATUS
+           ;; LADDERS, on, and again in this run's own opts because it
+           ;; names no config. The fractions are the two scenario
+           ;; configs' verbatim.
+           ;;
+           ;; IT IS INERT HERE AND IS TAKEN ANYWAY, which is exactly the
+           ;; reason this slot took `:bed-cycle` in arc 3b sweep 2: ten
+           ;; ADHD patients over a decade of ambulatory content place NO
+           ;; `:order-placed` at all, so this run grows no rung. All six
+           ;; corpora agreeing about what a gated corpus CONTAINS is
+           ;; worth more than the key being live in each one, and a
+           ;; corpus that places no order is itself a case worth gating
+           ;; -- `ehrt.sim.ladders-run-test` asserts it byte-identical.
+           :ladders {:rungs [0.5] :order-rungs [0.25]}}}])
 
 (def ^:private corpora
   "run id -> that run's own `run-command` result, populated once by

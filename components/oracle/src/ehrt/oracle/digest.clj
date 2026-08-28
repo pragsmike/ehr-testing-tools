@@ -937,11 +937,15 @@
   invariant that says `:order-event-id` resolves, and the ladder reads
   exactly that field to find its interval.
 
-  IT IS DARK. No `:ladders` key, deliberately -- this commit adds a
-  population, not a behaviour, so every one of the 40 pre-existing
-  roots' digests and this root's own must be reproducible from the
-  mechanism-free tree. The turn-on is step 2's, and it moves THIS
-  root's digest and no other's.
+  IT LANDED DARK AND WAS TURNED ON IN ITS OWN COMMIT. The first
+  commit added a population and no behaviour -- so all 40 pre-existing
+  roots and this one were reproducible from a tree with no ladder
+  mechanism in it at all -- and the second added `:ladders` below. The
+  turn-on moves THIS root's digest and no other's, which is the whole
+  point of paying for the root first: the ladder's oracle evidence is a
+  digest that MOVES where a ladder exists and is IDENTICAL everywhere
+  else, rather than an IDENTICAL over a population with no orders in
+  it.
 
   WHAT IT DELIBERATELY DOES NOT DO:
 
@@ -999,7 +1003,18 @@
                                           {:type :order :profile :cbc}
                                           {:type :discharge}]}
                         :weight 1}]
-            :emit "hl7" :reference-date "2024-01-01" :utc-offset "+00:00"})]
+            :emit "hl7" :reference-date "2024-01-01" :utc-offset "+00:00"
+            ;; ARC 4 SWEEP 3's TURN-ON (2026-08-28, ADR-0175 design (b)).
+            ;; This root exists to be the ladder's oracle, so it is the
+            ;; one root that opts in, and it opts in RICHER than the six
+            ;; gated corpora do: two fractions per family, which is what
+            ;; walks `order-status-ladder` off its first stage and puts
+            ;; the SATURATION rule (`:scheduled` then `:in-progress`,
+            ;; held thereafter) under the oracle rather than only under
+            ;; a unit fixture. The corpora ship one fraction per family;
+            ;; a digest that only ever saw one rung could not tell a
+            ;; ladder from a single restatement.
+            :ladders {:rungs [0.25 0.5] :order-rungs [0.1 0.2]}})]
     (when-not (= :ok (:status r))
       (throw (ex-info "order-pathway root did not run cleanly" {:result r})))
     {:ground-truth (:ground-truth (:payload r))
@@ -1041,10 +1056,18 @@
 ;; unreached set, and `ORM^O01` leaves the emitted-by-no-root list. The
 ;; order->result EMITTER half goes with them: `orm-message`,
 ;; `oru-message`, `orc-segment`'s order context and `obr-segment`'s
-;; 3-arity are all reached for the first time. It is a POPULATION
-;; commit, not a behaviour one: the root ships DARK, with no `:ladders`
-;; key, exactly so that ADR-0175 design (b)'s own turn-on has a witness
-;; to move.
+;; 3-arity are all reached for the first time. The root landed DARK, in
+;; its own commit, exactly so that ADR-0175 design (b)'s own turn-on had
+;; a witness to move; the turn-on followed and is the ONLY root whose
+;; digest it moves.
+;;
+;; NEITHER SET BELOW MOVES ON THE LADDER TURN-ON ITSELF, and that is
+;; worth stating because it is the opposite of sweep 2's shape. Chatter
+;; and charges added four MSH-9s; a status ladder adds NONE -- a rung is
+;; a restatement of `ORM^O01`/`ORU^R01`, families this oracle already
+;; witnesses as of the root above -- and it adds no event kind, because
+;; it is emission. The turn-on's digest movement is entirely on the
+;; `:hl7` half of one root.
 ;;
 ;; WHICH WAY IT MOVED, 2026-08-26: WIDER, by one root. `demographic-fold`
 ;; turns `:persons` on and lifts five surfaces out of the vacuous set

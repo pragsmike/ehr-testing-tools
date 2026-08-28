@@ -58,7 +58,7 @@ bin/ehrt play out/scenarios/ed-tuesday/events.edn --rate 10000000
 ## What to look for
 
 Witnessed 2026-08-28 (seed 20260811, 100 patients, `--config` as
-above, `--churn` on): **1,269 ground-truth events, 1,447 HL7 v2
+above, `--churn` on): **1,269 ground-truth events, 1,497 HL7 v2
 messages, 574 board snapshots** over a 630,342,955,000 ms stream span.
 
 **THE EVENT COUNT DID NOT MOVE AND THE MESSAGE COUNT NEARLY DOUBLED,
@@ -155,8 +155,15 @@ those five messages now fall inside an open encounter instead.)
 Note that the A20 bed-status messages carry NO PV1 at all -- an
 `ADT^A20` is `[MSH EVN NPU]`, no PID and no PV1, because a bed that
 nobody is in has no patient to name, and an ADT^A31 or ADT^A28 carries
-none either -- a person-scoped update names no visit. That is why 1,447
-messages carry only 631 PV1 segments between them.
+none either -- a person-scoped update names no visit. That is why 1,497
+messages carry only 681 PV1 segments between them.
+
+*Dated note, 2026-08-28 (arc 4 sweep 3, ADR-0175 design (b)): the
+STATUS LADDER added 50 messages that DO carry a PV1 -- an ORM^O01 or
+ORU^R01 restatement is rendered by the same builder as the message it
+restates, PV1 included -- so both figures moved together, 1,447/631 to
+1,497/681, and the PV1-less families above are unchanged at 421 A20s,
+288 A31s and 116 A28s.*
 
 **THE SHIFT IS STILL A SHIFT; THE STREAM IS NOT.** `config.edn` opted
 this scenario into `ehrt.sim-engine.engine`'s demographic fold on
@@ -292,7 +299,7 @@ outcome, not a config defect.
 
 Full closing summary: `{:unparseable-count 0, :snapshot-count 574,
 :skip-count 0, :rate 1.0E7, :idle-cap-ms 5000, :wallclock-ms 64855,
-:stream-span-ms 630342955000, :clamped-count 0, :emitted 1447,
+:stream-span-ms 630342955000, :clamped-count 0, :emitted 1497,
 :unfolded-count 0, :sink "ticker"}`.
 
 (RE-WITNESSED 2026-08-28, and the previous value was STALE rather than
@@ -470,7 +477,13 @@ so the illustration had drifted off the run it claims to describe.
 Arc 4 sweep 2 changes no base message's bytes or transmit times at all
 -- proved directly, by generating this corpus with and without the
 add-ons and diffing the 782 non-add-on messages -- so the case below was
-re-derived from the live wire rather than adjusted. The cast is now
+re-derived from the live wire rather than adjusted. Arc 4 sweep 3
+(2026-08-28) is the first add-on that DOES move an existing message's
+bytes, and it is worth being exact about how little: the 25 terminal
+`ORU^R01` results of the 25 orders that grew a rung gain OBR-25 and
+OBX-11 status codes, and NOTHING else moves -- no transmit time, no
+other family, no ordering. The case below is unaffected and was
+re-witnessed rather than assumed. The cast is now
 MRN000095 in `ED-H13`, and the shape is RICHER than either previous
 witness: three messages, arriving transfer-first, discharge-second,
 admission-last.
@@ -502,8 +515,8 @@ saying which 112 would understate it.
 
 Closing summary: `{:unparseable-count 0, :snapshot-count 615,
 :skip-count 0, :rate 1.0E7, :idle-cap-ms 5000, :wallclock-ms 64832,
-:stream-span-ms 630342955000, :clamped-count 0, :emitted 1447,
-:unfolded-count 0, :sink "ticker"}` -- the same 1,447 messages as the
+:stream-span-ms 630342955000, :clamped-count 0, :emitted 1497,
+:unfolded-count 0, :sink "ticker"}` -- the same 1,497 messages as the
 base run, FORTY-ONE more snapshots than it (615 against 574), and a
 stream span identical to it to the millisecond. The span figure used to
 differ between the two runs, in one direction or the other across four
@@ -547,7 +560,7 @@ bin/ehrt corpus batch out/scenarios/ed-tuesday-latency --interval 60 \
   --out-dir out/scenarios/ed-tuesday-latency-batches
 ```
 
-Witnessed 2026-08-28 (same seed-20260811 run as above, 1,447 messages
+Witnessed 2026-08-28 (same seed-20260811 run as above, 1,497 messages
 across 615 occupied hourly buckets, `2026-08-11T00:00Z` through
 `2046-08-01T15:00Z`). The bucket count moved 186 -> 615 with the
 CHATTER and CHARGES opt-ins, and this is the largest single move it has
@@ -559,6 +572,15 @@ that move, anywhere across twenty years, so the new traffic lands
 overwhelmingly in hours that had carried nothing at all rather than
 thickening the hours of the shift. The closing bucket moved out with it,
 from 2045 to 2046, for exactly the same reason.
+
+*Dated note, 2026-08-28 (arc 4 sweep 3): the STATUS LADDER took the
+message count 1,447 -> 1,497 and the BUCKET COUNT DID NOT MOVE AT ALL,
+still 615. That is the opposite of the chatter move above and it falls
+straight out of what a rung is: a rung sits strictly INSIDE an
+order-to-result interval, and this scenario's turnarounds are 30 to 120
+minutes, so a rung lands in the same hour as the order or the result it
+restates -- or at most the next one, in an hour that already carried
+them. Traffic that thickens existing hours cannot open new ones.*
 
 Earlier moves, kept: 106 -> 135 with the bed cycle (A20 traffic in
 previously empty hours), and 135 -> 186 with SCHEDULING, which did not
