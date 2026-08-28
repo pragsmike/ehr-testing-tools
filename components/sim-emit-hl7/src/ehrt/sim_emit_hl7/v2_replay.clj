@@ -309,6 +309,15 @@
         (parse-payer parsed) (update :persona assoc :payer (parse-payer parsed)))
 
       "A28" (update entry :persona merge (parse-persona (first-segment parsed "PID")))
+
+      ;; ARC 4 SWEEP 2 (ADR-0175 design (c)): the DFT's own arm. A
+      ;; financial message asserts NOTHING about patient state -- its
+      ;; PID and PV1 restate the encounter's own facts and its FT1s are
+      ;; prices, which this accumulator has no field for and should not
+      ;; grow one. The arm exists because an unhandled trigger throws,
+      ;; not because there is state to fold; "O01" above is the same
+      ;; shape for the same reason.
+      "P03" entry
       (throw (ex-info "v2-replay: unsupported message trigger" {:trigger trigger})))))
 
 (defn- pid-pv1-pairs

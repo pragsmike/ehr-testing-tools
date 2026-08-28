@@ -473,6 +473,14 @@
   non-chatter message. Absent (the default): byte-identical to a run
   that never named the key, and `emit` renders as before.
 
+  ARC 4 SWEEP 2 (ADR-0175 design (c)): `:charges`
+  (ehrt.sim-model.config/ChargesProfile, optional) rides `:config` the
+  same way, and takes NO RNG at all -- `emit-hl7/plan-charges` is a
+  pure function of the log and the price table. THE ENGINE NEVER READS
+  THE TABLE: it is not in `engine/config-keys`, and an unpriced code is
+  a counted skip inside the planner, never a read-back into ground
+  truth for something else to bill.
+
   M5b: `:modules` (a vector of NAME STRINGS, resolving against
   `resources/modules/<name>.json` -- `resolve-modules`'s own docstring)
   and `:module-assignment`/`:module-horizon-days` (forwarded verbatim,
@@ -508,7 +516,7 @@
        config-result
        (let [opts (:payload config-result)
              {:keys [seed patients emit at reference-date utc-offset warm-up-seconds churn churn-profile site-profile
-                     modules module-initial-attributes latency chatter]} opts
+                     modules module-initial-attributes latency chatter charges]} opts
              conflicts (incompatible-assignments opts)
              resolved-modules (when modules (resolve-modules modules (or module-initial-attributes {})))]
          (cond
@@ -544,6 +552,16 @@
                           :value chatter
                           :explain (pr-str (sim-model/explain-chatter-profile chatter))
                           :expected "{:demographic-update/:coverage-change/:registered <rate 0..1> :restatement {:rate-per-patient-day <non-negative number>}}"})
+
+           ;; ARC 4 SWEEP 2 (ADR-0175 design (c)): and for `:charges`.
+           ;; A price table whose keys are keywords rather than code
+           ;; STRINGS would price nothing and skip everything, silently.
+           (and (contains? opts :charges) (not (sim-model/valid-charges-profile? charges)))
+           (result/error :invalid-charges
+                         {:key :charges
+                          :value charges
+                          :explain (pr-str (sim-model/explain-charges-profile charges))
+                          :expected "{:price-table {\"<code>\" {:amount <number> :display <string, optional>}}}"})
 
            :else
            (let [reference-date (or reference-date emit-hl7/default-reference-date)
@@ -619,7 +637,7 @@
                                    :events (count ground-truth)}}
                   (= "hl7" emit)
                   (assoc :messages
-                        (if (or latency chatter)
+                        (if (or latency chatter charges)
                           (emit-hl7/emit-wire ground-truth reference-date utc-offset facility providers site-profile
                                               ;; ADR-0171 ruling C1: the emission latency
                           ;; stream is the :emission FAMILY, derived like
@@ -647,9 +665,16 @@
                           ;; which is what lets a chatter-only run -- no
                           ;; :latency at all -- take this branch and still
                           ;; move no existing message's bytes.
+                          ;;
+                          ;; `:charges` needs NO stream at all: a price
+                          ;; is a pure function of the log and the
+                          ;; table, and ADR-0175 section 2(c)'s rejected
+                          ;; option (3) says why -- a price that changes
+                          ;; per run is not a price.
                           {:chatter (when chatter
                                       (emit-hl7/plan-chatter (engine/stream seed :emission 1)
-                                                             ground-truth chatter))})
+                                                             ground-truth chatter))
+                           :charges (:lines (emit-hl7/plan-charges ground-truth charges))})
                           (emit-hl7/emit ground-truth reference-date utc-offset facility providers site-profile)))
                   (= "fhir" emit) (assoc :fhir-bundles
                                          (emit-fhir/bundle-run ground-truth reference-date utc-offset seed (or at :end)))))))))))))

@@ -254,3 +254,31 @@
 
 (defn valid-chatter-profile? [profile] (m/validate ChatterProfile profile))
 (defn explain-chatter-profile [profile] (m/explain ChatterProfile profile))
+
+;; --- Charges (ADR-0175 design (c), arc 4 sweep 2): the DFT^P03 price
+;; table ------------------------------------------------------------------
+;; A ChargesProfile is EMISSION CONFIG and nothing else. The engine
+;; never reads it, no invariant reads it, and a code the table does not
+;; price produces a COUNTED SKIP rather than a read-back into the log
+;; for something else to bill (`ehrt.sim-emit-hl7.emit-hl7/plan-charges`).
+;; Invented money is not a clinical fact -- ADR-0175 section 2(c)'s own
+;; rejected option (1).
+
+(def ChargesProfile
+  "`:price-table` maps a CODE STRING to its price. The codes are the
+  ones the log already carries -- an `:order-placed`'s `:concept` code,
+  a `:procedure`'s first `:codes` entry -- plus the one reserved key
+  `ehrt.sim-emit-hl7.emit-hl7/room-and-board-code` for the per-inpatient-
+  day line, which is the one charge no log fact carries a code for.
+
+  There is NO DEFAULT PRICE, deliberately: an unpriced code is a
+  counted skip, so a half-populated table reads as a number rather than
+  as a quietly short DFT."
+  [:map
+   {:closed true}
+   [:price-table [:map-of :string [:map {:closed true}
+                                   [:amount number?]
+                                   [:display {:optional true} :string]]]]])
+
+(defn valid-charges-profile? [profile] (m/validate ChargesProfile profile))
+(defn explain-charges-profile [profile] (m/explain ChargesProfile profile))

@@ -105,3 +105,8 @@
 (def ChatterProfile config/ChatterProfile)
 (defn valid-chatter-profile? [profile] (config/valid-chatter-profile? profile))
 (defn explain-chatter-profile [profile] (config/explain-chatter-profile profile))
+
+;; --- ARC 4 SWEEP 2 (ADR-0175 design (c)): the charge config surface ------
+(def ChargesProfile config/ChargesProfile)
+(defn valid-charges-profile? [profile] (config/valid-charges-profile? profile))
+(defn explain-charges-profile [profile] (config/explain-charges-profile profile))

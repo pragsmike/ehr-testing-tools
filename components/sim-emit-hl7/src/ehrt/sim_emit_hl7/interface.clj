@@ -69,6 +69,17 @@
   [rng ground-truth chatter-profile]
   (emit-hl7/plan-chatter rng ground-truth chatter-profile))
 
+(defn plan-charges
+  "GT x ChargesProfile -> {:lines ... :skipped ...}. See
+  ehrt.sim-emit-hl7.emit-hl7/plan-charges."
+  [ground-truth charges]
+  (emit-hl7/plan-charges ground-truth charges))
+
+(def room-and-board-code
+  "The reserved price-table key for a per-inpatient-day charge line.
+  See ehrt.sim-emit-hl7.emit-hl7/room-and-board-code."
+  emit-hl7/room-and-board-code)
+
 (def chatter-event-kinds
   "The three ground-truth kinds an event-driven chatter rule may cover.
   See ehrt.sim-emit-hl7.emit-hl7/chatter-event-kinds."

@@ -886,7 +886,13 @@
 (def ^:private code-system->hl7-table-0396
   "HL7v2 Table 0396 coding-system abbreviations for sim-model/Concept's
   own :system vocabulary (sim/ADR-0002)."
-  {:loinc "LN" :snomed "SCT" :rxnorm "RXNORM" :icd10cm "I10" :cvx "CVX"})
+  ;; ARC 4 SWEEP 2 (ADR-0175 design (c)): `:local` joins for the ONE
+  ;; charge line no log fact carries a code for -- the per-inpatient-day
+  ;; room-and-board line, whose code this project mints for itself
+  ;; (`room-and-board-code`). "L" is Table 0396's own abbreviation for a
+  ;; local general code. It is additive: no Concept anywhere in this
+  ;; tree carries `:system :local`, so no existing field moves.
+  {:loinc "LN" :snomed "SCT" :rxnorm "RXNORM" :icd10cm "I10" :cvx "CVX" :local "L"})
 
 (defn- coded-value-field
   "OBX-5 for a value_code-sourced observation: identifier^text^coding-
@@ -1177,6 +1183,129 @@
       (obr-segment 1 (first codes) clinical-ts)
       (concat obx-segments (z-segments-for site-profile demographics ev))))))
 
+
+;; --- ARC 4 SWEEP 2 (ADR-0175 design (c), ruling B1): DFT^P03 charges ------
+;; One DFT per encounter CLOSE, carrying [MSH EVN PID PV1] then one FT1
+;; per chargeable fact of that encounter. A charge line restates a fact
+;; the log already holds -- a procedure, an order, an occupied bed-day.
+;; The AMOUNT is not in the log, and an amount derived from a code via a
+;; config table is a pure function of (log, config), which is exactly
+;; what `:site-profile` and `:latency` already are: EMISSION, on the
+;; explicit condition that the price table is emission config and never
+;; ground truth. THE ENGINE NEVER READS IT -- `:charges` reaches no
+;; member of `ehrt.sim-engine.engine/config-keys`, and a missing price
+;; is a COUNTED SKIP here, never a read-back into the log for something
+;; to bill instead.
+
+(def room-and-board-code
+  "The reserved price-table key for the per-inpatient-day room-and-board
+  line. It is a billing code this project mints for ITSELF: `:procedure`
+  and `:order-placed` lines carry codes the log already holds, and an
+  occupied bed-day carries none, so the table has to name one. Absent
+  from the table, every bed-day line is a counted skip like any other
+  unpriced code -- there is no default price anywhere in this
+  namespace, deliberately."
+  "ROOM-BOARD")
+
+(def ^:private charge-closing-kinds
+  "The two kinds that CLOSE an encounter, and therefore the two instants
+  a DFT is emitted at (ADR-0175 section 2(c)). `:outpatient-visit-end`
+  is one of them even though it renders no ADT of its own -- its
+  `message-type-registry` silence is a statement about ADT traffic
+  (many real ambulatory feeds send an A04 and no closing message), not
+  about billing, and a same-day visit is still billed."
+  #{:discharge :outpatient-visit-end})
+
+(defn- charge-concept
+  "The coded fact a chargeable event carries, in `sim-model`'s own
+  Concept shape, or nil for an event that is not chargeable.
+  `:procedure` carries a `:codes` VECTOR and `:order-placed` a single
+  `:concept`; the procedure's FIRST code is its primary one, and one
+  line per code would bill a single procedure several times."
+  [ev]
+  (case (:event ev)
+    :procedure (first (:codes ev))
+    :order-placed (:concept ev)
+    nil))
+
+(defn- money
+  "A price rendered for the wire. BigDecimal at scale 2, never
+  `String/format`: `%.2f` reads the DEFAULT LOCALE for its decimal
+  separator, so a host configured for de-DE would render `1800,00` and
+  the corpus would stop being a function of its own inputs. Determinism
+  is law here for the same reason it is in the engine."
+  [amount]
+  (.toPlainString (.setScale (bigdec amount) 2 java.math.RoundingMode/HALF_UP)))
+
+(defn- ft1-segment
+  "One FT1 charge line. Positions cited from `hapi-structures-v24` 2.6.0
+  by instantiating the segment and asking it (ADR-0175 section 1(iv)):
+  FT1-4 Transaction Date, FT1-6 Transaction Type, FT1-7 Transaction
+  Code, FT1-10 Transaction Quantity, FT1-11 Transaction Amount -
+  Extended, FT1-12 Transaction Amount - Unit, FT1-25 Procedure Code.
+
+  FT1-7 IS RENDERED ON EVERY LINE, including procedure lines, and that
+  is one place this differs from ADR-0175 section 2(c)'s own mapping
+  (`:procedure` -> FT1-25, `:order-placed` -> FT1-7). FT1-7 is the
+  TRANSACTION code -- what is being billed -- and a charge line with no
+  FT1-7 is not a chargeable line at all; FT1-25 additionally names the
+  procedure that gave rise to the charge, which is what section 2(c)
+  was reaching for. A procedure line therefore carries both, an order
+  or bed-day line only FT1-7.
+
+  FT1-4 is the fact's own CLINICAL instant, never the DFT's transmit
+  instant -- the same split-clock rule ADR-0109 gave EVN-2, OBR-7 and
+  OBX-14: MSH-7 alone carries transmit time."
+  [reference-date utc-offset set-id {:keys [at code display system quantity amount procedure?]}]
+  (let [base [(parser/create-field [(str set-id)])
+              (parser/create-field [])
+              (parser/create-field [])
+              (parser/create-field [(hl7-timestamp reference-date at utc-offset)])
+              (parser/create-field [])
+              (parser/create-field ["CG"])
+              (coded-value-field {:system system :code code :display display})
+              (parser/create-field [])
+              (parser/create-field [])
+              (parser/create-field [(str quantity)])
+              (parser/create-field [(money (* quantity amount))])
+              (parser/create-field [(money amount)])]]
+    (apply parser/create-segment
+           "FT1"
+           (if procedure?
+             ;; FT1-13 .. FT1-24, then FT1-25.
+             (concat base (blank-fields 12)
+                     [(coded-value-field {:system system :code code :display display})])
+             base))))
+
+(defn- dft-message
+  "DFT^P03 for one encounter close. `DFT_P03`'s own segment order is
+  [MSH EVN PID PD1 ROL PV1 PV2 ROL2 DB1 COMMON_ORDER FINANCIAL DG1]
+  with FINANCIAL leading on FT1, so MSH EVN PID PV1 FT1+ is that order
+  with the optional groups omitted.
+
+  MSH-10 is `mrn-P03-t`: the trigger is part of every control id this
+  emitter mints, so a DFT can never collide with the ADT^A03 rendered
+  from the SAME event at the same instant."
+  [reference-date utc-offset facility providers demographics site-profile offsets lines
+   {:keys [event t active-mrn location attending participants] :as ev}]
+  (let [control-id (str active-mrn "-P03-" t)
+        clinical-ts (hl7-timestamp reference-date t utc-offset)
+        transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
+        facility-name (name (:id facility))
+        provider (provider-by-id providers attending)
+        persona (demographics-at demographics (:patient-id (first participants)) t)
+        patient-class (if (= :outpatient-visit-end event) :outpatient :inpatient)]
+    (parser/str-message
+     (apply parser/create-message
+            parser/DEFAULT-DELIMITERS
+            (msh-segment site-profile {:type "DFT" :trigger "P03"} control-id transmit-ts)
+            (evn-segment "P03" clinical-ts)
+            (pid-segment active-mrn persona)
+            (pv1-segment site-profile patient-class facility-name location nil provider
+                         nil (:encounter-id ev))
+            (map-indexed (fn [i line] (ft1-segment reference-date utc-offset (inc i) line))
+                         lines)))))
+
 (defn event->messages
   "Renders one ground-truth event to a vector of 0+ ER7 message strings
   -- most types render exactly one message; M2b's genuinely two-
@@ -1194,20 +1323,37 @@
   since `transmit-seconds` (this namespace, private) falls back to a 0
   offset for any control-id absent from the map."
   ([reference-date utc-offset facility providers ev]
-   (event->messages reference-date utc-offset facility providers {} nil {} ev))
+   (event->messages reference-date utc-offset facility providers {} nil {} {} ev))
   ([reference-date utc-offset facility providers demographics ev]
-   (event->messages reference-date utc-offset facility providers demographics nil {} ev))
-  ([reference-date utc-offset facility providers demographics site-profile offsets {:keys [event] :as ev}]
-   (cond
-     (not (message-type-registry event)) []
-     (= :bed-status-change event) [(bed-status-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
-     (= :bed-swap event) [(bed-swap-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
-     (= :merge event) [(merge-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
-     (= :order-placed event) [(orm-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
-     (= :result-available event) [(oru-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
-     (= :observation event) [(observation-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
-     (= :diagnostic-report event) [(diagnostic-report-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
-     :else [(single-subject-message reference-date utc-offset facility providers demographics site-profile offsets ev)])))
+   (event->messages reference-date utc-offset facility providers demographics nil {} {} ev))
+  ([reference-date utc-offset facility providers demographics site-profile offsets ev]
+   (event->messages reference-date utc-offset facility providers demographics site-profile offsets {} ev))
+  ([reference-date utc-offset facility providers demographics site-profile offsets charges
+    {:keys [event] :as ev}]
+   (let [registered (cond
+                      (not (message-type-registry event)) []
+                      (= :bed-status-change event) [(bed-status-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
+                      (= :bed-swap event) [(bed-swap-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
+                      (= :merge event) [(merge-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
+                      (= :order-placed event) [(orm-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
+                      (= :result-available event) [(oru-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
+                      (= :observation event) [(observation-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
+                      (= :diagnostic-report event) [(diagnostic-report-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
+                      :else [(single-subject-message reference-date utc-offset facility providers demographics site-profile offsets ev)])
+         ;; ARC 4 SWEEP 2 (ADR-0175 design (c)): THE FIRST REAL USE of
+         ;; the many-messages-per-event shape this function's own
+         ;; docstring above has always accommodated. A `:discharge`
+         ;; renders its ADT^A03 and then the DFT^P03 that closes the
+         ;; encounter's account; an `:outpatient-visit-end` renders NO
+         ;; ADT at all -- its registry silence is deliberate and stands
+         ;; -- and the DFT is the only message it ever produces, which
+         ;; is why the charge branch sits OUTSIDE the registry guard
+         ;; above rather than inside the `cond`.
+         lines (when (charge-closing-kinds event)
+                 (get charges [(:encounter-id ev) (:t ev)]))]
+     (cond-> registered
+       (seq lines) (conj (dft-message reference-date utc-offset facility providers demographics
+                                      site-profile offsets lines ev))))))
 
 (def ^:private default-providers
   "A fixed, arbitrary reference-seed provider pool -- purely a fallback
@@ -1580,6 +1726,84 @@
              (when (and in1? (:payer persona))
                [(in1-segment (:payer persona))]))))))
 
+(defn plan-charges
+  "GT x ChargesProfile (ehrt.sim-model.config/ChargesProfile) ->
+  `{:lines {[encounter-id closer-t] [line ...]} :skipped {code n}}`.
+
+  NO RNG AT ALL, unlike `plan-latency` and `plan-chatter`: a charge is
+  a pure function of the log and the price table. ADR-0175 section
+  2(c)'s own rejected option (3) is why -- `a price that changes per
+  run is not a price`.
+
+  KEYED BY (encounter, closer instant), not by encounter alone, because
+  an encounter can close TWICE: a `:discharge` undone by a
+  `:cancel-discharge` and later re-discharged is ONE encounter closed
+  twice (`ehrt.sim-engine.engine/stamp-encounter`'s own account), and
+  each close bills the facts that had happened by then. Keying by
+  encounter alone would have billed the first close for bed-days it had
+  not yet incurred.
+
+  THE SKIP CENSUS IS THE POINT of the `:skipped` half. A code the table
+  does not price produces no line and is COUNTED, so a table that
+  silently covers a third of a corpus's facts reads as a number rather
+  than as a short DFT nobody looks at. Nothing here ever falls back to
+  ground truth for a price.
+
+  Absent/nil/{} `charges` plans nothing and skips nothing -- the
+  byte-identical path."
+  [ground-truth charges]
+  (if-not (map? charges)
+    {:lines {} :skipped {}}
+    (let [price-table (or (:price-table charges) {})
+          spans (encounter-spans ground-truth)
+          by-encounter (reduce (fn [acc ev]
+                                 (if-let [eid (:encounter-id ev)]
+                                   (update acc eid (fnil conj []) ev)
+                                   acc))
+                               {}
+                               ground-truth)]
+      (reduce
+       (fn [plan [eid {:keys [t0 opener]}]]
+         (let [evs (get by-encounter eid)
+               inpatient? (= :admission (:event opener))]
+           (reduce
+            (fn [plan closer]
+              (let [close-t (long (:t closer))
+                    clinical (for [ev evs
+                                   :let [concept (charge-concept ev)]
+                                   :when (and concept (<= (long (:t ev)) close-t))]
+                               (assoc concept
+                                      :at (:t ev)
+                                      :procedure? (= :procedure (:event ev))))
+                    bed-days (when inpatient?
+                               (let [days (max 1 (long (Math/ceil (/ (double (- close-t (long t0)))
+                                                                     (double restatement-day-seconds)))))]
+                                 (for [k (range days)]
+                                   {:code room-and-board-code
+                                    :display "Room and board, per day"
+                                    :system :local
+                                    :at (+ (long t0) (* k restatement-day-seconds))
+                                    :procedure? false})))
+                    candidates (concat clinical bed-days)
+                    priced? #(contains? price-table (:code %))
+                    lines (mapv (fn [line]
+                                  (let [{:keys [amount display]} (get price-table (:code line))]
+                                    (assoc line
+                                           :quantity 1
+                                           :amount amount
+                                           :display (or display (:display line) ""))))
+                                (filter priced? candidates))]
+                (-> plan
+                    (cond-> (seq lines) (assoc-in [:lines [eid close-t]] lines))
+                    (update :skipped
+                            (fn [m] (reduce (fn [m l] (update m (:code l) (fnil inc 0)))
+                                            m
+                                            (remove priced? candidates)))))))
+            plan
+            (filter #(charge-closing-kinds (:event %)) evs))))
+       {:lines {} :skipped {}}
+       (sort-by (comp :opener-index val) spans)))))
+
 (defn emit-wire
   "GT x reference-date x utc-offset x facility x providers x
   site-profile x offsets [x emission] -> TimedWire: the SAME messages
@@ -1602,21 +1826,24 @@
   renders-only doctrine.
 
   ARC 4 SWEEP 2 adds the optional 8th argument, `emission`:
-  `{:chatter <plan-chatter's own output>}`. Absent, nil, or {} is the
-  byte-identical path -- the seven-argument arity below is exactly
-  that, so no existing caller moves. The sort key is `[transmit-t
-  log-index lane sub]`: `lane` 0 is every message a ground-truth event
-  renders, in `event->messages`' own order, `lane` 1 is chatter, and
-  `sub` is the ordinal within each. Chatter carries no offset, so a
-  chatter message's transmit instant is its own `:at` and the latency
-  plan for every non-chatter message is untouched."
+  `{:chatter <plan-chatter's own output> :charges <plan-charges's own
+  :lines>}`. Absent, nil, or {} is the byte-identical path -- the
+  seven-argument arity below is exactly that, so no existing caller
+  moves. The sort key is `[transmit-t log-index lane sub]`: `lane` 0 is
+  every message a ground-truth event renders, in `event->messages`' own
+  order (so a `:discharge`'s ADT^A03 still precedes the DFT^P03 that
+  closes the same encounter), `lane` 1 is chatter, and `sub` is the
+  ordinal within each. Chatter carries no offset, so a chatter
+  message's transmit instant is its own `:at` and the latency plan for
+  every non-chatter message is untouched."
   ([ground-truth reference-date utc-offset facility providers site-profile offsets]
    (emit-wire ground-truth reference-date utc-offset facility providers site-profile offsets {}))
   ([ground-truth reference-date utc-offset facility providers site-profile offsets
-    {:keys [chatter]}]
+    {:keys [chatter charges]}]
    (let [demographics (demographics-timeline ground-truth)
          offsets (or offsets {})
          chatter (or chatter [])
+         charges (or charges {})
          spans (when (seq chatter) (encounter-spans ground-truth))
          base (->> ground-truth
                    (map-indexed
@@ -1626,7 +1853,7 @@
                         (map-indexed
                          (fn [j message] [transmit-t i 0 j message])
                          (event->messages reference-date utc-offset facility providers demographics
-                                          site-profile offsets ev)))))
+                                          site-profile offsets charges ev)))))
                    (apply concat))
          restatements (map (fn [ins]
                              [(:at ins) (:basis ins) 1 (:ordinal ins)
