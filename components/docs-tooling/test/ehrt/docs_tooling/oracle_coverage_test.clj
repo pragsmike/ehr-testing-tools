@@ -168,10 +168,37 @@
       (is (every? closed kinds)
           (str "a committed kind outside the closed vocabulary is a typo or a stale claim. "
                "Offenders: " (pr-str (remove closed kinds)))))
-    (testing "the claim is a PROPER subset -- coverage is thin, and saying so is the point"
-      (is (< (count kinds) (count closed))
-          (str "if every closed kind were witnessed there would be no vacuous set to name, and "
-               "L1-2's finding would be void. Committed " (count kinds) " of " (count closed) ".")))))
+    ;; ARC 4 SWEEP 3 (ADR-0175 design (b), 2026-08-28). THIS ASSERTION
+    ;; USED TO DEMAND A *PROPER* SUBSET -- `(< (count kinds) (count
+    ;; closed))`, on the argument that "if every closed kind were
+    ;; witnessed there would be no vacuous set to name, and L1-2's
+    ;; finding would be void". That argument held for as long as the
+    ;; oracle could not place an order, and it stopped holding the day
+    ;; `order-pathway` landed: `:order-placed` and `:result-available`
+    ;; were the last two unwitnessed kinds, so the honest claim is now
+    ;; 28 of 28 and the gate REDDENED ON THE TRUTH. Recorded rather than
+    ;; quietly relaxed -- the red is in this sweep's own session record.
+    ;;
+    ;; WHAT REPLACES IT KEEPS L1-2'S ACTUAL POINT. The finding was never
+    ;; "coverage must stay thin"; it was "nothing may be stated that no
+    ;; root can move", and its twin hazard is a claim of TOTAL coverage
+    ;; that nobody looked at. So: subset always (a committed kind
+    ;; outside the vocabulary is still a typo), and when the claim is
+    ;; TOTAL the digest must SAY the ratio in its own prose, so a reader
+    ;; meets "28 of 28" written down rather than having to count the
+    ;; set. The MEASUREMENT that the claim is true stays where it always
+    ;; was, in `ehrt.integration.oracle-coverage-test`, against a fresh
+    ;; digest.
+    (testing "the claim is a subset, and a TOTAL claim has to say so in the prose"
+      (is (<= (count kinds) (count closed))
+          (str "the committed claim cannot exceed the closed vocabulary. Committed "
+               (count kinds) " of " (count closed) "."))
+      (when (= (count kinds) (count closed))
+        (is (str/includes? source (str (count kinds) " of " (count closed)))
+            (str "`witnessed-event-kinds` now claims EVERY closed kind, and " digest-path
+                 " must state that ratio -- `" (count kinds) " of " (count closed)
+                 "` -- in its own prose. A total claim nobody wrote down reads exactly like "
+                 "a claim nobody checked."))))))
 
 ;; ---------------------------------------------------------------------
 ;; (b) the claim sits INSIDE the compared region

@@ -923,12 +923,36 @@
   "ORC-1: order control -- \"NW\" (new order) is the only value this
   stage ever emits, since InjectChurn has no order-cancellation step
   (v1 scope). ORC-2: placer order number, reusing this message's own
-  control-id (no separate order-numbering scheme needed yet)."
-  [control-id]
-  (parser/create-segment
-   "ORC"
-   (parser/create-field ["NW"])
-   (parser/create-field [control-id])))
+  control-id (no separate order-numbering scheme needed yet).
+
+  ARC 4 SWEEP 3 (ADR-0175 design (b)): the 3-arity additionally renders
+  ORC-5 (Order Status) behind a two-field positional pad, from the
+  site profile's own `:order-status` table. The 2-arity is unchanged and
+  is what every pre-ladder call site still uses, so an order message
+  with no ladder is byte-frozen -- ORC-2's own placer number, not a
+  status, is what an un-laddered order has always said.
+
+  ORC-2 IS THE RUNG'S OWN CONTROL ID, not the order's, because it is
+  this message's own control id and that is what ORC-2 has always
+  carried here. The link back to the order it restates is OBR-4 plus
+  the rung's MSH-10, which encodes the basis instant -- stated because
+  a reader could reasonably expect a placer number to be stable across
+  a ladder, and in a real placer-numbered feed it would be."
+  ([control-id]
+   (parser/create-segment
+    "ORC"
+    (parser/create-field ["NW"])
+    (parser/create-field [control-id])))
+  ([control-id site-profile stage]
+   (parser/create-segment
+    "ORC"
+    (parser/create-field ["NW"])
+    (parser/create-field [control-id])
+    (parser/create-field [])
+    (parser/create-field [])
+    (parser/create-field (site-profile/code-for site-profile :order-status
+                                                site-profile/standard-order-status-codes
+                                                stage)))))
 
 (defn- obr-segment
   "OBR-4: universal service id -- the PANEL-level LOINC concept (CBC/BMP
@@ -966,7 +990,29 @@
     (cwe-field concept)
     (parser/create-field [])
     (parser/create-field [])
-    (parser/create-field [clinical-ts]))))
+    (parser/create-field [clinical-ts])))
+  ;; ARC 4 SWEEP 3 (ADR-0175 design (b)): OBR-25 (Result Status), from
+  ;; the site profile's own `:result-status` table, behind a 17-field
+  ;; positional pad. THE PAD IS THE COST, and it is disclosed rather
+  ;; than hidden: a result message that carries a ladder status grows
+  ;; from 7 rendered OBR fields to 25. Every one of OBR-8..24 is a real
+  ;; field this project does not populate, so the pad is the standard's
+  ;; own positional arithmetic, not padding invented here.
+  ([set-id concept clinical-ts site-profile stage]
+   (apply parser/create-segment
+          "OBR"
+          (parser/create-field [(str set-id)])
+          (parser/create-field [])
+          (parser/create-field [])
+          (cwe-field concept)
+          (parser/create-field [])
+          (parser/create-field [])
+          (parser/create-field [clinical-ts])
+          (concat (blank-fields 17)
+                  [(parser/create-field
+                    (site-profile/code-for site-profile :result-status
+                                           site-profile/standard-result-status-codes
+                                           stage))]))))
 
 (defn- obx-segment
   "One analyte per OBX (docs/operational-models.md's own spec for this
@@ -985,23 +1031,35 @@
   transmit time. Every analyte OBX of one result event carries the SAME
   clinical instant, since the log records one `:t` for the result, not
   one per analyte."
-  [set-id clinical-ts {:keys [concept unit value reference-range abnormal-flag]}]
-  (parser/create-segment
-   "OBX"
-   (parser/create-field [(str set-id)])
-   (parser/create-field ["NM"])
-   (cwe-field concept)
-   (parser/create-field [])
-   (parser/create-field [(str value)])
-   (parser/create-field [unit])
-   (parser/create-field [(str (:low reference-range) "-" (:high reference-range))])
-   (parser/create-field [(case abnormal-flag :normal "N" :low "L" :high "H")])
-   (parser/create-field [])
-   (parser/create-field [])
-   (parser/create-field [])
-   (parser/create-field [])
-   (parser/create-field [])
-   (parser/create-field [clinical-ts])))
+  ([set-id clinical-ts result] (obx-segment set-id clinical-ts result nil nil))
+  ([set-id clinical-ts {:keys [concept unit value reference-range abnormal-flag]}
+    site-profile stage]
+   (parser/create-segment
+    "OBX"
+    (parser/create-field [(str set-id)])
+    (parser/create-field ["NM"])
+    (cwe-field concept)
+    (parser/create-field [])
+    (parser/create-field [(str value)])
+    (parser/create-field [unit])
+    (parser/create-field [(str (:low reference-range) "-" (:high reference-range))])
+    (parser/create-field [(case abnormal-flag :normal "N" :low "L" :high "H")])
+    (parser/create-field [])
+    (parser/create-field [])
+    ;; ARC 4 SWEEP 3 (ADR-0175 design (b)): OBX-11 (Observation Result
+    ;; Status). It has been rendered as a positional blank since ADR-0142
+    ;; put OBX-14 behind a pad, so the ladder FILLS a field that already
+    ;; existed rather than widening the segment -- the OBR-25 half of the
+    ;; same statement is a 17-field pad, and the asymmetry is worth
+    ;; noticing.
+    (if stage
+      (parser/create-field (site-profile/code-for site-profile :observation-result-status
+                                                  site-profile/standard-observation-result-status-codes
+                                                  stage))
+      (parser/create-field []))
+    (parser/create-field [])
+    (parser/create-field [])
+    (parser/create-field [clinical-ts]))))
 
 (defn- orm-message
   "ORM^O01: order placed. No EVN segment -- EVN is an ADT-specific
@@ -1021,23 +1079,47 @@
   specimen/observation time for an observation that has not happened
   yet, and ORC-9 (transaction time) is the field that would actually
   be owed -- and it is a named revisit, not a silent ride-along.
-  Author ruling Q3, 2026-08-16: \"Results only; ORM byte-frozen.\""
-  [reference-date utc-offset facility providers demographics site-profile offsets
-   {:keys [t active-mrn location attending concept participants] :as ev}]
-  (let [type+trigger (message-type-registry :order-placed)
-        control-id (control-id-for ev)
-        transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
-        facility-name (name (:id facility))
-        provider (provider-by-id providers attending)]
-    (parser/str-message
-     (apply parser/create-message
-      parser/DEFAULT-DELIMITERS
-      (msh-segment site-profile type+trigger control-id transmit-ts)
-      (pid-segment active-mrn (demographics-at demographics (:patient-id (first participants)) t))
-      (pv1-segment site-profile :inpatient facility-name location nil provider nil (:encounter-id ev))
-      (orc-segment control-id)
-      (obr-segment 1 concept)
-      (z-segments-for site-profile demographics ev)))))
+  Author ruling Q3, 2026-08-16: \"Results only; ORM byte-frozen.\"
+
+  ARC 4 SWEEP 3 (ADR-0175 design (b)) adds an optional `status` --
+  `{:stage <keyword> :control-id <this rung's own> :basis-control-id
+  <the order event's>}` -- and BYTE-FREEZE SURVIVES IT, because nil
+  status is every pre-ladder call site: an `:order-placed` event still
+  renders exactly what it rendered yesterday. What a status buys is the
+  ORM^O01 RUNG: the same builder, over the same order event with `:t`
+  replaced by the rung's own instant, with ORC-5 filled in.
+
+  THE OFFSET IS LOOKED UP UNDER `:basis-control-id`, the ORDER's own
+  control id, never the rung's -- sweep 2's DFT finding
+  (`.agents/session-records/2026-08-28-arc-4-sweep-2-chatter-charges.md`
+  finding 2) generalised: a derived message rides its basis event's own
+  lag, and keying on an id no `:latency` profile mints would silently
+  give the rung a zero offset and let it overtake the order it restates.
+  Since the rung's instant is strictly AFTER the order's and both carry
+  the same offset, a rung can never precede its own ORM^O01."
+  ([reference-date utc-offset facility providers demographics site-profile offsets ev]
+   (orm-message reference-date utc-offset facility providers demographics site-profile offsets ev nil))
+  ([reference-date utc-offset facility providers demographics site-profile offsets
+    {:keys [t active-mrn location attending concept participants] :as ev}
+    {:keys [stage] :as status}]
+   (let [type+trigger (message-type-registry :order-placed)
+         control-id (or (:control-id status) (control-id-for ev))
+         transmit-ts (hl7-timestamp reference-date
+                                    (transmit-seconds offsets
+                                                      (or (:basis-control-id status) control-id)
+                                                      t)
+                                    utc-offset)
+         facility-name (name (:id facility))
+         provider (provider-by-id providers attending)]
+     (parser/str-message
+      (apply parser/create-message
+       parser/DEFAULT-DELIMITERS
+       (msh-segment site-profile type+trigger control-id transmit-ts)
+       (pid-segment active-mrn (demographics-at demographics (:patient-id (first participants)) t))
+       (pv1-segment site-profile :inpatient facility-name location nil provider nil (:encounter-id ev))
+       (if stage (orc-segment control-id site-profile stage) (orc-segment control-id))
+       (obr-segment 1 concept)
+       (z-segments-for site-profile demographics ev))))))
 
 (defn- oru-message
   "ORU^R01: result available -- OBR (order context) plus one OBX per
@@ -1053,25 +1135,56 @@
   OBR-7 and every OBX-14 are CLINICAL time (`clinical-ts`, this event's
   own `:t`, never shifted) -- the same two-clock split
   `single-subject-message` has always had via EVN-2, now on the result
-  wire, so a downstream receiver handed a late result can back-date it."
-  [reference-date utc-offset facility providers demographics site-profile offsets
-   {:keys [t active-mrn location attending concept results participants] :as ev}]
-  (let [type+trigger (message-type-registry :result-available)
-        control-id (control-id-for ev)
-        clinical-ts (hl7-timestamp reference-date t utc-offset)
-        transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
-        facility-name (name (:id facility))
-        provider (provider-by-id providers attending)
-        obx-segments (map-indexed (fn [i r] (obx-segment (inc i) clinical-ts r)) results)]
-    (parser/str-message
-     (apply parser/create-message
-      parser/DEFAULT-DELIMITERS
-      (msh-segment site-profile type+trigger control-id transmit-ts)
-      (pid-segment active-mrn (demographics-at demographics (:patient-id (first participants)) t))
-      (pv1-segment site-profile :inpatient facility-name location nil provider nil (:encounter-id ev))
-      (orc-segment control-id)
-      (obr-segment 1 concept clinical-ts)
-      (concat obx-segments (z-segments-for site-profile demographics ev))))))
+  wire, so a downstream receiver handed a late result can back-date it.
+
+  ARC 4 SWEEP 3 (ADR-0175 design (b)) adds the optional `status`
+  -- `{:stage <keyword> :control-id ... :basis-control-id ...}` -- and
+  it renders in TWO fields at once, OBR-25 and every OBX-11, because
+  0123 and 0085 are the report-level and analyte-level halves of one
+  statement. Nil status is byte-frozen and is what every un-laddered
+  result still takes.
+
+  THIS BUILDER IS USED FOR BOTH ENDS OF THE LADDER, which is the whole
+  point of restatement: a rung is this same call over this same result
+  event with `:t` replaced by the rung's instant and `:stage`
+  `:preliminary`, and the terminal message is this same call with the
+  event's own `:t` and `:stage` `:final`. The OBX ANALYTE VALUES ARE
+  THEREFORE THE SAME on a rung as on the final message, and that is
+  disclosed rather than smoothed over: this project's log holds ONE
+  result per order, so there is no intermediate value to restate. A
+  preliminary that carries the value it will confirm is what HL7's own
+  \"P\" means -- a verified early result that may still change -- and
+  inventing a different number for a rung would be minting a fact, which
+  is exactly what `rulings.md#R-skeleton-or-emission` forbids emission
+  from doing."
+  ([reference-date utc-offset facility providers demographics site-profile offsets ev]
+   (oru-message reference-date utc-offset facility providers demographics site-profile offsets ev nil))
+  ([reference-date utc-offset facility providers demographics site-profile offsets
+    {:keys [t active-mrn location attending concept results participants] :as ev}
+    {:keys [stage] :as status}]
+   (let [type+trigger (message-type-registry :result-available)
+         control-id (or (:control-id status) (control-id-for ev))
+         clinical-ts (hl7-timestamp reference-date t utc-offset)
+         transmit-ts (hl7-timestamp reference-date
+                                    (transmit-seconds offsets
+                                                      (or (:basis-control-id status) control-id)
+                                                      t)
+                                    utc-offset)
+         facility-name (name (:id facility))
+         provider (provider-by-id providers attending)
+         obx-segments (map-indexed (fn [i r] (obx-segment (inc i) clinical-ts r site-profile stage))
+                                   results)]
+     (parser/str-message
+      (apply parser/create-message
+       parser/DEFAULT-DELIMITERS
+       (msh-segment site-profile type+trigger control-id transmit-ts)
+       (pid-segment active-mrn (demographics-at demographics (:patient-id (first participants)) t))
+       (pv1-segment site-profile :inpatient facility-name location nil provider nil (:encounter-id ev))
+       (orc-segment control-id)
+       (if stage
+         (obr-segment 1 concept clinical-ts site-profile stage)
+         (obr-segment 1 concept clinical-ts))
+       (concat obx-segments (z-segments-for site-profile demographics ev)))))))
 
 ;; --- M5b: :observation -> ORU^R01, OBX only (components/patient-simulator/docs/gmf-interpreter.md
 ;; section 1's table) -------------------------------------------------------
@@ -1361,15 +1474,31 @@
    (event->messages reference-date utc-offset facility providers demographics nil {} {} ev))
   ([reference-date utc-offset facility providers demographics site-profile offsets ev]
    (event->messages reference-date utc-offset facility providers demographics site-profile offsets {} ev))
+  ([reference-date utc-offset facility providers demographics site-profile offsets charges ev]
+   (event->messages reference-date utc-offset facility providers demographics site-profile offsets
+                    charges nil ev))
+  ;; ARC 4 SWEEP 3 (ADR-0175 design (b)): `ladder-status` is THIS
+  ;; event's own terminal status -- `{:stage :final}` for a
+  ;; `:result-available` whose order actually grew a rung, nil for every
+  ;; other event and every un-laddered order. It is passed per event
+  ;; rather than looked up from a set of control ids on purpose:
+  ;; `control-id-for` is not injective over `:result-available` (two
+  ;; results for one patient at one second mint the same MSH-10, a
+  ;; PRE-EXISTING collision this sweep neither introduces nor fixes),
+  ;; and a ladder keyed on a non-injective id would put final codes on
+  ;; the wrong twin. `emit-wire` has the log index in hand and passes
+  ;; the decision, not the key.
   ([reference-date utc-offset facility providers demographics site-profile offsets charges
-    {:keys [event] :as ev}]
+    ladder-status {:keys [event] :as ev}]
    (let [registered (cond
                       (not (message-type-registry event)) []
                       (= :bed-status-change event) [(bed-status-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
                       (= :bed-swap event) [(bed-swap-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
                       (= :merge event) [(merge-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
                       (= :order-placed event) [(orm-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
-                      (= :result-available event) [(oru-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
+                      (= :result-available event)
+                      [(oru-message reference-date utc-offset facility providers demographics
+                                    site-profile offsets ev ladder-status)]
                       (= :observation event) [(observation-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
                       (= :diagnostic-report event) [(diagnostic-report-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
                       :else [(single-subject-message reference-date utc-offset facility providers demographics site-profile offsets ev)])
@@ -1676,17 +1805,25 @@
                                          :in1? false})))))))))
         acc))))
 
-(defn- assign-chatter-ordinals
-  "MSH-10 for a chatter message is `mrn-trigger-t-<ordinal>`, the
-  ordinal counting within `(mrn, trigger, t)` -- ADR-0175 section 2(a),
-  and the same shape `:bed-status-change`'s own arm of `control-id-for`
-  already uses to disambiguate two legs of one bed at one instant.
+(defn- assign-restatement-ordinals
+  "Stamps `:ordinal` and `:control-id` onto a vector of restatement
+  instructions, the ordinal counting within `(active-mrn, trigger, at)`
+  -- EXTRACTED from `assign-chatter-ordinals` (arc 4 sweep 2) verbatim
+  so the ladder and chatter mint control ids by one construction rather
+  than two.
 
-  A ground-truth event's own id has NO ordinal suffix, so a chatter id
-  can never collide with one even before the trigger is considered; the
+  MSH-10 is `mrn-trigger-t-<ordinal>` for every restatement this
+  emitter makes. A ground-truth event's own id has NO ordinal suffix,
+  so a restatement id can never collide with one; the trigger keeps
+  chatter's A08/A31/A28 apart from the ladder's O01/R01; and the
   ordinal is what keeps two restatements of one patient at one instant
-  apart, which is the case `bidirectional-derivability`'s
-  MSH-10-uniqueness half would otherwise catch as a defect."
+  apart. THE FOUR-PART KEY IS THE IDENTITY TUPLE, not ADR-0175 section
+  4's three-part `(basis-event-index, trigger, ordinal)` -- sweep 2
+  measured that triple non-injective (two periodic restatements inside
+  one patient-day share a basis, a trigger and an ordinal and differ
+  only in the instant) and the ladder must not worsen it. It does not:
+  two rungs of one order differ in `at` by construction, and two rungs
+  of two orders for one patient at one instant differ in the ordinal."
   [instructions]
   (first
    (reduce (fn [[acc seen] ins]
@@ -1723,7 +1860,7 @@
         mrns (mrn-timeline ground-truth)
         event-driven (event-driven-chatter rng ground-truth chatter)
         periodic (periodic-chatter rng spans mrns chatter)]
-    (assign-chatter-ordinals (into event-driven periodic))))
+    (assign-restatement-ordinals (into event-driven periodic))))
 
 (defn- chatter-message
   "Renders one `plan-chatter` instruction to an ER7 string. Every field
@@ -1837,6 +1974,184 @@
        {:lines {} :skipped {}}
        (sort-by (comp :opener-index val) spans)))))
 
+;; --- ARC 4 SWEEP 3 (ADR-0175 design (b), ruling B1): status ladders --------
+;; ORM^O01 restatements carrying ORC-5, ORU^R01 restatements carrying
+;; OBR-25/OBX-11, at fixed fractions of an order's own
+;; `:order-placed` -> `:result-available` interval.
+;;
+;; THERE IS NO DRAW HERE, AT ALL, AND THAT HOLDS ALL THE WAY.
+;; `plan-ladders` takes no `java.util.Random` and consumes nothing from
+;; the `:emission` family: `:result-available` carries
+;; `:order-event-id`, the LOG INDEX of its own order, so both ends of
+;; the interval are in the log and a rung at a fixed fraction of it is a
+;; pure function of `(log, ladder-config)` -- the same standing this
+;; namespace's `plan-charges` already has, and one step stronger than
+;; `plan-chatter`'s (which draws, and therefore owes the
+;; fixed-consumption law). ADR-0175 section 2(b)'s rejected option (2)
+;; is the reason the fractions are not sampled: a sampled rung costs a
+;; second RNG consumer for no realism the fixed fractions do not buy,
+;; and it makes the rung un-derivable from the log alone. Nothing below
+;; needs a fixed-consumption law because nothing below consumes.
+;;
+;; LADDER RUNGS ADD NO `message-type-registry` ENTRY, for chatter's own
+;; reason: a registry entry claims that one ground-truth event renders
+;; one message, and a rung is a restatement of an order that has not
+;; finished. What reaches the wire is a family the registry ALREADY
+;; carries (ORM^O01, ORU^R01), which is why -- unlike chatter and unlike
+;; the DFT -- this sweep co-lands no new `v2-replay/evolve-entry` arm:
+;; both triggers have been handled there since M3.
+
+(def order-status-ladder
+  "The ORC-5 stage an ORM^O01 rung carries, by rung index, SATURATING at
+  the last entry. Two stages, then the ladder holds: a third and fourth
+  order rung both say `:in-progress`, which is what a real order-status
+  feed says when nothing has changed but time.
+
+  THE STAGES ARE KEYWORDS, NOT CODES. Every code string this ladder
+  renders comes from `ehrt.sim-emit-hl7.site-profile`'s own
+  `:order-status` table at render time, so a site overrides the
+  vocabulary without touching the ladder's shape (ADR-0175 section
+  2(b): tables 0038/0123/0085 are in no jar and no resource in this
+  tree, so they ship as declared, overridable data and are never
+  asserted as an HL7 citation)."
+  [:scheduled :in-progress])
+
+(def result-status-ladder
+  "The OBR-25/OBX-11 stage an ORU^R01 rung carries, by rung index,
+  saturating the same way. ONE stage, deliberately: every rung this
+  project can render carries the order's own analyte values (the log
+  holds one result per order), and `:preliminary` -- HL7's \"a verified
+  early result is available, final not yet obtained\" -- is what that
+  is. A second stage would have to mean something the log does not
+  distinguish."
+  [:preliminary])
+
+(def ^:private final-result-stage
+  "The stage the TERMINAL message of a result ladder carries, in both
+  OBR-25 and OBX-11."
+  :final)
+
+(defn- ladder-stage
+  "Rung `k`'s stage: the ladder's `k`th entry, or its last once `k` runs
+  past the end. Never nil, never an index error, whatever the config's
+  rung count."
+  [ladder k]
+  (nth ladder (min (long k) (dec (count ladder)))))
+
+(defn- rung-instant
+  "`t0 + round(f * (t1 - t0))`, as a long. `Math/round` rather than a
+  truncation so a rung at 0.5 of an odd interval lands where a reader
+  would put it, and long arithmetic throughout so no rung instant can
+  depend on double formatting."
+  [t0 t1 f]
+  (+ (long t0) (Math/round (* (double f) (double (- (long t1) (long t0)))))))
+
+(defn plan-ladders
+  "GT x LadderProfile (ehrt.sim-model.config/LadderProfile) ->
+  `{:rungs [instruction ...] :final #{result-control-id ...}}`.
+
+  An instruction is `{:at :family :trigger :basis :basis-control-id
+  :active-mrn :stage :seq :ordinal :control-id}`. `:basis` is the LOG
+  INDEX of the event the rung restates -- the ORDER for an ORM rung,
+  the RESULT for an ORU rung -- and `:basis-control-id` is that event's
+  own control id, which is the key `emit-wire` looks the latency offset
+  up under. A rung therefore rides the lag of the message it restates
+  and can never overtake it: an ORM rung's instant is strictly after
+  its order's and an ORU rung's strictly before its result's, and each
+  carries the same offset as its basis.
+
+  `:final` IS PER-ORDER, NOT PER-CONFIG. It holds the LOG INDEX of
+  every `:result-available` that actually grew a rung, and those are the
+  only terminal messages that carry OBR-25/OBX-11. An order whose
+  interval admits no rung renders exactly the bytes it rendered before
+  ladders existed, which is what makes `no rung => no byte change` an
+  assertable property rather than a hope.
+
+  INDICES, NOT CONTROL IDS, and the difference is load-bearing:
+  `control-id-for` is not injective over `:result-available` -- two
+  results for one patient at one second mint the same MSH-10, which is a
+  pre-existing collision (`:bed-status-change`'s own arm of
+  `control-id-for` is the shape that fixes this class, and doing it here
+  would move every existing corpus's bytes, so it is rowed rather than
+  smuggled into an emission sweep). A ladder keyed on that id would put
+  final codes on the wrong twin.
+
+  A RUNG MUST LAND STRICTLY INSIDE THE INTERVAL. `(< t0 rung-t t1)` is
+  checked after rounding, not before, so a fraction that rounds onto
+  either endpoint produces no rung rather than a duplicate of a message
+  that already exists at that instant. Zero-length intervals (an order
+  and its result at the same second) therefore ladder not at all.
+
+  Absent/nil/{} `ladders` plans nothing -- the byte-identical path,
+  the same three-way agreement `plan-chatter`, `plan-latency` and
+  `ehrt.sim-emit-hl7.site-profile` already have. NO RNG: see this
+  section's own header."
+  [ground-truth ladders]
+  (if-not (map? ladders)
+    {:rungs [] :final #{}}
+    (let [evs (vec ground-truth)
+          families [{:family :oru :trigger "R01" :fractions (vec (:rungs ladders))
+                     :ladder result-status-ladder :basis :result}
+                    {:family :orm :trigger "O01" :fractions (vec (:order-rungs ladders))
+                     :ladder order-status-ladder :basis :order}]
+          instructions
+          (vec
+           (for [[j result] (map-indexed vector evs)
+                 :when (= :result-available (:event result))
+                 :let [i (:order-event-id result)
+                       order (when (and (integer? i) (< -1 (long i) (count evs)))
+                               (nth evs (long i)))]
+                 :when (= :order-placed (:event order))
+                 :let [t0 (:t order) t1 (:t result)]
+                 {:keys [family trigger fractions ladder basis]} families
+                 [k f] (map-indexed vector fractions)
+                 :let [at (rung-instant t0 t1 f)
+                       basis-ev (if (= :order basis) order result)
+                       basis-index (if (= :order basis) (long i) j)]
+                 :when (< (long t0) at (long t1))]
+             {:at at
+              :family family
+              :trigger trigger
+              :basis basis-index
+              :basis-control-id (control-id-for basis-ev)
+              :active-mrn (:active-mrn basis-ev)
+              :result-index j
+              :order-index (long i)
+              :stage (ladder-stage ladder k)
+              :seq k}))
+          ;; SORTED BEFORE THE ORDINALS ARE STAMPED, and the sort is
+          ;; part of the contract rather than tidiness: the ordinal
+          ;; disambiguates two rungs at one instant, so which of them is
+          ;; 0 must be a function of the log and not of the order the
+          ;; comprehension above happened to walk its two families in.
+          sorted (vec (sort-by (juxt :at :basis :family :seq) instructions))
+          stamped (assign-restatement-ordinals sorted)]
+      {:rungs stamped
+       :final (into #{} (comp (filter #(= :oru (:family %))) (map :result-index))
+                    stamped)})))
+
+(defn- ladder-message
+  "Renders one `plan-ladders` instruction to an ER7 string -- the SAME
+  builder the message it restates uses, over the SAME event, with `:t`
+  replaced by the rung's own instant and a `status` carrying the rung's
+  stage and control id.
+
+  THAT IS THE WHOLE MECHANISM, and it is why a rung cannot say anything
+  the final message does not: it is not a second rendering path, it is
+  the first one called again at an earlier instant. The ORC and OBR a
+  rung carries are the ORC and OBR of the message it restates, field
+  for field, because they come out of the same builder over the same
+  event."
+  [reference-date utc-offset facility providers demographics site-profile offsets ground-truth
+   {:keys [at family stage control-id basis-control-id basis]}]
+  (let [ev (assoc (nth ground-truth basis) :t at)
+        status {:stage stage :control-id control-id :basis-control-id basis-control-id}]
+    (if (= :orm family)
+      (orm-message reference-date utc-offset facility providers demographics site-profile
+                   offsets ev status)
+      (oru-message reference-date utc-offset facility providers demographics site-profile
+                   offsets ev status))))
+
 (defn emit-wire
   "GT x reference-date x utc-offset x facility x providers x
   site-profile x offsets [x emission] -> TimedWire: the SAME messages
@@ -1868,15 +2183,35 @@
   closes the same encounter), `lane` 1 is chatter, and `sub` is the
   ordinal within each. Chatter carries no offset, so a chatter
   message's transmit instant is its own `:at` and the latency plan for
-  every non-chatter message is untouched."
+  every non-chatter message is untouched.
+
+  ARC 4 SWEEP 3 (ADR-0175 design (b)) adds `:ladders` to `emission`:
+  `plan-ladders`' own `{:rungs [...] :final #{...}}`. The rungs take
+  LANE 2, and the `:final` set -- LOG INDICES -- decides, per event,
+  whether `event->messages` renders a terminal status. That is the one
+  place this sweep moves an existing message's bytes: a terminal ORU^R01
+  whose order grew a rung gains OBR-25 and OBX-11.
+
+  A LADDER RUNG DOES CARRY AN OFFSET, unlike a chatter restatement, and
+  the difference is not an inconsistency. Chatter has no basis event to
+  take a lag from -- a periodic A08 restates a patient, not an event --
+  while a rung restates one specific message whose own lag is in the
+  plan, so it is looked up under `:basis-control-id` and the rung rides
+  it. The consequence is the ordering law the ladder needs: an ORM rung
+  transmits after its own order and an ORU rung before its own result,
+  under every latency profile, because each pair shares one offset and
+  the rung's instant is strictly inside the interval."
   ([ground-truth reference-date utc-offset facility providers site-profile offsets]
    (emit-wire ground-truth reference-date utc-offset facility providers site-profile offsets {}))
   ([ground-truth reference-date utc-offset facility providers site-profile offsets
-    {:keys [chatter charges]}]
+    {:keys [chatter charges ladders]}]
    (let [demographics (demographics-timeline ground-truth)
          offsets (or offsets {})
          chatter (or chatter [])
          charges (or charges {})
+         ground-truth (vec ground-truth)
+         rungs (:rungs ladders)
+         final-result-indices (or (:final ladders) #{})
          spans (when (seq chatter) (encounter-spans ground-truth))
          base (->> ground-truth
                    (map-indexed
@@ -1886,13 +2221,21 @@
                         (map-indexed
                          (fn [j message] [transmit-t i 0 j message])
                          (event->messages reference-date utc-offset facility providers demographics
-                                          site-profile offsets charges ev)))))
+                                          site-profile offsets charges
+                                          (when (contains? final-result-indices i) {:stage :final})
+                                          ev)))))
                    (apply concat))
          restatements (map (fn [ins]
                              [(:at ins) (:basis ins) 1 (:ordinal ins)
                               (chatter-message reference-date utc-offset facility providers
                                                demographics site-profile spans ins)])
-                           chatter)]
-     (->> (concat base restatements)
+                           chatter)
+         ladder-rungs (map (fn [ins]
+                             [(transmit-seconds offsets (:basis-control-id ins) (:at ins))
+                              (:basis ins) 2 (:seq ins)
+                              (ladder-message reference-date utc-offset facility providers
+                                              demographics site-profile offsets ground-truth ins)])
+                           rungs)]
+     (->> (concat base restatements ladder-rungs)
           (sort-by (fn [[transmit-t i lane sub _]] [transmit-t i lane sub]))
           (mapv peek)))))

@@ -282,3 +282,43 @@
 
 (defn valid-charges-profile? [profile] (m/validate ChargesProfile profile))
 (defn explain-charges-profile [profile] (m/explain ChargesProfile profile))
+
+;; --- Status ladders (ADR-0175 design (b), arc 4 sweep 3): the
+;; order/result restatement config surface ------------------------------
+;; A LadderProfile is two vectors of FRACTIONS of an order's own
+;; `(:order-placed -> :result-available)` interval. It is EMISSION
+;; config and nothing else: `:result-available` carries
+;; `:order-event-id`, so both ends of that interval are in the log and a
+;; rung at a fixed fraction of it is a PURE FUNCTION OF THE LOG
+;; (`rulings.md#R-skeleton-or-emission`). No invariant reads a rung, no
+;; key here reaches `ehrt.sim-engine.engine/config-keys`, and
+;; `ehrt.sim-emit-hl7.emit-hl7/plan-ladders` takes NO RNG AT ALL --
+;; there is no draw to consume and therefore no fixed-consumption law to
+;; obey. ADR-0175 section 2(b)'s rejected option (2) is why the
+;; fractions are not sampled: a sampled rung costs a second RNG consumer
+;; for no realism, and it makes the rung un-derivable from the log.
+
+(def LadderProfile
+  "`:rungs` are ORU^R01 result-status restatements (OBR-25 + OBX-11);
+  `:order-rungs` are ORM^O01 order-status restatements (ORC-5). Each is
+  a vector of fractions STRICTLY between 0 and 1 -- a rung at 0 would
+  land on the order's own instant and one at 1 on the result's, which is
+  not a rung but a duplicate of a message that already exists.
+
+  Both are optional and both default to none, so `:ladders` absent, nil
+  or `{}` is the byte-identical path -- the same three-way agreement
+  `:chatter`, `:latency` and `:site-profile` already have. An order with
+  no rung of its own renders exactly today's bytes, INCLUDING its final
+  result message: the terminal OBR-25/OBX-11 codes ride the ladder,
+  per-order, never the config's mere presence.
+
+  CLOSED, like `ChatterProfile` and for the same reason: two keys are
+  the whole surface, so a typo is a misconfiguration this schema catches
+  rather than a ladder that silently never fires."
+  [:map
+   {:closed true}
+   [:rungs {:optional true} [:vector [:and number? [:> 0] [:< 1]]]]
+   [:order-rungs {:optional true} [:vector [:and number? [:> 0] [:< 1]]]]])
+
+(defn valid-ladder-profile? [profile] (m/validate LadderProfile profile))
+(defn explain-ladder-profile [profile] (m/explain LadderProfile profile))

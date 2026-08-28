@@ -262,6 +262,32 @@
   {:active-mrn (seg-field pid-seg 3)
    :persona (parse-persona pid-seg)})
 
+(def ^:private non-final-result-statuses
+  "HL7v2 Table 0123 values that mean a result is NOT the last word:
+  \"O\" order received, \"I\" no results yet, \"S\" preliminary
+  scheduled, \"P\" preliminary, \"A\" some results available, \"R\"
+  results stored not verified. \"F\" (final), \"C\" (correction) and an
+  ABSENT OBR-25 all mean fold.
+
+  Authored, not cited: no jar or resource on any classpath in this tree
+  carries HL7 tables (ADR-0175 section 2(b)), which is the same reason
+  the emitter ships its ladder vocabulary as site-profile data. The
+  emitter's own default rung code is \"P\", so the set that matters here
+  is one value wide; the rest are named so a hand-authored corpus using
+  the table's other in-progress values folds correctly too."
+  #{"O" "I" "S" "P" "A" "R"})
+
+(defn- final-result?
+  "Is this ORU^R01's OBR-25 (Result Status) absent, or a value that means
+  the result is final? A message with no OBR segment at all -- the
+  unsolicited `:observation` shape, which has no order and therefore no
+  ladder -- is final by this reading, which is correct: it is the only
+  message that observation will ever get."
+  [parsed]
+  (let [obr (first-segment parsed "OBR")
+        status (when obr (seg-field obr 25))]
+    (not (contains? non-final-result-statuses status))))
+
 (defn- evolve-entry
   "(entry, trigger, parsed, t) -> entry'. Pure and total, mirroring
   ehrt.sim-engine.engine/evolve's own shape one layer up the wire --
@@ -285,7 +311,31 @@
                              :location (parse-location pv1-seg) :attending (parse-attending pv1-seg))
                 (dissoc :discharged-at))
       "O01" entry
-      "R01" (update entry :observations (fnil into []) (parse-observations parsed t))
+      ;; ARC 4 SWEEP 3 (ADR-0175 design (b)): a PRELIMINARY result is not
+      ;; folded. A status ladder emits ORU^R01 restatements of an order
+      ;; that has not finished, carrying the same OBX analytes the final
+      ;; message will carry (this project's log holds one result per
+      ;; order), so appending them would count one result two or three
+      ;; times. HL7's own semantics say the same thing: an OBR-25 of
+      ;; \"P\" is superseded by the \"F\" that follows it.
+      ;;
+      ;; THE CONSEQUENCE IS A PROPERTY, and it is what this arm is
+      ;; really for: replaying a LADDERED corpus reconstructs the same
+      ;; accumulator as replaying the same run un-laddered. A corpus
+      ;; with no OBR-25 at all -- every corpus this project emitted
+      ;; before today -- folds exactly as it always did, since
+      ;; `final-result?` is true for an absent status.
+      ;;
+      ;; IT READS THE STANDARD VOCABULARY, NOT THE SITE PROFILE, and
+      ;; that limit is stated rather than hidden: `fold-message` is
+      ;; handed bytes and nothing else, so a site that overrides
+      ;; `:result-status` to non-standard strings gets its preliminaries
+      ;; folded. The alternative -- threading emission config into a
+      ;; wire reader -- would make the replay depend on something the
+      ;; wire does not carry, which is worse.
+      "R01" (if (final-result? parsed)
+              (update entry :observations (fnil into []) (parse-observations parsed t))
+              entry)
       ;; ARC 4 SWEEP 2 (ADR-0175 design (a), section 1(iii)): the three
       ;; chatter families CO-LAND their fold arm here, and the arm is
       ;; not optional even though it is small -- an unhandled trigger

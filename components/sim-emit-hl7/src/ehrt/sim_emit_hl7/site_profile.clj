@@ -102,7 +102,21 @@
    [:patient-class {:optional true} CodeTable]
    [:discharge-disposition {:optional true} CodeTable]
    ;; ARC 3B SWEEP 2 (ADR-0174 ruling C's A20): NPU-2's own table.
-   [:bed-status {:optional true} CodeTable]])
+   [:bed-status {:optional true} CodeTable]
+   ;; ARC 4 SWEEP 3 (ADR-0175 design (b), ruling B1): the status
+   ;; ladder's three tables -- ORC-5, OBR-25 and OBX-11. They are HERE,
+   ;; rather than as constants in `ehrt.sim-emit-hl7.emit-hl7`, for the
+   ;; reason section 2(b) gives and `:bed-status` already demonstrates:
+   ;; the VALUES are not in this tree. `hapi-structures-v24` 2.6.0 ships
+   ;; STRUCTURES, not HL7 tables, and tables 0038/0123/0085 appear in no
+   ;; jar and no resource on any classpath here. Shipping them as
+   ;; declared, overridable site-profile data is the honest form for a
+   ;; vocabulary this repository cannot cite: a reader can see exactly
+   ;; what was authored and replace it, and nothing anywhere asserts
+   ;; these strings as an HL7 citation.
+   [:order-status {:optional true} CodeTable]
+   [:result-status {:optional true} CodeTable]
+   [:observation-result-status {:optional true} CodeTable]])
 
 (def standard-patient-class-codes
   "HL7v2 Table 0004 (patient class), today's hard-coded value. This
@@ -141,6 +155,68 @@
   distinguish the two legs. That site sets one override; it does not
   need a different cycle."
   {:occupied {:code "O"} :ready {:code "U"} :dirty {:code "K"} :cleaning {:code "H"}})
+
+(def standard-order-status-codes
+  "ORC-5 (Order Status), HL7v2 Table 0038 -- arc 4 sweep 3 (ADR-0175
+  design (b)).
+
+  NOT A CITATION. This repository has no copy of Table 0038 to check
+  against: no jar on any classpath here carries HL7 tables, only v2.4
+  structures. What is authored below is THIS PROJECT'S OWN READING of
+  the table's conventional values onto a two-stage order ladder plus a
+  terminal, and it is data precisely so a site that reads it
+  differently overrides rather than forks
+  (`notes/facts-register.md`'s own rule for a value this tree cannot
+  verify: state the provenance, never assert the authority).
+
+    :scheduled   -> \"SC\"  In process, scheduled
+    :in-progress -> \"IP\"  In process, unspecified
+    :final       -> \"CM\"  Completed
+
+  `:final` is present but NOT rendered by anything today: the
+  `:order-placed` ORM^O01 stays byte-frozen (author ruling Q3,
+  2026-08-16) and the ladder's terminal message is the RESULT, whose
+  status lives in OBR-25/OBX-11. It is authored anyway so an override
+  of the order ladder does not have to invent a completion code the
+  moment a later sweep sends a completion ORM."
+  {:scheduled {:code "SC"} :in-progress {:code "IP"} :final {:code "CM"}})
+
+(def standard-result-status-codes
+  "OBR-25 (Result Status), HL7v2 Table 0123 -- arc 4 sweep 3 (ADR-0175
+  design (b)). Same provenance caveat as `standard-order-status-codes`:
+  authored, not cited.
+
+    :preliminary -> \"P\"  Preliminary: a verified early result is
+                          available, final not yet obtained
+    :in-process  -> \"I\"  No results available; specimen received,
+                          procedure incomplete
+    :corrected   -> \"C\"  Record coming over is a correction
+    :final       -> \"F\"  Final results
+
+  THE DEFAULT LADDER USES `:preliminary`, NOT `:in-process`, and the
+  choice is clinical rather than arbitrary. A rung message carries the
+  order's OBX analytes -- this project's log holds ONE result per order,
+  so a rung restates the values the final message will carry -- and
+  \"I\" means precisely that no results are available. \"P\" is the code
+  for a verified early value that may still change, which is what a rung
+  actually is here. `:in-process` and `:corrected` are authored anyway,
+  unused by the default ladder, so a site whose analyzer really does
+  send an empty in-process report has a code to override to."
+  {:preliminary {:code "P"} :in-process {:code "I"}
+   :corrected {:code "C"} :final {:code "F"}})
+
+(def standard-observation-result-status-codes
+  "OBX-11 (Observation Result Status), HL7v2 Table 0085 -- arc 4 sweep 3
+  (ADR-0175 design (b)). Authored, not cited, same as its two siblings.
+
+  A SEPARATE TABLE FROM `standard-result-status-codes` EVEN THOUGH THE
+  DEFAULT VALUES COINCIDE. 0123 and 0085 are two tables in the standard,
+  they diverge beyond the four values below, and a site that overrides
+  the report-level code has no reason to be forced into overriding the
+  per-analyte one with it. Collapsing them would save three lines and
+  make one override impossible."
+  {:preliminary {:code "P"} :in-process {:code "I"}
+   :corrected {:code "C"} :final {:code "F"}})
 
 (defn code-for
   "Renders `state-value` (a keyword) as the ER7 field's component vector

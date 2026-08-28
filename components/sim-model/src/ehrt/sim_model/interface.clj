@@ -110,3 +110,9 @@
 (def ChargesProfile config/ChargesProfile)
 (defn valid-charges-profile? [profile] (config/valid-charges-profile? profile))
 (defn explain-charges-profile [profile] (config/explain-charges-profile profile))
+
+;; --- ARC 4 SWEEP 3 (ADR-0175 design (b)): the status-ladder config
+;; surface, reachable from outside for the same fail-fast reason.
+(def LadderProfile config/LadderProfile)
+(defn valid-ladder-profile? [profile] (config/valid-ladder-profile? profile))
+(defn explain-ladder-profile [profile] (config/explain-ladder-profile profile))

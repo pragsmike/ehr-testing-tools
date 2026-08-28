@@ -75,6 +75,17 @@
   [ground-truth charges]
   (emit-hl7/plan-charges ground-truth charges))
 
+;; --- ARC 4 SWEEP 3 (ADR-0175 design (b)): status ladders, ehrt.sim.run's
+;; own new call site. NO RNG in the signature, and that is the design
+;; rather than an omission -- a rung is a fixed fraction of an interval
+;; the log already carries.
+
+(defn plan-ladders
+  "GT x LadderProfile -> {:rungs [...] :final #{...}}. See
+  ehrt.sim-emit-hl7.emit-hl7/plan-ladders."
+  [ground-truth ladders]
+  (emit-hl7/plan-ladders ground-truth ladders))
+
 (def skeleton-message-types
   "Every MSH-9 the registry produces, as TYPE^TRIGGER -- `gate v2`'s
   sampling policy's own skeleton half. See

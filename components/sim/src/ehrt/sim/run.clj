@@ -481,6 +481,18 @@
   a counted skip inside the planner, never a read-back into ground
   truth for something else to bill.
 
+  ARC 4 SWEEP 3 (ADR-0175 design (b)): `:ladders`
+  (ehrt.sim-model.config/LadderProfile, optional) rides `:config` the
+  same way and takes NO RNG EITHER -- and, unlike `:charges`, it does
+  not even need a table: `:result-available` carries `:order-event-id`,
+  so both ends of an order's interval are already in the log and a rung
+  at a fixed fraction of it is a pure function of `(log, config)`. The
+  status VOCABULARY it renders lives in the site profile
+  (`:order-status`, `:result-status`, `:observation-result-status`),
+  where a site overrides it. Absent (the default): byte-identical, and
+  so is a run whose orders exist but whose ladder configures no rung
+  for them.
+
   M5b: `:modules` (a vector of NAME STRINGS, resolving against
   `resources/modules/<name>.json` -- `resolve-modules`'s own docstring)
   and `:module-assignment`/`:module-horizon-days` (forwarded verbatim,
@@ -516,7 +528,7 @@
        config-result
        (let [opts (:payload config-result)
              {:keys [seed patients emit at reference-date utc-offset warm-up-seconds churn churn-profile site-profile
-                     modules module-initial-attributes latency chatter charges]} opts
+                     modules module-initial-attributes latency chatter charges ladders]} opts
              conflicts (incompatible-assignments opts)
              resolved-modules (when modules (resolve-modules modules (or module-initial-attributes {})))]
          (cond
@@ -562,6 +574,23 @@
                           :value charges
                           :explain (pr-str (sim-model/explain-charges-profile charges))
                           :expected "{:price-table {\"<code>\" {:amount <number> :display <string, optional>}}}"})
+
+           ;; ARC 4 SWEEP 3 (ADR-0175 design (b)): and for `:ladders`.
+           ;; A malformed ladder is silent in exactly the way a
+           ;; malformed chatter profile is -- `plan-ladders` walks a
+           ;; non-vector `:rungs` as an empty one and produces nothing
+           ;; -- so a fraction authored as 25 instead of 0.25, or a
+           ;; `:rung` typo, would read as `ladders off` rather than as
+           ;; a config error.
+           (and (contains? opts :ladders) (not (sim-model/valid-ladder-profile? ladders)))
+           (result/error :invalid-ladders
+                         {:key :ladders
+                          :value ladders
+                          :explain (pr-str (sim-model/explain-ladder-profile ladders))
+                          :expected (str "{:rungs [<fraction strictly in (0,1)> ...] "
+                                         ":order-rungs [<fraction strictly in (0,1)> ...]} -- "
+                                         "each fraction is a fraction of the order->result "
+                                         "interval, never a count and never a duration")})
 
            :else
            (let [reference-date (or reference-date emit-hl7/default-reference-date)
@@ -637,7 +666,7 @@
                                    :events (count ground-truth)}}
                   (= "hl7" emit)
                   (assoc :messages
-                        (if (or latency chatter charges)
+                        (if (or latency chatter charges ladders)
                           (emit-hl7/emit-wire ground-truth reference-date utc-offset facility providers site-profile
                                               ;; ADR-0171 ruling C1: the emission latency
                           ;; stream is the :emission FAMILY, derived like
@@ -671,10 +700,23 @@
                           ;; table, and ADR-0175 section 2(c)'s rejected
                           ;; option (3) says why -- a price that changes
                           ;; per run is not a price.
+                          ;;
+                          ;; ARC 4 SWEEP 3 (ADR-0175 design (b)):
+                          ;; `:ladders` needs NO STREAM EITHER, and for a
+                          ;; stronger reason than `:charges`. A rung sits
+                          ;; at a fixed fraction of an interval both of
+                          ;; whose ends are in the log
+                          ;; (`:result-available` carries
+                          ;; `:order-event-id`), so it is a pure function
+                          ;; of `(log, config)` with nothing to draw --
+                          ;; the `:emission` family's id-tags 0 and 1 are
+                          ;; still latency's and chatter's, and this
+                          ;; sweep claims no third.
                           {:chatter (when chatter
                                       (emit-hl7/plan-chatter (engine/stream seed :emission 1)
                                                              ground-truth chatter))
-                           :charges (:lines (emit-hl7/plan-charges ground-truth charges))})
+                           :charges (:lines (emit-hl7/plan-charges ground-truth charges))
+                           :ladders (emit-hl7/plan-ladders ground-truth ladders)})
                           (emit-hl7/emit ground-truth reference-date utc-offset facility providers site-profile)))
                   (= "fhir" emit) (assoc :fhir-bundles
                                          (emit-fhir/bundle-run ground-truth reference-date utc-offset seed (or at :end)))))))))))))
