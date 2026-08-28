@@ -371,14 +371,20 @@ out of what a rung is.
   names `:ladders`, including `order-result`, the trace that places an
   order. The only untracked files after it were this record and its
   prompt.
-* `make integration` — **`INT_EXIT`** recorded below.
+* `make integration` — **`INT_EXIT=0`**, on a clean tree at `c602972`:
+  `projects/integration`'s own suite (the nightly tier, where the fresh
+  41-root oracle-coverage digest runs) plus both demo exercisers, tree
+  clean afterwards.
 * `clojure -M:poly check` green throughout.
 * `bin/demo-exerciser-ed-tuesday` — every assertion green, including
   the 615-batch listing and the straddle; its one FAIL was the ADR-0005
   tree-clean postcondition, on the sweep's own uncommitted work,
   disclosed rather than filtered.
-* `bin/post-push-verify` — recorded below.
-* CI at the pushed tip — recorded below. No tag paid.
+* `bin/post-push-verify d0e7feb c602972` — remote tip matches HEAD,
+  every commit message in range pure ASCII, CI run reported once
+  (in_progress at the time, DISCLOSED per AR-CI-4 and awaited below).
+* **CI run 33189524366, `conclusion=success` at `c602972`** — the close
+  marker (`rulings.md#R-session-verifies-ci-via-gh`). No tag paid.
 
 The RED-FIRST commits this sweep carried, all pushed with their green
 successors and never alone (`rulings.md#R-red-pushed-with-green`):
