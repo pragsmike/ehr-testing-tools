@@ -42,13 +42,14 @@
   component-code versions, and hashing itself happens in the calling
   shell (`sha256sum`), not in-process.
 
-  CURRENT STATE, 2026-08-28 (arc 4 sweep 2, ADR-0175 designs (a) and
-  (c)'s turn-on commit; before it, arc 3b sweep 3, ADR-0174 section
+  CURRENT STATE, 2026-08-28 (arc 4 sweep 3, ADR-0175 design (b)'s own
+  step 0; before it, arc 4 sweep 2, designs (a) and
+  (c)'s turn-on commit; before that, arc 3b sweep 3, ADR-0174 section
   2(b); before that, arc 3b sweep 2, ADR-0174 section 2(c);
   before that, arc 3b sweep 1, ADR-0174 ruling A1; before
   that, arc 3a part 4, ADR-0173 ruling D1's commit 2; previously
   2026-08-19, ADR-0156, review-4 register row L1-5).
-  `roots` holds 40 roots in two families:
+  `roots` holds 41 roots in two families:
 
     3 INTERPRETER-LAYER batches -- appendicitis/sore-throat/
       ear-infections. 100 well-mixed seeds x both sexes = 200 walks per
@@ -58,7 +59,7 @@
       well-distributed for their own first draw, confirmed repeatedly
       across GMF coverage waves.
 
-   37 ENGINE-LAYER pairs -- engine/run plus emit-hl7/emit, ground truth
+   38 ENGINE-LAYER pairs -- engine/run plus emit-hl7/emit, ground truth
       AND emitted HL7 both captured, at the run-config each root's own
       vendored/engine test already established as producing real
       content. The 33rd, `demographic-fold`, is the first root to turn
@@ -84,7 +85,15 @@
       re-statement chatter and DFT^P03 is a whole message FAMILY this
       project had never emitted; not one of them is a fact, so ground
       truth does not move -- which is what
-      `bin/ground-truth-bracket` asserts across the other 36.
+      `bin/ground-truth-bracket` asserts across the other 36. The 38th,
+      `order-pathway`, is the FIRST ROOT EVER TO PLACE AN ORDER: it
+      carries the last two event kinds no root could produce
+      (`:order-placed`, `:result-available`, so the kind claim closes at
+      28 of 28) and the last message family in `message-type-registry`
+      that no root emitted (`ORM^O01`). It lands DARK -- ADR-0175 design
+      (b)'s ladder needs a population to be IDENTICAL about before the
+      mechanism exists, and section 2(b) says in its own words why an
+      IDENTICAL over an order-less oracle would have proved nothing.
 
   This paragraph replaced an opening that read `Six roots, matching this
   session's own J1 ruling verbatim` -- true when written and never
@@ -93,7 +102,7 @@
   false; a cold reader simply got a third of the population and no
   signal that it was a third. The count is gated now
   (`ehrt.docs-tooling.oracle-coverage-test`), and the COVERAGE block
-  beside `roots` states what these 40 can and cannot witness.
+  beside `roots` states what these 41 can and cannot witness.
 
   Dated note (2026-08-03, ADR-0033 AR-4b): three more roots join at the
   ENGINE layer -- ear-infections-engine/urinary-tract-infections-engine/
@@ -899,6 +908,103 @@
     {:ground-truth (:ground-truth (:payload r))
      :hl7 (vec (:messages (:payload r)))}))
 
+(defn- order-pathway-pair
+  "Arc 4 sweep 3's own root (2026-08-28, ADR-0175 design (b), ruling
+  B1), and THE FIRST ROOT IN THIS ORACLE'S LIFE TO PLACE AN ORDER.
+  FIRST BASELINE, not a regression check: no side before this commit
+  produces `:order-placed` or `:result-available` at all.
+
+  IT EXISTS BECAUSE THE LADDER SWEEP WOULD OTHERWISE HAVE NO ORACLE.
+  ADR-0175 section 2(b) states the hazard in its own words: the
+  committed `witnessed-event-kinds` contains neither `:order-placed`
+  nor `:result-available`, `witnessed-message-types` contains no
+  `ORM^O01`, and a status-ladder turn-on would therefore report
+  IDENTICAL across every root while changing every order in every gated
+  corpus. An IDENTICAL over a population containing none of the thing
+  under test proves nothing (`rulings.md#R-empty-population-is-red`, one
+  layer up). This root is that population, and it lands in its own
+  commit BEFORE the mechanism, so the ladder sweep's own bracket has
+  something to be identical ABOUT.
+
+  IT GOES THROUGH `run-command`, like `chatter-charges` and
+  `demographic-fold`, and for a reason this root does not need yet but
+  the next commit does: emission config (`:ladders`) reaches the wire
+  only through `ehrt.sim.run`, never through `engine/run` plus a bare
+  `emit-hl7/emit`. Landing it on `engine-pair` and moving it later
+  would move its digest twice. The self-check runs as a consequence,
+  which is load-bearing here in a way it is not elsewhere:
+  `result-references-existing-order-and-follows-it-in-time` is the
+  invariant that says `:order-event-id` resolves, and the ladder reads
+  exactly that field to find its interval.
+
+  IT IS DARK. No `:ladders` key, deliberately -- this commit adds a
+  population, not a behaviour, so every one of the 40 pre-existing
+  roots' digests and this root's own must be reproducible from the
+  mechanism-free tree. The turn-on is step 2's, and it moves THIS
+  root's digest and no other's.
+
+  WHAT IT DELIBERATELY DOES NOT DO:
+
+    NO `--churn`. `projects/integration`'s `oracle_coverage_test` PINS
+    which roots carry `:transfer` -- bed-cycle, death-fixture,
+    encounter-horizon, scheduling -- and a fifth would be a capacity
+    claim this sweep has not measured. Twelve beds a ward against 60
+    arrivals at a 90-minute gap keeps the allocation ladder off its
+    upper rungs for the same reason. Measured: 0 transfers.
+
+    NO `:persons`, `:encounters`, `:bed-cycle` OR `:scheduling`. Each is
+    already one root deep or better, and every one of them would widen
+    a vocabulary this root has no business widening. What it adds is the
+    order->result path and nothing else.
+
+  Measured at the config below, not predicted: 420 events, 360
+  messages, 120 order/result pairs (every `:result-available` resolving
+  its `:order-event-id`), turnarounds from 30 to 120 minutes, and
+  `#{:admission :discharge :order-placed :registered :result-available}`
+  as the whole kind census. MSH-9s: 60 ADT^A01, 60 ADT^A03, 120 ORM^O01,
+  120 ORU^R01.
+
+  THE COVERAGE IT ADDS: two EVENT KINDS -- the last two the contract had
+  that no root could produce, so `witnessed-event-kinds` becomes 28 of
+  28 -- and one MSH-9, `ORM^O01`, the last message family in
+  `message-type-registry` that no root emitted. `oru-message` (as
+  opposed to `observation-message`/`diagnostic-report-message`, which
+  have always carried ORU^R01) and `orc-segment`'s order context leave
+  the vacuous set with it."
+  []
+  (let [r (sim/run-command
+           {:seed 20260829 :patients 60 :arrival-gap 90
+            :facility {:id :order-pathway-oracle
+                       :wards [{:id :renal :name "Renal" :beds 12 :surge-slots 4
+                                :surge-format "%s-H%02d" :class :inpatient}
+                               {:id :cardiology :name "Cardiology" :beds 12 :surge-slots 4
+                                :surge-format "%s-H%02d" :class :inpatient}]}
+            ;; TWO ORDERS PER STAY, one before the delay and one after,
+            ;; so a single encounter carries two independent
+            ;; order->result intervals rather than one. The ladder is a
+            ;; per-order construction, and a root where every patient
+            ;; has exactly one order could not tell a per-order rung
+            ;; from a per-encounter one.
+            :pathways [{:pathway {:name "renal-workup"
+                                  :steps [{:type :admission :location "Renal"}
+                                          {:type :order :profile :cbc}
+                                          {:type :delay :from 180 :to 900}
+                                          {:type :order :profile :bmp}
+                                          {:type :discharge}]}
+                        :weight 1}
+                       {:pathway {:name "cardio-workup"
+                                  :steps [{:type :admission :location "Cardiology"}
+                                          {:type :order :profile :bmp}
+                                          {:type :delay :from 180 :to 900}
+                                          {:type :order :profile :cbc}
+                                          {:type :discharge}]}
+                        :weight 1}]
+            :emit "hl7" :reference-date "2024-01-01" :utc-offset "+00:00"})]
+    (when-not (= :ok (:status r))
+      (throw (ex-info "order-pathway root did not run cleanly" {:result r})))
+    {:ground-truth (:ground-truth (:payload r))
+     :hl7 (vec (:messages (:payload r)))}))
+
 (defn- injuries-pair
   "Injuries arc close (2026-08-11, ADR-0107): FIRST BASELINE, not a
   regression check -- this closure never completed a round trip before
@@ -926,6 +1032,19 @@
 ;; to 35. Here, widening or narrowing coverage forces
 ;; `--declared-digest-change`, and the session that pays it has to say
 ;; which way coverage moved.
+;;
+;; WHICH WAY IT MOVED, 2026-08-28 (arc 4 sweep 3's step 0): WIDER, by one
+;; root, and this is the widening that CLOSES the event-kind claim.
+;; `order-pathway` is the first root in this oracle's life to place an
+;; order, so `:order-placed` and `:result-available` -- the last two of
+;; the contract's 28 closed kinds no root could produce -- leave the
+;; unreached set, and `ORM^O01` leaves the emitted-by-no-root list. The
+;; order->result EMITTER half goes with them: `orm-message`,
+;; `oru-message`, `orc-segment`'s order context and `obr-segment`'s
+;; 3-arity are all reached for the first time. It is a POPULATION
+;; commit, not a behaviour one: the root ships DARK, with no `:ladders`
+;; key, exactly so that ADR-0175 design (b)'s own turn-on has a witness
+;; to move.
 ;;
 ;; WHICH WAY IT MOVED, 2026-08-26: WIDER, by one root. `demographic-fold`
 ;; turns `:persons` on and lifts five surfaces out of the vacuous set
@@ -959,7 +1078,13 @@
 ;;     moved. Re-running that battery is its own piece of work and is
 ;;     not smuggled into this bullet as an updated-looking number.
 ;;   * 4 of the event contract's 23 closed kinds: :cancel-discharge,
-;;     :order-placed, :result-available, :step-rejected. `:merge` LEFT
+;;     :order-placed, :result-available, :step-rejected. SUPERSEDED
+;;     2026-08-28: this bullet is now EMPTY. `:step-rejected` left by
+;;     `scheduling` (2026-08-27) and `:order-placed`/`:result-available`
+;;     by `order-pathway` (2026-08-28), so every one of the contract's
+;;     28 closed kinds is witnessed by some root. The historical reading
+;;     stays below because it is what the sentences after it argue
+;;     against. `:merge` LEFT
 ;;     this set on 2026-08-26 -- `demographic-fold`'s identification
 ;;     merges are the first any root has produced -- and `:bed-swap`,
 ;;     `:cancel-admit` and `:cancel-transfer` left it the same day, by
@@ -968,11 +1093,15 @@
 ;;     lottery did not draw one at that seed, so the cancel family is
 ;;     two-thirds witnessed and not whole.
 ;;   * The whole order->result path: `orm-message`, `oru-message`,
-;;     `obx-segment`. NOTE the precision, because the summary version of
-;;     this claim is wrong: ORU^R01 IS emitted, 1,768 times across 14
-;;     roots -- by `observation-message` and `diagnostic-report-message`.
-;;     It is `oru-message`, the :result-available order-result emitter,
-;;     that no root reaches. ORM^O01 is emitted zero times.
+;;     `obx-segment`. NO LONGER TRUE as of 2026-08-28 -- `order-pathway`
+;;     reaches all three, 120 orders and 120 results -- and the sentence
+;;     is kept rather than deleted because the PRECISION in it is what a
+;;     later reader needs: ORU^R01 was always emitted, 1,768 times across
+;;     14 roots, by `observation-message` and `diagnostic-report-message`;
+;;     what no root reached was `oru-message`, the :result-available
+;;     order-result emitter, and `ORM^O01`, which was emitted zero times.
+;;     Both now have exactly ONE root, which is a single point of failure
+;;     stated here rather than discovered later.
 ;;   * The Z-segment pair, `plan-latency`/`emit-wire` (the second
 ;;     clock), `v2-replay/fold-message` and `engine/replay`.
 ;;     `merge-message` and `mrg-segment` LEFT this list on 2026-08-26,
@@ -990,10 +1119,12 @@
 ;;     on one root, never what it reported.
 ;;
 ;; THE STRUCTURAL CAUSE, re-derived rather than inferred from the
-;; instrumentation: 36 of the 40 roots pass `:pathway {:name
+;; instrumentation: 36 of the 41 roots pass `:pathway {:name
 ;; "module-only" :steps []}` -- `encounter-horizon`, `bed-cycle`,
-;; `scheduling` and `chatter-charges` are the four exceptions and pass
-;; real admit/delay/discharge pathways,
+;; `scheduling`, `chatter-charges` and (2026-08-28) `order-pathway` are
+;; the five exceptions and pass
+;; real admit/delay/discharge pathways -- `order-pathway`'s being the
+;; only one that also carries an `:order` step,
 ;; which is why the churn family and the allocation ladder reach them --
 ;; and 8 of 19 components plus `bases/cli` are off the
 ;; oracle classpath entirely (`bin/regression-oracle`'s own deps block).
@@ -1041,14 +1172,24 @@
 ;; ADT^A20 unavoidably so, since it is the only root that can emit one.
 ;;
 ;; The two sets below are the committed claim, asserted against a FRESH
-;; 38-root digest by `ehrt.integration.oracle-coverage-test` and checked
+;; 41-root digest by `ehrt.integration.oracle-coverage-test` and checked
 ;; for shape, population, membership and location on every push by
 ;; `ehrt.docs-tooling.oracle-coverage-test`.
 
 (def ^:private witnessed-event-kinds
-  "The 26 of 28 closed event kinds any root can produce. Adding a root
-  that reaches the order->result paths moves this set -- that is
-  R4-Q6 (ii) (b), rowed and priced, deliberately not taken.
+  "ALL 28 of the 28 closed event kinds any root can produce. WIDENED
+  2026-08-28, 26 of 28 -> 28 of 28, by `order-pathway` (arc 4 sweep 3's
+  step 0, ADR-0175 design (b)) -- the root that finally reaches the
+  order->result path. The sentence this docstring carried until today
+  read `Adding a root that reaches the order->result paths moves this
+  set -- that is R4-Q6 (ii) (b), rowed and priced, deliberately not
+  taken`; that row is now PAID, and it was paid because a ladder sweep
+  over an order-less oracle would have reported IDENTICAL while every
+  order in every gated corpus moved.
+
+  THE DENOMINATOR DID NOT GROW. No event kind was added, no schema
+  version moved, and `classify-change` was never asked a question: this
+  is a root that produces kinds the contract has carried since M3.
 
   WIDENED AGAIN 2026-08-27, 21 of 24 -> 26 of 28, by `scheduling`. The
   DENOMINATOR grew by the four kinds that root exists for
@@ -1094,14 +1235,22 @@
     :care-plan-start :coverage-change
     :demographic-update :diagnostic-report
     :discharge :medication-end :medication-order :merge :no-show
-    :observation
+    :observation :order-placed
     :outpatient-visit :outpatient-visit-end :procedure :registered
-    :reschedule :step-rejected
+    :reschedule :result-available :step-rejected
     :transfer})
 
 (def ^:private witnessed-message-types
-  "Every MSH-9 the 37 engine-layer roots emit. ADT^A02 is death-fixture's
-  alone, once. ADT^A34 and ORM^O01 are emitted by no root at all.
+  "Every MSH-9 the 38 engine-layer roots emit. ADT^A02 is death-fixture's
+  alone, once. ADT^A34 is emitted by no root at all.
+
+  WIDENED AGAIN 2026-08-28 by `order-pathway`, arc 4 sweep 3's own step 0
+  (ADR-0175 design (b)): `ORM^O01`, the last family in
+  `message-type-registry` that no root emitted, and with it the FIRST
+  ORU^R01 any root has rendered through `oru-message` rather than
+  through `observation-message`/`diagnostic-report-message`. The
+  docstring sentence above named ORM^O01 as emitted by no root and is
+  edited rather than left standing; ADT^A34 stands alone there now.
 
   WIDENED AGAIN 2026-08-28 by `chatter-charges`, arc 4 sweep 2's own
   root (ADR-0175 designs (a) and (c)), and this is the largest single
@@ -1142,7 +1291,7 @@
   set only through the merge."
   #{"ADT^A01" "ADT^A02" "ADT^A03" "ADT^A04" "ADT^A08" "ADT^A11" "ADT^A12"
     "ADT^A13" "ADT^A17" "ADT^A20" "ADT^A28" "ADT^A31" "ADT^A40" "DFT^P03"
-    "ORU^R01"})
+    "ORM^O01" "ORU^R01"})
 
 (def ^:private roots
   {"appendicitis"                       appendicitis-batch
@@ -1181,6 +1330,7 @@
    "bed-cycle"                          bed-cycle-pair
    "scheduling"                         scheduling-pair
    "chatter-charges"                    chatter-charges-pair
+   "order-pathway"                      order-pathway-pair
    "veteran-self-harm"                  veteran-self-harm-pair
    "veteran-substance-abuse-treatment"  veteran-substance-abuse-treatment-pair
    "injuries"                           injuries-pair

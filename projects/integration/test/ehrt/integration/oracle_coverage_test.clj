@@ -4,7 +4,7 @@
 
   `ehrt.docs-tooling.oracle-coverage-test` gates the committed claim's
   shape, population, membership and location on every push. It cannot
-  gate the claim against reality: only a real 38-root digest knows which
+  gate the claim against reality: only a real 41-root digest knows which
   event kinds and message types the oracle can witness. That run is 114
   seconds (ADR-0156 Step 0 b), so it lives here, in the scheduled lane.
 
@@ -73,7 +73,7 @@
        " :aliases {:oracle-run {:extra-paths [\"" root "/components/patient-simulator/test\"]}}}"))
 
 (defn- run-digest!
-  "One fresh 38-root digest into `out`. Returns the process result."
+  "One fresh 41-root digest into `out`. Returns the process result."
   [out]
   (let [root (.getCanonicalPath (io/file repo-root))]
     (shell/sh "clojure" "-Sdeps" (deps-string root)
@@ -81,7 +81,7 @@
               :dir root)))
 
 (defn- engine-roots
-  "The 37 engine-layer roots, keyed by name. The other three are
+  "The 38 engine-layer roots, keyed by name. The other three are
   interpreter batches whose facts are a DIFFERENT vocabulary -- see the
   nested-`:event` hazard in `ehrt.sim-engine.event-schema`, which is
   exactly the mistake a naive tree-walk for `:event` makes."
@@ -147,11 +147,11 @@
             roots (engine-roots out)]
         (testing "the digest ran at all -- a failed run must never read as agreement"
           (is (zero? exit) (str "the digest process must exit 0. stderr:\n" err))
-          (is (= 40 (count edns))
-              (str "40 roots today. A root added or removed lands here first. Found "
+          (is (= 41 (count edns))
+              (str "41 roots today. A root added or removed lands here first. Found "
                    (count edns) "."))
-          (is (= 37 (count roots))
-              (str "37 engine-layer roots produce `{:ground-truth :hl7}`; the other three are "
+          (is (= 38 (count roots))
+              (str "38 engine-layer roots produce `{:ground-truth :hl7}`; the other three are "
                    "interpreter batches. Found " (count roots) ".")))
         (let [kinds (witnessed-event-kinds roots)
               types (witnessed-message-types roots)]
