@@ -274,10 +274,18 @@ that touched the event schema would have crossed
 * `make integration` — **`INT_EXIT=0`**, both demo exercisers and all six
   use-case scripts green, tree clean.
 * `clojure -M:poly check` green throughout.
-* `bin/post-push-verify 1a71b36 <TIP>` — filled in by the CI-marker
-  commit that follows this one.
-* **CI run `<RUN>`, `conclusion=<CONC>` at `<TIP>`** — the close marker
-  (`rulings.md#R-session-verifies-ci-via-gh`). No tag paid.
+* `bin/post-push-verify 1a71b36 3b6e53b` — remote tip matches HEAD,
+  every commit message in range pure ASCII, CI run reported once
+  (queued at the time, DISCLOSED per AR-CI-4 and awaited below).
+* **CI run 33172510496, `conclusion=success` at `3b6e53b`** — the close
+  marker (`rulings.md#R-session-verifies-ci-via-gh`). No tag paid.
+
+The RED-FIRST commits this sweep carried, all pushed with their green
+successors and never alone (`rulings.md#R-red-pushed-with-green`):
+`9a765be`..`29b581f` were red on `ehrt.corpus.board-test` until
+`964171a`; `29b581f` was red on `cli-parse-guard-lint` until `d0a3624`;
+`ab4cda0` was red on `hand-owned-asset-freshness-test` until `42864aa`.
+The pushed TIP is green, and CI at that tip is the proof.
 
 A NOTE ON WHAT THE SWEEP DID NOT DO. ADR-0175's fences held: no ground
 truth change of any kind, no new event kind, no schema bump, no SIU, no
