@@ -57,7 +57,7 @@ Default profile (`messages-default.txt`):
 ```
 MSH|^~\&|EHR-TESTING-SIM|SIM|||20240101000000+0000||ADT^A01|MRN000001-A01-0|P|2.3
 EVN|A01|20240101000000+0000
-PID|1||MRN000001||D'Angelo^Joshua||19810203|M|||78 Magnolia St^^Atlanta^GA^30303||735-633-0549
+PID|1||MRN000001||D'Angelo^Joshua||19810203|M|||78 Magnolia St^^Atlanta^GA^30303||(735)633-0549
 PV1|1|I|Renal^^RENAL-02^general-hospital||||4255631598^Chen^Amara
 IN1|1||commercial-ppo|Commercial PPO
 ```
@@ -67,7 +67,7 @@ St. Aldric's Memorial profile (`messages-aldric.txt`):
 ```
 MSH|^~\&|ALDRIC-EHR|ALDRIC|DOWNSTREAM|DOWNSTREAM-FAC|20240101000000+0000||ADT^A01|MRN000001-A01-0|P|2.5.1
 EVN|A01|20240101000000+0000
-PID|1||MRN000001||D'Angelo^Joshua||19810203|M|||78 Magnolia St^^Atlanta^GA^30303||735-633-0549
+PID|1||MRN000001||D'Angelo^Joshua||19810203|M|||78 Magnolia St^^Atlanta^GA^30303||(735)633-0549
 PV1|1|IN^99ALDRIC|Renal^^RENAL-02^general-hospital||||4255631598^Chen^Amara
 IN1|1||commercial-ppo|Commercial PPO
 ZPI|commercial-ppo|commercial|ALDRIC-PAYER-V1

@@ -643,8 +643,56 @@
       (let [{:keys [street city state zip]} (:address persona)]
         (is (= (str street "^^" city "^" state "^" zip)
                (message/get-field-first-value parsed "PID" 11)))))
-    (testing "PID-13: phone"
-      (is (= (:phone persona) (message/get-field-first-value parsed "PID" 13))))))
+    (testing "PID-13: phone, in the parenthesised US shape (ADR-0175 A1)"
+      ;; The persona's own `NNN-NNN-NNNN` is what the LOG carries; the
+      ;; wire carries `(NNN)NNN-NNNN`, which is what HAPI's v2.4 TN
+      ;; primitive rule accepts. Derived from the persona here rather
+      ;; than hard-coded, so this stays a statement about the RULE.
+      (is (= (str/replace (:phone persona) #"^(\d{3})-(\d{3})-(\d{4})$" "($1)$2-$3")
+             (message/get-field-first-value parsed "PID" 13))))))
+
+(deftest pid-13-renders-the-parenthesised-us-phone-shape
+  "ARC 4 SWEEP 1 (ADR-0175 ruling A1, commit 1 of 2). PID-13 renders
+  `(NNN)NNN-NNNN`, not the persona's own `NNN-NNN-NNNN`.
+
+  The reason is a conformance fact, not a taste: HAPI's v2.4 TN
+  primitive rule accepts `\"(303)292-0567\"` and rejects
+  `\"492-292-0567\"`, and `PipeParser` enforces primitives DURING the
+  parse -- so at MSH-12 \"2.4\" the persona's own shape does not warn,
+  it throws, and 346 of the 747 messages ADR-0175 probed never resolved
+  to a structure at all. Rendering is the right place to fix it:
+  GROUND TRUTH DOES NOT MOVE. `ehrt.sim-model.persona`'s `:phone`
+  regex and its three draws are untouched, and
+  `bin/ground-truth-bracket` proves that per commit rather than this
+  test asserting it.
+
+  An ABSENT phone still renders an EMPTY PID-13 -- the placeholder
+  registration ADR-0173 ruling E1 introduced. Reformatting must not
+  turn a blank into `\"()-\"`."
+  (let [persona {:name {:family "Alvarez" :given "Rosa"}
+                 :sex :female
+                 :dob "1975-03-14"
+                 :address {:street "1 Main St" :city "Denver" :state "CO" :zip "80202"}
+                 :phone "303-292-0567"}
+        ;; Rendered the way the emitter renders -- through
+        ;; `parser/str-message` and back through an INDEPENDENT parser
+        ;; -- rather than read off the segment data structure, so this
+        ;; asserts what a consumer receives and not what a builder
+        ;; returns. The MSH is scaffolding; only PID-13 is under test.
+        render (fn [p]
+                 (message/get-field-first-value
+                  (parser/parse
+                   (parser/str-message
+                    (parser/create-message
+                     parser/DEFAULT-DELIMITERS
+                     (#'emit-hl7/msh-segment nil {:type "ADT" :trigger "A01"}
+                      "CTRL-1" "20240101000000+0000")
+                     (#'emit-hl7/pid-segment "MRN000001" p))))
+                  "PID" 13))]
+    (testing "a persona phone is reformatted, digit for digit"
+      (is (= "(303)292-0567" (render persona))))
+    (testing "an absent phone still renders an EMPTY PID-13, not a malformed one"
+      (is (= "" (render (dissoc persona :phone)))))))
 
 (deftest admission-carries-in1-with-the-sampled-payer
   (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})

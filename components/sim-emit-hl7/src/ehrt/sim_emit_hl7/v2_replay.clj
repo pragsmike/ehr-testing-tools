@@ -161,18 +161,47 @@
 ;; (never whole-message-scoped) so the SAME reader serves both a
 ;; single-PID/PV1 message and one pair out of A17's own two -----------------
 
+(defn- tn->persona-phone
+  "\"(NNN)NNN-NNNN\" -> \"NNN-NNN-NNNN\" -- the inverse of
+  ehrt.sim-emit-hl7.emit-hl7/tn-field, exactly as `hl7-date->iso` above
+  is the inverse of `pid-segment`'s own dash-stripping.
+
+  ARC 4 SWEEP 1 (`notes/adr/0175-arc-4-emission-add-ons.md` ruling A1,
+  commit 1 of 2), and it is a CO-LANDING rather than a follow-up. The
+  emitter's new PID-13 rendering is a wire convention; this namespace
+  reconstructs GROUND-TRUTH-shaped state from the wire, so every such
+  convention owes its inverse here or the two disagree. They did:
+  `emitter-coherence-reconstructed-state-matches-the-log-fold-at-every-
+  boundary` and its module-driven sibling both went red the moment
+  `tn-field` landed without this, which is that property doing the job
+  it exists for.
+
+  nil/BLANK IN, nil OUT, and a value that does not match the rendered
+  shape passes through UNCHANGED -- the mirror of `tn-field`'s own
+  verbatim fallback, so the pair round-trips for anything either side
+  declines to reformat."
+  [s]
+  (some-> (blank->nil s)
+          (str/replace #"^\((\d{3})\)(\d{3})-(\d{4})$" "$1-$2-$3")))
+
 (defn- parse-persona
   "Every message carries this uniformly (ehrt.sim-emit-hl7.emit-hl7/
-  pid-segment's own docstring) -- PID-13/:ssn/:age are never rendered,
+  pid-segment's own docstring) -- `:ssn` and `:age` are never rendered,
   the same exclusion `project-to-wire-visible-fields` states from the
-  ground-truth side."
+  ground-truth side.
+
+  CORRECTED 2026-08-27 (arc 4 sweep 1): this docstring used to read
+  \"PID-13/:ssn/:age are never rendered\" while the line below read
+  PID-13, and had since PID-13 joined the segment. The exclusion is
+  `:ssn` and `:age`; PID-13 is rendered, is read here, and now goes
+  through `tn->persona-phone` to undo the wire's own formatting."
   [pid-seg]
   {:name {:family (segment-component pid-seg 5 0) :given (segment-component pid-seg 5 1)}
    :sex (case (blank->nil (seg-field pid-seg 8)) "F" :female "M" :male nil)
    :dob (hl7-date->iso (seg-field pid-seg 7))
    :address {:street (segment-component pid-seg 11 0) :city (segment-component pid-seg 11 2)
              :state (segment-component pid-seg 11 3) :zip (segment-component pid-seg 11 4)}
-   :phone (blank->nil (seg-field pid-seg 13))})
+   :phone (tn->persona-phone (seg-field pid-seg 13))})
 
 (defn- parse-payer
   "IN1 rides admission alone (ehrt.sim-emit-hl7.emit-hl7/in1-segment's own

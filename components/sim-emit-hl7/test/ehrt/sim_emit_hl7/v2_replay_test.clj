@@ -239,6 +239,40 @@
                  (recur acc' (rest rs) (rest ms))
                  false)))))))
 
+;; ARC 4 SWEEP 1 (ADR-0175 ruling A1). `emit-hl7/tn-field` and
+;; `v2-replay/tn->persona-phone` are an INVERSE PAIR, and the spec below
+;; states that directly.
+;;
+;; The two emitter-coherence properties further down already catch a
+;; broken pair -- both went red the moment `tn-field` landed without its
+;; inverse. But they catch it as `{:result false}` on a shrunk seed, with
+;; no indication of WHICH projected field disagreed; whoever reads that
+;; failure has to bisect a whole persona to find PID-13. This one fails on
+;; the field itself, in one line, over 200 generated phones rather than
+;; the handful a seeded run happens to draw.
+;;
+;; The persona contract regex is `^\d{3}-\d{3}-\d{4}$`
+;; (`ehrt.sim-model.persona`), which is what this generates.
+(defspec pid-13-renders-and-reads-back-as-the-persona-shape 200
+  (prop/for-all [area (gen/choose 200 999)
+                 exchange (gen/choose 200 999)
+                 subscriber (gen/choose 0 9999)]
+    (let [phone (format "%03d-%03d-%04d" area exchange subscriber)
+          rendered (first (:content (#'emit-hl7/tn-field phone)))]
+      (and (re-matches #"^\(\d{3}\)\d{3}-\d{4}$" rendered)
+           (= phone (#'v2-replay/tn->persona-phone rendered))))))
+
+(deftest tn-inverse-is-nil-and-blank-safe-and-passes-unrecognised-values-through
+  (testing "an absent PID-13 reads back as nil, not as an empty-string phone"
+    (is (nil? (#'v2-replay/tn->persona-phone nil)))
+    (is (nil? (#'v2-replay/tn->persona-phone ""))))
+  (testing "a value the emitter would not have produced passes through unchanged"
+    ;; The mirror of `tn-field`'s own verbatim fallback. A site profile
+    ;; or a foreign corpus can put anything in PID-13; silently
+    ;; reshaping it would be a worse failure than reading it as it is.
+    (is (= "555-0100" (#'v2-replay/tn->persona-phone "555-0100")))
+    (is (= "(303)292-0567X1234" (#'v2-replay/tn->persona-phone "(303)292-0567X1234")))))
+
 (defspec emitter-coherence-reconstructed-state-matches-the-log-fold-at-every-boundary 150
   (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 10)

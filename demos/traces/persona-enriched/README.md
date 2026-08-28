@@ -64,7 +64,7 @@ has.
 ```
 MSH|^~\&|EHR-TESTING-SIM|SIM|||20240101010100+0000||ADT^A01|MRN000004-A01-3660|P|2.3
 EVN|A01|20240101010100+0000
-PID|1||MRN000004||Smith^Jennifer||19740918|F|||63 Pinehurst St^^Charlotte^NC^28202||805-700-1990
+PID|1||MRN000004||Smith^Jennifer||19740918|F|||63 Pinehurst St^^Charlotte^NC^28202||(805)700-1990
 PV1|1|I|Renal^^RENAL-01^general-hospital||||0914424805^Reyes^Priya
 IN1|1||medicaid|Medicaid
 ```
@@ -86,7 +86,11 @@ apostrophes are still in the pool: `D'Angelo` is patient 1 of
 `../site-profiles/`.) **PID-7** (`19740918`) is
 the sampled DOB, HL7 date format. **PID-8** (`F`) is sex, Table 0001.
 **PID-11** (`63 Pinehurst St^^Charlotte^NC^28202`) is the XAD address.
-**PID-13** (`805-700-1990`) is the sampled phone. **IN1-3/IN1-4**
+**PID-13** (`(805)700-1990`) is the sampled phone, rendered in the
+parenthesised US shape HAPI's v2.4 TN primitive rule requires
+(ADR-0175 A1) -- the persona's own `:phone` in the event log keeps its
+`805-700-1990` shape, and this is the one field where the wire and the
+log deliberately differ. **IN1-3/IN1-4**
 (`medicaid` / `Medicaid`) are the sampled payer pool entry's id/name —
 SimHospital issue #3's own request
 (`docs/research/SimHospital-Synthea-limitations-considered.md` §5.3),

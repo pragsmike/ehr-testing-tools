@@ -307,13 +307,46 @@
   [{:keys [street city state zip]}]
   (parser/create-field [(escape-er7 street) "" (escape-er7 city) (escape-er7 state) (escape-er7 zip)]))
 
+(defn- tn-field
+  "TN (Telephone Number), PID-13. The persona's own `:phone` is
+  `NNN-NNN-NNNN` (`ehrt.sim-model.persona`'s contract regex,
+  `^\\d{3}-\\d{3}-\\d{4}$`); the WIRE carries `(NNN)NNN-NNNN`.
+
+  ARC 4 SWEEP 1 (`notes/adr/0175-arc-4-emission-add-ons.md` ruling A1,
+  commit 1 of 2). This is a conformance fact, not a formatting
+  preference. HAPI's v2.4 TN primitive rule wants the parenthesised
+  area code, and `PipeParser` enforces primitives DURING the parse
+  rather than after -- so at MSH-12 \"2.4\" the persona's own shape does
+  not produce a warning, it throws, and the message resolves to no
+  structure at all. ADR-0175 section 2(e) measured it: 346 of the probe
+  corpus's 747 messages died exactly here, and with this one field
+  reformatted all 747 resolve into real v2.4 structures. Probed
+  directly against the vendored jar: `(303)292-0567` OK,
+  `(303)292-0567X1234` OK, `\"\"` OK; `492-292-0567`, `3032920567` and
+  `(303) 292-0567` all FAIL.
+
+  GROUND TRUTH DOES NOT MOVE. `persona`'s regex and its three phone
+  draws are untouched, and `bin/ground-truth-bracket` proves that
+  per commit rather than this docstring asserting it. Rendering is
+  where a wire convention belongs -- the same seam PID-11's XAD and
+  PID-7's date already use.
+
+  A phone that does NOT match the contract shape renders VERBATIM
+  rather than being mangled into a guess. Every persona this emitter
+  has ever been handed matches, so this branch moves no existing
+  message; it exists because a silent reformat of an unrecognised
+  value would be a worse failure than passing it through."
+  [phone]
+  (parser/create-field
+   [(str/replace phone #"^(\d{3})-(\d{3})-(\d{4})$" "($1)$2-$3")]))
+
 (defn- pid-segment
   "PID-1/2/3 unconditionally (Set ID, blank, the active MRN); PID-4/6/9/10/12
   stay blank placeholders so positional fields (5/7/8/11/13) land correctly.
   M4: when `persona` is present (every real ehrt.sim-engine.engine/run output,
   post the :registered event -- ehrt.sim-model.persona/Persona), PID gains
   demographic enrichment: PID-5 (XPN name), PID-7 (DOB, HL7 date), PID-8 (sex,
-  Table 0001 F/M), PID-11 (XAD address), PID-13 (phone). nil persona (hand-
+  Table 0001 F/M), PID-11 (XAD address), PID-13 (TN phone, `tn-field`). nil persona (hand-
   built test worlds that never processed a :registered step) falls back to
   the pre-M4 3-field segment exactly -- no positional padding, no crash.
 
@@ -362,7 +395,7 @@
        (parser/create-field []))
      (parser/create-field [])
      (if (:phone persona)
-       (parser/create-field [(:phone persona)])
+       (tn-field (:phone persona))
        (parser/create-field [])))))
 
 (defn- in1-segment
