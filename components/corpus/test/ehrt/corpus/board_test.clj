@@ -96,7 +96,14 @@
     (is (= :inpatient (:class (get acc "445566"))))))
 
 (deftest fold-event-a-foreign-trigger-is-a-counted-skip-not-a-crash-test
-  (let [message (msh "20260807120000" "A08" "445566" "Doe" "Jane")
+  ;; RE-POINTED A08 -> A34 by arc 4 sweep 2 (ADR-0175 design (a)). This
+  ;; test needs a trigger `ehrt.sim-emit-hl7.v2-replay/evolve-entry` does
+  ;; NOT handle, and A08 stopped being one the moment chatter landed its
+  ;; own fold arm -- which ADR-0175 section 1(iii) says every add-on
+  ;; owes. A34 (patient information correction) is a real HL7 family this
+  ;; project neither emits nor folds, so the counted, cued skip it
+  ;; produces is exactly what A08 used to stand for here.
+  (let [message (msh "20260807120000" "A34" "445566" "Doe" "Jane")
         {:keys [acc unfolded?]} (board/fold-event {"already" {:status :admitted}} message)]
     (is (true? unfolded?))
     (is (= {"already" {:status :admitted}} acc) "acc returned unchanged on an unfolded skip")))
