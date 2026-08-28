@@ -2055,6 +2055,12 @@
     (is (contains? emit-hl7/skeleton-message-types "ADT^A01"))
     (is (contains? emit-hl7/skeleton-message-types "ADT^A20"))
     (is (contains? emit-hl7/skeleton-message-types "ORU^R01"))
+    ;; ARC 4 SWEEP 4: the derivation paying off with no code change
+    ;; anywhere in `judge` or `cli`. The four SIU families entered
+    ;; `message-type-registry` in that sweep and are skeleton the same
+    ;; instant, so an SIU message is gated in FULL rather than sampled.
+    (doseq [siu ["SIU^S12" "SIU^S14" "SIU^S15" "SIU^S26"]]
+      (is (contains? emit-hl7/skeleton-message-types siu) siu))
     (doseq [add-on ["ADT^A08" "ADT^A31" "ADT^A28" "DFT^P03"]]
       (is (not (contains? emit-hl7/skeleton-message-types add-on)) add-on))))
 

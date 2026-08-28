@@ -101,3 +101,20 @@
   "The three ground-truth kinds an event-driven chatter rule may cover.
   See ehrt.sim-emit-hl7.emit-hl7/chatter-event-kinds."
   emit-hl7/chatter-event-kinds)
+
+;; --- ARC 4 SWEEP 4 (ADR-0175 ruling B1): SIU. There is no `plan-siu`
+;; to expose and that is the point -- `:siu` has no planner, no stream
+;; and no draw; `ehrt.sim.run` forwards the profile verbatim into
+;; `emit-wire`'s `:emission` map and `event->messages` reads it per
+;; event.
+
+(def siu-event-kinds
+  "The four ground-truth kinds SIU^S12 renders, derived from the
+  registry. See ehrt.sim-emit-hl7.emit-hl7/siu-event-kinds."
+  emit-hl7/siu-event-kinds)
+
+(defn siu-renders?
+  "SiuProfile x event-kind -> boolean. See
+  ehrt.sim-emit-hl7.emit-hl7/siu-renders?."
+  [siu event]
+  (emit-hl7/siu-renders? siu event))

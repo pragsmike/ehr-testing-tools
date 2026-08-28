@@ -313,9 +313,18 @@
             `rulings.md#R-skeleton-or-emission`. If this ever fails, the
             sweep has crossed that ruling and owes an event-schema
             answer, not a registry edit."
+    ;; ARC 4 SWEEP 4 widened this set, and the widening is what a
+    ;; whole-registry pin is FOR: a sweep that adds a family has to come
+    ;; here and say so. Sweep 4 added scheduling's four
+    ;; (SIU^S12/S14/S15/S26, ADR-0175 ruling B1), which are ground-truth
+    ;; kinds the contract already declared -- a SKELETON family finally
+    ;; rendered, not a restatement. The sentence above still binds a
+    ;; CHATTER sweep, unchanged: chatter has no event of its own and
+    ;; still owns no entry here.
     (is (= #{:admission :discharge :transfer :cancel-admit :cancel-transfer
              :cancel-discharge :bed-swap :merge :order-placed :result-available
-             :outpatient-visit :bed-status-change :observation :diagnostic-report}
+             :outpatient-visit :bed-status-change :observation :diagnostic-report
+             :appointment :reschedule :appointment-cancel :no-show}
            (set (keys emit-hl7/message-type-registry))))
     (is (empty? (filter #(contains? emit-hl7/message-type-registry %)
                         (keys emit-hl7/chatter-event-kinds)))

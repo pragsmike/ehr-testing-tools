@@ -461,6 +461,36 @@
       acc
       (assoc-in acc [beds-key bed] {:ward ward :status status :at t}))))
 
+(def skipped-message-types
+  "MESSAGE TYPES (MSH-9's first component) this fold passes over
+  WHOLESALE, before any trigger dispatch -- arc 4 sweep 4, ADR-0175
+  ruling B1.
+
+  SIU IS THE ONLY MEMBER, and the skip is by FAMILY rather than by an
+  `evolve-entry` arm per trigger, for a reason the ADT families do not
+  have. This accumulator is a reconstruction of `PatientState` from the
+  wire, keyed by MRN, and an appointment asserts nothing about a visit
+  -- no status, no class, no location, no attending, no observation.
+  Routing an SIU through the default branch would still BOOTSTRAP an
+  entry from its PID (`fold-message`'s own never-yet-seen-mrn rule), so
+  a booking made weeks before a patient ever arrives would put that
+  patient into the reconstruction as `:new` while the true side has no
+  record of them at all. Skipping the family means a stream with SIU in
+  it folds to exactly what the same stream without SIU folds to, which
+  is the round-trip property this sweep actually owes.
+
+  It is a SET rather than a single string so the next foreign family --
+  the fan-out sweep's own, if it renders one -- has somewhere to go
+  that is not another `case` arm nobody notices.
+
+  THE THROW IS STILL THERE for everything else. `evolve-entry`'s
+  default arm raises `v2-replay: unsupported message trigger`, which is
+  what `ehrt.corpus.board/fold-event` catches as a counted, cued skip
+  and what kills the emitter-coherence property outright rather than
+  failing it softly (ADR-0175 section 1(iii)). A family that belongs in
+  the accumulator and is merely unhandled must keep hitting it."
+  #{"SIU"})
+
 (defn fold-message
   "acc x message -> acc'. Parses `message`, extracts its own trigger
   (MSH-9) and instant (MSH-7, via `hl7-instant->millis` -- an absolute
@@ -469,19 +499,26 @@
   `fold-bed-swap`/`fold-merge`; A20 names a BED and no patient at all
   and goes to `fold-bed-status`; every other trigger folds onto `acc`'s
   entry for that message's own PID-3 -- a never-yet-seen mrn
-  self-initializes (bootstrap-from-empty)."
+  self-initializes (bootstrap-from-empty).
+
+  ARC 4 SWEEP 4: `skipped-message-types` is consulted FIRST, on MSH-9's
+  type rather than its trigger, and an SIU never reaches the dispatch
+  below at all. That namespace-level var's own docstring has the
+  reasoning; the short form is that an appointment is not a visit."
   [acc message]
   (let [parsed (parser/parse message)
-        [_type trigger] (str/split (message/get-field-first-value parsed "MSH" 9) #"\^")
+        [type trigger] (str/split (message/get-field-first-value parsed "MSH" 9) #"\^")
         t (hl7-instant->millis (message/get-field-first-value parsed "MSH" 7))]
-    (case trigger
-      "A17" (fold-bed-swap acc parsed)
-      "A40" (fold-merge acc parsed)
-      "A20" (fold-bed-status acc parsed t)
-      (let [pid-seg (first-segment parsed "PID")
-            mrn (seg-field pid-seg 3)
-            entry (or (get acc mrn) (initial-entry pid-seg))]
-        (assoc acc mrn (evolve-entry entry trigger parsed t))))))
+    (if (contains? skipped-message-types type)
+      acc
+      (case trigger
+        "A17" (fold-bed-swap acc parsed)
+        "A40" (fold-merge acc parsed)
+        "A20" (fold-bed-status acc parsed t)
+        (let [pid-seg (first-segment parsed "PID")
+              mrn (seg-field pid-seg 3)
+              entry (or (get acc mrn) (initial-entry pid-seg))]
+          (assoc acc mrn (evolve-entry entry trigger parsed t)))))))
 
 (defn replay-messages
   "The stage function: a run's own emitted ER7 stream -> {mrn ->

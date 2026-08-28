@@ -116,3 +116,8 @@
 (def LadderProfile config/LadderProfile)
 (defn valid-ladder-profile? [profile] (config/valid-ladder-profile? profile))
 (defn explain-ladder-profile [profile] (config/explain-ladder-profile profile))
+
+;; --- ARC 4 SWEEP 4 (ADR-0175 ruling B1): the SIU config surface ------
+(def SiuProfile config/SiuProfile)
+(defn valid-siu-profile? [profile] (config/valid-siu-profile? profile))
+(defn explain-siu-profile [profile] (config/explain-siu-profile profile))

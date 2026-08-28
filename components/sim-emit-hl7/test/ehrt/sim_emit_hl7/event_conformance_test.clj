@@ -78,19 +78,29 @@
       ;; here. Their silence is unlike the other eight's: the change
       ;; still reaches the wire, in the PID and IN1 of every message the
       ;; patient receives after it.
-      ;; 1.7.0 (ADR-0174 section 2(b) plus ruling C, arc 3b sweep 3) adds
-      ;; FOUR, and the addition is recorded in all three places this
-      ;; gate's own message demands: each kind's `:doc`,
-      ;; `message-type-registry`'s own comment, and here. Their silence
-      ;; is unlike every other entry's: it is a VERSION gap, not a design
-      ;; preference. The SIU family (S12/S14/S15/S26) is v2.4 structure
-      ;; and every message this emitter carries says MSH-12 "2.3", so
-      ;; rendering them would emit a structure the version field
-      ;; disclaims. Rowed for arc 4, not closed here.
+      ;; 1.7.0 (ADR-0174 section 2(b) plus ruling C, arc 3b sweep 3) added
+      ;; FOUR -- `:appointment`, `:reschedule`, `:appointment-cancel`,
+      ;; `:no-show` -- whose silence was a VERSION gap and not a design
+      ;; preference: the SIU family is v2.4 structure and every message
+      ;; this emitter carried said MSH-12 "2.3".
+      ;;
+      ;; ARC 4 CLOSED BOTH HALVES OF THAT, and this set is 14 -> 10 for
+      ;; it. Sweep 1 (ADR-0175 ruling A1) made `default-msh` declare
+      ;; "2.4"; sweep 4 (ruling B1) added the four registry entries. The
+      ;; removal is recorded in the same three places an addition is:
+      ;; each kind's own `:doc` (which still says "deliberately
+      ;; unrendered in 1.7.0", and is TRUE of contract 1.7.0 -- the
+      ;; rendering is emission config, not a contract change, and this
+      ;; sweep's own fences forbid a schema diff),
+      ;; `message-type-registry`'s own comment, and here.
+      ;;
+      ;; THEIR ENTRY IS UNLIKE EVERY OTHER ENTRY'S in one way this gate
+      ;; cannot see and a reader should: they render only when `:siu` is
+      ;; on. `message-type-registry` says a kind CAN reach the wire; for
+      ;; these four it does not say it always does.
       (is (= #{:registered :step-rejected :outpatient-visit-end :procedure
                :medication-order :medication-end :care-plan-start :care-plan-end
-               :demographic-update :coverage-change
-               :appointment :reschedule :appointment-cancel :no-show}
+               :demographic-update :coverage-change}
              silent)
           (str "the set of contract kinds this emitter renders no message for "
                "changed to " (sort silent) " -- that is a real change in what "

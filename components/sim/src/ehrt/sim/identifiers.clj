@@ -55,6 +55,26 @@
         patient-ids))
 
 (defn- control-ids
+  "Every MSH-10 this run's own messages COULD carry, derived from
+  `control-id-for` alone.
+
+  ARC 4 SWEEP 4 MADE THIS A SUPERSET RATHER THAN AN EQUALITY, for the
+  four scheduling kinds and only those. `control-id-for` keys on
+  `message-type-registry`, and SIU^S12/S14/S15/S26 are now IN that
+  registry -- but they render only when `:siu` is on, so a run with
+  `:scheduling` and without `:siu` inventories four kinds of id that
+  reach no wire.
+
+  KEPT DELIBERATELY, and it is the safe direction. This verb answers
+  the question this namespace's own docstring poses -- if a run's own
+  output ever reached a real system, what is the complete list of
+  identifiers to look for and remove -- and an id listed
+  that was never emitted costs a fruitless search; an id emitted and
+  not listed is the failure that matters. `identifiers-test`'s own
+  property is a SUBSET assertion for exactly this reason and holds
+  unchanged. The alternative -- threading emission config in here --
+  would make an IDENTITY inventory depend on rendering settings, which
+  is what this projection exists not to do."
   [ground-truth]
   (into (sorted-set) (keep emit-hl7/control-id-for) ground-truth))
 

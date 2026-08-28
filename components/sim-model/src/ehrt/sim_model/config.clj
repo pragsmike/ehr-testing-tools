@@ -322,3 +322,46 @@
 
 (defn valid-ladder-profile? [profile] (m/validate LadderProfile profile))
 (defn explain-ladder-profile [profile] (m/explain LadderProfile profile))
+
+;; --- SIU (ADR-0175 ruling B1, arc 4 sweep 4): the scheduling-message
+;; config surface ------------------------------------------------------
+;; Scheduling's four kinds are GROUND TRUTH -- `:scheduling` (an engine
+;; config key) is what creates them, and it draws. `:siu` creates
+;; nothing: it decides whether four events the log already holds are
+;; RENDERED. Pure emission (`rulings.md#R-skeleton-or-emission`), no
+;; RNG, no `ehrt.sim-engine.engine/config-keys` membership, and a run
+;; with `:siu` on and `:scheduling` off emits nothing at all, because
+;; there is nothing to render.
+
+(def SiuProfile
+  "An on/off with an optional allow-list, and nothing else.
+
+  `:siu {}` -- the whole surface, at its default -- renders ALL FOUR
+  kinds. `:triggers` narrows that to exactly the kinds named, as ENGINE
+  vocabulary rather than HL7 trigger strings: a config author names what
+  happened and `emit-hl7/message-type-registry` owns the trigger.
+
+  UNLIKE `:latency`, `:chatter`, `:charges`, `:ladders` AND
+  `:site-profile`, `{}` IS ON, NOT OFF, and the asymmetry is deliberate.
+  Those five carry the settings that make them do anything, so an empty
+  map has nothing to do; here the KEY'S PRESENCE is the opt-in and
+  `:triggers` only narrows it. An empty map that meant `off` would be a
+  knob with a silent no-op setting -- exactly the failure mode
+  `rulings.md#R-empty-population-is-red` exists to make loud. Absent or
+  nil is off, and is byte-identical to every corpus this project shipped
+  before this sweep.
+
+  CLOSED, like its four siblings and for the same reason: one key is the
+  whole surface, so a typo is a misconfiguration this schema catches
+  rather than an SIU stream that silently never fires. An EMPTY
+  `:triggers` is rejected for the same reason -- it is indistinguishable
+  in effect from `:siu` absent, and a reader who wrote it meant
+  something."
+  [:map
+   {:closed true}
+   [:triggers {:optional true}
+    [:and [:vector [:enum :appointment :reschedule :appointment-cancel :no-show]]
+     [:fn {:error/message "must name at least one kind"} seq]]]])
+
+(defn valid-siu-profile? [profile] (m/validate SiuProfile profile))
+(defn explain-siu-profile [profile] (m/explain SiuProfile profile))

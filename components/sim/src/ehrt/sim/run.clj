@@ -481,6 +481,16 @@
   a counted skip inside the planner, never a read-back into ground
   truth for something else to bill.
 
+  ARC 4 SWEEP 4 (ADR-0175 ruling B1): `:siu`
+  (ehrt.sim-model.config/SiuProfile, optional) rides `:config` the same
+  way and is the thinnest of the four -- no stream, no planner, and no
+  content of its own. Scheduling's four kinds already ARE ground-truth
+  events (`:scheduling`, an engine key, is what creates them and what
+  draws); `:siu` decides only whether the emitter renders them. `:siu
+  {}` renders all four; `{:triggers [...]}` narrows it. Absent (the
+  default): byte-identical, and so is a run whose `:siu` is on but
+  whose `:scheduling` is off, since there is nothing to render.
+
   ARC 4 SWEEP 3 (ADR-0175 design (b)): `:ladders`
   (ehrt.sim-model.config/LadderProfile, optional) rides `:config` the
   same way and takes NO RNG EITHER -- and, unlike `:charges`, it does
@@ -528,7 +538,7 @@
        config-result
        (let [opts (:payload config-result)
              {:keys [seed patients emit at reference-date utc-offset warm-up-seconds churn churn-profile site-profile
-                     modules module-initial-attributes latency chatter charges ladders]} opts
+                     modules module-initial-attributes latency chatter charges ladders siu]} opts
              conflicts (incompatible-assignments opts)
              resolved-modules (when modules (resolve-modules modules (or module-initial-attributes {})))]
          (cond
@@ -591,6 +601,23 @@
                                          ":order-rungs [<fraction strictly in (0,1)> ...]} -- "
                                          "each fraction is a fraction of the order->result "
                                          "interval, never a count and never a duration")})
+
+           ;; ARC 4 SWEEP 4 (ADR-0175 ruling B1): and for `:siu`. Its
+           ;; failure mode is the loudest of the four -- `:siu
+           ;; {:trigger [:no-show]}` or `:siu {:triggers [:noshow]}`
+           ;; would read as `SIU on for all four` and `SIU on for none`
+           ;; respectively, and both are silent. A malformed profile is
+           ;; rejected before the engine's RNG starts, the same posture
+           ;; a missing `--seed` already gets.
+           (and (contains? opts :siu) (not (sim-model/valid-siu-profile? siu)))
+           (result/error :invalid-siu
+                         {:key :siu
+                          :value siu
+                          :explain (pr-str (sim-model/explain-siu-profile siu))
+                          :expected (str "{} -- all four kinds -- or "
+                                         "{:triggers [:appointment :reschedule "
+                                         ":appointment-cancel :no-show]}, a NON-EMPTY subset. "
+                                         "The kinds are engine vocabulary, never HL7 trigger strings")})
 
            :else
            (let [reference-date (or reference-date emit-hl7/default-reference-date)
@@ -666,7 +693,7 @@
                                    :events (count ground-truth)}}
                   (= "hl7" emit)
                   (assoc :messages
-                        (if (or latency chatter charges ladders)
+                        (if (or latency chatter charges ladders siu)
                           (emit-hl7/emit-wire ground-truth reference-date utc-offset facility providers site-profile
                                               ;; ADR-0171 ruling C1: the emission latency
                           ;; stream is the :emission FAMILY, derived like
@@ -716,7 +743,20 @@
                                       (emit-hl7/plan-chatter (engine/stream seed :emission 1)
                                                              ground-truth chatter))
                            :charges (:lines (emit-hl7/plan-charges ground-truth charges))
-                           :ladders (emit-hl7/plan-ladders ground-truth ladders)})
+                           :ladders (emit-hl7/plan-ladders ground-truth ladders)
+                           ;; ARC 4 SWEEP 4 (ADR-0175 ruling B1):
+                           ;; `:siu` needs NO STREAM AND NO PLANNER AT
+                           ;; ALL -- weaker than `:ladders`, which at
+                           ;; least computes rung instants. Scheduling's
+                           ;; four kinds are already ground-truth events
+                           ;; with registry entries; `:siu` only says
+                           ;; whether `event->messages` fills their
+                           ;; lane-0 slot, so the profile is forwarded
+                           ;; VERBATIM and `emit-wire` reads it
+                           ;; per-event. The `:emission` family's
+                           ;; id-tags 0 and 1 are still latency's and
+                           ;; chatter's, and this sweep claims no third.
+                           :siu siu})
                           (emit-hl7/emit ground-truth reference-date utc-offset facility providers site-profile)))
                   (= "fhir" emit) (assoc :fhir-bundles
                                          (emit-fhir/bundle-run ground-truth reference-date utc-offset seed (or at :end)))))))))))))

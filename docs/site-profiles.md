@@ -105,14 +105,16 @@ existing idea rather than inventing a new mechanism:
    This is `:surge-format`'s pattern applied to code tables instead of
    bed-naming strings.
 
-   *Dated note, 2026-08-28 (arc 4 sweeps 2 and 3,
+   *Dated note, 2026-08-28 (arc 4 sweeps 2, 3 and 4,
    `notes/adr/0175-arc-4-emission-add-ons.md`).* The two tables named
    above are no longer the whole set, and the reason the set grew is
    worth reading before overriding any of them. There are six:
    `:patient-class` (0004), `:discharge-disposition` (0112),
    `:bed-status` (0116, NPU-2), `:order-status` (0038, ORC-5),
-   `:result-status` (0123, OBR-25) and `:observation-result-status`
-   (0085, OBX-11). **None of those table numbers is a citation this
+   `:result-status` (0123, OBR-25), `:observation-result-status`
+   (0085, OBX-11) and, since arc 4 sweep 4, `:appointment-status`
+   (0278, SCH-25, the filler status code on an SIU). Seven.
+   **None of those table numbers is a citation this
    repository can check.** No jar or resource on any classpath here
    carries HL7 table CONTENT — `hapi-structures-v24` ships structures —
    so every code string in
@@ -120,7 +122,13 @@ existing idea rather than inventing a new mechanism:
    project's own authored reading, published as overridable data
    precisely so a site that reads a table differently changes a config
    rather than forking an emitter. Treat them as defaults with a stated
-   provenance, never as an authority.
+   provenance, never as an authority. Sweep 4 checked the absence
+   rather than inheriting it: neither `hapi-base` nor
+   `hapi-structures-v24` contains a trigger-event or status
+   DESCRIPTION anywhere, which is also why HL7 Table 0003 cannot settle
+   whether a reschedule notification is SIU^S13 or SIU^S14 in this
+   tree, and why the event contract's own `:reschedule` doc is what
+   does.
 3. **Naming: `:surge-format` migrates to the profile.** A config-level
    compatibility shim (`ehrt.sim-emit-hl7.site-profile/apply-naming`), not
    an emit-time dialect like the other three — surge bed ids are

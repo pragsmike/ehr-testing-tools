@@ -116,7 +116,15 @@
    ;; these strings as an HL7 citation.
    [:order-status {:optional true} CodeTable]
    [:result-status {:optional true} CodeTable]
-   [:observation-result-status {:optional true} CodeTable]])
+   [:observation-result-status {:optional true} CodeTable]
+   ;; ARC 4 SWEEP 4 (ADR-0175 ruling B1): SCH-25's own table, and the
+   ;; fourth vocabulary this tree ships as data for the same reason the
+   ;; three above are -- `hapi-structures-v24` 2.6.0 carries STRUCTURES,
+   ;; not HL7 tables, and Table 0278 appears in no jar and no resource
+   ;; on any classpath here. Verified as a negative rather than assumed:
+   ;; neither jar contains the string "rescheduling" or "did not
+   ;; show" anywhere.
+   [:appointment-status {:optional true} CodeTable]])
 
 (def standard-patient-class-codes
   "HL7v2 Table 0004 (patient class), today's hard-coded value. This
@@ -217,6 +225,30 @@
   make one override impossible."
   {:preliminary {:code "P"} :in-process {:code "I"}
    :corrected {:code "C"} :final {:code "F"}})
+
+(def standard-appointment-status-codes
+  "SCH-25 (Filler Status Code), HL7v2 Table 0278 -- arc 4 sweep 4
+  (ADR-0175 ruling B1). Authored, not cited: same provenance caveat as
+  `standard-order-status-codes`, and measured the same way (no jar on
+  any classpath here carries HL7 tables).
+
+    :booked    -> \"Booked\"     The appointment is on the schedule
+    :cancelled -> \"Cancelled\"  Stopped before it started
+    :no-show   -> \"Noshow\"     The slot arrived and the patient did not
+
+  A RESCHEDULE RENDERS `:booked`, NOT A STATUS OF ITS OWN, and that is
+  the standard's shape rather than a shortcut: a rescheduled appointment
+  is still booked, at a different instant, and SCH-11 is where the move
+  shows. The trigger -- SIU^S14 against SIU^S12 -- is what says a move
+  happened; SCH-25 says what state the appointment is in afterwards.
+
+  `:complete` and `:pending` are authored and unused by anything this
+  project emits: no ground-truth event marks an appointment kept (an
+  encounter opening against it is what does, and that is an ADT), so a
+  site whose scheduler really does send a completion has a code to
+  override to rather than a table to fork."
+  {:booked {:code "Booked"} :cancelled {:code "Cancelled"} :no-show {:code "Noshow"}
+   :complete {:code "Complete"} :pending {:code "Pending"}})
 
 (defn code-for
   "Renders `state-value` (a keyword) as the ER7 field's component vector

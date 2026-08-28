@@ -450,9 +450,18 @@
             chatter's A08/A31/A28 and unlike the DFT it needs no entry, no fold arm, and
             no sampler change. If this set ever moves under a ladder sweep, the sweep has
             crossed `rulings.md#R-skeleton-or-emission` and owes an event-schema answer."
+    ;; ARC 4 SWEEP 4 widened this set, and the widening is exactly what
+    ;; this assertion is for: it is a whole-registry pin, so a sweep
+    ;; that adds a family has to come here and say so. Sweep 4 added
+    ;; scheduling's four (SIU^S12/S14/S15/S26, ADR-0175 ruling B1) --
+    ;; which is a REGISTRY change made deliberately by a sweep whose
+    ;; own charter was to make one, and not a ladder crossing
+    ;; `rulings.md#R-skeleton-or-emission`. The sentence above still
+    ;; binds a LADDER sweep, unchanged.
     (is (= #{:admission :discharge :transfer :cancel-admit :cancel-transfer
              :cancel-discharge :bed-swap :merge :order-placed :result-available
-             :outpatient-visit :bed-status-change :observation :diagnostic-report}
+             :outpatient-visit :bed-status-change :observation :diagnostic-report
+             :appointment :reschedule :appointment-cancel :no-show}
            (set (keys emit-hl7/message-type-registry))))
     (testing "and both ladder families are SKELETON, so `gate v2` gates every rung in full"
       (is (contains? emit-hl7/skeleton-message-types "ORM^O01"))

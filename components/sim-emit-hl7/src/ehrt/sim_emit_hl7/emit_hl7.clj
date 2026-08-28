@@ -89,37 +89,54 @@
    ;; the version question was still open. It is settled now -- see the
    ;; block below.
    :bed-status-change {:type "ADT" :trigger "A20"}
-   ;; SCHEDULING'S FOUR KINDS STILL GET NO ENTRY HERE, and the reason
-   ;; CHANGED on 2026-08-27 (arc 4 sweep 1, ADR-0175 ruling A1). Read
-   ;; this block before adding one.
+   ;; SCHEDULING'S FOUR KINDS EARN THEIR ENTRIES HERE (arc 4 sweep 4,
+   ;; 2026-08-28, ADR-0175 ruling B1's third tranche). The version
+   ;; blocker went in sweep 1 -- `site-profile/default-msh` declares
+   ;; "2.4" and the SIU structures are v2.4 -- and this is the sweep
+   ;; ruling B1 put AFTER (A) for exactly that reason.
    ;;
-   ;; THE VERSION BLOCKER IS GONE. `:appointment`, `:reschedule`,
-   ;; `:appointment-cancel` and `:no-show` map onto the SIU family --
-   ;; S12, S14, S15, S26 -- which is v2.4 structure. Arc 3b sweep 3
-   ;; recorded, correctly for its day, that "every message this emitter
-   ;; produces carries MSH-12 \"2.3\", while the SIU structures are
-   ;; v2.4", so an entry "would emit a structure the version field
-   ;; disclaims". `site-profile/default-msh` now declares "2.4", and
-   ;; that sentence no longer holds: SIU is exactly as declarable as
-   ;; ADT^A20.
+   ;; THEY ARE THE FIRST ENTRIES IN THIS REGISTRY THAT DO NOT RENDER ON
+   ;; THEIR OWN. An entry here has always meant "this kind renders";
+   ;; these four mean "this kind renders WHEN `:siu` is on". The gate is
+   ;; in `event->messages`, not here, and the reason it is not here is
+   ;; that this map has three other readers -- `control-id-for`,
+   ;; `skeleton-message-types` and the conformance gate's own vocabulary
+   ;; check -- and every one of them wants the SIU families present
+   ;; unconditionally. `skeleton-message-types` in particular: derived
+   ;; from this map, so an SIU message is gated in FULL by `gate v2`'s
+   ;; sampler from the moment it can exist, with no list to widen.
    ;;
-   ;; WHAT THIS SWEEP CHANGED, AND WHAT IT DID NOT. It changed the
-   ;; version field and PID-13's rendering, nothing else. It did NOT add
-   ;; a message family -- ADR-0175 ruling B1 puts SIU after (A), not in
-   ;; it, and its own fences forbid a new family in this sweep. So the
-   ;; four stay GROUND TRUTH ONLY: a consumer reading the log sees
-   ;; appointments, a consumer reading the wire does not, and the gap is
-   ;; still REAL. What is different is that it is now a SCHEDULING-WORK
-   ;; gap and not a version gap, and it is arc 4 sweep 4's to close.
+   ;; THE TRIGGER MAPPING, AND EXACTLY WHAT THE JAR SETTLES. Verified
+   ;; against `hapi-structures-v24` 2.6.0's own
+   ;; `ca/uhn/hl7v2/parser/eventmap/2.4.properties`, which maps
+   ;; `SIU_S13` .. `SIU_S24` and `SIU_S26` onto the structure `SIU_S12`.
+   ;; So S12 (the structure itself), S14, S15 and S26 are all real v2.4
+   ;; triggers resolving to one structure -- that much IS jar-verified,
+   ;; and it is the whole of what the jar can say. NEITHER JAR CARRIES
+   ;; HL7 TABLE 0003, measured rather than assumed: no resource in
+   ;; `hapi-base` or `hapi-structures-v24` contains a trigger-event
+   ;; DESCRIPTION at all. So S14-vs-S13 for a reschedule notification is
+   ;; settled by the EVENT CONTRACT, not by the jar:
+   ;; `event-schema.clj`'s own `:reschedule` doc says SIU^S14 at
+   ;; contract 1.7.0, `docs/formats.md` renders it, and the frozen
+   ;; baseline carries it. `notes/adr/0174-*.md`:697 enumerates
+   ;; "S12/S13/S15/S26" and is the lone surface that disagrees; it is
+   ;; not the contract, and this sweep's own fences forbid a schema
+   ;; diff. The contract wins, S14 stands, and the disagreement is
+   ;; recorded here rather than silently resolved.
    ;;
-   ;; ANY LATER SWEEP ADDING AN SIU ENTRY OWES a `v2-replay/evolve-entry`
-   ;; arm with it (ADR-0175 section 1(iii)): an unhandled MSH-9 THROWS
-   ;; there, which kills the emitter-coherence property rather than
-   ;; failing it softly.
-   ;;
-   ;; The silence is still stated in all three places the conformance
-   ;; gate demands: each kind's own `:doc`, here, and
-   ;; `event-conformance-test`'s silent set.
+   ;; THE FOLD ARM THE OLD COMMENT OWED IS PAID, and not as an
+   ;; `evolve-entry` arm. An unhandled MSH-9 throws out of that `case`,
+   ;; which kills the emitter-coherence property rather than failing it
+   ;; softly (ADR-0175 section 1(iii)) -- but SIU is not an ADT, and an
+   ;; appointment asserts nothing about a visit. `v2-replay/fold-message`
+   ;; skips the whole SIU FAMILY before dispatch, so the trigger never
+   ;; reaches `evolve-entry` and no accumulator entry is bootstrapped
+   ;; from an appointment's PID for a patient who has not arrived.
+   :appointment {:type "SIU" :trigger "S12"}
+   :reschedule {:type "SIU" :trigger "S14"}
+   :appointment-cancel {:type "SIU" :trigger "S15"}
+   :no-show {:type "SIU" :trigger "S26"}
    ;; M5b (components/patient-simulator/docs/gmf-interpreter.md section 1's table): :observation is an
    ;; UNSOLICITED finding, not an order's result -- same ORU^R01 message
    ;; family as :result-available, rendered WITHOUT the ORC/OBR order
@@ -213,10 +230,22 @@
   `surviving-mrn` for :merge (PID carries the survivor, not the one
   being merged away). nil for any event type outside
   `message-type-registry` (the same 'no message, no id' rule
-  `event->messages` already follows)."
-  [{:keys [event t active-mrn surviving-mrn participants swap bed to]}]
+  `event->messages` already follows).
+
+  ARC 4 SWEEP 4: the SIU family keys on FOUR parts, `mrn-appointment-
+  trigger-t`, from its first message. It is the only family here that
+  did not have to LEARN that -- sweep 3 measured `:result-available`'s
+  own three-part key NON-INJECTIVE and rowed the fix
+  (`roadmap.md#oru-control-id-collision`), and a patient can hold more
+  than one open appointment, so `mrn-S12-t` would collide the moment two
+  bookings landed on one second. The appointment id is the discriminator
+  the log already carries."
+  [{:keys [event t active-mrn surviving-mrn participants swap bed to appointment-id]}]
   (when-let [{:keys [trigger]} (message-type-registry event)]
     (case event
+      (:appointment :reschedule :appointment-cancel :no-show)
+      (str active-mrn "-" appointment-id "-" trigger "-" t)
+
       ;; ARC 3B SWEEP 2: a bed event has no `:active-mrn` to key on --
       ;; it has no patient. The BED plus the status it is moving TO is
       ;; what makes it unique, and the status is in the key rather than
@@ -859,6 +888,177 @@
       (evn-segment (:trigger type+trigger) clinical-ts)
       (npu-segment site-profile facility-name {:ward ward :bed bed} to)))))
 
+
+;; --- ARC 4 SWEEP 4 (ADR-0175 ruling B1, 2026-08-28): SIU^S12 -----------
+;; Scheduling's four ground-truth kinds reach the wire, behind `:siu`.
+
+(def siu-event-kinds
+  "The four ground-truth kinds this family renders -- the SAME four
+  `ehrt.sim-engine.event-schema` declared at contract 1.7.0 and left
+  unrendered, and the exact key set of the registry's own SIU block.
+  Derived from the registry rather than listed twice, so the two cannot
+  disagree."
+  (into #{} (keep (fn [[kind {:keys [type]}]] (when (= "SIU" type) kind)))
+        message-type-registry))
+
+(defn siu-renders?
+  "Does `siu` (the `:siu` emission profile: nil/absent = off, a map =
+  on) ask for a message for `event`?
+
+  THE SHAPE IS AN ON/OFF PLUS AN OPTIONAL ALLOW-LIST, and the defaults
+  are stated rather than implied: `{}` (or any map with no `:triggers`)
+  means ALL FOUR kinds, and `{:triggers [...]}` means exactly the kinds
+  named. Absent or nil is off, which is what makes a run that never
+  names the key byte-identical to one from before this sweep -- the
+  same three-way absent/nil/{} agreement `:site-profile` has, except
+  that here `{}` is ON, because the key's presence IS the opt-in and a
+  key that meant nothing when empty would be a knob with a silent
+  no-op setting.
+
+  The allow-list is EVENT KINDS, not HL7 trigger strings, for the
+  reason every other emission profile in this namespace takes engine
+  vocabulary: a config author names what happened, and the trigger is
+  this registry's business."
+  [siu event]
+  (boolean (and (map? siu)
+                (contains? siu-event-kinds event)
+                (let [triggers (:triggers siu)]
+                  (or (nil? triggers) (contains? (set triggers) event))))))
+
+(def ^:private siu-filler-status
+  "Event kind -> the SCH-25 state
+  (`site-profile/standard-appointment-status-codes`' own vocabulary).
+
+  A RESCHEDULE IS STILL `:booked`. SIU^S14 is what says the appointment
+  moved; SCH-25 says what state it is in once it has, and a rescheduled
+  appointment is a booked one at a new instant."
+  {:appointment :booked
+   :reschedule :booked
+   :appointment-cancel :cancelled
+   :no-show :no-show})
+
+(defn- sch-segment
+  "SCH, the scheduling segment SIU^S12 leads with.
+
+  VERIFIED FROM THIS TREE'S OWN RESOLVED DEPENDENCIES, by reflection
+  over `hapi-structures-v24` 2.6.0 rather than from memory: `SCH` has
+  27 fields; SCH-1 and SCH-2 are `EI`, SCH-7 and SCH-25 are `CE`, and
+  SCH-11 is `TQ`, whose 4th component is a `TS`. `SIU_S12`'s own
+  segment names are `[MSH SCH NTE PATIENT RESOURCES]` and its `PATIENT`
+  group is `[PID PD1 PV1 PV2 OBX DG1]` -- which is why `siu-message`
+  below renders PID and PV1 in that order and nothing between them.
+
+  WHAT IS RENDERED, AND WHAT IS DELIBERATELY BLANK:
+
+  * SCH-1 / SCH-2 -- placer and filler appointment ids, both the log's
+    own `:appointment-id`. ONE id, rendered twice, because this project
+    is both placer and filler; the point is that it is STABLE across an
+    appointment's whole S12 -> S14/S15/S26 family, which is the reason
+    `:reschedule` keeps the id rather than minting a new one
+    (`event-schema`'s own `:reschedule` comment).
+  * SCH-7 -- appointment reason, the log's `:reason`, escaped. Only
+    `:appointment` carries one; the other three render it blank.
+  * SCH-11 -- appointment timing, TQ-4 (start date/time) alone. FROM
+    THE EVENT, never folded from the log: `:appointment` and
+    `:reschedule` carry `:scheduled-t` and render it; `:appointment-
+    cancel` and `:no-show` carry NO scheduled instant at all, so SCH-11
+    is blank on both. That is a real limit of the event contract, not
+    an omission here -- recovering it would mean folding an appointment
+    timeline across the log, which is a second state derivation this
+    renders-only namespace does not own.
+  * SCH-25 -- filler status code, through the site profile's own
+    `:appointment-status` table.
+  * `:appointment-class` IS NOT RENDERED. It names the class of the
+    FUTURE visit and its vocabulary is HL7 Table 0004 (the one PV1-2
+    uses), not Table 0276/0277's appointment type; mapping one onto the
+    other would be inventing a correspondence this tree cannot check.
+    Stated rather than left as a blank field a reader has to explain."
+  [site-profile {:keys [event appointment-id reason]} scheduled-ts]
+  (apply parser/create-segment
+         "SCH"
+         (parser/create-field [appointment-id])
+         (parser/create-field [appointment-id])
+         (concat (blank-fields 4)                          ; SCH-3 .. SCH-6
+                 [(if reason
+                    (parser/create-field [(escape-er7 reason)])
+                    (parser/create-field []))]             ; SCH-7
+                 (blank-fields 3)                          ; SCH-8 .. SCH-10
+                 [(if scheduled-ts
+                    (parser/create-field ["" "" "" scheduled-ts])
+                    (parser/create-field []))]             ; SCH-11 (TQ-4)
+                 (blank-fields 13)                         ; SCH-12 .. SCH-24
+                 [(parser/create-field
+                   (site-profile/code-for site-profile :appointment-status
+                                          site-profile/standard-appointment-status-codes
+                                          (siu-filler-status event)))])))
+
+(defn- siu-message
+  "SIU^S12 (and S14/S15/S26, all one structure): `[MSH SCH PID (PV1)]`,
+  plus whatever Z-segments the site profile binds to this event.
+
+  A SIBLING BUILDER, NOT A BRANCH IN `single-subject-message`, and the
+  reason is not A20's. A20 had no patient at all; SIU has one, so the
+  PID/PV1 pair that builder's contract is built around DOES exist here.
+  It still cannot share it, on three structural counts, each of which
+  alone would force a branch: SIU carries NO EVN (that segment is ADT's,
+  and `single-subject-message` renders it unconditionally); its SCH sits
+  BEFORE the PID, and that builder has no seam ahead of the patient; and
+  its PV1 is CONDITIONAL, while that builder always renders one. Three
+  branches inside a builder whose docstring says `a PID/PV1 pair per
+  subject` is a different builder wearing the first one's name.
+
+  PV1 RIDES ONLY AN OPEN ENCOUNTER, and that is the whole of the
+  condition: `:encounter-id` is stamped on any event that happened while
+  an encounter was open (`engine/stamp-encounter`), so a booking made
+  from a hospital bed would carry one and a booking made from home does
+  not. When PV1 is rendered it is the CURRENT encounter's, carrying its
+  visit number in PV1-19; PV1-3/PV1-6/PV1-7 are blank because an
+  appointment names no location and no attending.
+
+  NO RUN IN THIS REPOSITORY REACHES THAT BRANCH TODAY, and it is
+  measured rather than hoped: `:encounter-id` is on ZERO of the 72
+  appointment-family events of the `scheduling` oracle root, zero of
+  seed-202-ed-tuesday's 64, and zero of seed-424242-clinic-decade's 56.
+  IT IS STRUCTURAL, not a seed's luck. Both of this project's two
+  booking producers decide OUTSIDE an open encounter: the pre-loop books
+  an arrival before that patient has any encounter at all, and a
+  follow-up is a step `decide :discharge` PREPENDS, so its own `decide
+  :appointment` runs after the discharge it followed has already closed
+  the encounter (`engine/stamp-encounter` reads the world BEFORE the
+  batch, and by then there is none open).
+
+  THE BRANCH IS KEPT ANYWAY, and it is exercised by a hand-built event
+  rather than by a population (`siu-test`), which is the honest form for
+  a rule that is right and currently unreachable. The alternative --
+  rendering PV1 unconditionally -- would put a visit segment on a
+  notification about a visit that has not happened, on every S12 this
+  project emits. The population fact is itself gated: no SIU message of
+  any real run carries a PV1, asserted with this measurement as its
+  reason, so the day the engine starts stamping a mid-stay booking the
+  gate says so instead of the rendering changing silently.
+
+  MSH-7 IS TRANSMIT TIME, the same split clock every builder here
+  follows -- and unlike a ladder rung, an SIU has no basis message to
+  borrow a lag from: it is its own event, so it takes its own event's
+  offset under `control-id-for`'s SIU arm."
+  [reference-date utc-offset facility _providers demographics site-profile offsets
+   {:keys [event t active-mrn participants encounter-id scheduled-t] :as ev}]
+  (let [type+trigger (message-type-registry event)
+        control-id (control-id-for ev)
+        transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
+        facility-name (name (:id facility))
+        persona (demographics-at demographics (:patient-id (first participants)) t)
+        scheduled-ts (when scheduled-t (hl7-timestamp reference-date scheduled-t utc-offset))]
+    (parser/str-message
+     (apply parser/create-message
+      parser/DEFAULT-DELIMITERS
+      (msh-segment site-profile type+trigger control-id transmit-ts)
+      (sch-segment site-profile ev scheduled-ts)
+      (pid-segment active-mrn persona)
+      (concat (when encounter-id
+                [(pv1-segment site-profile :inpatient facility-name nil nil nil nil encounter-id)])
+              (z-segments-for site-profile demographics ev))))))
+
 (defn- merge-message
   "A40 (merge patient): PID carries the SURVIVING mrn, MRG-1 carries the
   prior (merged-away) one (docs/patient-state-model.md's identity
@@ -1477,6 +1677,10 @@
   ([reference-date utc-offset facility providers demographics site-profile offsets charges ev]
    (event->messages reference-date utc-offset facility providers demographics site-profile offsets
                     charges nil ev))
+  ([reference-date utc-offset facility providers demographics site-profile offsets charges
+    ladder-status ev]
+   (event->messages reference-date utc-offset facility providers demographics site-profile offsets
+                    charges ladder-status nil ev))
   ;; ARC 4 SWEEP 3 (ADR-0175 design (b)): `ladder-status` is THIS
   ;; event's own terminal status -- `{:stage :final}` for a
   ;; `:result-available` whose order actually grew a rung, nil for every
@@ -1488,10 +1692,25 @@
   ;; and a ladder keyed on a non-injective id would put final codes on
   ;; the wrong twin. `emit-wire` has the log index in hand and passes
   ;; the decision, not the key.
+  ;; ARC 4 SWEEP 4 (ADR-0175 ruling B1): `siu` is the `:siu` emission
+  ;; profile (nil = off), and it is the ONE argument here that can turn
+  ;; a REGISTERED kind back into no message at all. Every other entry in
+  ;; `message-type-registry` renders unconditionally; scheduling's four
+  ;; render only when asked, which is what keeps `:siu` absent
+  ;; byte-identical to every corpus this project has ever shipped. The
+  ;; gate lives here rather than in the registry because three other
+  ;; readers of that map -- `control-id-for`, `skeleton-message-types`
+  ;; and the conformance vocabulary check -- all want the four present
+  ;; unconditionally.
   ([reference-date utc-offset facility providers demographics site-profile offsets charges
-    ladder-status {:keys [event] :as ev}]
+    ladder-status siu {:keys [event] :as ev}]
    (let [registered (cond
                       (not (message-type-registry event)) []
+                      (contains? siu-event-kinds event)
+                      (if (siu-renders? siu event)
+                        [(siu-message reference-date utc-offset facility providers demographics
+                                      site-profile offsets ev)]
+                        [])
                       (= :bed-status-change event) [(bed-status-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
                       (= :bed-swap event) [(bed-swap-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
                       (= :merge event) [(merge-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
@@ -2192,6 +2411,15 @@
   place this sweep moves an existing message's bytes: a terminal ORU^R01
   whose order grew a rung gains OBR-25 and OBX-11.
 
+  ARC 4 SWEEP 4 (ADR-0175 ruling B1) adds `:siu` to `emission`, and it
+  is unlike the three above in one way worth naming: it adds no lane.
+  Scheduling's four kinds are GROUND-TRUTH events with registry entries,
+  so an SIU rides LANE 0 at its own event's own log index, exactly where
+  that event's ADT would ride if it had one. What `:siu` switches is
+  whether that lane-0 slot is filled at all. Absent or nil is today
+  byte-for-byte at every corpus, because every one of them renders zero
+  SIU messages without it.
+
   A LADDER RUNG DOES CARRY AN OFFSET, unlike a chatter restatement, and
   the difference is not an inconsistency. Chatter has no basis event to
   take a lag from -- a periodic A08 restates a patient, not an event --
@@ -2204,7 +2432,7 @@
   ([ground-truth reference-date utc-offset facility providers site-profile offsets]
    (emit-wire ground-truth reference-date utc-offset facility providers site-profile offsets {}))
   ([ground-truth reference-date utc-offset facility providers site-profile offsets
-    {:keys [chatter charges ladders]}]
+    {:keys [chatter charges ladders siu]}]
    (let [demographics (demographics-timeline ground-truth)
          offsets (or offsets {})
          chatter (or chatter [])
@@ -2223,7 +2451,7 @@
                          (event->messages reference-date utc-offset facility providers demographics
                                           site-profile offsets charges
                                           (when (contains? final-result-indices i) {:stage :final})
-                                          ev)))))
+                                          siu ev)))))
                    (apply concat))
          restatements (map (fn [ins]
                              [(:at ins) (:basis ins) 1 (:ordinal ins)
