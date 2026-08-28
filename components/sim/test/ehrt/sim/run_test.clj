@@ -523,7 +523,31 @@
                         :no-show-rate 0.15
                         :reschedule-rate 0.10
                         :cancel-rate 0.08
-                        :follow-up {:rate 0.35 :interval-days [30 120]}}}}])
+                        :follow-up {:rate 0.35 :interval-days [30 120]}}
+           ;; ARC 4 SWEEP 2 (ADR-0175 designs (a) and (c), 2026-08-28):
+           ;; CHATTER and CHARGES, on, and again in this run's own opts
+           ;; because it names no config. The values are
+           ;; `clinic-decade`'s verbatim, for the reason this slot has
+           ;; taken clinic-decade's values since sweep 3: this run IS
+           ;; what clinic-decade is -- ambulatory content over a decade
+           ;; -- at ten patients instead of two hundred, and its own
+           ;; encounter census (21 patient-days, longest stay 2 days)
+           ;; has none of ed-tuesday's concentration.
+           ;;
+           ;; UNLIKE THE THREE OPT-INS ABOVE, NEITHER TOUCHES GROUND
+           ;; TRUTH. `arc0-gated-corpora-are-byte-and-value-identical-
+           ;; to-the-pinned-baseline` does NOT move for this commit, at
+           ;; any of the four corpora, and that is the whole claim of
+           ;; arc 4 stated where a reader of this file will look for it.
+           :chatter {:demographic-update 1.0
+                     :coverage-change 1.0
+                     :registered 1.0
+                     :restatement {:rate-per-patient-day 0.25}}
+           :charges {:price-table {"58410-2"   {:amount 148.00 :display "CBC panel"}
+                                   "117015009" {:amount 62.00 :display "Throat culture"}
+                                   "23426006"  {:amount 210.00 :display "Respiratory function measurement"}
+                                   "441550005" {:amount 88.00 :display "Urinalysis with reflex to culture"}
+                                   "ROOM-BOARD" {:amount 1875.00 :display "Room and board, per day"}}}}}])
 
 (def ^:private corpora
   "run id -> that run's own `run-command` result, populated once by

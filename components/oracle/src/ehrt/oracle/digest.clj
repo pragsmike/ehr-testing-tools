@@ -42,12 +42,13 @@
   component-code versions, and hashing itself happens in the calling
   shell (`sha256sum`), not in-process.
 
-  CURRENT STATE, 2026-08-27 (arc 3b sweep 3, ADR-0174 section 2(b)'s
-  turn-on commit; before it, arc 3b sweep 2, ADR-0174 section 2(c);
+  CURRENT STATE, 2026-08-28 (arc 4 sweep 2, ADR-0175 designs (a) and
+  (c)'s turn-on commit; before it, arc 3b sweep 3, ADR-0174 section
+  2(b); before that, arc 3b sweep 2, ADR-0174 section 2(c);
   before that, arc 3b sweep 1, ADR-0174 ruling A1; before
   that, arc 3a part 4, ADR-0173 ruling D1's commit 2; previously
   2026-08-19, ADR-0156, review-4 register row L1-5).
-  `roots` holds 39 roots in two families:
+  `roots` holds 40 roots in two families:
 
     3 INTERPRETER-LAYER batches -- appendicitis/sore-throat/
       ear-infections. 100 well-mixed seeds x both sexes = 200 walks per
@@ -57,7 +58,7 @@
       well-distributed for their own first draw, confirmed repeatedly
       across GMF coverage waves.
 
-   36 ENGINE-LAYER pairs -- engine/run plus emit-hl7/emit, ground truth
+   37 ENGINE-LAYER pairs -- engine/run plus emit-hl7/emit, ground truth
       AND emitted HL7 both captured, at the run-config each root's own
       vendored/engine test already established as producing real
       content. The 33rd, `demographic-fold`, is the first root to turn
@@ -77,7 +78,13 @@
       message for any of the four -- ruling C, the v2.4 SIU structures
       against MSH-12 `2.3` -- so it adds four EVENT kinds and ZERO
       message types, the first root to widen one vocabulary without the
-      other.
+      other. The 37th, `chatter-charges`, is the first to turn
+      `:chatter` and `:charges` ON, and it is the MIRROR IMAGE of the
+      36th: four MSH-9s and ZERO event kinds. ADT^A08/A31/A28 are
+      re-statement chatter and DFT^P03 is a whole message FAMILY this
+      project had never emitted; not one of them is a fact, so ground
+      truth does not move -- which is what
+      `bin/ground-truth-bracket` asserts across the other 36.
 
   This paragraph replaced an opening that read `Six roots, matching this
   session's own J1 ruling verbatim` -- true when written and never
@@ -86,7 +93,7 @@
   false; a cold reader simply got a third of the population and no
   signal that it was a third. The count is gated now
   (`ehrt.docs-tooling.oracle-coverage-test`), and the COVERAGE block
-  beside `roots` states what these 39 can and cannot witness.
+  beside `roots` states what these 40 can and cannot witness.
 
   Dated note (2026-08-03, ADR-0033 AR-4b): three more roots join at the
   ENGINE layer -- ear-infections-engine/urinary-tract-infections-engine/
@@ -807,6 +814,91 @@
     {:ground-truth (:ground-truth (:payload r))
      :hl7 (vec (:messages (:payload r)))}))
 
+(defn- chatter-charges-pair
+  "Arc 4 sweep 2's own root (2026-08-28, ADR-0175 designs (a) and (c),
+  ruling B1), and the FIRST to turn `:chatter` and `:charges` on. FIRST
+  BASELINE, not a regression check: no side before this commit has
+  either key to run under at all.
+
+  IT GOES THROUGH `run-command` for `demographic-fold`'s own reason and
+  no other -- `:persons` reaches `engine/run` TRANSLATED -- and
+  `:persons` is load-bearing here rather than decoration: it is the only
+  producer of `:demographic-update` and `:coverage-change`, which are
+  two of the three kinds chatter restates. `:encounters` is load-bearing
+  too: the A08-vs-A31 rule reads the `:encounter-id` nothing else mints,
+  and both the periodic census and the charge plan group on it.
+
+  WHAT IT DELIBERATELY DOES NOT DO, and each omission has a reason:
+
+    NO `--churn`. Churn injects transfers (`:transfer-in-error` emits a
+    `:transfer` and a `:cancel-transfer`), and the capacity witness in
+    `projects/integration`'s own `oracle_coverage_test` PINS WHICH ROOTS
+    CARRY `:transfer` -- a claim about ladder rungs 3 and 4 that this
+    sweep has not measured and has no business widening. Twelve beds a
+    ward against 80 arrivals at a 90-minute gap is deliberate for the
+    same reason: no bed-ready transfer either. Measured: 0 transfers.
+
+    NO ORDER STEP. An order would put `:order-placed`/`:result-available`
+    and `ORM^O01` into the witnessed sets, and ADR-0175's own ladder
+    section says NO ORACLE ROOT PLACES AN ORDER -- closing that is the
+    NEXT sweep's step 0, priced there, not smuggled in here. The
+    consequence is stated rather than hidden: this root's FT1 lines are
+    all room-and-board, and the FT1-7-from-a-log-code and FT1-25
+    procedure paths are witnessed by the six GATED corpora and by
+    `ehrt.sim-emit-hl7.charges-test`, not by the oracle.
+
+  Measured at the config below, not predicted: 477 events, 598 messages,
+  99 encounters all closed, and every one of design (a)'s families with
+  a NON-EMPTY population -- 191 ADT^A31, 86 ADT^A28, 22 ADT^A08, 76 of
+  the A31s carrying an IN1-only coverage update, plus 99 DFT^P03s over
+  106 charge lines and no unpriced skips. All 598 MSH-10s distinct.
+
+  THE A08 SPLIT IS THE FIGURE WORTH READING TWICE: all 22 are PERIODIC
+  and none is event-driven. That is ADR-0175 section 2(a)'s own
+  measurement holding at a third population -- demographic churn happens
+  almost entirely between encounters, so the event-driven half is 191
+  A31 and no A08, and the program's A08 volume comes from the census.
+  The event-driven A08 branch is witnessed on the wire by the gated
+  ed-tuesday corpora (2 of them) and at unit scale, never here.
+
+  THE COVERAGE IT ADDS: four MSH-9s no root could reach before it --
+  ADT^A08, ADT^A31, ADT^A28 and DFT^P03, the last of them a whole
+  message FAMILY this project had never emitted. It adds NO event kind:
+  chatter and charges are EMISSION (`rulings.md#R-skeleton-or-emission`),
+  so `witnessed-event-kinds` is unmoved, which is the same statement
+  `bin/ground-truth-bracket` makes commit by commit."
+  []
+  (let [r (sim/run-command
+           {:seed 20260828 :patients 80 :arrival-gap 90
+            :facility {:id :chatter-charges-oracle
+                       :wards [{:id :renal :name "Renal" :beds 12 :surge-slots 4
+                                :surge-format "%s-H%02d" :class :inpatient}
+                               {:id :cardiology :name "Cardiology" :beds 12 :surge-slots 4
+                                :surge-format "%s-H%02d" :class :inpatient}]}
+            :pathways [{:pathway {:name "renal-stay"
+                                  :steps [{:type :admission :location "Renal"}
+                                          {:type :delay :from 180 :to 900}
+                                          {:type :discharge}]}
+                        :weight 1}
+                       {:pathway {:name "cardio-stay"
+                                  :steps [{:type :admission :location "Cardiology"}
+                                          {:type :delay :from 180 :to 900}
+                                          {:type :discharge}]}
+                        :weight 1}]
+            :emit "hl7" :reference-date "2024-01-01" :utc-offset "+00:00"
+            :encounters true
+            :persons {:count 160 :years 20}
+            :chatter {:demographic-update 1.0
+                      :coverage-change 1.0
+                      :registered 1.0
+                      :restatement {:rate-per-patient-day 0.25}}
+            :charges {:price-table {"ROOM-BOARD" {:amount 1875.00
+                                                  :display "Room and board, per day"}}}})]
+    (when-not (= :ok (:status r))
+      (throw (ex-info "chatter-charges root did not run cleanly" {:result r})))
+    {:ground-truth (:ground-truth (:payload r))
+     :hl7 (vec (:messages (:payload r)))}))
+
 (defn- injuries-pair
   "Injuries arc close (2026-08-11, ADR-0107): FIRST BASELINE, not a
   regression check -- this closure never completed a round trip before
@@ -898,10 +990,10 @@
 ;;     on one root, never what it reported.
 ;;
 ;; THE STRUCTURAL CAUSE, re-derived rather than inferred from the
-;; instrumentation: 36 of the 39 roots pass `:pathway {:name
-;; "module-only" :steps []}` -- `encounter-horizon`, `bed-cycle` and
-;; `scheduling` are the three exceptions and pass real
-;; admit/delay/discharge pathways,
+;; instrumentation: 36 of the 40 roots pass `:pathway {:name
+;; "module-only" :steps []}` -- `encounter-horizon`, `bed-cycle`,
+;; `scheduling` and `chatter-charges` are the four exceptions and pass
+;; real admit/delay/discharge pathways,
 ;; which is why the churn family and the allocation ladder reach them --
 ;; and 8 of 19 components plus `bases/cli` are off the
 ;; oracle classpath entirely (`bin/regression-oracle`'s own deps block).
@@ -1008,8 +1100,22 @@
     :transfer})
 
 (def ^:private witnessed-message-types
-  "Every MSH-9 the 36 engine-layer roots emit. ADT^A02 is death-fixture's
-  alone, once. ADT^A08/A34 and ORM^O01 are emitted by no root at all.
+  "Every MSH-9 the 37 engine-layer roots emit. ADT^A02 is death-fixture's
+  alone, once. ADT^A34 and ORM^O01 are emitted by no root at all.
+
+  WIDENED AGAIN 2026-08-28 by `chatter-charges`, arc 4 sweep 2's own
+  root (ADR-0175 designs (a) and (c)), and this is the largest single
+  widening this set has taken: FOUR MSH-9s at once. ADT^A08, ADT^A31 and
+  ADT^A28 are re-statement chatter; DFT^P03 is a whole message FAMILY
+  this project had never emitted -- the FINANCIAL half of a hospital
+  feed. ADT^A08 leaves the emitted-by-no-root list this docstring named
+  it on, and the sentence above is edited rather than left standing.
+
+  NOTE WHAT IT DOES NOT MOVE: `witnessed-event-kinds`. Every one of the
+  four is EMISSION (`rulings.md#R-skeleton-or-emission`) -- derivable
+  restatement of facts the log already carries -- so not one new kind
+  reaches ground truth, which is what `bin/ground-truth-bracket` asserts
+  commit by commit across all 36 pre-existing roots.
 
   WIDENED AGAIN 2026-08-27 by `bed-cycle`: ADT^A20 (bed status update),
   the message family ruling C added to this arc and the FIRST this
@@ -1034,8 +1140,9 @@
   (an A08 for `:demographic-update` is a later arc's candidate, named
   in `message-type-registry`'s own comment), so the fold reaches this
   set only through the merge."
-  #{"ADT^A01" "ADT^A02" "ADT^A03" "ADT^A04" "ADT^A11" "ADT^A12"
-    "ADT^A13" "ADT^A17" "ADT^A20" "ADT^A40" "ORU^R01"})
+  #{"ADT^A01" "ADT^A02" "ADT^A03" "ADT^A04" "ADT^A08" "ADT^A11" "ADT^A12"
+    "ADT^A13" "ADT^A17" "ADT^A20" "ADT^A28" "ADT^A31" "ADT^A40" "DFT^P03"
+    "ORU^R01"})
 
 (def ^:private roots
   {"appendicitis"                       appendicitis-batch
@@ -1073,6 +1180,7 @@
    "encounter-horizon"                  encounter-horizon-pair
    "bed-cycle"                          bed-cycle-pair
    "scheduling"                         scheduling-pair
+   "chatter-charges"                    chatter-charges-pair
    "veteran-self-harm"                  veteran-self-harm-pair
    "veteran-substance-abuse-treatment"  veteran-substance-abuse-treatment-pair
    "injuries"                           injuries-pair

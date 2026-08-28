@@ -257,4 +257,76 @@
               :reschedule-rate 0.08
               :cancel-rate 0.07
               :follow-up {:rate 0.25 :interval-days [7 30]}}
- :module-horizon-days 90}
+ :module-horizon-days 90
+
+ ;; ARC 4 SWEEP 2 (ADR-0175 design (a), rulings B1/C1/E1, 2026-08-28):
+ ;; RE-STATEMENT CHATTER, ON. A demographic change, a coverage change
+ ;; and a registration each now reach the wire as a message of their
+ ;; own, and open encounters are periodically re-stated.
+ ;;
+ ;; THE THREE EVENT RATES ARE 1.0 BECAUSE THAT IS WHAT A REAL INTERFACE
+ ;; DOES: an ADT feed sends an update for EVERY demographic change and
+ ;; an A28 for every registration. A rate below 1 models an interface
+ ;; that drops some, which is a thing worth being able to express and
+ ;; not the sensible default. The trigger is DERIVED, never configured:
+ ;; A08 when the change happened inside an open encounter, A31 when it
+ ;; did not, A28 for a registration.
+ ;;
+ ;; MEASURED HERE, seed 202 x 100 patients: 2 A08 and 263 A31 from the
+ ;; event-driven half. It is 99.2% A31, and that is the modelled world
+ ;; rather than a defect -- the person process walks twenty years while
+ ;; this scenario's clinical content is one ED shift, so demographic
+ ;; churn happens almost entirely BETWEEN encounters.
+ ;;
+ ;; :rate-per-patient-day IS DELIBERATELY SPARSE HERE, and it is the one
+ ;; sub-key this scenario genuinely disagrees with clinic-decade about.
+ ;; The periodic census is one draw per patient-day of OPEN-ENCOUNTER
+ ;; care, and this scenario's census is dominated by a single stay:
+ ;; measured, ONE encounter -- reinstated by a `:cancel-discharge` and
+ ;; never re-closed -- is open for 1,432 days at seed 202 and 6,144 days
+ ;; at the demo seed 20260811, out of 1,608 and 6,323 patient-days
+ ;; respectively. That is 89% and 97% of the whole census on one
+ ;; patient. clinic-decade's worst is 141 of 541 (26%), which is why it
+ ;; ships 0.25 and this file ships 0.02: at a rate that makes
+ ;; clinic-decade's census sensible, this corpus would be one patient's
+ ;; A08s several times over.
+ ;;
+ ;; THE STAY ITSELF IS GROUND TRUTH AND IS NOT THIS SWEEP'S TO FIX (arc
+ ;; 4 changes no ground truth at all). A reinstated discharge that is
+ ;; never re-issued leaves an encounter open forever, and the census is
+ ;; faithfully restating a patient the modelled hospital believes is
+ ;; still admitted.
+ :chatter {:demographic-update 1.0
+           :coverage-change 1.0
+           :registered 1.0
+           :restatement {:rate-per-patient-day 0.02}}
+
+ ;; ARC 4 SWEEP 2 (ADR-0175 design (c), ruling B1, 2026-08-28): DFT^P03
+ ;; CHARGES, ON. Every encounter close now also renders a financial
+ ;; message carrying one FT1 per chargeable fact of that encounter.
+ ;;
+ ;; THE PRICES ARE INVENTED AND THE ENGINE NEVER READS THEM. They are
+ ;; emission config, exactly like `:site-profile` and `:latency`: no
+ ;; invariant reads a charge, `:charges` reaches no member of
+ ;; `ehrt.sim-engine.engine/config-keys`, and ground truth is
+ ;; byte-identical with and without this block (proved per commit by
+ ;; `bin/ground-truth-bracket`, not asserted here). They are round
+ ;; plausible numbers chosen to be obviously synthetic; nothing in this
+ ;; repository claims they resemble any real chargemaster.
+ ;;
+ ;; THE TABLE IS DELIBERATELY PARTIAL. `ehrt.sim-emit-hl7.emit-hl7/
+ ;; plan-charges` COUNTS a code it cannot price and renders no line for
+ ;; it, and a partial table is what keeps that census non-vacuous: the
+ ;; four codes below cover the CBC order and the three commonest
+ ;; procedures across these corpora, and the fourteen rarer procedure
+ ;; codes the vendored modules produce are left unpriced on purpose.
+ ;;
+ ;; `ROOM-BOARD` is the one key no log fact carries a code for --
+ ;; `ehrt.sim-emit-hl7.emit-hl7/room-and-board-code`, the reserved key
+ ;; for the per-inpatient-day line. Absent from this table it would be a
+ ;; counted skip like any other; there is no default price anywhere.
+ :charges {:price-table {"58410-2"   {:amount 148.00 :display "CBC panel"}
+                         "117015009" {:amount 62.00 :display "Throat culture"}
+                         "23426006"  {:amount 210.00 :display "Respiratory function measurement"}
+                         "441550005" {:amount 88.00 :display "Urinalysis with reflex to culture"}
+                         "ROOM-BOARD" {:amount 1875.00 :display "Room and board, per day"}}}}

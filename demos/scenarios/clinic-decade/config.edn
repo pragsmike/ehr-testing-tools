@@ -142,4 +142,61 @@
               :reschedule-rate 0.10
               :cancel-rate 0.08
               :follow-up {:rate 0.35 :interval-days [30 120]}}
- :module-horizon-days 3650}
+ :module-horizon-days 3650
+
+ ;; ARC 4 SWEEP 2 (ADR-0175 design (a), rulings B1/C1/E1, 2026-08-28):
+ ;; RE-STATEMENT CHATTER, ON, for the reason ed-tuesday's own block
+ ;; states at length: an ADT feed sends an update for EVERY demographic
+ ;; change and an A28 for every registration, so the three event rates
+ ;; are 1.0 and a lower one would model an interface that drops some.
+ ;; The trigger is DERIVED, never configured -- A08 inside an open
+ ;; encounter, A31 outside one, A28 for a registration.
+ ;;
+ ;; :rate-per-patient-day IS 0.25 HERE against ed-tuesday's 0.02, and
+ ;; the disagreement is measured rather than stylistic. The periodic
+ ;; census is one draw per patient-day of OPEN-ENCOUNTER care, and this
+ ;; scenario's census is spread across its population -- worst single
+ ;; encounter 141 of 541 patient-days at seed 424242, 17 of 250 at seed
+ ;; 5, 129 of 600 at the demo seed. ed-tuesday's worst is 89% and 97% of
+ ;; its own census on ONE reinstated-and-never-re-closed stay, which is
+ ;; why that file ships a sparse census and this one does not.
+ ;;
+ ;; A DECADE OF AMBULATORY CARE is also where a nightly re-statement is
+ ;; most of what a real interface's A08 volume IS: the event-driven half
+ ;; here is entirely A31 (0 A08 at both gated seeds -- ten years of
+ ;; person-level churn against short booked visits), so without the
+ ;; periodic half this corpus would carry no A08 at all.
+ :chatter {:demographic-update 1.0
+           :coverage-change 1.0
+           :registered 1.0
+           :restatement {:rate-per-patient-day 0.25}}
+
+ ;; ARC 4 SWEEP 2 (ADR-0175 design (c), ruling B1, 2026-08-28): DFT^P03
+ ;; CHARGES, ON. Every encounter close now also renders a financial
+ ;; message carrying one FT1 per chargeable fact of that encounter.
+ ;;
+ ;; THE PRICES ARE INVENTED AND THE ENGINE NEVER READS THEM. They are
+ ;; emission config, exactly like `:site-profile` and `:latency`: no
+ ;; invariant reads a charge, `:charges` reaches no member of
+ ;; `ehrt.sim-engine.engine/config-keys`, and ground truth is
+ ;; byte-identical with and without this block (proved per commit by
+ ;; `bin/ground-truth-bracket`, not asserted here). They are round
+ ;; plausible numbers chosen to be obviously synthetic; nothing in this
+ ;; repository claims they resemble any real chargemaster.
+ ;;
+ ;; THE TABLE IS DELIBERATELY PARTIAL. `ehrt.sim-emit-hl7.emit-hl7/
+ ;; plan-charges` COUNTS a code it cannot price and renders no line for
+ ;; it, and a partial table is what keeps that census non-vacuous: the
+ ;; four codes below cover the CBC order and the three commonest
+ ;; procedures across these corpora, and the fourteen rarer procedure
+ ;; codes the vendored modules produce are left unpriced on purpose.
+ ;;
+ ;; `ROOM-BOARD` is the one key no log fact carries a code for --
+ ;; `ehrt.sim-emit-hl7.emit-hl7/room-and-board-code`, the reserved key
+ ;; for the per-inpatient-day line. Absent from this table it would be a
+ ;; counted skip like any other; there is no default price anywhere.
+ :charges {:price-table {"58410-2"   {:amount 148.00 :display "CBC panel"}
+                         "117015009" {:amount 62.00 :display "Throat culture"}
+                         "23426006"  {:amount 210.00 :display "Respiratory function measurement"}
+                         "441550005" {:amount 88.00 :display "Urinalysis with reflex to culture"}
+                         "ROOM-BOARD" {:amount 1875.00 :display "Room and board, per day"}}}}

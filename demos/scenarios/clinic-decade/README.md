@@ -42,9 +42,25 @@ bin/ehrt play out/scenarios/clinic-decade/events.edn --rate 10000000
 
 ## What to look for
 
-Witnessed 2026-08-27 (seed 20260807, 200 patients, `--config` as
-above): **1,569 ground-truth events, 575 HL7 v2 messages, 248 board
-snapshots** over a 611,763,107,000 ms (~19.4-year) stream span.
+Witnessed 2026-08-28 (seed 20260807, 200 patients, `--config` as
+above): **1,569 ground-truth events, 1,629 HL7 v2 messages, 853 board
+snapshots** over a 630,484,703,000 ms (~20.0-year) stream span.
+
+**THE EVENT COUNT DID NOT MOVE AND THE WIRE NEARLY TRIPLED**, which is
+what arc 4 sweep 2 is (ADR-0175 designs (a) and (c), 2026-08-28).
+`config.edn` opted in to RE-STATEMENT CHATTER and DFT^P03 CHARGES;
+neither reaches the engine, so 1,569 is the same 1,569 as the day
+before. What changed is how much of that log the WIRE carries: **616
+ADT^A31** person-scoped updates and **102 ADT^A08** visit-scoped ones,
+**230 ADT^A28** registrations, and **106 DFT^P03** charge messages at
+encounter closes. THIS SCENARIO IS WHERE THE A31/A08 SPLIT IS MOST
+LOPSIDED, and the reason is its shape: a decade of booked ambulatory
+visits against twenty years of demographic churn means almost every
+change falls BETWEEN visits, so the event-driven half of chatter is
+entirely A31 and every one of the 102 A08s comes from the periodic
+re-statement of an open encounter. `config.edn` therefore ships
+`:rate-per-patient-day 0.25` where ed-tuesday ships 0.02, and its own
+block says why in measured terms.
 
 **AND THIS DECADE BOOKS ITS VISITS.** `config.edn` opted in to
 SCHEDULING on 2026-08-27 (arc 3b sweep 3, ADR-0174 section 2(b) and
@@ -108,8 +124,8 @@ timeline IS. Every figure in this section moved with it, and the
 previous witness is recorded at the bottom of this block rather than
 overwritten.
 
-**The board-snapshot census, 248 snapshots:** `inpatients: 0` 148,
-`inpatients: 1` 98, `inpatients: 2` 1, `inpatients: 3` 1.
+**The board-snapshot census, 853 snapshots:** `inpatients: 0` 803,
+`inpatients: 1` 23, `inpatients: 2` 27.
 `bin/demo-exerciser-clinic-decade` re-derives that whole distribution
 from this paragraph at runtime and asserts every count exactly, plus
 that they exhaust the snapshot lines -- so a future re-witness cannot
@@ -130,6 +146,20 @@ opens an `:outpatient-visit`, which takes no bed, so every snapshot
 scheduling adds is by construction an empty board. The bed cycle
 widened the quiet hours; scheduling widened them again for a
 completely different reason.
+
+A SIXTH TIME on 2026-08-28, and it is the largest move the census has
+taken AND the first to change its SHAPE by shrinking: 248 -> 853
+snapshots, split 803/23/27 across three counts rather than four. Two
+things happened at once and both are chatter's. The empty-board bucket
+went 148 -> 803, because an A31 restating a residence move fires
+wherever the person process put that move -- overwhelmingly in an hour
+with no patient on any bed. And the OCCUPIED buckets moved the other
+way, 98/1/1 -> 23/27/0: the same board states are now reached in fewer,
+denser snapshot windows, because a snapshot opens on the first message
+of a window and chatter puts a message in windows that used to open on
+an admission. `inpatients: 3` left the census entirely and `inpatients:
+2` went from 1 snapshot to 27 -- the board did not change, the sampling
+of it did.
 
 **Where the inpatients come from is entirely new.** All 100 admissions
 in this run are HOOK-created -- the person stream's own clinical
@@ -155,13 +185,13 @@ sentinel, because HL7 v2 has no code for it and every literal is one
 site's local convention).
 
 The run's own closing summary: `{:unparseable-count 0, :snapshot-count
-248, :skip-count 0, :rate 1.0E7, :idle-cap-ms 5000, :wallclock-ms
-61719, :stream-span-ms 611763107000, :clamped-count 0, :emitted 575,
-:unfolded-count 0, :sink "ticker"}` -- 248 of the 575 messages rendered
-a snapshot; the others landed in a board window a prior message had
-already opened. NOT ONE inter-message wait exceeded `--idle-cap`'s
-default 5 seconds, so nothing was skipped and the whole ~19.4-year
-stream played out in ~62 seconds. `:wallclock-ms` is the one key
+853, :skip-count 0, :rate 1.0E7, :idle-cap-ms 5000, :wallclock-ms
+64698, :stream-span-ms 630484703000, :clamped-count 0, :emitted 1629,
+:unfolded-count 0, :sink "ticker"}` -- 853 of the 1,629 messages
+rendered a snapshot; the others landed in a board window a prior
+message had already opened. NOT ONE inter-message wait exceeded
+`--idle-cap`'s default 5 seconds, so nothing was skipped and the whole
+~20.0-year stream played out in ~65 seconds. `:wallclock-ms` is the one key
 `bin/demo-exerciser-clinic-decade` does NOT assert, as genuinely
 run-volatile; every other key in that map it re-derives from this
 paragraph and subset-matches against the live run.
@@ -189,8 +219,12 @@ person-driven, not module-driven, and the two are worth reading
 separately: `:citation` is present on every event a module compiled and
 absent from every event a hook created.
 
-**Previous witnesses, kept rather than overwritten.** Before the
-2026-08-26 opt-in this run produced 68 messages, 48 board snapshots and
+**Previous witnesses, kept rather than overwritten.** The 2026-08-27
+witness of this section read 575 messages, 248 board snapshots and a
+148/98/1/1 census over a 611,763,107,000 ms span; arc 4 sweep 2's
+chatter and charges are the whole of the difference, and its ground
+truth is byte-identical across the change. Before the 2026-08-26
+opt-in this run produced 68 messages, 48 board snapshots and
 a 41/7 `inpatients: 0` / `inpatients: 1` split over a 310,531,980,000
 ms span, with its single inpatient a genuine glass-box-cited sepsis
 presentation (MRN000074, `{:ward "Emergency", :bed "ED-H04",

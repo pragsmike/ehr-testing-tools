@@ -78,14 +78,14 @@ through `2026-08-12T13:00Z`), re-derived by fresh regeneration from
 **Every one of the 34 written files self-verified.**
 `write-and-verify-batch!` decodes what it just wrote straight back and
 checks BTS-1 against the real message count before ever reporting
-success — `:verified true` on all 34 is that check, exercised, not
+success — `:verified true` on all 615 is that check, exercised, not
 merely claimed. That word matters for what comes next: "verified"
 here means transport-level verified, and transport-level is exactly
 the level this chapter is about to show you isn't the whole story.
 
 **The interior gap is real, and it's disclosed, not hidden.**
-`batch-031` spans `[07:00Z, 08:00Z)` and `batch-032` spans `[10:00Z,
-11:00Z)` on 2026-08-12 — the two hours between them, `08:00Z`–`10:00Z`,
+`batch-032` spans `[08:00Z, 09:00Z)` and `batch-033` spans `[11:00Z,
+12:00Z)` on 2026-08-12 — the two hours between them, `09:00Z`–`11:00Z`,
 carried no traffic at all in this run's own tail and are simply
 absent, never written as an empty file. This is a named v1 deferral
 (an interior empty batch isn't represented, only skipped), not a bug
@@ -101,16 +101,16 @@ README:
 $ head -c 100 out/scenarios/ed-tuesday-latency-batches/batch-000.hl7
 BHS|^~\&
 
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811003026+0000||ADT^A01|MRN000002-A01-360|P|2.4EVN|A0
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811000000+0000||ADT^A28|MRN000001-A28-0-0|P|2.4EVN|A2
 $ tail -c 45 out/scenarios/ed-tuesday-latency-batches/batch-000.hl7 | cat -A
-dicare-advantage|Medicare Advantage^M$
+mergency^^ED-H08^general-hospital|U^M$
 $
-BTS|3$
+BTS|9$
 $
 ```
 
-`BHS|^~\&` opens the batch; `BTS|3` closes it, `BTS-1` naming the true
-count of 3 messages this file actually carries — the minimal,
+`BHS|^~\&` opens the batch; `BTS|9` closes it, `BTS-1` naming the true
+count of 9 messages this file actually carries — the minimal,
 deterministic field set the batcher's own design rules for v1: no
 creation-time field populated at all, so the
 [determinism](../glossary.md) contract
@@ -118,34 +118,36 @@ Chapter 2 proved for the simulator holds here trivially, rather than
 by threading a wall clock through and hoping it doesn't leak into the
 bytes.
 
-That truncated `head -c 100` cuts off mid-segment — it's Smith,
-James's own admission message, the same patient this chapter is
-building toward. Its full MSH segment, witnessed this session by
-fresh regeneration (byte-identical to the values `ed-tuesday`'s own
-README states):
+That truncated `head -c 100` cuts off mid-segment — it's the first
+patient's REGISTRATION, an ADT^A28, which is what a real feed sends
+before anything else and what this project only began sending on
+2026-08-28. The patient this chapter is building toward is two
+messages further in. Her full admission MSH segment, witnessed this
+session by fresh regeneration (byte-identical to the values
+`ed-tuesday`'s own README states):
 
 ```
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811003026+0000||ADT^A01|MRN000002-A01-360|P|2.4
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811003739+0000||ADT^A01|MRN000002-A01-360|P|2.4
 ```
 
 ## The straddle: one encounter, two individually clean files
 
-**Smith, James (MRN000002, bed ED-H05)**, admitted (A01) and
+**Hernandez, Sandra (MRN000002, bed ED-H09)**, admitted (A01) and
 discharged (A03) both on the same, ordinary shift — nothing dramatic
-happened to Smith clinically, which is precisely the point. His
-admission message transmits at `2026-08-11T00:30:26Z`, landing in
-`batch-000.hl7`'s window `[00:00Z, 01:00Z)`. His discharge message
-transmits at `2026-08-11T01:34:19Z` — one clock-hour later, the very
-next occupied batch, `batch-001.hl7`'s window `[01:00Z, 02:00Z)`. The
-two lines themselves, witnessed this session by fresh regeneration,
-MSH segments byte-faithful:
+happened to her clinically, which is precisely the point. Her
+admission message transmits at `2026-08-11T00:37:39Z`, landing in
+`batch-000.hl7`'s window `[00:00Z, 01:00Z)`. Her discharge message
+transmits at `2026-08-11T02:10:37Z` — TWO clock-hours later, skipping
+`batch-001.hl7` entirely and landing in `batch-002.hl7`'s window
+`[02:00Z, 03:00Z)`. The two lines themselves, witnessed this session by
+fresh regeneration, MSH segments byte-faithful:
 
 ```
 $ grep 'MRN000002-A01' out/scenarios/ed-tuesday-latency-batches/batch-000.hl7 | tr '\r' '\n' | head -1
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811003026+0000||ADT^A01|MRN000002-A01-360|P|2.4
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811003739+0000||ADT^A01|MRN000002-A01-360|P|2.4
 
-$ grep 'MRN000002-A03' out/scenarios/ed-tuesday-latency-batches/batch-001.hl7 | tr '\r' '\n' | head -1
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811013419+0000||ADT^A03|MRN000002-A03-2280|P|2.4
+$ grep 'MRN000002-A03' out/scenarios/ed-tuesday-latency-batches/batch-002.hl7 | tr '\r' '\n' | head -1
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811021037+0000||ADT^A03|MRN000002-A03-5040|P|2.4
 ```
 
 (HL7 v2 segments are `\r`-terminated, not `\n`-terminated — `tr` makes
@@ -153,13 +155,13 @@ each segment its own shell line so `head -1` isolates just the MSH
 segment; `bin/demo-exerciser-ed-tuesday`'s own straddle assertion
 greps for the same MSH-10 control-ID prefixes shown here,
 `MRN000002-A01-` in `batch-000.hl7` and `MRN000002-A03-` in
-`batch-001.hl7`, unparsed segment text and all — this chapter's own
+`batch-002.hl7`, unparsed segment text and all — this chapter's own
 excerpt is that same check, made visible.)
 
-Notice what actually pushed the discharge into the next batch: it
-isn't that Smith's own [encounter](../glossary.md) ran long. His EVN-2 clinical times —
-admitted `00:06:00Z`, discharged `00:38:00Z` — sit comfortably inside
-one hour, entirely within `batch-000`'s own window. It's the
+Notice what actually pushed the discharge past the next batch: it
+isn't that her own [encounter](../glossary.md) ran long. Her EVN-2 clinical times —
+admitted `00:06:00Z`, discharged `01:24:00Z` — sit inside a single
+hour-and-a-bit and start inside `batch-000`'s own window. It's the
 discharge message's own sampled transmit delay, Chapter 4's own second
 clock, that carried its MSH-7 across the `01:00Z` boundary and into
 the next file. The straddle you're about to reason about is the
@@ -167,15 +169,17 @@ direct, compounding effect of the previous chapter's own mechanism
 meeting a delivery schedule — not a new, unrelated phenomenon.
 
 **A receiver holding only `batch-000.hl7` has a transport-complete
-file.** Three of three messages present, exactly as `BTS-1` declares,
+file.** Nine of nine messages present, exactly as `BTS-1` declares,
 `:verified true` — by every transport-level measure, nothing is wrong
-with this file. And yet, clinically, Smith's own encounter is only
-half there: his admission, and nothing else for him. Nothing in the
+with this file. And yet, clinically, her own encounter is only half
+there: her registration and her admission, and nothing else for her.
+A receiver holding `batch-001.hl7` as well is no better off: that
+window holds no message for this patient at all. Nothing in the
 batch protocol itself says otherwise; `batch-000.hl7`'s own BTS-1
 count checks out whether or not any of the encounters it carries are
 clinically finished.
 
-<img src="assets/straddle-timeline.svg" alt="One encounter bar for Smith, James (MRN000002) crossing the 01:00Z batch boundary, both adjacent batch windows drawn individually clean" width="640" />
+<img src="assets/straddle-timeline.svg" alt="One encounter bar for Hernandez, Sandra (MRN000002) crossing two batch boundaries, all three batch windows drawn individually clean and the middle one holding neither half" width="640" />
 
 ## The question this teaches, not the flags that answer it
 
@@ -183,15 +187,15 @@ The lesson isn't "remember to pass `--baseline`" or any other flag —
 it's a question a receiver has to ask itself, one this workspace can't
 ask on its behalf: **do I have all of this encounter?** Transport-level
 completeness — every `BTS-1` count checks out, exactly as this run's
-own 34-for-34 self-verification shows — says nothing about
+own 615-for-615 self-verification shows — says nothing about
 clinical-level completeness — whether an encounter's own full record
-set has actually arrived yet. Smith's own case is exactly the input a
+set has actually arrived yet. Her own case is exactly the input a
 receiver's own "do I have all of this?" decision needs to be tested
 against, and precisely the shape of case nobody hand-authoring a fixed
 test set chooses to build on purpose: it takes an actual scheduler
 drawing a batch boundary through the middle of a real encounter's own
 timeline, which only happens when the traffic is genuinely running,
-not imagined. If your own receiver logic has an answer for Smith, this
+not imagined. If your own receiver logic has an answer for this patient, this
 is how you'd find out. If it doesn't yet, this is the case that would
 have told you so quietly, in production, months from now.
 
@@ -211,7 +215,7 @@ states this precisely, for the record: transport realism — Chapter 4's
 delayed individual transmission, this chapter's schedule batching —
 simulates **correct** transport behaviors, deterministically. Mutation
 (a later chapter's own subject) deliberately injects **incorrect**
-content, with an expected finding attached. Nothing about Smith's own
+content, with an expected finding attached. Nothing about her own
 straddle is wrong, malformed, or a defect anywhere in this workspace
 — it's what correct, real transport actually does, and a downstream
 receiver has to be ready for it regardless.
@@ -221,16 +225,26 @@ receiver has to be ready for it regardless.
 | strip | source |
 |---|---|
 | `bin/ehrt corpus batch out/scenarios/ed-tuesday-latency --interval 60 ...` | `demos/scenarios/ed-tuesday/README.md`, "Batched delivery" |
-| The 34-batch listing (`:status :ok, :payload {...}`) | `demos/scenarios/ed-tuesday/README.md`, "Batched delivery"; re-derived byte-identical by fresh regeneration this session |
+| The 615-batch listing (`:status :ok, :payload {...}`) | `demos/scenarios/ed-tuesday/README.md`, "Batched delivery"; re-derived byte-identical by fresh regeneration this session |
 | `head -c 100`/`tail -c 45` of `batch-000.hl7` | `demos/scenarios/ed-tuesday/README.md`, "Batched delivery" > "The wrapper itself" |
-| Smith's full A01 MSH segment | witnessed this session, fresh regeneration; extends the README's own truncated `head -c 100` excerpt to the full segment, same message |
-| Smith's A03 MSH segment (`batch-001.hl7`) | witnessed this session, fresh regeneration; matches the MSH-7 value (`2026-08-11T01:34:19Z`) the README's own "A straddling encounter" section states in prose |
-| Smith's EVN-2 clinical times (`00:06:00Z`, `00:38:00Z`) | witnessed this session, fresh regeneration against `demos/scenarios/ed-tuesday/config-latency.edn`, seed 20260811 |
+| Hernandez's full A01 MSH segment | witnessed this session, fresh regeneration; the README's own truncated `head -c 100` excerpt now opens on a different message (an ADT^A28 registration), so this segment is quoted in full rather than extended from it |
+| Hernandez's A03 MSH segment (`batch-002.hl7`) | witnessed this session, fresh regeneration; matches the MSH-7 value (`2026-08-11T02:10:37Z`) the README's own "A straddling encounter" section states in prose |
+| Hernandez's EVN-2 clinical times (`00:06:00Z`, `01:24:00Z`) | witnessed this session, fresh regeneration against `demos/scenarios/ed-tuesday/config-latency.edn`, seed 20260811 |
 
 All values above were produced by re-running `demos/scenarios/ed-tuesday/README.md`'s
 own commands against this session's own tree
 (`bin/ehrt corpus generate sim` / `bin/ehrt corpus batch`, seed 20260811,
 `config-latency.edn`) rather than assumed from the README's prose alone
-— every batch count, every `:verified` value, and both of Smith's own
-MSH-7 timestamps matched the README's own witnessed run exactly, byte
-for byte. No divergence found.
+— every batch count, every `:verified` value, and both of this
+patient's own MSH-7 timestamps matched the README's own witnessed run
+exactly, byte for byte.
+
+**A DIVERGENCE WAS FOUND THIS TIME, and it predates arc 4 sweep 2.**
+Before this re-witness the chapter named `Smith, James (MRN000002, bed
+ED-H05)` with transmit times `00:30:26Z` and `01:34:19Z` and put the
+discharge in `batch-001.hl7`. `bin/demo-exerciser-ed-tuesday` has
+asserted `MRN000002-A03-` in **`batch-002.hl7`** since 2026-08-27, and
+the README has said `Hernandez, Sandra` for at least as long -- so the
+chapter and the gate had disagreed about the same message for a sweep.
+Nothing gates a manual excerpt, which is why it went unnoticed; it is
+corrected here against a fresh run rather than carried.

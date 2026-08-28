@@ -31,7 +31,7 @@ bin/ehrt corpus batch out/scenarios/ed-tuesday-latency --interval 60 \
 ls out/scenarios/ed-tuesday-latency-batches
 ```
 
-The witnessed straddling encounter -- Smith, James (MRN000002): admitted in `batch-000.hl7`, discharged in `batch-001.hl7`, both files individually BTS-verified clean -- is worked end to end, wrapper bytes and all, in [the ed-tuesday scenario's Batched delivery section](../../demos/scenarios/ed-tuesday/README.md#batched-delivery)[^adr-0111]. Flags and their defaults: [cli.md](../cli.md#ehrt-corpus-batch), or `ehrt help corpus` at the shell. The batcher is corpus-level and sim-separate by ruling: it reads any directory of valid `.hl7` files, so a foreign corpus is exactly as batchable as this scenario's own out-dir.
+The witnessed straddling encounter -- Hernandez, Sandra (MRN000002): admitted in `batch-000.hl7`, discharged in `batch-002.hl7`, with `batch-001.hl7` between them holding no message for her at all and all three files individually BTS-verified clean -- is worked end to end, wrapper bytes and all, in [the ed-tuesday scenario's Batched delivery section](../../demos/scenarios/ed-tuesday/README.md#batched-delivery)[^adr-0111]. Flags and their defaults: [cli.md](../cli.md#ehrt-corpus-batch), or `ehrt help corpus` at the shell. The batcher is corpus-level and sim-separate by ruling: it reads any directory of valid `.hl7` files, so a foreign corpus is exactly as batchable as this scenario's own out-dir.
 
 [^adr-0111]: Design record [ADR-0111](../../notes/ADRs.md).
 
