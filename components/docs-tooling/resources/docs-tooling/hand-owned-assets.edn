@@ -93,10 +93,41 @@
  {:asset "docs/manual/assets/straddle-timeline.svg"
   :source "demos/scenarios/ed-tuesday/README.md"
   :trigger "regenerate by hand if the cited section's own witnessed values change"
-  :reviewed-at "d6e6546"
+  :reviewed-at "c7354d1"
   :verdict :fresh
   :note
-  "RE-WITNESSED AND PARTIALLY REDRAWN 2026-08-27 (arc 3b sweep 3,
+  "RE-REVIEWED 2026-08-27 (arc 4 sweep 1, ADR-0175 ruling A1's MSH-12
+   commit). The trigger fired a SEVENTH time and NOTHING THIS ASSET
+   DEPICTS MOVED -- no redraw, only this row.
+
+   The source diff is TWO HUNKS and neither is a witnessed value the
+   drawing carries. (1) The SIU paragraph: the four scheduling kinds
+   still reach no wire, but the REASON changed from a version objection
+   to work-not-yet-done, because `site-profile/default-msh` now
+   declares \"2.4\". (2) One MSH excerpt elsewhere in the README, `P|2.3`
+   -> `P|2.4`. This asset draws MRN000002's admission and discharge
+   times, three batch windows and their message counts; it carries no
+   MSH-12 and no SIU.
+
+   AND NO RUN WAS RESHUFFLED, which is why this is a review rather than
+   a redraw. Arc 4 sweep 1 changed EMISSION only -- `bin/ground-truth-
+   bracket 892201a HEAD` reported IDENTICAL across all 36 engine-layer
+   roots at both commits, and the four `arc0_gated_*` corpora did not
+   move a byte. Every previous fire of this tripwire (arc 1b, arc 3a
+   part 4, arc 3b sweeps 2 and 3) moved transmit times because a draw
+   changed; this sweep moved no draw, so MRN000002 still admits at
+   00:37:39Z and still discharges at 02:10:37Z, and batch-000/001/002
+   still carry 5, 9 and 11.
+
+   PREDICTED, NOT DISCOVERED. `hand-owned-assets.edn`'s sources were
+   read BEFORE the README was touched, and this row was written as the
+   immediate successor to the commit that touched it -- the tripwire
+   compares against `git log -1` on the SOURCE, so no commit can carry
+   the sha that names itself. The MSH-12 commit is therefore a
+   RED-FIRST commit under `rulings.md#R-red-pushed-with-green`: pushed
+   together with this one, never alone.
+
+   RE-WITNESSED AND PARTIALLY REDRAWN 2026-08-27 (arc 3b sweep 3,
    ADR-0174 section 2(b)'s turn-on commit). The trigger fired a SIXTH
    time, and unlike the fifth THE DEPICTED FACT DID NOT CHANGE: the
    encounter still spans three windows with the middle one holding
@@ -229,7 +260,7 @@
    Prior review, 2026-08-19 (ADR-0158), kept: the ed-tuesday README had
    moved once at 214b0ec, the busy-tuesday -> clinic-decade scenario
    rename, and every changed line in that diff mentioned the rename."
-  :witness {:adr "ADR-0174" :date "2026-08-27"}}
+  :witness {:adr "ADR-0175" :date "2026-08-27"}}
 
  {:asset "docs/manual/assets/two-clocks.svg"
   :source "docs/dev/simulator-architecture.md"
