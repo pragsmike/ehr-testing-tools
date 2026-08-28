@@ -459,6 +459,20 @@
   this ADR, byte-identical -- `:latency` rides `:config` the same
   passthrough way `:site-profile` does (no `--latency` flag exists).
 
+  ARC 4 SWEEP 2 (ADR-0175 design (a), ruling B1/C1/E1): `:chatter`
+  (ehrt.sim-model.config/ChatterProfile, optional) is the SAME
+  rendering-only treatment `:latency` and `:site-profile` already get
+  -- not a member of `engine/config-keys`, never reaches `engine/run`.
+  Present: this run's own log and a `:emission` stream at ID-TAG 1
+  (latency holds 0, and ADR-0171 ruling C1's own comment below reserved
+  1 for exactly this) feed `emit-hl7/plan-chatter`, whose instructions
+  ride `emit-hl7/emit-wire` alongside the latency offsets. A chatter-
+  only run -- `:chatter` present, `:latency` absent -- therefore takes
+  the `emit-wire` branch with NIL offsets, which that function's own
+  identity property makes byte-identical to `emit` for every
+  non-chatter message. Absent (the default): byte-identical to a run
+  that never named the key, and `emit` renders as before.
+
   M5b: `:modules` (a vector of NAME STRINGS, resolving against
   `resources/modules/<name>.json` -- `resolve-modules`'s own docstring)
   and `:module-assignment`/`:module-horizon-days` (forwarded verbatim,
@@ -494,7 +508,7 @@
        config-result
        (let [opts (:payload config-result)
              {:keys [seed patients emit at reference-date utc-offset warm-up-seconds churn churn-profile site-profile
-                     modules module-initial-attributes latency]} opts
+                     modules module-initial-attributes latency chatter]} opts
              conflicts (incompatible-assignments opts)
              resolved-modules (when modules (resolve-modules modules (or module-initial-attributes {})))]
          (cond
@@ -517,6 +531,19 @@
                          {:key :persons
                           :value (:persons opts)
                           :expected "{:count <positive int> :years <positive int, optional> ...}"})
+
+           ;; ARC 4 SWEEP 2 (ADR-0175 design (a)): the same posture for
+           ;; `:chatter`. A malformed profile would otherwise be SILENT
+           ;; -- `plan-chatter` skips a non-numeric rate -- and a
+           ;; misspelled key that quietly emits nothing is exactly the
+           ;; failure mode `rulings.md#R-empty-population-is-red` exists
+           ;; to make loud.
+           (and (contains? opts :chatter) (not (sim-model/valid-chatter-profile? chatter)))
+           (result/error :invalid-chatter
+                         {:key :chatter
+                          :value chatter
+                          :explain (pr-str (sim-model/explain-chatter-profile chatter))
+                          :expected "{:demographic-update/:coverage-change/:registered <rate 0..1> :restatement {:rate-per-patient-day <non-negative number>}}"})
 
            :else
            (let [reference-date (or reference-date emit-hl7/default-reference-date)
@@ -592,7 +619,7 @@
                                    :events (count ground-truth)}}
                   (= "hl7" emit)
                   (assoc :messages
-                        (if latency
+                        (if (or latency chatter)
                           (emit-hl7/emit-wire ground-truth reference-date utc-offset facility providers site-profile
                                               ;; ADR-0171 ruling C1: the emission latency
                           ;; stream is the :emission FAMILY, derived like
@@ -605,7 +632,24 @@
                           ;; chatter, fan-out and status ladders to this
                           ;; side, and one `mix64` decorrelates them before
                           ;; that lands.
-                          (emit-hl7/plan-latency (engine/stream seed :emission 0) ground-truth latency))
+                          (when latency
+                            (emit-hl7/plan-latency (engine/stream seed :emission 0) ground-truth latency))
+                          ;; ARC 4 SWEEP 2 (ADR-0175 design (a)): chatter
+                          ;; takes the :emission family's id-tag 1, the tag
+                          ;; ADR-0171 ruling C1's own comment above reserved
+                          ;; for it. Latency holds 0. Two independently
+                          ;; derived streams, so a chatter draw can no more
+                          ;; shift a latency draw than either can shift the
+                          ;; engine's.
+                          ;;
+                          ;; `emit-wire` WITH nil offsets is `emit` byte for
+                          ;; byte (this namespace's own identity property),
+                          ;; which is what lets a chatter-only run -- no
+                          ;; :latency at all -- take this branch and still
+                          ;; move no existing message's bytes.
+                          {:chatter (when chatter
+                                      (emit-hl7/plan-chatter (engine/stream seed :emission 1)
+                                                             ground-truth chatter))})
                           (emit-hl7/emit ground-truth reference-date utc-offset facility providers site-profile)))
                   (= "fhir" emit) (assoc :fhir-bundles
                                          (emit-fhir/bundle-run ground-truth reference-date utc-offset seed (or at :end)))))))))))))

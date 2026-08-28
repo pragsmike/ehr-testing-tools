@@ -286,6 +286,29 @@
                 (dissoc :discharged-at))
       "O01" entry
       "R01" (update entry :observations (fnil into []) (parse-observations parsed t))
+      ;; ARC 4 SWEEP 2 (ADR-0175 design (a), section 1(iii)): the three
+      ;; chatter families CO-LAND their fold arm here, and the arm is
+      ;; not optional even though it is small -- an unhandled trigger
+      ;; THROWS out of this `case`, and the throw kills the
+      ;; emitter-coherence property outright rather than failing it
+      ;; softly.
+      ;;
+      ;; MERGE, NOT ASSOC, on the persona: a restatement's PID carries
+      ;; exactly the wire-visible demographic fields, and the payer a
+      ;; prior A01's IN1 folded is not among them, so replacing the map
+      ;; would silently un-learn coverage. An A08/A31 carrying its own
+      ;; IN1 (the coverage-change restatement) folds the new payer the
+      ;; same way the "A01" arm above does.
+      ;;
+      ;; NEITHER TOUCHES :status, :class, :location OR :attending. A
+      ;; restatement is derivable restatement of demographics; it
+      ;; asserts nothing about the visit, and an A08's PV1 is the
+      ;; encounter's own, restated, never news.
+      ("A08" "A31")
+      (cond-> (update entry :persona merge (parse-persona (first-segment parsed "PID")))
+        (parse-payer parsed) (update :persona assoc :payer (parse-payer parsed)))
+
+      "A28" (update entry :persona merge (parse-persona (first-segment parsed "PID")))
       (throw (ex-info "v2-replay: unsupported message trigger" {:trigger trigger})))))
 
 (defn- pid-pv1-pairs

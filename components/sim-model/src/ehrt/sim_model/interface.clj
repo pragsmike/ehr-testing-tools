@@ -95,3 +95,13 @@
 (defn turnaround-minutes [ward] (config/turnaround-minutes ward))
 (def default-provider-templates config/default-provider-templates)
 (defn materialize-providers [rng provider-templates] (config/materialize-providers rng provider-templates))
+
+;; --- ARC 4 SWEEP 2 (ADR-0175 design (a)): the chatter config surface ------
+;; `ehrt.sim.run` validates `:chatter` BEFORE the engine (and its RNG)
+;; ever starts, the same fail-fast-on-a-bad-config posture a missing
+;; `--seed` and a malformed `:persons` already get -- so the schema has
+;; to be reachable from outside this component, unlike
+;; `LatencyProfile`'s own validators, which nothing ever called.
+(def ChatterProfile config/ChatterProfile)
+(defn valid-chatter-profile? [profile] (config/valid-chatter-profile? profile))
+(defn explain-chatter-profile [profile] (config/explain-chatter-profile profile))

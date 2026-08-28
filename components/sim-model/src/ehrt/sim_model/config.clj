@@ -217,3 +217,40 @@
 
 (defn valid-latency-profile? [profile] (m/validate LatencyProfile profile))
 (defn explain-latency-profile [profile] (m/explain LatencyProfile profile))
+
+;; --- Chatter (ADR-0175 design (a), arc 4 sweep 2): the re-statement
+;; config surface -------------------------------------------------------
+;; A ChatterProfile is per-event-type restatement RATES plus one
+;; periodic rule. It is EMISSION config, never engine config: nothing
+;; here reaches `ehrt.sim-engine.engine/config-keys`, and a chatter
+;; message restates demographic state the log already carries rather
+;; than minting any fact of its own (`rulings.md#R-skeleton-or-
+;; emission`). `:chatter` absent from a run's `:config` is the
+;; byte-identical path.
+
+(def ChatterProfile
+  "The three event-driven keys are RATES in [0,1] -- the probability
+  that a given event of that kind produces its restatement -- and an
+  absent key means that kind produces none (see
+  `ehrt.sim-emit-hl7.emit-hl7/plan-chatter`'s own draw-and-discard law:
+  the draw still happens, so turning one rule off never shifts
+  another's).
+
+  `:restatement` is the PERIODIC half, and it is the half the program's
+  A08 volume actually comes from (ADR-0175 section 2(a)):
+  `:rate-per-patient-day` restatements per patient-day of open-encounter
+  care. It may exceed 1.
+
+  CLOSED, unlike `LatencyProfile`'s open `:map-of`: the four keys here
+  are the whole surface, so a typo is a misconfiguration this schema
+  can catch outright rather than a rule that silently never fires."
+  [:map
+   {:closed true}
+   [:demographic-update {:optional true} [:and number? [:>= 0] [:<= 1]]]
+   [:coverage-change {:optional true} [:and number? [:>= 0] [:<= 1]]]
+   [:registered {:optional true} [:and number? [:>= 0] [:<= 1]]]
+   [:restatement {:optional true}
+    [:map [:rate-per-patient-day [:and number? [:>= 0]]]]]])
+
+(defn valid-chatter-profile? [profile] (m/validate ChatterProfile profile))
+(defn explain-chatter-profile [profile] (m/explain ChatterProfile profile))

@@ -52,7 +52,24 @@
 
 (defn emit-wire
   "GT x reference-date x utc-offset x facility x providers x
-  site-profile x offsets -> TimedWire. See
+  site-profile x offsets [x emission] -> TimedWire. See
   ehrt.sim-emit-hl7.emit-hl7/emit-wire."
-  [ground-truth reference-date utc-offset facility providers site-profile offsets]
-  (emit-hl7/emit-wire ground-truth reference-date utc-offset facility providers site-profile offsets))
+  ([ground-truth reference-date utc-offset facility providers site-profile offsets]
+   (emit-hl7/emit-wire ground-truth reference-date utc-offset facility providers site-profile offsets))
+  ([ground-truth reference-date utc-offset facility providers site-profile offsets emission]
+   (emit-hl7/emit-wire ground-truth reference-date utc-offset facility providers site-profile offsets emission)))
+
+;; --- ARC 4 SWEEP 2 (ADR-0175 design (a)): chatter, ehrt.sim.run's own
+;; new call site -- `plan-latency`'s sibling, exported for the same
+;; reason and at the same seam.
+
+(defn plan-chatter
+  "RNG x GT x ChatterProfile -> chatter render instructions. See
+  ehrt.sim-emit-hl7.emit-hl7/plan-chatter."
+  [rng ground-truth chatter-profile]
+  (emit-hl7/plan-chatter rng ground-truth chatter-profile))
+
+(def chatter-event-kinds
+  "The three ground-truth kinds an event-driven chatter rule may cover.
+  See ehrt.sim-emit-hl7.emit-hl7/chatter-event-kinds."
+  emit-hl7/chatter-event-kinds)

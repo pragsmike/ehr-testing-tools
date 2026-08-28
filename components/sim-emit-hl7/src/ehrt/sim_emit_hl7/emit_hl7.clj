@@ -1303,35 +1303,336 @@
                       [control-id (long (Math/round (* 60.0 (+ from-minutes (* draw (- to-minutes from-minutes))))))])))))
         ground-truth))
 
+;; --- ARC 4 SWEEP 2 (ADR-0175 design (a), ruling B1): re-statement chatter --
+;; A08 / A31 / A28 / IN1-only. `plan-chatter` is `plan-latency`'s
+;; sibling and keeps this namespace's renders-only doctrine intact: it
+;; takes an explicitly-passed `java.util.Random`, never an atom and
+;; never a wall clock, and its OWN output -- a vector of render
+;; instructions -- is the only thing `emit-wire` ever consumes.
+;;
+;; CHATTER ADDS NO `message-type-registry` ENTRY, deliberately. A
+;; registry entry is a claim that one ground-truth event renders one
+;; message; a periodic re-statement has no event of its own, and the
+;; fourteen kinds that registry deliberately leaves silent stay silent
+;; there (`ehrt.sim-emit-hl7.event-conformance-test`'s pinned set does
+;; not move). What reaches the wire here is derivable RESTATEMENT of
+;; demographic state the log already carries -- `rulings.md#R-skeleton-
+;; or-emission` classifies that emission, which is why it may ride
+;; `:config` and may never reach `ehrt.sim-engine.engine/config-keys`.
+
+(def restatement-day-seconds
+  "One patient-day, in seconds -- the periodic re-statement census's own
+  grid. The period is deliberately NOT a second knob:
+  `:rate-per-patient-day` is the whole configuration surface, and a
+  tunable period would let two configs express one volume two ways."
+  86400)
+
+(defn- encounter-spans
+  "{encounter-id {:t0 :t1 :opener :opener-index}} -- one entry per
+  `:encounter-id` this log carries, each encounter's interval read as
+  [its first stamped event, its last stamped event] and nothing else.
+
+  NO STATE MACHINE, deliberately, and for ADR-0175 section 2(a)'s own
+  reason: `ehrt.sim-engine.engine/stamp-encounter` mints the id at the
+  opener and carries it on every event of that encounter, so grouping
+  BY the stamp cannot disagree with reading it, while a second
+  admission/discharge fold could. Measured consequence, at seed 202:
+  an encounter whose `:discharge` is undone by a `:cancel-discharge`
+  and never re-closed carries the stamp for 1,433 more days, and is
+  genuinely open for all of them -- a fold keyed on `:discharge` would
+  have called it closed and been wrong.
+
+  Empty for every run that did not opt into `:encounters`: nothing
+  mints an id, so nothing groups, so the periodic half below has no
+  census and produces nothing."
+  [ground-truth]
+  (reduce (fn [acc [i ev]]
+            (let [eid (:encounter-id ev)]
+              (if (nil? eid)
+                acc
+                (if-let [span (get acc eid)]
+                  (assoc acc eid (assoc span :t1 (max (long (:t1 span)) (long (:t ev)))))
+                  (assoc acc eid {:t0 (:t ev) :t1 (:t ev) :opener ev :opener-index i})))))
+          {}
+          (map-indexed vector ground-truth)))
+
+(defn- mrn-timeline
+  "{patient-id [[t active-mrn] ...]}, t-ascending, one entry per event
+  that MOVED that patient's active MRN -- `demographics-timeline`'s
+  shape, for the one field a periodic re-statement cannot read off a
+  basis event because it has none. A merge is the only thing that moves
+  an MRN today (3 of them at seed 202), and a restatement rendered
+  after one must carry the survivor's."
+  [ground-truth]
+  (reduce (fn [acc ev]
+            (let [pid (:patient-id (first (:participants ev)))
+                  mrn (:active-mrn ev)]
+              (if (and pid mrn)
+                (let [tl (get acc pid [])]
+                  (if (= mrn (second (peek tl)))
+                    acc
+                    (assoc acc pid (conj tl [(:t ev) mrn]))))
+                acc)))
+          {}
+          ground-truth))
+
+(defn- mrn-at
+  "The active MRN as it stood at `t` -- `demographics-at`'s own lookup
+  shape over `mrn-timeline`'s output."
+  [timeline patient-id t]
+  (when-let [entries (get timeline patient-id)]
+    (loop [entries entries mrn nil]
+      (if-let [[et emrn] (first entries)]
+        (if (<= (long et) (long t)) (recur (rest entries) emrn) mrn)
+        mrn))))
+
+(def chatter-event-kinds
+  "The three ground-truth kinds an event-driven chatter rule may cover,
+  mapped to what their restatement carries. The TRIGGER is derived, not
+  configured (ADR-0175 section 2(a)): `:registered` is always A28 (a
+  registration is person-scoped by definition), and the other two are
+  A08 when the basis event happened inside an open encounter -- which
+  the event says on its own face, via `:encounter-id` -- and A31 when
+  it did not.
+
+  A `:coverage-change` restatement is the IN1-ONLY update: its PID is
+  the same PID any other message for that patient at that instant would
+  carry (nothing about a payer change moves it), and the IN1 is what
+  actually changed."
+  {:demographic-update {:in1? false}
+   :coverage-change    {:in1? true}
+   :registered         {:in1? false :trigger "A28"}})
+
+(defn- chatter-trigger
+  [kind ev]
+  (or (:trigger (chatter-event-kinds kind))
+      (if (:encounter-id ev) "A08" "A31")))
+
+(defn- event-driven-chatter
+  "The first of `plan-chatter`'s two passes, and the one that obeys the
+  fixed-consumption law literally: ALWAYS exactly one `.nextDouble` per
+  ground-truth event, in log order, drawn and discarded for an event no
+  chatter rule covers -- so adding a rule for kind X can never shift
+  kind Y's draws. `plan-latency`'s own law, same words, same reason."
+  [^java.util.Random rng ground-truth chatter]
+  (loop [evs ground-truth i 0 acc []]
+    (if-let [ev (first evs)]
+      (let [draw (.nextDouble rng)
+            kind (:event ev)
+            rate (get chatter kind)
+            patient-id (:patient-id (first (:participants ev)))]
+        (recur (rest evs) (inc i)
+               (if (and (number? rate) (< draw (double rate)) patient-id (:active-mrn ev))
+                 (conj acc {:at (:t ev)
+                            :basis i
+                            :kind kind
+                            :periodic? false
+                            :trigger (chatter-trigger kind ev)
+                            :encounter-id (:encounter-id ev)
+                            :patient-id patient-id
+                            :active-mrn (:active-mrn ev)
+                            :in1? (boolean (:in1? (chatter-event-kinds kind)))})
+                 acc)))
+      acc)))
+
+(defn- periodic-chatter
+  "The second pass -- the PERIODIC half, and the one ADR-0175 section
+  2(a) says the program's A08 volume actually comes from. The
+  event-driven half above is ~99.5% A31 in every corpus measured, for a
+  modelled-world reason and not a defect: the person process walks
+  twenty years while the clinical content is one shift, so demographic
+  churn happens almost entirely BETWEEN encounters. A periodic
+  re-statement fires while an encounter is OPEN, which is exactly where
+  a real interface's A08 traffic comes from.
+
+  THE CENSUS IS PATIENT-DAYS OF CARE, which is this project's own
+  reading of the term elsewhere (ADR-0175 section 2(c) prices a DFT's
+  room-and-board lines per inpatient DAY): one draw per (encounter,
+  started day), over the encounter intervals `encounter-spans` derives.
+  Every instant it produces is inside an open encounter by
+  construction, so `chatter-trigger`'s rule answers A08 for all of
+  them -- the rule is applied, not bypassed.
+
+  FIXED CONSUMPTION HOLDS ACROSS BOTH PASSES: the number of draws taken
+  here is a pure function of the LOG (the patient-day census), never of
+  the config, so a run with `:restatement` absent draws and discards
+  exactly as many times as one with it present.
+
+  `:rate-per-patient-day` may exceed 1: the whole part is a guaranteed
+  count and the fraction is the one Bernoulli draw, so r = 2.5 means
+  two restatements every patient-day and a third on half of them. The
+  n messages of one slot are spaced evenly across it."
+  [^java.util.Random rng spans mrns chatter]
+  (let [r (double (or (get-in chatter [:restatement :rate-per-patient-day]) 0.0))
+        whole (long (Math/floor r))
+        frac (- r whole)]
+    (loop [ss (sort-by :opener-index (vals spans)) acc []]
+      (if-let [{:keys [t0 t1 opener opener-index]} (first ss)]
+        (let [patient-id (:patient-id (first (:participants opener)))
+              slots (max 1 (inc (quot (- (long t1) (long t0)) restatement-day-seconds)))
+              encounter-id (:encounter-id opener)]
+          (recur (rest ss)
+                 (loop [k 0 acc acc]
+                   (if (>= k slots)
+                     acc
+                     (let [draw (.nextDouble rng)
+                           n (+ whole (if (< draw frac) 1 0))
+                           slot-start (+ (long t0) (* k restatement-day-seconds))
+                           slot-len (max 0 (- (min (long t1) (+ slot-start restatement-day-seconds))
+                                              slot-start))]
+                       (recur (inc k)
+                              (if (or (zero? n) (nil? patient-id))
+                                acc
+                                (into acc
+                                      (for [j (range n)
+                                            :let [at (+ slot-start (quot (* j slot-len) n))]]
+                                        {:at at
+                                         :basis opener-index
+                                         :kind :restatement
+                                         :periodic? true
+                                         :trigger "A08"
+                                         :encounter-id encounter-id
+                                         :patient-id patient-id
+                                         :active-mrn (mrn-at mrns patient-id at)
+                                         :in1? false})))))))))
+        acc))))
+
+(defn- assign-chatter-ordinals
+  "MSH-10 for a chatter message is `mrn-trigger-t-<ordinal>`, the
+  ordinal counting within `(mrn, trigger, t)` -- ADR-0175 section 2(a),
+  and the same shape `:bed-status-change`'s own arm of `control-id-for`
+  already uses to disambiguate two legs of one bed at one instant.
+
+  A ground-truth event's own id has NO ordinal suffix, so a chatter id
+  can never collide with one even before the trigger is considered; the
+  ordinal is what keeps two restatements of one patient at one instant
+  apart, which is the case `bidirectional-derivability`'s
+  MSH-10-uniqueness half would otherwise catch as a defect."
+  [instructions]
+  (first
+   (reduce (fn [[acc seen] ins]
+             (let [k [(:active-mrn ins) (:trigger ins) (:at ins)]
+                   n (get seen k 0)]
+               [(conj acc (assoc ins
+                                 :ordinal n
+                                 :control-id (str (:active-mrn ins) "-" (:trigger ins)
+                                                  "-" (:at ins) "-" n)))
+                (assoc seen k (inc n))]))
+           [[] {}]
+           instructions)))
+
+(defn plan-chatter
+  "RNG x GT x ChatterProfile (ehrt.sim-model.config/ChatterProfile) ->
+  a vector of render instructions, each
+  `{:at :basis :kind :trigger :encounter-id :patient-id :active-mrn
+    :in1? :ordinal :control-id :periodic?}`.
+
+  Two passes, both with LOG-DETERMINED draw counts (`event-driven-
+  chatter` and `periodic-chatter` each carry the argument): one draw
+  per ground-truth event, then one draw per patient-day of care. A
+  config that turns one rule off still draws for it, so two configs
+  differing in one rule produce identical draws for everything else --
+  the property arc 4 owes and `emit_hl7_test` asserts.
+
+  Absent/nil/{} `chatter` still draws (and discards) the full census
+  and returns [] -- `emit-wire` called with THIS function's own []
+  output renders byte-identical to one called with no chatter at all,
+  the same three-way absent/nil/{} agreement `plan-latency` and
+  `ehrt.sim-emit-hl7.site-profile` already established."
+  [^java.util.Random rng ground-truth chatter]
+  (let [spans (encounter-spans ground-truth)
+        mrns (mrn-timeline ground-truth)
+        event-driven (event-driven-chatter rng ground-truth chatter)
+        periodic (periodic-chatter rng spans mrns chatter)]
+    (assign-chatter-ordinals (into event-driven periodic))))
+
+(defn- chatter-message
+  "Renders one `plan-chatter` instruction to an ER7 string. Every field
+  of it is `demographics-at` of a patient at an instant -- the
+  definition of derivable restatement -- plus, for an A08, the PV1 of
+  the encounter the instant falls inside, read off that encounter's own
+  opener.
+
+  ONE CLOCK, not two: chatter carries no latency offset (an offset is
+  keyed on a ground-truth event's control-id, and a restatement has no
+  event), so MSH-7 and EVN-2 are the same instant here. That is the
+  identity `emit-wire`'s own interleave test asserts -- turning chatter
+  on moves no non-chatter message's bytes at all."
+  [reference-date utc-offset facility providers demographics site-profile spans
+   {:keys [at trigger control-id active-mrn patient-id encounter-id in1?]}]
+  (let [ts (hl7-timestamp reference-date at utc-offset)
+        persona (demographics-at demographics patient-id at)
+        opener (:opener (get spans encounter-id))
+        facility-name (name (:id facility))]
+    (parser/str-message
+     (apply parser/create-message
+            parser/DEFAULT-DELIMITERS
+            (msh-segment site-profile {:type "ADT" :trigger trigger} control-id ts)
+            (evn-segment trigger ts)
+            (pid-segment active-mrn persona)
+            (concat
+             (when (= "A08" trigger)
+               [(pv1-segment site-profile
+                             (if (= :outpatient-visit (:event opener)) :outpatient :inpatient)
+                             facility-name (:location opener) nil
+                             (provider-by-id providers (:attending opener))
+                             nil encounter-id)])
+             (when (and in1? (:payer persona))
+               [(in1-segment (:payer persona))]))))))
+
 (defn emit-wire
   "GT x reference-date x utc-offset x facility x providers x
-  site-profile x offsets -> TimedWire: the SAME messages `emit` would
-  render, split-clock (each builder's own ADR-0109 docstring has the
-  per-type detail: MSH-7 shifted by `offsets`, every clinical-time
-  field -- EVN-2 where present -- unshifted), returned SORTED BY
-  TRANSMIT TIME rather than log order -- out-of-order clinical arrival
-  (a lagged admission whose transmit instant lands after a later
-  event's own) falls out of this sort, not out of any special-cased
-  reordering logic. Ties (equal transmit seconds) break on original log
-  position, stable -- the identity property's own mechanism: absent/
-  nil/{} `offsets` makes every transmit second equal its own log-order
-  `:t`, and since ground truth is already `:t`-nondecreasing
-  (`sim-engine`'s own priority-queue invariant), the stable tie-break
-  reproduces `emit`'s exact order, and therefore its exact bytes.
+  site-profile x offsets [x emission] -> TimedWire: the SAME messages
+  `emit` would render, split-clock (each builder's own ADR-0109
+  docstring has the per-type detail: MSH-7 shifted by `offsets`, every
+  clinical-time field -- EVN-2 where present -- unshifted), returned
+  SORTED BY TRANSMIT TIME rather than log order -- out-of-order
+  clinical arrival (a lagged admission whose transmit instant lands
+  after a later event's own) falls out of this sort, not out of any
+  special-cased reordering logic. Ties (equal transmit seconds) break
+  on original log position, stable -- the identity property's own
+  mechanism: absent/nil/{} `offsets` makes every transmit second equal
+  its own log-order `:t`, and since ground truth is already
+  `:t`-nondecreasing (`sim-engine`'s own priority-queue invariant), the
+  stable tie-break reproduces `emit`'s exact order, and therefore its
+  exact bytes.
 
   `offsets` is plain data (`plan-latency`'s own output, or hand-built)
   -- this function takes no RNG at all, per this namespace's own
-  renders-only doctrine."
-  [ground-truth reference-date utc-offset facility providers site-profile offsets]
-  (let [demographics (demographics-timeline ground-truth)
-        offsets (or offsets {})]
-    (->> ground-truth
-         (map-indexed
-          (fn [i ev]
-            (let [control-id (control-id-for ev)
-                  transmit-t (transmit-seconds offsets control-id (:t ev))]
-              (map (fn [message] [transmit-t i message])
-                   (event->messages reference-date utc-offset facility providers demographics site-profile offsets ev)))))
-         (apply concat)
-         (sort-by (fn [[transmit-t i _]] [transmit-t i]))
-         (mapv peek))))
+  renders-only doctrine.
+
+  ARC 4 SWEEP 2 adds the optional 8th argument, `emission`:
+  `{:chatter <plan-chatter's own output>}`. Absent, nil, or {} is the
+  byte-identical path -- the seven-argument arity below is exactly
+  that, so no existing caller moves. The sort key is `[transmit-t
+  log-index lane sub]`: `lane` 0 is every message a ground-truth event
+  renders, in `event->messages`' own order, `lane` 1 is chatter, and
+  `sub` is the ordinal within each. Chatter carries no offset, so a
+  chatter message's transmit instant is its own `:at` and the latency
+  plan for every non-chatter message is untouched."
+  ([ground-truth reference-date utc-offset facility providers site-profile offsets]
+   (emit-wire ground-truth reference-date utc-offset facility providers site-profile offsets {}))
+  ([ground-truth reference-date utc-offset facility providers site-profile offsets
+    {:keys [chatter]}]
+   (let [demographics (demographics-timeline ground-truth)
+         offsets (or offsets {})
+         chatter (or chatter [])
+         spans (when (seq chatter) (encounter-spans ground-truth))
+         base (->> ground-truth
+                   (map-indexed
+                    (fn [i ev]
+                      (let [control-id (control-id-for ev)
+                            transmit-t (transmit-seconds offsets control-id (:t ev))]
+                        (map-indexed
+                         (fn [j message] [transmit-t i 0 j message])
+                         (event->messages reference-date utc-offset facility providers demographics
+                                          site-profile offsets ev)))))
+                   (apply concat))
+         restatements (map (fn [ins]
+                             [(:at ins) (:basis ins) 1 (:ordinal ins)
+                              (chatter-message reference-date utc-offset facility providers
+                                               demographics site-profile spans ins)])
+                           chatter)]
+     (->> (concat base restatements)
+          (sort-by (fn [[transmit-t i lane sub _]] [transmit-t i lane sub]))
+          (mapv peek)))))
