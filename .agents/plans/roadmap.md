@@ -67,8 +67,24 @@ with them.
   section 1(iv) claimed: the flip buys PRIMITIVE TYPING and not
   segment-order/cardinality/required-segment checking, which still needs the
   profile tier. Ground truth held (`bin/ground-truth-bracket`, the instrument
-  E1 owed and sweep 1 built, IDENTICAL over 36 roots at both commits). Five
-  sweeps remain: chatter, DFT^P03, ladders, SIU (now unblocked), fan-out/MLLP. The design's OTHER measured finding still
+  E1 owed and sweep 1 built, IDENTICAL over 36 roots at both commits). **SWEEP
+  2 OF 6 LANDED 2026-08-28** -- ruling B1's first tranche, both halves of it:
+  re-statement chatter (A08/A31/A28 and the IN1-only coverage update, design
+  (a)) and DFT^P03 charges (design (c)), each behind its own opt-in key, plus
+  design (h)/ruling D1's `gate v2 --sample-add-ons`. Six corpora and a 40th
+  oracle root opted in; ground truth held again across all 36 pre-existing
+  roots. Its own measured headline: 469 of 478 A08s across six populations
+  come from the PERIODIC census and not the event-driven half, which is
+  ADR-0175 section 2(a)'s prediction holding. Three sweeps remain: ladders,
+  SIU (now unblocked), fan-out/MLLP. **SWEEP 3 (LADDERS) OWES AN
+  ORDER-PLACING ORACLE ROOT AS ITS STEP 0**: `witnessed-event-kinds` still
+  contains neither `:order-placed` nor `:result-available` and
+  `witnessed-message-types` no `ORM^O01`, so a ladder turn-on would read
+  IDENTICAL across all 40 roots while changing every order in every gated
+  corpus -- `rulings.md#R-empty-population-is-red` one layer up. Sweep 2
+  deliberately did NOT close it: its own root places no order, so that the
+  coverage claim it adds is exactly the four MSH-9s it exists for. The
+  design's OTHER measured finding still
   stands and no sweep can lift it: NK1 is unavailable to this arc at all,
   because household state reaches no ground-truth event -- ADR-0172 limitations
   row 8 is untouched.
