@@ -119,9 +119,23 @@
   :cancel-admit is only ever inserted after the pathway's own steps are
   already exhausted. The other churn types never strand a later
   original step this way (cancel-transfer/cancel-discharge reinstate a
-  still-legal prior location; bed-swap/merge/transfer-in-error don't
-  change :admitted? at all), so only :cancel-admit needs this extra
-  gate."
+  prior location that was legal WHEN IT WAS VACATED; bed-swap/merge/
+  transfer-in-error don't change :admitted? at all), so only
+  :cancel-admit needs this extra gate.
+
+  `Legal when it was vacated` is doing real work in that sentence, and
+  TS-5 (2026-08-29) is what put it there. This oracle is STATIC -- it
+  folds step TYPES over a pathway and has no view of the live world at
+  the instant a step finally runs -- so it can and does insert a
+  :cancel-transfer at a gap AFTER the pathway's own :discharge, where
+  the reinstatement it authorises would land on a patient who has
+  already left. That is not a defect in this oracle and is not fixable
+  here: the same insertion is legal or not depending on runtime state
+  this namespace cannot see. It is caught where the state exists, by
+  `engine/subject-superseded?` at decide time, and shows up in the log
+  as an :illegal-cancel-*-subject-superseded rejection -- the same
+  division of labour the :cancel-discharge note below already
+  describes for the bed-reoccupied guard."
   [state step-type at-end?]
   (case step-type
     :cancel-admit (and at-end? (:has-uncancelled-admission? state))

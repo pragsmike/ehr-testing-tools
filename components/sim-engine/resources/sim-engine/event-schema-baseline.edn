@@ -10,7 +10,7 @@
 ;;
 ;; Re-freeze ONLY when bumping schema-version, with
 ;; `make event-schema-freeze`.
-{:event-schema-version "1.7.0",
+{:event-schema-version "1.8.0",
  :schema
  [:multi
   {:dispatch :event,
@@ -427,7 +427,7 @@
   [:appointment
    [:map
     {:doc
-     "A future visit is booked for a patient (HL7v2 SIU^S12 -- deliberately unrendered in 1.7.0, see ruling C).",
+     "A future visit is booked for a patient (HL7v2 SIU^S12, rendered when the :siu emission key is on; absent by default).",
      :transition
      "Opens the patient's :appointment record; terminal only when an encounter keeps it, a cancel closes it, or a no-show closes it.",
      :closed true}
@@ -465,7 +465,7 @@
   [:reschedule
    [:map
     {:doc
-     "A booked appointment moves to a different instant (HL7v2 SIU^S14 -- deliberately unrendered in 1.7.0).",
+     "A booked appointment moves to a different instant (HL7v2 SIU^S14, rendered when the :siu emission key is on; absent by default).",
      :transition
      "Moves :scheduled-t on the OPEN record and is NOT terminal; the id is kept rather than re-minted.",
      :closed true}
@@ -492,7 +492,7 @@
   [:appointment-cancel
    [:map
     {:doc
-     "A booked appointment is cancelled before its instant (HL7v2 SIU^S15 -- deliberately unrendered in 1.7.0).",
+     "A booked appointment is cancelled before its instant (HL7v2 SIU^S15, rendered when the :siu emission key is on; absent by default).",
      :transition
      "Closes the open record TERMINALLY, outcome :cancelled. No encounter follows.",
      :closed true}
@@ -517,7 +517,7 @@
   [:no-show
    [:map
     {:doc
-     "A booked appointment's instant arrives and the patient does not (HL7v2 SIU^S26 -- deliberately unrendered in 1.7.0).",
+     "A booked appointment's instant arrives and the patient does not (HL7v2 SIU^S26, rendered when the :siu emission key is on; absent by default).",
      :transition
      "Closes the open record TERMINALLY, outcome :no-show, and opens NOTHING -- which is exactly why a no-show cannot be derived from an encounter.",
      :closed true}
@@ -1024,8 +1024,10 @@
       :illegal-cancel-admit
       :illegal-cancel-discharge
       :illegal-cancel-discharge-bed-reoccupied
+      :illegal-cancel-discharge-subject-superseded
       :illegal-cancel-transfer
       :illegal-cancel-transfer-bed-reoccupied
+      :illegal-cancel-transfer-subject-superseded
       :illegal-merge]]
     [:attempted-step [:map [:type :keyword]]]]]
   [:demographic-update

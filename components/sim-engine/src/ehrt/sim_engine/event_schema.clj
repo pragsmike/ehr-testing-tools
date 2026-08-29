@@ -310,8 +310,35 @@
   reading the wire does not.
 
   MADE UNDER THE WAIVER, disclosed: no deprecation release was run, and
+  none is owed in any case, since nothing was removed.
+
+  1.8.0 (2026-08-29, TS-5 of the traffic-scale close) is the SUPERSEDED
+  CANCEL: `:step-rejected`'s `:reason` enum gains
+  `:illegal-cancel-transfer-subject-superseded` and
+  `:illegal-cancel-discharge-subject-superseded`, the two rejections
+  `decide` now issues when a reinstating cancel would put state back
+  onto a subject a later event has already superseded (discharged,
+  expired or merged).
+
+  THIS BUMP IS OWED, and `classify-change` is what says so rather than
+  this note. Run against the frozen 1.7.0 baseline it returns
+  `:additive? false` with exactly one reason:
+
+    :step-rejected: key changed: :reason (value schema changed)
+
+  which is an enum WIDENING -- `documented-step-rejection-reasons` grew
+  by two members and the schema reads that set directly. MINOR rather
+  than MAJOR for the reason 1.4.0 gives: a 1.7.0-era LOG validates
+  unchanged against 1.8.0, because every reason a 1.7.0 producer could
+  emit is still in range; the breaking direction is the other one, a
+  1.7.0 schema meeting a 1.8.0 log and failing on a `:reason` it has
+  never seen. `classify-change` is deliberately conservative about
+  widenings rather than reasoning about them, and this is the third
+  time that conservatism has bought a bump rather than an argument.
+
+  MADE UNDER THE WAIVER, disclosed: no deprecation release was run, and
   none is owed in any case, since nothing was removed."
-  "1.7.0")
+  "1.8.0")
 
 ;; --- shared leaf schemas --------------------------------------------------
 ;;

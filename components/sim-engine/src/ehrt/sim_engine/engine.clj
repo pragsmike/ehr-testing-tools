@@ -2026,7 +2026,9 @@
   extended to this event type)."
   #{:illegal-cancel-admit
     :illegal-cancel-transfer :illegal-cancel-transfer-bed-reoccupied
+    :illegal-cancel-transfer-subject-superseded
     :illegal-cancel-discharge :illegal-cancel-discharge-bed-reoccupied
+    :illegal-cancel-discharge-subject-superseded
     :illegal-bed-swap :illegal-merge})
 
 (defn- rejected-outcome
@@ -3075,6 +3077,80 @@
     (let [occupant (get (sim-model/occupancy-board (:patients world)) bed)]
       (and (some? occupant) (not= occupant patient-id)))))
 
+(def ^:private status-a-cancel-target-leaves
+  "The `:status` the event a reinstating cancel targets leaves its
+  SUBJECT in -- the one status a legal cancel of that class can still
+  find on the patient when it finally runs.
+
+  A `:transfer` moves an `:admitted` patient and leaves them
+  `:admitted`; a `:discharge` leaves them `:discharged`, which is
+  precisely the state a `:cancel-discharge` exists to undo. Written as
+  a two-entry table rather than a status test per method because the
+  ASYMMETRY is the whole point of `subject-superseded?` below: the same
+  `:discharged` that makes a cancel-transfer illegal is what makes a
+  cancel-discharge legal, and a guard that missed that would reject
+  every cancel-discharge in the repository."
+  {:cancel-transfer :admitted
+   :cancel-discharge :discharged})
+
+(def ^:private statuses-that-supersede-a-reinstatement
+  "The three statuses that say the subject is no longer a patient the
+  hospital is holding: `:discharged` (they left), `:expired` (they
+  died), `:merged` (their record was absorbed into another's).
+
+  `:new` is deliberately ABSENT. It is what `evolve :cancel-admit`
+  writes, and a cancel-admit is a correction of the record rather than
+  an event in the patient's life -- `ehrt.sim-engine.engine-test/
+  cancel-discharge-restores-class-even-after-a-preceding-cancel-admit-
+  stripped-it` is the M6 Task 2 finding that says so, and it stays
+  legal here. MEASURED, so the exclusion is a decision and not an
+  oversight: the `nobed` 10^5 cell at seed 20260824 carries 2
+  cancel-transfers against a `:new` subject alongside its 61 against a
+  `:discharged` one, and this guard leaves those 2 alone -- named in
+  `.agents/session-records/2026-08-29-ts-5-superseded-cancel.md` as an
+  adjacent case this change deliberately does not reach.
+
+  `:merged` is unreachable through `run`, which ends a merged patient's
+  queue before their next step is ever decided (the `:merged` branch at
+  the top of the run loop). It is named anyway, for a `decide` driven
+  by hand and for the reader who would otherwise have to prove the
+  omission safe."
+  #{:discharged :expired :merged})
+
+(defn- subject-superseded?
+  "Whether the state a cancel of `kind` would reinstate onto `patient`
+  has already been superseded by a LATER event in that patient's own
+  life -- the TS-5 guard (traffic-scale defect 5, 2026-08-29).
+
+  A reinstating cancel restores the state its target event displaced:
+  correct as an undo of THAT event, and read from the log at the
+  target's own index, which predates everything after it. Nothing
+  asked what had happened to the subject SINCE. So a churn
+  `:cancel-transfer` landing after the patient's discharge -- in the
+  same batch, at the same `t`, as the witness below -- put
+  `:location`/`:home-ward` back onto a `:discharged` patient, and
+  nothing ever vacated that bed again.
+
+  ONE MEASUREMENT decides which mechanism this is, and it was taken
+  before this guard was written: the subject's `:status` in `world` at
+  the instant `decide` runs. At the row's own witness (`PID-004302-
+  fa1ab125`, `nobed` 10^5, seed 20260824) it reads `:discharged`, with
+  `:location` already nil -- the discharge IS in the world when the
+  cancel is decided. So this is not a batch-ordering problem that no
+  decide-time test could see; it is a reinstatement applied without
+  asking the subject's current status, and a decide-time test is
+  exactly what catches it.
+
+  `bed-reoccupied-by-someone-else?` cannot stand in for this and never
+  could: at the same witness the board reads NIL for SURGERY-91. The
+  patient is gone, not displaced, so the bed they would be reinstated
+  into is genuinely empty -- which is the whole of why the double-
+  occupancy guard passes a reinstatement no one should make."
+  [patient kind]
+  (let [status (:status patient)]
+    (and (statuses-that-supersede-a-reinstatement status)
+         (not= status (status-a-cancel-target-leaves kind)))))
+
 (defn- reinstated-state
   "The state patient `patient-id` was in immediately BEFORE the log event
   at `idx` -- the prior location/home-ward/attending a reinstating cancel
@@ -3127,8 +3203,24 @@
       (rejected-outcome :illegal-cancel-transfer patient-id t step nil)
       (let [patient (get-in world [:patients patient-id])
             {:keys [home-ward location]} (reinstated-state world ground-truth patient-id idx)]
-        (if (bed-reoccupied-by-someone-else? world patient-id location)
+        (cond
+          ;; TS-5, and asked BEFORE the bed: whether the subject is
+          ;; still in the hospital at all is prior to whether anyone
+          ;; else has taken the bed they left. The ordering is visible
+          ;; -- 9 of the 61 superseded-subject cancel-transfers at
+          ;; `nobed` 10^5 were already being rejected as
+          ;; `-bed-reoccupied` and now carry this reason instead --
+          ;; and it is the right way round: the reason a log carries
+          ;; should name why the step could never have happened, not
+          ;; the second thing that would also have stopped it.
+          (subject-superseded? patient :cancel-transfer)
+          (rejected-outcome :illegal-cancel-transfer-subject-superseded patient-id t step
+                            {:status (:status patient)})
+
+          (bed-reoccupied-by-someone-else? world patient-id location)
           (rejected-outcome :illegal-cancel-transfer-bed-reoccupied patient-id t step {:location location})
+
+          :else
           {:events [{:event :cancel-transfer :t t :active-mrn (:active-mrn patient)
                      :cancels-event-id idx :home-ward home-ward :location location
                      :participants [{:patient-id patient-id :role :subject}]}]
@@ -3142,8 +3234,20 @@
       (rejected-outcome :illegal-cancel-discharge patient-id t step nil)
       (let [patient (get-in world [:patients patient-id])
             {:keys [home-ward location attending]} (reinstated-state world ground-truth patient-id idx)]
-        (if (bed-reoccupied-by-someone-else? world patient-id location)
+        (cond
+          ;; TS-5 again, and asymmetric: `:discharged` is the status a
+          ;; cancel-discharge EXISTS to find, so only `:expired` and
+          ;; `:merged` supersede one. All 55 cancel-discharges at
+          ;; `nobed` 10^5 read `:discharged` here and every one of them
+          ;; stays legal.
+          (subject-superseded? patient :cancel-discharge)
+          (rejected-outcome :illegal-cancel-discharge-subject-superseded patient-id t step
+                            {:status (:status patient)})
+
+          (bed-reoccupied-by-someone-else? world patient-id location)
           (rejected-outcome :illegal-cancel-discharge-bed-reoccupied patient-id t step {:location location})
+
+          :else
           {:events [{:event :cancel-discharge :t t :active-mrn (:active-mrn patient)
                      :cancels-event-id idx :home-ward home-ward :location location :attending attending
                      :participants [{:patient-id patient-id :role :subject}]}]

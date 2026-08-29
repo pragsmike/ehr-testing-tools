@@ -342,6 +342,85 @@
       (is (empty? (check/outpatient-patients-occupy-no-bed ground-truth)))
       (is (= :ok (:status (check/check-all ground-truth (:facility followup-outpatient-config))))))))
 
+;; --- TS-5, at population scale and at the row's own seed -----------------
+
+(def ^:private superseded-cancel-config
+  "The smallest population that presents a `:cancel-transfer` AFTER its
+  subject's own discharge, at seed 20260824 -- the seed the traffic-scale
+  close and its defect sessions all measure on.
+
+  Every piece earns its place. The pathway carries a TRANSFER and then a
+  discharge, because the defect needs a transfer to cancel and a
+  discharge to supersede it. `:cancel-transfer` is the only churn type
+  turned on, so nothing else can move the population.
+
+  THE RATE IS 0.3 AND NOT 1.0, which is the counter-intuitive part and
+  the reason the fixture is written rather than borrowed: churn's own
+  applicability state clears `:has-uncancelled-transfer?` as soon as it
+  inserts a cancel, so at rate 1.0 EVERY cancel lands in the gap
+  immediately after the transfer -- always legal, and the defect is
+  never reached. The shape this test needs is the one where the gaps
+  right after the transfer MISS and a later gap, after the discharge,
+  hits. That is `p(1-p)^2` per patient, maximised near a third."
+  {:seed 20260824
+   :patients 150
+   :arrival-gap 60
+   :facility {:id :ts5-fixture
+              :wards [{:id :ed :name "ED" :beds 40 :surge-slots 20
+                       :surge-format "%s-H%02d" :class :ed}
+                      {:id :renal :name "Renal" :beds 40 :surge-slots 20
+                       :surge-format "%s-H%02d" :class :inpatient}]}
+   :providers [{:id "1234567893" :name {:family "Okafor" :given "Ada"} :role :attending
+                :specialty "Nephrology" :wards [:renal :ed]}]
+   :pathways [{:pathway {:name "ed-then-ward"
+                         :steps [{:type :admission :location "ED"}
+                                 {:type :delay :from 60 :to 180}
+                                 {:type :transfer :location "Renal"}
+                                 {:type :delay :from 60 :to 180}
+                                 {:type :discharge}]}
+               :weight 1}]
+   :churn-profile {:cancel-transfer 0.3}})
+
+(deftest a-cancel-may-not-reinstate-state-a-later-event-superseded
+  (let [{:keys [ground-truth exhausted]} (engine/run superseded-cancel-config)
+        records (engine/replay ground-truth)
+        ;; Counted in a way that is INDEPENDENT of the fix: before it,
+        ;; these are applied `:cancel-transfer` events; after it, they are
+        ;; the rejections that replaced them. Either way the run really
+        ;; did put the choice in front of `decide`.
+        attempts (filter (fn [{:keys [event world-before patient-id]}]
+                           (and (or (= :cancel-transfer (:event event))
+                                    (and (= :step-rejected (:event event))
+                                         (= :cancel-transfer (:type (:attempted-step event)))))
+                                (= :discharged (get-in world-before [patient-id :status]))))
+                         records)
+        ;; THE LAW. Scoped to `:discharged` on purpose: `evolve
+        ;; :discharge`'s `:expired` arm deliberately does NOT nil the
+        ;; location, so an expired patient holding one is not this
+        ;; defect, and this fixture produces no death anyway.
+        holders (for [{:keys [event world-after]} records
+                      [pid p] world-after
+                      :when (and (= :discharged (:status p)) (some? (:location p)))]
+                  {:at (:t event) :patient pid :bed (get-in p [:location :bed])})]
+    (testing "the fixture reaches a real corpus rather than dying first"
+      (is (nil? exhausted)
+          "an exhausted run yields no log and no self-check, so it would prove nothing"))
+    (testing "the OPPORTUNITY is counted, so a green row cannot be green for want of traffic"
+      (is (pos? (count attempts))
+          "the population really does decide a :cancel-transfer whose subject
+           is already discharged -- the exact choice TS-5 is about")
+      (is (empty? (filter #(= :outpatient-visit (:event %)) ground-truth))
+          "and it opens no outpatient encounter, which is what lets the law
+           below be stated over `:discharged` without an exemption --
+           `:outpatient-visit-end` sets `:status :discharged` without
+           clearing `:location`"))
+    (testing "TS-5: no discharged patient is ever holding a bed"
+      (is (empty? holders)
+          "a cancel reinstated `:location` onto a patient who had already
+           left, and nothing ever vacates that bed again"))
+    (testing "and the catalog agrees"
+      (is (= :ok (:status (check/check-all ground-truth (:facility superseded-cancel-config))))))))
+
 (def ^:private one-bed-one-surge-facility
   "ADR-0153: the smallest facility that can hold, at one instant, a
   Renal-surge occupant, a boarder waiting on Renal, AND a free Renal
@@ -586,6 +665,129 @@
           world1 (admit world0 0 "P1" "Renal")
           outcome (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :cancel-discharge})]
       (assert-step-rejected! outcome "P1" :illegal-cancel-discharge))))
+
+;; --- TS-5: a cancel may not reinstate what a later event superseded -------
+;;
+;; Traffic-scale defect 5 (2026-08-29), rowed by
+;; `.agents/plans/roadmap.md#cancel-transfer-reinstates-a-discharged-patient`
+;; and probed to the event before a line of this changed: at `nobed` 10^5,
+;; seed 20260824, `PID-004302-fa1ab125` is discharged at t=303660 (log
+;; index 26849, `:location` nil'd) and a churn `:cancel-transfer` at the
+;; SAME t (index 26852) puts SURGERY-91 back on them. Nothing vacates it
+;; again, and an `:outpatient-visit` 2.7M seconds later inherits it.
+;;
+;; THE MECHANISM WAS MEASURED, not inferred, because two plausible ones
+;; fit the log equally well until the world was read at decide time: the
+;; cancel could be decided from a world that did not yet carry the
+;; discharge (batch order), or from one that did (a reinstatement applied
+;; without asking the subject's status). It is the second -- the subject
+;; reads `:status :discharged`, `:location` nil at the instant `decide`
+;; runs -- which is what makes a decide-time guard the fix at all.
+
+(deftest a-cancel-transfer-may-not-reinstate-a-discharged-subject
+  (testing "the row's own shape, hand-built at ONE instant: the discharge
+            and the cancel share `t`, as they do at the 10^5 witness"
+    (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+          world1 (admit world0 0 "P1" "Renal")
+          {t-events :events} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1"
+                                            {:type :transfer :location "ED"})
+          world2 (fold-events world1 t-events)
+          {d-events :events} (engine/decide (engine/one-stream (Random. 1)) 20 world2 "P1" {:type :discharge})
+          world3 (fold-events world2 d-events)
+          _ (is (= :discharged (get-in world3 [:patients "P1" :status])) "sanity: discharged")
+          _ (is (nil? (get-in world3 [:patients "P1" :location])) "sanity: and holding no bed")
+          ;; SAME t as the discharge -- the batch case the row names.
+          outcome (engine/decide (engine/one-stream (Random. 1)) 20 world3 "P1" {:type :cancel-transfer})
+          world4 (fold-events world3 (:events outcome))]
+      (assert-step-rejected! outcome "P1" :illegal-cancel-transfer-subject-superseded)
+      (testing "and the bed is NOT reinstated -- the whole point"
+        (is (nil? (get-in world4 [:patients "P1" :location])))
+        (is (= :discharged (get-in world4 [:patients "P1" :status])))))))
+
+(deftest a-cancel-transfer-may-not-reinstate-an-expired-subject
+  (testing "`:expired` supersedes a reinstatement exactly as `:discharged`
+            does, and needs its own witness because it is zero-frequency
+            in every corpus this repository ships -- `evolve :discharge`'s
+            `:expired` arm does not even nil the location, so the defect
+            here is a dead patient acquiring a NEW bed"
+    (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+          world1 (admit world0 0 "P1" "Renal")
+          {t-events :events} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1"
+                                            {:type :transfer :location "ED"})
+          world2 (fold-events world1 t-events)
+          {d-events :events} (engine/decide (engine/one-stream (Random. 1)) 20 world2 "P1"
+                                            {:type :discharge :disposition :expired})
+          world3 (fold-events world2 d-events)
+          _ (is (= :expired (get-in world3 [:patients "P1" :status])) "sanity: expired")
+          outcome (engine/decide (engine/one-stream (Random. 1)) 30 world3 "P1" {:type :cancel-transfer})]
+      (assert-step-rejected! outcome "P1" :illegal-cancel-transfer-subject-superseded))))
+
+(deftest a-cancel-discharge-may-not-reinstate-an-expired-subject
+  (testing "the ASYMMETRY, which is the whole design of the guard: the
+            `:discharged` that makes a cancel-transfer illegal is what
+            makes a cancel-discharge LEGAL, so only `:expired`/`:merged`
+            can supersede one. A death IS a `:discharge` event here
+            (`:disposition :expired`), so `last-uncancelled-index` finds
+            it and only the status test stands between the cancel and a
+            resurrection."
+    (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+          world1 (admit world0 0 "P1" "Renal")
+          {d-events :events} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1"
+                                            {:type :discharge :disposition :expired})
+          world2 (fold-events world1 d-events)
+          _ (is (= :expired (get-in world2 [:patients "P1" :status])) "sanity: expired")
+          outcome (engine/decide (engine/one-stream (Random. 1)) 20 world2 "P1" {:type :cancel-discharge})]
+      (assert-step-rejected! outcome "P1" :illegal-cancel-discharge-subject-superseded))))
+
+(deftest a-cancel-transfer-against-a-cancel-admitted-subject-is-still-applied
+  (testing "THE BOUNDARY THIS FIX DELIBERATELY DOES NOT CROSS, pinned so
+            that widening it is a decision and not a drift. `:new` is what
+            `evolve :cancel-admit` writes, and a cancel-admit is a
+            correction of the record rather than an event in the patient's
+            life -- the same reading `cancel-discharge-restores-class-even-
+            after-a-preceding-cancel-admit-stripped-it` (M6 Task 2) rests
+            on. MEASURED: the `nobed` 10^5 cell carries 2 of these beside
+            its 61 discharged-subject cancel-transfers, and this change
+            leaves those 2 alone."
+    (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+          world1 (admit world0 0 "P1" "Renal")
+          {t-events :events} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1"
+                                            {:type :transfer :location "ED"})
+          world2 (fold-events world1 t-events)
+          {ca-events :events} (engine/decide (engine/one-stream (Random. 1)) 20 world2 "P1" {:type :cancel-admit})
+          world3 (fold-events world2 ca-events)
+          _ (is (= :new (get-in world3 [:patients "P1" :status])) "sanity: reverted to :new")
+          {c-events :events} (engine/decide (engine/one-stream (Random. 1)) 30 world3 "P1" {:type :cancel-transfer})]
+      (is (= 1 (count c-events)))
+      (is (= :cancel-transfer (:event (first c-events)))))))
+
+(deftest a-superseded-cancel-consumes-exactly-the-draws-the-applied-path-consumes
+  (testing "THE FENCE, executable: a rejection that consumed a different
+            number of draws than the path it replaces would reshuffle
+            every churn-carrying corpus, so the two are compared here
+            rather than argued. Both are ZERO -- neither cancel decide
+            touches its streams at all -- and the comparison is against a
+            pristine `Random` of the same seed, so a future draw added to
+            either path reddens this."
+    (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+          world1 (admit world0 0 "P1" "Renal")
+          {t-events :events} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1"
+                                            {:type :transfer :location "ED"})
+          world2 (fold-events world1 t-events)
+          {d-events :events} (engine/decide (engine/one-stream (Random. 1)) 20 world2 "P1" {:type :discharge})
+          world3 (fold-events world2 d-events)
+          draws-after (fn [world]
+                        (let [rng (Random. 424242)]
+                          (engine/decide (engine/one-stream rng) 30 world "P1" {:type :cancel-transfer})
+                          (.nextDouble rng)))
+          pristine (.nextDouble (Random. 424242))]
+      (testing "sanity: world2's cancel is APPLIED and world3's is REJECTED"
+        (is (= :cancel-transfer (:event (first (:events (engine/decide (engine/one-stream (Random. 1)) 30 world2 "P1"
+                                                                      {:type :cancel-transfer}))))))
+        (is (= :step-rejected (:event (first (:events (engine/decide (engine/one-stream (Random. 1)) 30 world3 "P1"
+                                                                     {:type :cancel-transfer})))))))
+      (is (= pristine (draws-after world2)) "applied path: zero draws")
+      (is (= pristine (draws-after world3)) "rejected path: zero draws, the same zero"))))
 
 (deftest cancel-transfer-cannot-be-applied-twice-to-the-same-transfer
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})

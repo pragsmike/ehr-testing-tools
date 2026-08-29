@@ -11,7 +11,7 @@
 ;;
 ;; Regenerate with `make event-schema-export` (also run by `make
 ;; docsgen`, so CI's freshness diff catches a stale export).
-{:event-schema-version "1.7.0",
+{:event-schema-version "1.8.0",
  :schema
  [:multi
   {:dispatch :event,
@@ -1025,8 +1025,10 @@
       :illegal-cancel-admit
       :illegal-cancel-discharge
       :illegal-cancel-discharge-bed-reoccupied
+      :illegal-cancel-discharge-subject-superseded
       :illegal-cancel-transfer
       :illegal-cancel-transfer-bed-reoccupied
+      :illegal-cancel-transfer-subject-superseded
       :illegal-merge]]
     [:attempted-step [:map [:type :keyword]]]]]
   [:demographic-update
