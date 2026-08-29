@@ -469,6 +469,10 @@ and all five use-case scripts green, MLLP 273 sent / 273 acked with MSA-2
 checked per pair.
 
 
+**CI at the tip `7500c75` -- run 33255112527, `completed success`.** Verified
+with `gh run view`, which is the arc-closed marker under the de-scaffold
+ruling; no tag is paid.
+
 ## 8. Close
 
 **What this session establishes.**
