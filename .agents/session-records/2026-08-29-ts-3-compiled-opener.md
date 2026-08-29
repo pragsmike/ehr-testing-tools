@@ -712,10 +712,22 @@ event kind, no field and no rejection reason.
     make test (again)  MAKE_EXIT=0    after the final doc edits: same
                                       4,745 / 24,043, 15 min 41 s
     make docsgen (again) DOCSGEN_EXIT=0  still no generated file moved
-    make integration   recorded by this record's own successor commit --
-                       it needs a CLEAN tree, so it runs after the docs
-                       commit and cannot be named from inside it
-    gh run view        likewise, at the pushed tip
+    make integration   INTEGRATION_EXIT=0   (clean tree at 8a94134)
+    gh run view 33268930815   completed / success at the pushed tip
+
+The last two are recorded by this record's own successor commit: both
+judge a commit they cannot be inside. `make integration` needs a CLEAN
+tree, so it runs after the docs commit; CI runs after the push. This is
+the repository's standing pattern -- `7500c75`/`a4e8698` and `2078348`/
+`11765bb` are the two previous pairs.
+
+`bin/post-push-verify 11765bb 8a94134`, all three checks: remote tip
+matches HEAD; every commit message in range is pure ASCII; CI run
+33268930815 reported once at the tip, not awaited to conclusion
+(AR-CI-4). **Awaited afterwards and verified by this session's own `gh
+run view`: run 33268930815 at `8a94134`, status completed, conclusion
+SUCCESS** -- the close marker (`rulings.md#R-session-verifies-ci-via-gh`,
+retired as a tag condition, kept as the marker). No tag was paid.
 
 `bin/preflight`'s two findings, disclosed rather than summarised: the
 working tree was NOT clean when it ran (the session's own work in
