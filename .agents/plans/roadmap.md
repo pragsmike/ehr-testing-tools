@@ -143,8 +143,10 @@ with them.
   beds by ward. This row's original wording named it among the never-rowed
   slices, which was the review-5 pattern -- a claim true when written that
   nothing keeps true. What is actually left, and still UNPRICED and unscheduled
-  pending their own author ruling: **`:mllp`** and **accumulator wiring**, plus
-  the board's own blind spot ADR-0174 section 2(c) names -- `--board` is message
+  pending their own author ruling: **`:mllp`** and the ONE UNBUILT PIECE of
+  **accumulator wiring** -- the fold itself ships (see this row's last paragraph;
+  ADR-0175 section 2(f) measured it), so only exposing its final state is left --
+  plus the board's own blind spot ADR-0174 section 2(c) names -- `--board` is message
   input only (`:play-board-unsupported-for-events`), so a bed the cycle marks
   dirty or cleaning stays invisible on the whiteboard until a message carries it.
   Rowed rather than retired because `R-unregistered-request-gets-a-row` puts

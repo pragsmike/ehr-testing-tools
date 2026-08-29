@@ -193,6 +193,35 @@
   (into #{} (map (fn [{:keys [type trigger]}] (str type "^" trigger)))
         (vals message-type-registry)))
 
+(def add-on-message-types
+  "Every MSH-9 arc 4's emission ADD-ONS put on the wire, and the exact
+  complement of `skeleton-message-types` above. Each is DERIVABLE
+  RESTATEMENT with no registry entry by design
+  (`rulings.md#R-skeleton-or-emission`): chatter's three ADT triggers
+  (`chatter-trigger`'s own rule below picks between A08 and A31 per
+  event; `:registered` is always A28) and charges' DFT^P03.
+
+  DECLARED here rather than derived, because there is nothing to derive
+  it FROM -- an add-on message is built by a builder, not looked up in a
+  map. `fan_out_run_test/the-emitter-produces-nothing-outside-the-
+  declared-vocabulary` is what keeps this set honest: over a run with
+  every add-on on, the MSH-9s actually emitted must be a subset of
+  `emittable-message-types`, and each of the four strings here must be
+  witnessed. A fifth add-on family that forgets this set turns that gate
+  red rather than shipping a fan-out filter that cannot name it."
+  #{"ADT^A08" "ADT^A31" "ADT^A28" "DFT^P03"})
+
+(def emittable-message-types
+  "The WHOLE vocabulary this emitter can put on a wire: skeleton plus
+  add-on. It is exactly the allow-list a `:fan-out` filter's own
+  `:message-types` may name (ADR-0175 section 2(f)) -- THE ALLOW-LIST
+  LAW: naming a `TYPE^TRIGGER` this emitter cannot produce is a
+  configuration ERROR rejected before the engine runs
+  (`ehrt.sim.run`'s own `:unknown-fan-out-message-type` branch, the
+  `:invalid-siu` precedent), never a subscriber feed that is silently
+  empty because of a typo."
+  (into skeleton-message-types add-on-message-types))
+
 (def ^:private hl7-timestamp-formatter
   (java.time.format.DateTimeFormatter/ofPattern "yyyyMMddHHmmss"))
 

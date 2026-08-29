@@ -386,6 +386,23 @@
                        (cond-> {:path path} sibling (assoc :did-you-mean sibling)))))
     (result/ok opts)))
 
+(defn- unknown-fan-out-message-types
+  "Every `TYPE^TRIGGER` a `:fan-out` table names that this emitter
+  cannot produce -- THE ALLOW-LIST LAW's own measurement (ADR-0175
+  section 2(f), arc 4 sweep 5). A sorted set, so the error names them
+  in a stable order; empty for a nil/absent table, which is why the
+  branch that calls it is safe to place unconditionally.
+
+  Read against `emit-hl7/emittable-message-types` -- the registry's own
+  skeleton set plus arc 4's declared add-on families -- rather than
+  against a list kept here, so this function cannot fall behind the
+  emitter it polices."
+  [fan-out]
+  (into (sorted-set)
+        (comp (mapcat (comp :message-types :filter))
+              (remove emit-hl7/emittable-message-types))
+        fan-out))
+
 (defn run-command
   "opts: :seed (required, long), :patients (long), :reference-date
   (ISO date string, pinned input for HL7 timestamp anchoring; defaults
@@ -538,7 +555,7 @@
        config-result
        (let [opts (:payload config-result)
              {:keys [seed patients emit at reference-date utc-offset warm-up-seconds churn churn-profile site-profile
-                     modules module-initial-attributes latency chatter charges ladders siu]} opts
+                     modules module-initial-attributes latency chatter charges ladders siu fan-out]} opts
              conflicts (incompatible-assignments opts)
              resolved-modules (when modules (resolve-modules modules (or module-initial-attributes {})))]
          (cond
@@ -618,6 +635,45 @@
                                          "{:triggers [:appointment :reschedule "
                                          ":appointment-cancel :no-show]}, a NON-EMPTY subset. "
                                          "The kinds are engine vocabulary, never HL7 trigger strings")})
+
+           ;; ARC 4 SWEEP 5 (ADR-0175 design (f)): and for `:fan-out`,
+           ;; whose failure mode is the quietest of the six. A
+           ;; misspelled `:message-type` (singular) inside a `:filter`
+           ;; is a subscriber that receives EVERYTHING; a misspelled
+           ;; `:recieving-app` is a spool nothing can route; two
+           ;; subscribers sharing a `:name` write into one directory.
+           ;; None of the three announces itself, and all three are
+           ;; caught here, before the engine's RNG starts, the same
+           ;; posture a missing `--seed` already gets.
+           (and (contains? opts :fan-out) (not (sim-model/valid-fan-out-profile? fan-out)))
+           (result/error :invalid-fan-out
+                         {:key :fan-out
+                          :value fan-out
+                          :explain (pr-str (sim-model/explain-fan-out-profile fan-out))
+                          :expected (str "[{:name <keyword, distinct> "
+                                         ":filter {:message-types #{\"TYPE^TRIGGER\" ...} "
+                                         ":patient-classes #{:inpatient ...}} "
+                                         ":msh {:sending-app/:sending-facility/"
+                                         ":receiving-app/:receiving-facility <string>}} ...] -- "
+                                         ":filter and :msh are both optional, and an EMPTY one of "
+                                         "either is rejected rather than read as absent")})
+
+           ;; THE ALLOW-LIST LAW (ADR-0175 section 2(f)). A filter
+           ;; naming a `TYPE^TRIGGER` this emitter cannot produce is a
+           ;; CONFIGURATION ERROR, never a feed that is silently empty
+           ;; because somebody wrote `ADT^A05`. The vocabulary is
+           ;; `emit-hl7/emittable-message-types` -- the registry's own
+           ;; skeleton set plus arc 4's add-on families -- so a family a
+           ;; later sweep adds becomes nameable at the same moment it
+           ;; becomes emittable, with no second list to widen.
+           (seq (unknown-fan-out-message-types fan-out))
+           (result/error :unknown-fan-out-message-type
+                         {:key :fan-out
+                          :unknown (vec (unknown-fan-out-message-types fan-out))
+                          :valid-options (vec (sort emit-hl7/emittable-message-types))
+                          :hint (str "a fan-out filter may only name a TYPE^TRIGGER this emitter "
+                                     "can actually produce -- an unknown one would be a subscriber "
+                                     "spool that is silently empty forever")})
 
            :else
            (let [reference-date (or reference-date emit-hl7/default-reference-date)
@@ -759,4 +815,23 @@
                            :siu siu})
                           (emit-hl7/emit ground-truth reference-date utc-offset facility providers site-profile)))
                   (= "fhir" emit) (assoc :fhir-bundles
-                                         (emit-fhir/bundle-run ground-truth reference-date utc-offset seed (or at :end)))))))))))))
+                                         (emit-fhir/bundle-run ground-truth reference-date utc-offset seed (or at :end)))
+                  ;; ARC 4 SWEEP 5 (ADR-0175 design (f), ruling B1;
+                  ;; author ruling 2026-08-28, collision option (b)):
+                  ;; the subscriber table is planned LAST, over the
+                  ;; message vector this same map already carries --
+                  ;; the only seam at which the base spool is complete
+                  ;; and nothing has been written yet. `as->` rather
+                  ;; than a second `emit-wire` call is the whole
+                  ;; mechanism: fan-out re-delivers bytes that already
+                  ;; exist, so there is nothing to render twice, and
+                  ;; ADR-0175's rejected option (1) -- render each
+                  ;; subscriber's stream separately -- is structurally
+                  ;; unavailable from here.
+                  ;;
+                  ;; IDENTITY IS THE LOG INDEX, never MSH-10, which
+                  ;; `control-id-for` is known non-injective over
+                  ;; (`roadmap.md#oru-control-id-collision`).
+                  (and fan-out (= "hl7" emit))
+                  (as-> payload (assoc payload :fan-out
+                                       (emit-hl7/plan-fan-out (:messages payload) fan-out site-profile)))))))))))))

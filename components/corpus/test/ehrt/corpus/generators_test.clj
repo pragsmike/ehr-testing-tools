@@ -255,3 +255,96 @@
       (is (= :missing-required-opt (:category r)))
       (is (empty? (.listFiles (io/file out-dir)))
           "a rejected sim/run! call must never reach spool-sim-output! -- no trace left"))))
+
+;; ---- ARC 4 SWEEP 5 (ADR-0175 design (f), ruling B1): the subscriber
+;; spools. `spool-sim-output!` FILTERS NOTHING here -- the plan arrives
+;; already made, from `ehrt.sim.run`, over the message vector that
+;; function alone can see. What is gated here is the LAYOUT: where the
+;; spools land, what the two sidecars say, and -- the load-bearing one
+;; -- that a corpus with no `:fan-out` is byte-identical to every
+;; corpus this project shipped before this sweep. ----
+
+(def ^:private fan-out-messages
+  (mapv (fn [i] (str "MSH|^~\\&|X|Y|||20240101000000+0000||ADT^A01|ID" i "|P|2.4\r"))
+        (range 5)))
+
+(def ^:private fan-out-plan
+  "Shaped exactly like `ehrt.sim-emit-hl7.fan-out/plan`'s own output."
+  [{:name :adt-feed
+    :filter {:message-types #{"ADT^A01"}}
+    :msh {:receiving-app "ADT-CONSUMER"}
+    :indices [0 2 4]
+    :count 3
+    :messages (mapv #(nth fan-out-messages %) [0 2 4])}
+   {:name :quiet-feed
+    :filter {:message-types #{"ADT^A20"}}
+    :indices []
+    :count 0
+    :messages []}])
+
+(deftest spool-sim-output-writes-one-spool-per-subscriber-test
+  (let [out-dir (str (temp-dir) "/fan")]
+    (#'generators/spool-sim-output!
+     {:messages fan-out-messages :manifest {} :fan-out fan-out-plan} out-dir)
+    (testing "the base spool is untouched and sits where it always did"
+      (is (= 5 (count (filter #(str/starts-with? (.getName ^java.io.File %) "msg-")
+                              (.listFiles (io/file out-dir))))))
+      (is (= (nth fan-out-messages 0) (slurp (io/file out-dir "msg-000.hl7")))))
+    (testing "each subscriber gets its own directory under fan-out/"
+      (is (.isDirectory (io/file out-dir "fan-out" "adt-feed")))
+      (is (.isDirectory (io/file out-dir "fan-out" "quiet-feed"))))
+    (testing "one file per message, in the plan's own order"
+      (let [dir (io/file out-dir "fan-out" "adt-feed")]
+        (is (= (nth fan-out-messages 0) (slurp (io/file dir "msg-000.hl7"))))
+        (is (= (nth fan-out-messages 2) (slurp (io/file dir "msg-001.hl7"))))
+        (is (= (nth fan-out-messages 4) (slurp (io/file dir "msg-002.hl7"))))
+        (is (not (.exists (io/file dir "msg-003.hl7"))))))
+    (testing "INDEX.edn writes the SUBSEQUENCE down -- the whole content
+              of the author's own collision ruling (b): a consumer
+              holding the base spool and this file knows which base
+              message each subscriber file came from, with no MSH-10
+              anywhere in the answer"
+      (let [index (edn/read-string (slurp (io/file out-dir "fan-out" "adt-feed" "INDEX.edn")))]
+        (is (= :adt-feed (:name index)))
+        (is (= [0 2 4] (:base-indices index)))
+        (is (= 3 (:count index)))
+        (is (= {:message-types #{"ADT^A01"}} (:filter index)))
+        (is (= {:receiving-app "ADT-CONSUMER"} (:msh index)))))
+    (testing "DIGEST.edn is a digest of the spool's own bytes, in order"
+      (let [digest (edn/read-string (slurp (io/file out-dir "fan-out" "adt-feed" "DIGEST.edn")))]
+        (is (= :adt-feed (:name digest)))
+        (is (= 3 (:count digest)))
+        (is (= (kernel/sha256-string (apply str (mapv #(nth fan-out-messages %) [0 2 4])))
+               (:sha256 digest)))))
+    (testing "a subscriber that matched nothing still declares itself --
+              an empty feed nobody can see is the failure ADR-0175
+              section 2(f) names"
+      (let [dir (io/file out-dir "fan-out" "quiet-feed")]
+        (is (empty? (filter #(str/starts-with? (.getName ^java.io.File %) "msg-") (.listFiles dir))))
+        (is (= 0 (:count (edn/read-string (slurp (io/file dir "INDEX.edn"))))))
+        (is (= [] (:base-indices (edn/read-string (slurp (io/file dir "INDEX.edn"))))))))
+    (testing "and the two sidecars are .edn, so no reader that takes
+              *.hl7 candidates directly under a path can mistake them
+              for messages"
+      (is (not-any? #(str/ends-with? (.getName ^java.io.File %) ".hl7")
+                    (filter #(.isFile ^java.io.File %)
+                            [(io/file out-dir "fan-out" "adt-feed" "INDEX.edn")
+                             (io/file out-dir "fan-out" "adt-feed" "DIGEST.edn")]))))))
+
+(deftest spool-sim-output-with-no-fan-out-writes-exactly-what-it-always-did-test
+  (testing "absent `:fan-out` is the byte-identical path: no fan-out/
+            directory exists at all, and the corpus root holds only the
+            files it held before this sweep"
+    (let [out-dir (str (temp-dir) "/nofan")]
+      (#'generators/spool-sim-output! {:messages fan-out-messages :manifest {}} out-dir)
+      (is (not (.exists (io/file out-dir "fan-out"))))
+      (is (= #{"msg-000.hl7" "msg-001.hl7" "msg-002.hl7" "msg-003.hl7" "msg-004.hl7" "manifest.edn"}
+             (into #{} (map #(.getName ^java.io.File %)) (.listFiles (io/file out-dir))))))))
+
+(deftest spool-sim-output-with-an-empty-fan-out-vector-writes-no-directory-test
+  (testing "`(seq fan-out)` and not `(some? fan-out)`: an empty plan is
+            the absent path, so a run whose table selected nothing at
+            all leaves no empty scaffold behind"
+    (let [out-dir (str (temp-dir) "/emptyfan")]
+      (#'generators/spool-sim-output! {:messages fan-out-messages :manifest {} :fan-out []} out-dir)
+      (is (not (.exists (io/file out-dir "fan-out")))))))

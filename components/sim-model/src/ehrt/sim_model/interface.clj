@@ -121,3 +121,11 @@
 (def SiuProfile config/SiuProfile)
 (defn valid-siu-profile? [profile] (config/valid-siu-profile? profile))
 (defn explain-siu-profile [profile] (config/explain-siu-profile profile))
+
+;; --- ARC 4 SWEEP 5 (ADR-0175 design (f)): the fan-out subscriber
+;; table, reachable from outside for the same fail-fast reason the four
+;; keys above are -- `ehrt.sim.run` rejects a malformed table BEFORE the
+;; engine's RNG starts.
+(def FanOutProfile config/FanOutProfile)
+(defn valid-fan-out-profile? [profile] (config/valid-fan-out-profile? profile))
+(defn explain-fan-out-profile [profile] (config/explain-fan-out-profile profile))

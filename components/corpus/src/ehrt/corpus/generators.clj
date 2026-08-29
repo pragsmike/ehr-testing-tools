@@ -130,6 +130,64 @@
    [:reference-date {:optional true} :string]
    [:config {:optional true} :string]])
 
+(defn- fan-out-dir
+  "One subscriber's own spool directory: `<out-dir>/fan-out/<name>`.
+
+  UNDER THE CORPUS ROOT, per ADR-0175 section 2(f), and one level
+  deeper than that section's own sketch for a MEASURED reason. Every
+  reader of a generated corpus in this repository -- `ehrt play`,
+  `ehrt corpus batch`, `gate v2` -- takes only the candidate files
+  sitting DIRECTLY under the path it is given
+  (`cli.core/gate-candidate-files-in`, `result/list-files`), so a
+  subscriber spool in a subdirectory is invisible to all three and no
+  base corpus double-counts. `ehrt.corpus.intake/source-files` is the
+  one recursive reader (`file-seq`, for foreign corpora that nest), and
+  a single `fan-out/` parent is what makes its extra rows obviously
+  derived rather than scattered among the corpus's own msg-*.hl7 files."
+  [out-dir subscriber-name]
+  (io/file out-dir "fan-out" (name subscriber-name)))
+
+(defn- spool-fan-out!
+  "Writes each subscriber's own spool from `run-command`'s already-
+  planned `:fan-out` (ehrt.sim-emit-hl7.fan-out/plan). This function
+  FILTERS NOTHING and PARSES NOTHING -- the plan is the decision, and
+  the decision was made where the message vector lives.
+
+  Per subscriber, three things:
+
+    msg-NNN.hl7  one file per message, width-padded to THAT
+                 subscriber's own count (the same `max 3` rule the base
+                 spool uses, so a subscriber under 1,000 messages is
+                 named exactly as the base spool would name it)
+    INDEX.edn    {:name :count :base-indices [...] :filter :msh}
+    DIGEST.edn   {:name :count :sha256 <of the messages, in order,
+                 concatenated with no separator>}
+
+  `:base-indices` IS THE SUBSEQUENCE, written down: a consumer holding
+  the base spool and this file can say which base message each
+  subscriber file came from. That is the whole content of the author's
+  own 2026-08-28 ruling (collision option (b)) -- identity is the log
+  index, never MSH-10, which `control-id-for` is known non-injective
+  over (`roadmap.md#oru-control-id-collision`).
+
+  Both sidecars end in `.edn`, so neither is a gate/play/batch
+  candidate even for a reader pointed straight at a subscriber
+  directory."
+  [fan-out out-dir]
+  (doseq [{:keys [indices messages] :as subscriber} fan-out]
+    (let [dir (fan-out-dir out-dir (:name subscriber))]
+      (kernel/mkdirs! dir)
+      (let [width (max 3 (count (str (max 0 (dec (count messages))))))
+            fmt (str "msg-%0" width "d.hl7")]
+        (dorun (map-indexed (fn [i m] (spit (io/file dir (format fmt i)) m)) messages)))
+      (spit (io/file dir "INDEX.edn")
+            (pr-str (-> (select-keys subscriber [:name :filter :msh])
+                        (assoc :count (count messages) :base-indices indices))))
+      (spit (io/file dir "DIGEST.edn")
+            (pr-str {:name (:name subscriber)
+                     :count (count messages)
+                     :sha256 (kernel/sha256-string (apply str messages))})))))
+
 (defn- spool-sim-output!
   "Writes sim's own run! payload to out-dir: one .hl7 file per message
   (:messages), sim's own :manifest verbatim as manifest.edn -- this
@@ -153,7 +211,7 @@
   ever spools alongside a non-empty :messages set (the hl7 path,
   ADR-0100's own fence) -- a fhir/none-emit run still errors here
   exactly as before, since it never reaches this branch."
-  [{:keys [messages manifest ground-truth]} out-dir]
+  [{:keys [messages manifest ground-truth fan-out]} out-dir]
   (if (empty? messages)
     (kernel/error :sim-produced-no-messages
                   {:hint (str "sim's own run produced no messages -- :emit \"hl7\" "
@@ -181,6 +239,13 @@
       (spit (io/file out-dir "manifest.edn") (pr-str manifest))
       (when ground-truth
         (spit (io/file out-dir "events.edn") (pr-str ground-truth)))
+      ;; ARC 4 SWEEP 5 (ADR-0175 design (f)): the subscriber spools,
+      ;; written from the plan the run already carries. Absent `:fan-out`
+      ;; -- every corpus this project shipped before this sweep -- not one
+      ;; byte of this function's output moves, because this line does not
+      ;; execute.
+      (when (seq fan-out)
+        (spool-fan-out! fan-out out-dir))
       (kernel/ok {:out-dir out-dir}))))
 
 (register!

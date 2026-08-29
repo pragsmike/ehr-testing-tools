@@ -365,3 +365,83 @@
 
 (defn valid-siu-profile? [profile] (m/validate SiuProfile profile))
 (defn explain-siu-profile [profile] (m/explain SiuProfile profile))
+
+;; --- FAN-OUT (ADR-0175 design (f), ruling B1, arc 4 sweep 5): the
+;; subscriber table ----------------------------------------------------
+;; A filter over an already-rendered stream. It creates no content,
+;; reads no state and draws nothing -- the purest emission key in arc 4
+;; (`rulings.md#R-skeleton-or-emission`). No member of
+;; `ehrt.sim-engine.engine/config-keys`, no RNG, no ground truth.
+;; `ehrt.sim-emit-hl7.fan-out` carries the SUBSEQUENCE LAW this schema
+;; only shapes the declaration of.
+
+(def MshOverrideValue
+  "An MSH routing value may not carry any of the ER7 delimiters this
+  emitter declares in MSH-2 (`^~\\&`), the field separator, or a
+  segment terminator -- writing one would not route a message, it would
+  corrupt the segment the mask is defined over. Rejected at config
+  time rather than escaped silently, because a subscriber whose
+  receiving application is spelled with a `|` is a typo, never an
+  intent."
+  [:and :string [:re #"^[^|^~\\&\r\n]*$"]])
+
+(def FanOutSubscriber
+  "One subscriber: a `:name` (its own spool directory), an optional
+  `:filter`, and an optional `:msh` routing override.
+
+  CLOSED at every level, like `:siu`/`:ladders`/`:charges` and for the
+  same reason: a misspelled `:message-type` (singular) inside a filter
+  would be a subscriber that silently receives EVERYTHING, and a
+  misspelled `:recieving-app` a spool that is silently unroutable.
+
+  `:filter` ABSENT means every message -- a full mirror of the base
+  spool, which is a legitimate subscriber and the identity case the
+  subsequence law is easiest to read on. An EMPTY `:filter` map is
+  rejected: it is indistinguishable in effect from an absent one, and a
+  reader who wrote it meant something. Same rule for an empty `:msh`,
+  an empty `:message-types` and an empty `:patient-classes`.
+
+  `:patient-classes` is PLURAL. ADR-0175 section 2(f)'s own sketch
+  spells it `:patient-class`; the session prompt that ruled this sweep
+  spells it `:patient-classes`, and the value is a SET, so the plural
+  is what the shape actually is. Recorded rather than silently
+  reconciled."
+  [:map
+   {:closed true}
+   [:name :keyword]
+   [:filter {:optional true}
+    [:and
+     [:map
+      {:closed true}
+      [:message-types {:optional true}
+       [:and [:set :string] [:fn {:error/message "must name at least one TYPE^TRIGGER"} seq]]]
+      [:patient-classes {:optional true}
+       [:and [:set [:enum :inpatient :outpatient :emergency :preadmit :recurring :obstetrics]]
+        [:fn {:error/message "must name at least one patient class"} seq]]]]
+     [:fn {:error/message "an empty :filter means the same as no :filter -- write one or the other"} seq]]]
+   [:msh {:optional true}
+    [:and
+     [:map
+      {:closed true}
+      [:sending-app {:optional true} MshOverrideValue]
+      [:sending-facility {:optional true} MshOverrideValue]
+      [:receiving-app {:optional true} MshOverrideValue]
+      [:receiving-facility {:optional true} MshOverrideValue]]
+     [:fn {:error/message "an empty :msh overrides nothing -- omit the key"} seq]]]])
+
+(def FanOutProfile
+  "The subscriber table. A non-empty vector of subscribers with
+  DISTINCT `:name`s -- two subscribers sharing a name would write two
+  spools into one directory, which is the silent-overwrite failure this
+  repository has already paid for once (`spool-sim-output!`'s own
+  `msg-%03d` overflow, arc 4 sweep 2). Absent or nil is off, and is
+  byte-identical to every corpus this project shipped before this
+  sweep."
+  [:and
+   [:vector FanOutSubscriber]
+   [:fn {:error/message "must name at least one subscriber"} seq]
+   [:fn {:error/message "subscriber :name values must be distinct"}
+    (fn [subs] (= (count subs) (count (into #{} (map :name) subs))))]])
+
+(defn valid-fan-out-profile? [profile] (m/validate FanOutProfile profile))
+(defn explain-fan-out-profile [profile] (m/explain FanOutProfile profile))

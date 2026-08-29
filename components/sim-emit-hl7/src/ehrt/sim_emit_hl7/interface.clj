@@ -17,6 +17,7 @@
   entire surface that caller needs, so it is the entire surface
   exported here."
   (:require [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]
+            [ehrt.sim-emit-hl7.fan-out :as fan-out]
             [ehrt.sim-emit-hl7.v2-replay :as v2-replay]))
 
 (def default-reference-date emit-hl7/default-reference-date)
@@ -118,3 +119,34 @@
   ehrt.sim-emit-hl7.emit-hl7/siu-renders?."
   [siu event]
   (emit-hl7/siu-renders? siu event))
+
+;; --- ARC 4 SWEEP 5 (ADR-0175 design (f), ruling B1): fan-out. A filter
+;; over an already-rendered stream, called from `ehrt.sim.run` once the
+;; message vector exists -- the only seam at which the base spool is
+;; complete and nothing has been written yet.
+
+(def add-on-message-types
+  "Every MSH-9 arc 4's emission add-ons produce. See
+  ehrt.sim-emit-hl7.emit-hl7/add-on-message-types."
+  emit-hl7/add-on-message-types)
+
+(def emittable-message-types
+  "The whole vocabulary this emitter can put on a wire, and therefore
+  the allow-list a `:fan-out` filter may name. See
+  ehrt.sim-emit-hl7.emit-hl7/emittable-message-types."
+  emit-hl7/emittable-message-types)
+
+(defn plan-fan-out
+  "messages x subscribers x site-profile -> one plan entry per
+  subscriber. See ehrt.sim-emit-hl7.fan-out/plan, whose docstring
+  carries the SUBSEQUENCE LAW and the PV1-less rule."
+  [messages subscribers site-profile]
+  (fan-out/plan messages subscribers site-profile))
+
+(defn mask-msh
+  "message x overrides x replacement-fn -> the message with exactly the
+  named MSH fields rewritten -- the mask half of the subsequence law,
+  exported so a gate can ERASE the same fields on both sides rather
+  than reimplement the mask. See ehrt.sim-emit-hl7.fan-out/mask-msh."
+  [message overrides replacement-fn]
+  (fan-out/mask-msh message overrides replacement-fn))
