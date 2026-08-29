@@ -240,6 +240,30 @@ carries no PV1 and it can open hours nothing else did.
   three other readers of that map want the families present
   unconditionally.
 
+## The gates, with their own exit codes
+
+Run on a clean tree at `246fd66`, each to a full log with the exit code
+captured explicitly:
+
+```
+make test          23,463 passes, 0 failures, 0 errors   MAKE_TEST_EXIT=0
+make integration                                          MAKE_INTEGRATION_EXIT=0
+```
+
+`make test` was run TWICE before it was green, and both reds were real:
+the first stopped at `chatter_test`'s whole-registry pin, which `poly
+test`'s abort-at-the-first-failing-brick had hidden behind
+`ladders_test`'s. `make integration` is where
+`ehrt.integration.oracle-coverage-test` checks the committed
+`witnessed-message-types` against a FRESH 41-root digest, which is what
+makes this sweep's four new MSH-9s a measured claim rather than an
+edited set.
+
+CI at the pushed tip: run **33225246683**, conclusion **success**, head
+`246fd66`. The dark half's own run, **33221323253** at `83929d7`, also
+concluded success. No tag is paid (de-scaffold ruling, 2026-08-25); CI
+green at the tip is the close marker.
+
 ## Findings
 
 1. **`docs/formats.md` now carries a sentence that has become false, and
