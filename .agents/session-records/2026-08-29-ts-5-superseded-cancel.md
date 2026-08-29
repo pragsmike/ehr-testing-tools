@@ -526,11 +526,20 @@ cell and a MEASURED entry.
 | `c5e5f2b` | the guard in both reinstating cancel decides, the two rejection reasons, five gates, contract 1.7.0 -> 1.8.0 with export and baseline re-frozen, `churn/applicable?`'s corrected docstring, the event-validity table row, `docs/formats.md` |
 | the commit this record rides in | the roadmap (row closed by sha, TS-3 and TS-4 re-scoped), the plan appendix's post-TS-5 entry and re-stated 10^6 decision, the regenerated `state-derived.md` and both INDEXes, this record and its prompt archive |
 
-A docs commit cannot name its own sha, so this row names itself by
-description. `make integration` and CI green at the pushed tip are
-recorded by this commit's own successors, which is this repository's
-standing pattern (`7500c75` and `a4e8698` are the previous session's
-pair).
+A docs commit cannot name its own sha, so that row names itself by
+description; it landed as `2078348`. `make integration` ran green on the
+clean tree at that commit (`INTEGRATION_EXIT=0`) and CI green at the
+pushed tip is recorded by this commit's own successor, which is this
+repository's standing pattern (`7500c75` and `a4e8698` are the previous
+session's pair).
+
+`bin/post-push-verify a4e8698 2078348`, all three checks: remote tip
+matches HEAD; every commit message in range is pure ASCII; CI run
+33261235796 reported once at the tip, not awaited to conclusion
+(AR-CI-4). **Awaited afterwards and verified by this session's own `gh
+run view`: run 33261235796 at `2078348`, status completed, conclusion
+SUCCESS** -- the close marker (`rulings.md#R-session-verifies-ci-via-gh`,
+retired as a tag condition, kept as the marker). No tag was paid.
 
 ## What re-pinned, and nothing outside this list
 
@@ -545,7 +554,8 @@ conformance baselines and all four gated fixtures are byte-identical.
 
     make test        MAKE_EXIT=0   0 failures, 15 min 33 s
     make docsgen     DOCSGEN_EXIT=0
-    make integration recorded by this commit's successor (clean-tree rule)
+    make integration INTEGRATION_EXIT=0   (clean tree at 2078348)
+    gh run view 33261235796   completed / success at the pushed tip
     bin/ground-truth-bracket a4e8698 c5e5f2b   IDENTICAL (38 roots), exit 0
     clojure -M:poly check   OK
 
