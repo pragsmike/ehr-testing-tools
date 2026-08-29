@@ -43,7 +43,7 @@ bin/ehrt play out/scenarios/clinic-decade/events.edn --rate 10000000
 ## What to look for
 
 Witnessed 2026-08-28 (seed 20260807, 200 patients, `--config` as
-above): **1,569 ground-truth events, 1,629 HL7 v2 messages, 853 board
+above): **1,569 ground-truth events, 1,688 HL7 v2 messages, 857 board
 snapshots** over a 630,484,703,000 ms (~20.0-year) stream span.
 
 **THE EVENT COUNT DID NOT MOVE AND THE WIRE NEARLY TRIPLED**, which is
@@ -53,7 +53,22 @@ neither reaches the engine, so 1,569 is the same 1,569 as the day
 before. What changed is how much of that log the WIRE carries: **616
 ADT^A31** person-scoped updates and **102 ADT^A08** visit-scoped ones,
 **230 ADT^A28** registrations, and **106 DFT^P03** charge messages at
-encounter closes. THIS SCENARIO IS WHERE THE A31/A08 SPLIT IS MOST
+encounter closes.
+
+*Dated note, 2026-08-28 (arc 4 sweep 4, ADR-0175 ruling B1): SIU. The
+message count moved 1,629 -> 1,688 and the event count did not move at
+all, again -- **59 SIU messages**, 40 SIU^S12 bookings, 6 SIU^S14
+reschedules, 9 SIU^S15 cancellations and 4 SIU^S26 no-shows. This
+scenario is where they matter most of the six: it is a decade of BOOKED
+ambulatory visits, so its appointments are not incidental traffic
+around an inpatient stay, they are the thing the scenario is about.
+Every one of those 59 events was in this corpus's ground truth the day
+before and reached no consumer reading the wire. The other counts above
+are unchanged to the message: 616 A31s, 102 A08s, 230 A28s, 106
+DFT^P03s, 300 A20s. Board snapshots moved 853 -> 857 -- four hours in
+which an appointment notification is the only thing that happened.*
+
+THIS SCENARIO IS WHERE THE A31/A08 SPLIT IS MOST
 LOPSIDED, and the reason is its shape: a decade of booked ambulatory
 visits against twenty years of demographic churn means almost every
 change falls BETWEEN visits, so the event-driven half of chatter is
@@ -124,7 +139,7 @@ timeline IS. Every figure in this section moved with it, and the
 previous witness is recorded at the bottom of this block rather than
 overwritten.
 
-**The board-snapshot census, 853 snapshots:** `inpatients: 0` 803,
+**The board-snapshot census, 857 snapshots:** `inpatients: 0` 807,
 `inpatients: 1` 23, `inpatients: 2` 27.
 `bin/demo-exerciser-clinic-decade` re-derives that whole distribution
 from this paragraph at runtime and asserts every count exactly, plus
@@ -185,9 +200,9 @@ sentinel, because HL7 v2 has no code for it and every literal is one
 site's local convention).
 
 The run's own closing summary: `{:unparseable-count 0, :snapshot-count
-853, :skip-count 0, :rate 1.0E7, :idle-cap-ms 5000, :wallclock-ms
-64698, :stream-span-ms 630484703000, :clamped-count 0, :emitted 1629,
-:unfolded-count 0, :sink "ticker"}` -- 853 of the 1,629 messages
+857, :skip-count 0, :rate 1.0E7, :idle-cap-ms 5000, :wallclock-ms
+64698, :stream-span-ms 630484703000, :clamped-count 0, :emitted 1688,
+:unfolded-count 0, :sink "ticker"}` -- 857 of the 1,688 messages
 rendered a snapshot; the others landed in a board window a prior
 message had already opened. NOT ONE inter-message wait exceeded
 `--idle-cap`'s default 5 seconds, so nothing was skipped and the whole

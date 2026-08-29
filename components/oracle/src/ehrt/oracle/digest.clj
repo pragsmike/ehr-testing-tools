@@ -75,11 +75,14 @@
       `scheduling`, is the first to turn `:scheduling` ON: the only root
       carrying `:appointment`, `:reschedule`, `:appointment-cancel` or
       `:no-show`, and the only one where a second encounter is produced
-      BY BOOKING rather than by a person walking in again. It renders no
-      message for any of the four -- ruling C, the v2.4 SIU structures
-      against MSH-12 `2.3` -- so it adds four EVENT kinds and ZERO
-      message types, the first root to widen one vocabulary without the
-      other. The 37th, `chatter-charges`, is the first to turn
+      BY BOOKING rather than by a person walking in again. It used to
+      add four EVENT kinds and ZERO message types -- the first root to
+      widen one vocabulary without the other -- because none of the four
+      reached the wire at all. THAT ENDED 2026-08-28 (arc 4 sweep 4,
+      ADR-0175 ruling B1): this root turns `:siu` ON and now adds four
+      MSH-9s as well, SIU^S12/S14/S15/S26. The sentence is amended
+      rather than deleted because the asymmetry it recorded is what the
+      sweep closed. The 37th, `chatter-charges`, is the first to turn
       `:chatter` and `:charges` ON, and it is the MIRROR IMAGE of the
       36th: four MSH-9s and ZERO event kinds. ADT^A08/A31/A28 are
       re-statement chatter and DFT^P03 is a whole message FAMILY this
@@ -783,10 +786,22 @@
 
   THE COVERAGE IT ADDS: the four scheduling kinds, which no other root
   emits, and the first population-scale exercise of a follow-up-produced
-  second encounter. It adds NO message type -- none of the four reaches
-  the wire (ruling C, MSH-12 vs the v2.4 SIU structures), which is why
-  its message count is lower than its event count by more than the bed
-  cycle's alone accounts for."
+  second encounter.
+
+  AND, SINCE 2026-08-28 (arc 4 sweep 4, ADR-0175 ruling B1), FOUR
+  MESSAGE TYPES: `:siu {}` is on below, so SIU^S12/S14/S15/S26 reach
+  this root's `:hl7` half. It used to add NO message type -- none of the
+  four reached the wire under ruling C's MSH-12-vs-v2.4-SIU gap -- which
+  is what made its message count so much lower than its event count.
+  That gap is closed and this is the only root that can witness it: no
+  other root turns `:scheduling` on, so no other root has an appointment
+  to render.
+
+  THE OPT-IN IS THIS ROOT'S ALONE, deliberately. `:siu` is EMISSION
+  (`rulings.md#R-skeleton-or-emission`) -- it renders events the log
+  already holds -- so it moves this root's `:hl7` half and NOT its
+  `:ground-truth` half, which `bin/ground-truth-bracket` asserts across
+  every root including this one."
   []
   (let [r (sim/run-command
            {:seed 20260829 :patients 60 :churn true :arrival-gap 90
@@ -817,7 +832,13 @@
                          :no-show-rate 0.12
                          :reschedule-rate 0.10
                          :cancel-rate 0.08
-                         :follow-up {:rate 0.45 :interval-days [14 90]}}})]
+                         :follow-up {:rate 0.45 :interval-days [14 90]}}
+            ;; ARC 4 SWEEP 4 (ADR-0175 ruling B1, 2026-08-28): SIU, on.
+            ;; `{}` is ON here and not off -- the key's presence is the
+            ;; opt-in and `:triggers` only narrows it -- so this root
+            ;; renders all four triggers, which is the whole reason it
+            ;; is the one that takes the key.
+            :siu {}})]
     (when-not (= :ok (:status r))
       (throw (ex-info "scheduling root did not run cleanly" {:result r})))
     {:ground-truth (:ground-truth (:payload r))
@@ -1267,6 +1288,19 @@
   "Every MSH-9 the 38 engine-layer roots emit. ADT^A02 is death-fixture's
   alone, once. ADT^A34 is emitted by no root at all.
 
+  WIDENED AGAIN 2026-08-28 by `scheduling`, arc 4 sweep 4's own turn-on
+  (ADR-0175 ruling B1): SIU^S12, SIU^S14, SIU^S15 and SIU^S26 -- the
+  SECOND whole message family this project has ever emitted after
+  DFT^P03, and the first NON-ADT, NON-ORDER one. All four are
+  `scheduling`'s alone and unavoidably so: it is the only root that
+  turns `:scheduling` on, so it is the only root with an appointment to
+  render. `witnessed-event-kinds` does NOT move -- the four kinds were
+  already there, witnessed by this same root since 2026-08-27, and this
+  sweep only renders them. That is the exact INVERSE of sweep 2's
+  `chatter-charges`, which added four MSH-9s and zero kinds because its
+  messages have no events; here the events existed and the messages did
+  not.
+
   WIDENED AGAIN 2026-08-28 by `order-pathway`, arc 4 sweep 3's own step 0
   (ADR-0175 design (b)): `ORM^O01`, the last family in
   `message-type-registry` that no root emitted, and with it the FIRST
@@ -1314,7 +1348,8 @@
   set only through the merge."
   #{"ADT^A01" "ADT^A02" "ADT^A03" "ADT^A04" "ADT^A08" "ADT^A11" "ADT^A12"
     "ADT^A13" "ADT^A17" "ADT^A20" "ADT^A28" "ADT^A31" "ADT^A40" "DFT^P03"
-    "ORM^O01" "ORU^R01"})
+    "ORM^O01" "ORU^R01"
+    "SIU^S12" "SIU^S14" "SIU^S15" "SIU^S26"})
 
 (def ^:private roots
   {"appendicitis"                       appendicitis-batch

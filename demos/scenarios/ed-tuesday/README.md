@@ -58,8 +58,8 @@ bin/ehrt play out/scenarios/ed-tuesday/events.edn --rate 10000000
 ## What to look for
 
 Witnessed 2026-08-28 (seed 20260811, 100 patients, `--config` as
-above, `--churn` on): **1,269 ground-truth events, 1,497 HL7 v2
-messages, 574 board snapshots** over a 630,342,955,000 ms stream span.
+above, `--churn` on): **1,269 ground-truth events, 1,554 HL7 v2
+messages, 579 board snapshots** over a 630,342,955,000 ms stream span.
 
 **THE EVENT COUNT DID NOT MOVE AND THE MESSAGE COUNT NEARLY DOUBLED,
 and that is the whole of what arc 4 is.** `config.edn` opted this
@@ -155,7 +155,7 @@ those five messages now fall inside an open encounter instead.)
 Note that the A20 bed-status messages carry NO PV1 at all -- an
 `ADT^A20` is `[MSH EVN NPU]`, no PID and no PV1, because a bed that
 nobody is in has no patient to name, and an ADT^A31 or ADT^A28 carries
-none either -- a person-scoped update names no visit. That is why 1,497
+none either -- a person-scoped update names no visit. That is why 1,554
 messages carry only 681 PV1 segments between them.
 
 *Dated note, 2026-08-28 (arc 4 sweep 3, ADR-0175 design (b)): the
@@ -164,6 +164,19 @@ ORU^R01 restatement is rendered by the same builder as the message it
 restates, PV1 included -- so both figures moved together, 1,447/631 to
 1,497/681, and the PV1-less families above are unchanged at 421 A20s,
 288 A31s and 116 A28s.*
+
+*Dated note, 2026-08-28 (arc 4 sweep 4, ADR-0175 ruling B1): SIU. The
+message count moved 1,497 -> 1,554 and **the PV1 count did not move at
+all**, which is the exact inverse of the ladder's move one commit
+earlier. Scheduling's four kinds join the PV1-less families for a
+reason of their own, and it is not the A20's: an SIU^S12 DOES name a
+patient and carries a PID. What it does not name is a VISIT -- a
+booking precedes the encounter it opens, so there is no open encounter
+to describe and PV1 rides only one that exists. Measured across every
+population this repository gates: not one SIU message carries a PV1.
+The families are now 44 S12s, 5 S14s, 3 S15s and 5 S26s here, beside
+the 421 A20s, 288 A31s and 116 A28s, all four of the latter
+unchanged.*
 
 **THE SHIFT IS STILL A SHIFT; THE STREAM IS NOT.** `config.edn` opted
 this scenario into `ehrt.sim-engine.engine`'s demographic fold on
@@ -297,9 +310,9 @@ at a genuinely short (day/week/month-scale) horizon is expected to
 show sparse-to-zero live content; this run's own zero is that expected
 outcome, not a config defect.
 
-Full closing summary: `{:unparseable-count 0, :snapshot-count 574,
+Full closing summary: `{:unparseable-count 0, :snapshot-count 579,
 :skip-count 0, :rate 1.0E7, :idle-cap-ms 5000, :wallclock-ms 64855,
-:stream-span-ms 630342955000, :clamped-count 0, :emitted 1497,
+:stream-span-ms 630342955000, :clamped-count 0, :emitted 1554,
 :unfolded-count 0, :sink "ticker"}`.
 
 (RE-WITNESSED 2026-08-28, and the previous value was STALE rather than
@@ -513,11 +526,11 @@ and so is the claim; what changed is that the denominator contains
 patients the mechanism cannot reach, and saying "5 of 112" without
 saying which 112 would understate it.
 
-Closing summary: `{:unparseable-count 0, :snapshot-count 615,
+Closing summary: `{:unparseable-count 0, :snapshot-count 620,
 :skip-count 0, :rate 1.0E7, :idle-cap-ms 5000, :wallclock-ms 64832,
-:stream-span-ms 630342955000, :clamped-count 0, :emitted 1497,
-:unfolded-count 0, :sink "ticker"}` -- the same 1,497 messages as the
-base run, FORTY-ONE more snapshots than it (615 against 574), and a
+:stream-span-ms 630342955000, :clamped-count 0, :emitted 1554,
+:unfolded-count 0, :sink "ticker"}` -- the same 1,554 messages as the
+base run, FORTY-ONE more snapshots than it (620 against 579), and a
 stream span identical to it to the millisecond. The span figure used to
 differ between the two runs, in one direction or the other across four
 witnesses; it no longer does, and the reason is arc 4 rather than a
@@ -560,8 +573,8 @@ bin/ehrt corpus batch out/scenarios/ed-tuesday-latency --interval 60 \
   --out-dir out/scenarios/ed-tuesday-latency-batches
 ```
 
-Witnessed 2026-08-28 (same seed-20260811 run as above, 1,497 messages
-across 615 occupied hourly buckets, `2026-08-11T00:00Z` through
+Witnessed 2026-08-28 (same seed-20260811 run as above, 1,554 messages
+across 620 occupied hourly buckets, `2026-08-11T00:00Z` through
 `2046-08-01T15:00Z`). The bucket count moved 186 -> 615 with the
 CHATTER and CHARGES opt-ins, and this is the largest single move it has
 taken. The mechanism is the bed cycle's rather than scheduling's --
@@ -582,6 +595,21 @@ minutes, so a rung lands in the same hour as the order or the result it
 restates -- or at most the next one, in an hour that already carried
 them. Traffic that thickens existing hours cannot open new ones.*
 
+*Dated note, 2026-08-28 (arc 4 sweep 4): SIU took the message count
+1,497 -> 1,554 and the bucket count 615 -> 620. FIVE new hours from
+fifty-seven messages -- a small move, and it is worth reading beside
+the ladder's zero directly above it, because the two sweeps landed one
+commit apart and the difference is entirely about WHERE an add-on's
+instants come from. A rung's instant is derived from an interval that
+already exists, so it is trapped inside an occupied hour. An
+appointment's is not derived from anything on the wire at all: a
+booking fires days or months before the visit it names, a no-show at a
+scheduled instant the patient never reached, and a reschedule at
+whatever hour the scheduler happened to be open. Most of those hours
+already carried the corpus's own person-level chatter, which is why
+five is small; the five that did not are hours this scenario had never
+put a message in.*
+
 Earlier moves, kept: 106 -> 135 with the bed cycle (A20 traffic in
 previously empty hours), and 135 -> 186 with SCHEDULING, which did not
 add much traffic (43 more messages) but MOVED it -- a lead time
@@ -593,16 +621,16 @@ displaces an arrival's whole encounter by days.
  {:out-dir "out/scenarios/ed-tuesday-latency-batches",
   :interval-ms 3600000,
   :batches
-  [{:file "batch-000.hl7", :count 9,
+  [{:file "batch-000.hl7", :count 10,
     :start-ms 1786406400000, :end-ms 1786410000000, :verified true}
-   {:file "batch-001.hl7", :count 14,
+   {:file "batch-001.hl7", :count 15,
     :start-ms 1786410000000, :end-ms 1786413600000, :verified true}
-   {:file "batch-002.hl7", :count 16,
+   {:file "batch-002.hl7", :count 18,
     :start-ms 1786413600000, :end-ms 1786417200000, :verified true}
-   ;; ... batch-003.hl7 through batch-613.hl7 ...
-   {:file "batch-613.hl7", :count 2,
+   ;; ... batch-003.hl7 through batch-618.hl7 ...
+   {:file "batch-618.hl7", :count 2,
     :start-ms 2400498000000, :end-ms 2400501600000, :verified true}
-   {:file "batch-614.hl7", :count 1,
+   {:file "batch-619.hl7", :count 1,
     :start-ms 2416748400000, :end-ms 2416752000000, :verified true}],
   :span {:earliest-ms 1786406400000, :latest-ms 2416752000000}}}
 ```
@@ -613,14 +641,14 @@ or so batches are the ED shift itself, packed hour after hour with 4 to
 they are almost all `:count 1` or `:count 2` -- one birth, one injury,
 one unidentified arrival, one residence move restated as an A31, in an
 hour that carried nothing else, years apart from the batch before it.
-`batch-599` onward sit in 2045 and 2046. The empty hours between are
+`batch-604` onward sit in 2045 and 2046. The empty hours between are
 simply ABSENT, never written as empty files (ADR-0111's own named v1
 deferral: an interior empty batch is not represented, only skipped),
-which is why twenty years partition into 615 files rather than 175,000.
-Every one of the 615 written files self-verified:
+which is why twenty years partition into 620 files rather than 175,000.
+Every one of the 620 written files self-verified:
 `write-and-verify-batch!` (`bases/cli`) decodes what it just wrote
 straight back and checks `BTS-1` against the real message count before
-ever reporting success -- `:verified true` on all 615 is that check,
+ever reporting success -- `:verified true` on all 620 is that check,
 exercised, not merely claimed.
 
 **The wrapper itself**, `batch-000.hl7`, head and tail:
@@ -631,20 +659,21 @@ BHS|^~\&
 
 MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811000000+0000||ADT^A28|MRN000001-A28-0-0|P|2.4EVN|A2
 $ tail -c 45 out/scenarios/ed-tuesday-latency-batches/batch-000.hl7 | cat -A
-mergency^^ED-H08^general-hospital|U^M$
+ergency^^ED-H08^general-hospital|U^M$
 $
-BTS|9$
+BTS|10$
 $
 ```
 
-`BHS|^~\&` opens the batch; `BTS|9` closes it, `BTS-1` naming the true
-count of 9 messages this file actually carries. Note what the FIRST of
-those nine is now: an `ADT^A28`, MSH-10 `MRN000001-A28-0-0`. Before the
+`BHS|^~\&` opens the batch; `BTS|10` closes it, `BTS-1` naming the true
+count of 10 messages this file actually carries. (It was 9 until arc 4
+sweep 4's SIU opt-in put one more into this hour.) Note what the FIRST
+of those ten is: an `ADT^A28`, MSH-10 `MRN000001-A28-0-0`. Before the
 chatter opt-in the batch opened on MRN000001's admission; it now opens
 on that patient's REGISTRATION, which is what a real feed sends first
 and what this project never used to send at all. The ordinal suffix
 `-0` is the control-id shape chatter mints so two re-statements of one
-patient at one instant cannot collide. Note the LAST of the nine too:
+patient at one instant cannot collide. Note the LAST of the ten too:
 an `NPU` segment ending `|U` -- an ADT^A20 reporting bed `ED-H08`
 unoccupied and ready again. A bed-status update is an ordinary
 message to the batch protocol, which is the point of rendering the
@@ -686,7 +715,7 @@ finished.
 **The lesson** (the author's own charter, ADR-0107/ADR-0109, quoted
 above, restated for batching specifically): transport-level
 completeness -- every `BTS-1` count checks out, exactly as this run's
-own 615-for-615 self-verification shows -- says nothing about
+own 620-for-620 self-verification shows -- says nothing about
 clinical-level completeness -- whether an encounter's own full record
 set has actually arrived yet. A downstream receiver deciding "do I
 have all of this encounter?" gets exactly the case it needs to test

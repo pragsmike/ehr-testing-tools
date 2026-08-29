@@ -171,8 +171,8 @@ if [ -z "$sha_d1" ] || [ "$sha_d1" != "$sha_d2" ]; then
   fail "second-clock identity: sha256sum digests differ (base=$sha_d1 latency=$sha_d2) -- README's own 'Ground truth is invariant' claim does not hold on this run"
 fi
 
-# "The 615-batch :verified true listing" -- README's own "Batched
-# delivery" section: 615 batches, every one self-verified, none
+# "The 620-batch :verified true listing" -- README's own "Batched
+# delivery" section: 620 batches, every one self-verified, none
 # unverified. (34 until ADR-0171's RNG stream partition moved this
 # run's own message set, then 32, then 105 when arc 3a part 4's
 # demographic-fold opt-in stretched this run from a 35-hour shift to a
@@ -191,20 +191,27 @@ fi
 # DFT^P03 at every close -- 782 messages became 1,447, and because most
 # of the new ones are person-level events spread across a twenty-year
 # demographic horizon rather than clumped into one ED shift, they land
-# in hours that had carried nothing at all. Re-derived each time,
+# in hours that had carried nothing at all, and 620 when arc 4 sweep 4's
+# SIU opt-in put scheduling's four kinds on the wire. That last move is
+# the SMALL one and is worth reading beside the ladder's, which moved it
+# by NOTHING: a rung sits strictly inside an order-to-result interval,
+# so it can only thicken an hour that already carried its own order; an
+# appointment, a reschedule and a no-show sit at instants nothing else
+# chose -- days or months from the visit they name -- so 57 SIU messages
+# opened FIVE new hours. Re-derived each time,
 # never relaxed: the assertion is still an exact equality against the
 # README's own witnessed number.)
 verified_true_count="$(grep -o ':verified true' "$LOG_DIR/step-9.out" | wc -l | tr -d ' ')"
 verified_false_count="$(grep -c ':verified false' "$LOG_DIR/step-9.out" || true)"
-if [ "$verified_true_count" -ne 615 ]; then
-  fail "batch listing: expected 615 ':verified true' entries, got $verified_true_count"
+if [ "$verified_true_count" -ne 620 ]; then
+  fail "batch listing: expected 620 ':verified true' entries, got $verified_true_count"
 fi
 if [ "${verified_false_count:-0}" -ne 0 ]; then
   fail "batch listing: expected zero ':verified false' entries, got $verified_false_count"
 fi
 batch_file_count="$(ls out/scenarios/ed-tuesday-latency-batches/*.hl7 2>/dev/null | wc -l | tr -d ' ')"
-if [ "$batch_file_count" -ne 615 ]; then
-  fail "batch listing: expected 615 batch-*.hl7 files on disk, got $batch_file_count"
+if [ "$batch_file_count" -ne 620 ]; then
+  fail "batch listing: expected 620 batch-*.hl7 files on disk, got $batch_file_count"
 fi
 
 # "The straddle membership" -- README's own "A straddling encounter":

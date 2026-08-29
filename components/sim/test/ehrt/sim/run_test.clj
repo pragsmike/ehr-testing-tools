@@ -561,7 +561,18 @@
            ;; worth more than the key being live in each one, and a
            ;; corpus that places no order is itself a case worth gating
            ;; -- `ehrt.sim.ladders-run-test` asserts it byte-identical.
-           :ladders {:rungs [0.5] :order-rungs [0.25]}}}])
+           :ladders {:rungs [0.5] :order-rungs [0.25]}
+           ;; ARC 4 SWEEP 4 (ADR-0175 ruling B1, 2026-08-28): SIU, on,
+           ;; and again in this run's own opts because it names no
+           ;; config. UNLIKE `:ladders` AND `:bed-cycle`, IT IS NOT
+           ;; INERT HERE: this run books THREE appointments over its ten
+           ;; ADHD patients -- 2 kept and 1 no-show -- so it grows two
+           ;; SIU^S12s and one SIU^S26 and its message count moves
+           ;; 103 -> 106. It is the THINNEST of the six populations, and
+           ;; that is stated rather than hidden: it draws NO reschedule
+           ;; and NO cancel at this seed, so `pos?` on S14 or S15 may
+           ;; not be asserted here. The other five carry all four.
+           :siu {}}}])
 
 (def ^:private corpora
   "run id -> that run's own `run-command` result, populated once by

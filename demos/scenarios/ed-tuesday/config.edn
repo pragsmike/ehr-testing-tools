@@ -358,4 +358,28 @@
  ;; 0038/0123/0085 appear in no jar and no resource in this tree, so
  ;; `ehrt.sim-emit-hl7.site-profile` ships them as authored, overridable
  ;; code tables beside `:bed-status`. See `docs/site-profiles.md`.
- :ladders {:rungs [0.5] :order-rungs [0.25]}}
+ :ladders {:rungs [0.5] :order-rungs [0.25]}
+ ;; ARC 4 SWEEP 4 (ADR-0175 ruling B1, 2026-08-28): SIU. Scheduling's
+ ;; four kinds have been in this corpus's GROUND TRUTH since arc 3b
+ ;; sweep 3 -- `:scheduling` above is what makes them -- and have
+ ;; reached no consumer reading the wire since. This key closes that
+ ;; gap, and it is the only arc 4 key that renders an event the log
+ ;; ALREADY HELD rather than a restatement of one.
+ ;;
+ ;; `{}` IS ON, and here alone among the four emission keys. `:chatter`,
+ ;; `:charges` and `:ladders` carry the settings that make them do
+ ;; anything, so their empty map is off; `:siu` has nothing to
+ ;; configure but WHICH KINDS, so the key's presence is the opt-in and
+ ;; `:triggers [...]` narrows it. A site wanting only no-show
+ ;; notifications writes `{:triggers [:no-show]}`; a site wanting none
+ ;; removes the key and gets today's bytes back exactly.
+ ;;
+ ;; NO DRAW, no planner, and no ground truth: `:siu` decides only
+ ;; whether `event->messages` fills a lane-0 slot for an event that
+ ;; already exists. It claims no `:emission` id-tag and reaches no
+ ;; member of `ehrt.sim-engine.engine/config-keys`.
+ ;;
+ ;; SCH-25'S STATUS CODES ARE SITE-PROFILE DATA, NOT A CITATION, the
+ ;; same standing the three ladder tables have: HL7 Table 0278 appears
+ ;; in no jar and no resource in this tree. See `docs/site-profiles.md`.
+ :siu {}}
