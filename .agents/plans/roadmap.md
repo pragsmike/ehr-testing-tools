@@ -108,9 +108,30 @@ with them.
   byte-frozen. Its own measured headline: 50 new messages on the
   ed-tuesday demo and the hourly BUCKET COUNT DID NOT MOVE, still 615,
   because a rung lands inside an hour that already carried its own order
-  or result -- the exact opposite of chatter's 186 -> 615. Three sweeps
-  remain: **SIU next** (unblocked since sweep 1's 2.4 flip), then
-  fan-out and MLLP. The design's OTHER measured finding still
+  or result -- the exact opposite of chatter's 186 -> 615.
+  **SWEEP 4 OF 6 LANDED 2026-08-28** -- ruling B1's third and last
+  tranche: SIU^S12/S14/S15/S26, behind `:siu`. Scheduling's four kinds
+  have been ground truth since arc 3b sweep 3 and reached no consumer
+  reading the wire until now; this is the one arc-4 add-on that renders
+  an event the log ALREADY HELD rather than a restatement of one, so it
+  is the first to add four MSH-9s and ZERO event kinds by RENDERING
+  rather than by inventing -- the exact inverse of sweep 2's
+  `chatter-charges`. Both brackets IDENTICAL on the dark half; the
+  turn-on moved exactly ONE digest, the `scheduling` root's, with
+  ground truth IDENTICAL at all 38. Its two unpredicted measurements:
+  **no SIU in any corpus carries a PV1** -- structural, not seeded,
+  because both booking producers decide outside an open encounter -- so
+  the PV1 count held at 681 while the message count rose; and the
+  hourly BUCKET COUNT MOVED 615 -> 620 where the ladder moved it by
+  nothing, because a rung's instant is trapped inside an interval that
+  already exists and an appointment's is not. One thing it did NOT do
+  and handed to the author: each kind's `:doc` still says "deliberately
+  unrendered in 1.7.0", which has become false of the emitter, and the
+  fix moves a contract artifact this sweep's fences forbid touching.
+  Two sweeps remain: fan-out and MLLP, and the fan-out is gated on
+  `roadmap.md#oru-control-id-collision` -- a subscriber table keyed on
+  MSH-10 either waits for that fix or derives from log indices. The
+  design's OTHER measured finding still
   stands and no sweep can lift it: NK1 is unavailable to this arc at all,
   because household state reaches no ground-truth event -- ADR-0172 limitations
   row 8 is untouched.
