@@ -428,6 +428,15 @@ assertions, 0 failures. Disclosed rather than left implicit; a third
 full run for two sentences of prose would have bought nothing those four
 gates do not already cover.
 
+**CI at the tip (`f26eb29`): success, run 33280356459.** All four
+commits went up in one push, so CI covers the tip -- which is what
+matters here, because two of the four are red-first on their own:
+`2cf997f` is docsgen-stale (its roadmap rows moved `state-derived.md`,
+which `06ce007` carries) and `06ce007` trips the `straddle-timeline.svg`
+tripwire that `f26eb29` clears. Neither was ever pushed alone
+(`rulings.md#R-red-pushed-with-green`). No tag was paid, per the
+de-scaffold ruling; this run is the close marker.
+
 ## 6. Judgment calls
 
 1. **The moratorium's "so half of that condition is now met" clause was
