@@ -58,17 +58,17 @@ Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entr
 | roadmap rows (all sections) | 61 |
 | rulings rows | 113 |
 | rulings rows superseded | 6 |
-| session records | 194 |
-| archived prompts | 186 |
+| session records | 195 |
+| archived prompts | 187 |
 
 ### Roadmap rows by section
 
 | section | rows | tokens in use |
 |---|---|---|
-| Next | 6 | `OPEN` |
+| Next | 5 | `OPEN` |
 | Externals | 8 | `EXTERNAL` |
 | Deferred | 20 | `DEFERRED` |
-| Done | 27 | `CLOSED` |
+| Done | 28 | `CLOSED` |
 
 ## Reading sets
 
@@ -79,7 +79,7 @@ Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entr
 | :corpus | 7 | 1889 | 2045 | 2045 | 156 |
 | :docs | 5 | 785 | 785 | 785 | 0 |
 | :judge | 8 | 975 | 1000 | 1000 | 25 |
-| :onboarding | 10 | 1479 | 1530 | 1530 | 51 |
+| :onboarding | 10 | 1397 | 1530 | 1530 | 133 |
 | :sim | 6 | 1337 | 1405 | 1405 | 68 |
 
 ## What this page reads

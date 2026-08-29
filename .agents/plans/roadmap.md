@@ -59,115 +59,32 @@ with them.
   1 in clinic-decade demo (sweep-3 record :290); fix moves every corpus, its own
   declared sweep; sweep 5's fan-out must either wait for it or derive from log
   indices.
-- OPEN **[emission-add-ons]** PRIORITY 5 -- traffic-scale arc 4
-  (`rulings.md#R-mix-7`): re-statement chatter (A08/A31/A28, IN1-only),
-  order/result status ladders, DFT^P03 charges, the fan-out/subscriber table;
-  rides `roadmap.md#corpus-player-slices`. Reshuffles NOTHING and needs no stream
-  work, so it is the one arc that may proceed independently now that arc 3's
-  skeleton contract is stable. DESIGNED 2026-08-27 by ADR-0175, **ACCEPTED
-  2026-08-27, RULED A1 B1 C1 D1 E1**. **SWEEP 1 OF 6 LANDED 2026-08-27 and the
-  MSH-12 QUESTION IS CLOSED**: `default-msh` declares `"2.4"` and PID-13 renders
-  `(NNN)NNN-NNNN`, so every message now resolves to a real v2.4 structure
-  instead of `GenericMessage$V23` -- measured, and narrower than ADR-0175
-  section 1(iv) claimed: the flip buys PRIMITIVE TYPING and not
-  segment-order/cardinality/required-segment checking, which still needs the
-  profile tier. Ground truth held (`bin/ground-truth-bracket`, the instrument
-  E1 owed and sweep 1 built, IDENTICAL over 36 roots at both commits). **SWEEP
-  2 OF 6 LANDED 2026-08-28** -- ruling B1's first tranche, both halves of it:
-  re-statement chatter (A08/A31/A28 and the IN1-only coverage update, design
-  (a)) and DFT^P03 charges (design (c)), each behind its own opt-in key, plus
-  design (h)/ruling D1's `gate v2 --sample-add-ons`. Six corpora and a 40th
-  oracle root opted in; ground truth held again across all 36 pre-existing
-  roots. Its own measured headline: 469 of 478 A08s across six populations
-  come from the PERIODIC census and not the event-driven half, which is
-  ADR-0175 section 2(a)'s prediction holding. Three sweeps remain: ladders,
-  SIU (now unblocked), fan-out/MLLP. **SWEEP 3 (LADDERS) OWES AN
-  ORDER-PLACING ORACLE ROOT AS ITS STEP 0**: `witnessed-event-kinds` still
-  contains neither `:order-placed` nor `:result-available` and
-  `witnessed-message-types` no `ORM^O01`, so a ladder turn-on would read
-  IDENTICAL across all 40 roots while changing every order in every gated
-  corpus -- `rulings.md#R-empty-population-is-red` one layer up. Sweep 2
-  deliberately did NOT close it: its own root places no order, so that the
-  coverage claim it adds is exactly the four MSH-9s it exists for.
-  **SWEEP 3 OF 6 LANDED 2026-08-28** -- ruling B1's second tranche,
-  design (b): order/result STATUS LADDERS, ORM^O01 restatements carrying
-  ORC-5 and ORU^R01 restatements carrying OBR-25/OBX-11 at fixed
-  fractions of an order's own interval, behind `:ladders`. **ITS STEP 0
-  PAID THE DEBT THE SENTENCE ABOVE ROWED**: `order-pathway`, the 41st
-  root and the first in this oracle's life to place an order, closes
-  `witnessed-event-kinds` at **28 of 28** -- R4-Q6 (ii) (b), rowed since
-  2026-08-19, is paid -- and puts `ORM^O01` on the witnessed list, so
-  the ladder's turn-on had a population to move rather than an IDENTICAL
-  over an empty one. The mechanism landed DARK with both brackets
-  IDENTICAL at every root, and the turn-on moved exactly ONE digest, the
-  opted-in root's. It takes NO RNG at all: a rung is a pure function of
-  `(log, config)`, since `:result-available` carries `:order-event-id`.
-  It is also the first arc-4 add-on that DECLARES a byte change to an
-  existing message -- the terminal ORU of an order that grew a rung
-  gains its final status codes, per-order, so an order with no rung is
-  byte-frozen. Its own measured headline: 50 new messages on the
-  ed-tuesday demo and the hourly BUCKET COUNT DID NOT MOVE, still 615,
-  because a rung lands inside an hour that already carried its own order
-  or result -- the exact opposite of chatter's 186 -> 615.
-  **SWEEP 4 OF 6 LANDED 2026-08-28** -- ruling B1's third and last
-  tranche: SIU^S12/S14/S15/S26, behind `:siu`. Scheduling's four kinds
-  have been ground truth since arc 3b sweep 3 and reached no consumer
-  reading the wire until now; this is the one arc-4 add-on that renders
-  an event the log ALREADY HELD rather than a restatement of one, so it
-  is the first to add four MSH-9s and ZERO event kinds by RENDERING
-  rather than by inventing -- the exact inverse of sweep 2's
-  `chatter-charges`. Both brackets IDENTICAL on the dark half; the
-  turn-on moved exactly ONE digest, the `scheduling` root's, with
-  ground truth IDENTICAL at all 38. Its two unpredicted measurements:
-  **no SIU in any corpus carries a PV1** -- structural, not seeded,
-  because both booking producers decide outside an open encounter -- so
-  the PV1 count held at 681 while the message count rose; and the
-  hourly BUCKET COUNT MOVED 615 -> 620 where the ladder moved it by
-  nothing, because a rung's instant is trapped inside an interval that
-  already exists and an appointment's is not. One thing it did NOT do
-  and handed to the author: each kind's `:doc` still says "deliberately
-  unrendered in 1.7.0", which has become false of the emitter, and the
-  fix moves a contract artifact this sweep's fences forbid touching.
-  Two sweeps remain: fan-out and MLLP, and the fan-out is gated on
-  `roadmap.md#oru-control-id-collision` -- a subscriber table keyed on
-  MSH-10 either waits for that fix or derives from log indices. The
-  design's OTHER measured finding still
-  stands and no sweep can lift it: NK1 is unavailable to this arc at all,
-  because household state reaches no ground-truth event -- ADR-0172 limitations
-  row 8 is untouched.
-- OPEN **[corpus-player-slices]** PRIORITY 7 -- the corpus-player slices
-  chartered by ADR-0014 that have never had a row in any register. CORRECTED
-  2026-08-26 (ADR-0174 section 1(ii)'s disclosure): the **bed-board sink LANDED
-  under ADR-0067** (2026-08-07) and ships as `ehrt play PATH --board` --
-  `components/corpus/board.clj` folds a paced v2 stream and renders occupied
-  beds by ward. This row's original wording named it among the never-rowed
-  slices, which was the review-5 pattern -- a claim true when written that
-  nothing keeps true. What is actually left, and still UNPRICED and unscheduled
-  pending their own author ruling: **`:mllp`** and the ONE UNBUILT PIECE of
-  **accumulator wiring** -- the fold itself ships (see this row's last paragraph;
-  ADR-0175 section 2(f) measured it), so only exposing its final state is left --
-  plus the board's own blind spot ADR-0174 section 2(c) names -- `--board` is message
-  input only (`:play-board-unsupported-for-events`), so a bed the cycle marks
-  dirty or cleaning stays invisible on the whiteboard until a message carries it.
-  Rowed rather than retired because `R-unregistered-request-gets-a-row` puts
-  visibility first, and a charter with no row is exactly what that rule exists to
-  catch. ADR-0158 (review-4 D7-5). ADR-0175 section 2(f)/2(g) designs both
-  remaining halves and re-prices the second: `:mllp` is a new SINK KIND (the
-  framing codec and its property tests already exist; `known-sink-kinds` has no
-  socket), reachable as `ehrt play --sink mllp://host:port` through the
-  designator vocabulary rather than a new flag; and the "accumulator wiring"
-  half is mostly built already -- `ehrt.corpus.board` folds a paced stream
-  through `sim-emit-hl7/fold-message`, so what is actually left is exposing that
-  accumulator's final state as an output rather than only as a whiteboard.
-  **`:mllp` LANDED 2026-08-28** (arc 4 sweep 5, ADR-0175 design (g)):
-  `known-sink-kinds` HAS a socket now, `implemented-sink-kinds` with it, and
-  `ehrt play --sink mllp://host:port` sends each message MLLP-framed and reads
-  its ACK back -- positional pairing, MSA-2 checked per pair, AE/AR aborting
-  delivery, a missing ACK a named timeout. The codec was reused rather than
-  rewritten, under a gate that names the functions. ADR-0014's three-namespace
-  assessment held exactly: `source_sink.clj`, `source_sink_url.clj` and one new
-  socket namespace. What is left in this row is therefore the accumulator's
-  final state and the board's own event-input blind spot, and nothing else.
+- OPEN **[corpus-player-slices]** PRIORITY 7 -- the corpus-player slices chartered
+  by ADR-0014. RE-DERIVED 2026-08-29 against the live tree, and the row is now
+  TWO items where it was once a list: everything else in it has shipped.
+  - **The board accumulator's final state, as an output.** `ehrt.corpus.board`
+    already folds a paced v2 stream through `sim-emit-hl7/fold-message`
+    (ADR-0175 section 2(f) measured the fold); what has never been built is
+    exposing that accumulator's end state as something other than a
+    whiteboard render.
+  - **`--board`'s event-input blind spot** (ADR-0174 section 2(c)):
+    `ehrt play PATH --board` takes message input only
+    (`:play-board-unsupported-for-events`), so a bed the cycle marks dirty or
+    cleaning stays invisible until a message carries it.
+
+  What has SHIPPED, so that nobody re-derives it a third time: the **bed-board
+  sink** under ADR-0067 (2026-08-07, `ehrt play PATH --board`), noticed
+  2026-08-26; and **`:mllp` as a sink kind** in arc 4 sweep 5 (2026-08-28,
+  ADR-0175 design (g)) -- `known-sink-kinds` has a socket,
+  `ehrt play --sink mllp://host:port` frames each message and reads its ACK
+  back, positional pairing with MSA-2 checked per pair. ADR-0014's
+  three-namespace assessment held exactly.
+
+  This row is the review-5 pattern's own exhibit -- a claim true when written
+  that nothing keeps true -- which is why each re-derivation is dated and says
+  what it checked. Kept rather than retired because
+  `rulings.md#R-unregistered-request-gets-a-row` puts visibility first.
+  ADR-0158 (review-4 D7-5); ADR-0175 section 2(f)/2(g) designed both halves.
 
 ## Externals (author-only)
 - EXTERNAL **[ci-failure-email]** -- enable GitHub's workflow-failure
@@ -321,6 +238,7 @@ One line a row. `CLOSED` here means "no longer a roadmap row", not "the work
 was done" -- each line says which. The section is named `## Done` because that
 is where `ehrt.docs-tooling.roadmap-lint-test` requires a `CLOSED` row to live.
 
+- CLOSED 2026-08-29 6eb4aa6 **[emission-add-ons]** -- DONE, not retired: traffic-scale ARC 4 IS COMPLETE, six sweeps of six, and with it ADR-0168's whole five-arc programme. Sweep 1 flipped MSH-12 to "2.4" so every message resolves to a real v2.4 structure instead of `GenericMessage$V23`; sweeps 2-4 landed ruling B1's three tranches -- re-statement chatter plus DFT^P03 charges, order/result status ladders, and SIU -- each behind its own opt-in key, each dark-then-on with both `bin/ground-truth-bracket` brackets IDENTICAL on the dark half; sweep 5 landed the fan-out subscriber table and `:mllp` as a sink kind, the first sweep with BOTH brackets identical at every commit; sweep 6 (2026-08-29) was the measurement close, which priced design (h)/ruling D1's `gate v2 --sample-add-ons` at 2.23 ms/message and a 25.2% wall saving, and measured the arc's own headline: the add-ons are worth 1.63x-1.89x the message volume per event (0.643 msg/event before, 1.05-1.21 after). Two things arc 4 did NOT do, both handed on rather than buried: NK1 stays unavailable because household state reaches no ground-truth event (ADR-0172 limitations row 8, untouched by any sweep); and sweep 6's rerun found that the nine-key configuration does not complete its own self-check at 10^4 or above -- four invariant families red, diagnosed and rowed in `.agents/session-records/2026-08-29-traffic-scale-close.md`, none reachable by any shipped corpus. Per-sweep narrative in `.agents/session-records/2026-08-2{7,8,9}-arc-4*.md` and `2026-08-29-traffic-scale-close.md`.
 - CLOSED 2026-08-27 ADR-0174 **[engine-fold-extensions]** -- DONE, not retired: traffic-scale ARC 3 IS COMPLETE. Arc 3a landed the demographic fold, the two clinical hooks and the identification flow (ADR-0173, four parts); arc 3b landed the encounter horizon (sweep 1), the bed-status cycle plus ADT^A20 (sweep 2) and scheduling state (sweep 3), each dark-then-on with an IDENTICAL oracle on the dark half. The oracle went 32 roots to 39 and its witnessed vocabulary 13 of 21 kinds to 26 of 28; the event contract went 1.2.0 to 1.7.0. Two things arc 3 deliberately did NOT close, both for arc 4: MSH-12 "2.3" against the v2.4 SIU structures, so scheduling's four kinds reach ground truth and never the wire (ADR-0174 ruling C); and whether `:exhausted` should degrade to a visible rejection instead of HALTING a run -- sweep 2 raised it, sweep 3's capacity gate had to work around it, neither answered it. Per-sweep narrative in `.agents/session-records/2026-08-2{5,6,7}-arc-3*.md`.
 - CLOSED 2026-08-26 ADR-0174 **[multi-encounter-horizon]** -- DONE, not retired: arc 3b sweep 1 lifted it. `admission-only-when-new` became `admission-only-when-no-open-encounter`, a repeat arrival with no open encounter opens a second one, and PV1-19 renders its id. Max encounter openers per patient was ONE at every corpus this repo had; it is now 2-4 across the six opted-in corpora, 64 encounters recovered in all. What is NOT lifted, and stays named in ADR-0174 rather than as a row: multiple CONCURRENT open encounters per patient.
 - CLOSED 2026-08-25 d6ad63a **[gated-corpus-churn-and-citation-depth]** -- retired: de-scaffold; its counted-witness half landed as a gate in `run_test.clj` on 2026-08-25.
