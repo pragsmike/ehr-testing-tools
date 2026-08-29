@@ -213,18 +213,21 @@
 (deftest a-persons-run-satisfies-the-whole-invariant-catalog-test
   ;; run-command already refuses a run whose self-check fails
   ;; (`:self-check-failed`), so reaching :ok is itself the assertion --
-  ;; but it is re-run here explicitly, because the six invariants
-  ;; ADR-0173 section 2(e) adds are new and a reader should see them
-  ;; named on a real fold rather than inferred from an absence of red.
+  ;; but it is re-run here explicitly, because the invariants ADR-0173
+  ;; section 2(e) adds are new and a reader should see them named on a
+  ;; real fold rather than inferred from an absence of red. SIX at arc
+  ;; 3a; a seventh joined 2026-08-29 with TS-4's consumed clause
+  ;; (`roadmap.md#ts-4-placeholder-unresolved`).
   (let [gt (:ground-truth (ok-payload (run/run-command witness-config)))
         checked (check/check-all gt)]
     (is (pos? (count gt)))
     (is (result/ok? checked) (str "invariant violations: " (pr-str (:payload checked))))
-    (testing "and the six new ones actually ran"
+    (testing "and the person family actually ran"
       (let [names (set (:invariants-checked (:payload checked)))]
         (doseq [n '[identity-fill-references-its-placeholder-registration
                     identification-merge-survivor-is-the-persons-prior-patient
                     every-placeholder-registration-is-resolved-or-still-open
+                    no-resolution-after-a-placeholder-is-consumed
                     demographic-update-reports-a-real-change
                     no-demographic-event-after-a-patient-expires
                     person-scoped-provenance-is-a-stamp-not-a-reference]]

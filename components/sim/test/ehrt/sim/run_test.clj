@@ -980,10 +980,25 @@
                      "; the byte gate above carries the diagnostic."))))))))
 
 (def ^:private arc0-invariant-catalog
-  "The 43 invariant names `check-all` reports, in reporting order --
+  "The 44 invariant names `check-all` reports, in reporting order --
   pinned so the findings assertion below is a full-value `=` rather than
   a check of one key. Catalog drift is itself a change in what \"identical
   findings\" means, so it belongs inside the gate, not outside it.
+
+  RE-PINNED AGAIN 2026-08-29, 43 -> 44, by TS-4's consumed clause
+  (`roadmap.md#ts-4-placeholder-unresolved`), and disclosed on the same
+  terms as every re-pin below. WHICH INVARIANT MOVED: none of the
+  FINDINGS. `:status` is `:ok` on all four corpora and `:events` is
+  unchanged -- 1,131 / 1,660 / 1,342 / 92 -- and the one row that joined,
+  `no-resolution-after-a-placeholder-is-consumed`, is VACUOUS on all four:
+  a census over these corpora finds zero placeholders consumed by a merge,
+  so it has nothing to examine in any of them. It sits beside
+  `every-placeholder-registration-is-resolved-or-still-open`, whose
+  soundness it carries, which is where `catalog` itself puts it. THE ROW
+  ABOVE IT ALSO CHANGED MEANING in the same commit -- a consumption now
+  closes a placeholder's window -- and that is a change to what a FINDING
+  is rather than to the roster; it moves no finding here because none of
+  these four corpora produces the shape.
 
   RE-PINNED AGAIN 2026-08-27, 39 -> 43, by arc 3b sweep 3 (ADR-0174
   section 2(b)), and disclosed on the same terms as every re-pin below.
@@ -1050,6 +1065,7 @@
     identity-fill-references-its-placeholder-registration
     identification-merge-survivor-is-the-persons-prior-patient
     every-placeholder-registration-is-resolved-or-still-open
+    no-resolution-after-a-placeholder-is-consumed
     demographic-update-reports-a-real-change
     no-demographic-event-after-a-patient-expires
     person-scoped-provenance-is-a-stamp-not-a-reference

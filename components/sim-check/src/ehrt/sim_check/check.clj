@@ -1313,38 +1313,220 @@
       {:invariant :identification-merge-survivor-is-the-persons-prior-patient
        :patient-id (:merged by-role) :at (:t event)})))
 
+(defn- placeholder-registrations
+  "Every placeholder `:registered` in the log, as
+  `{:patient-id :at :window-close-t}`. Factored because three readers
+  need the same set: the two invariants below and
+  `placeholder-dispositions`."
+  [ground-truth]
+  (into []
+        (for [ev ground-truth
+              :when (and (= :registered (:event ev)) (= :placeholder (:identity ev)))]
+          {:patient-id (:patient-id (first (:participants ev)))
+           :at (:t ev)
+           :window-close-t (:window-close-t ev)})))
+
+(defn- consuming-merges
+  "patient-id -> `{:i <log index> :t <instant>}` of the FIRST merge not
+  caused by identification that named them `:merged`.
+
+  An identification merge is excluded because it is a RESOLUTION and is
+  counted as one; everything else -- churn's M2b `:merge`, and any
+  future merge kind -- absorbs the record without claiming to have
+  identified anybody, which is the failure shape
+  `every-placeholder-registration-is-resolved-or-still-open` documents.
+
+  The INDEX rides alongside the instant because
+  `no-resolution-after-a-placeholder-is-consumed` has to order a
+  resolution against the merge that consumed it, and two events at the
+  same `:t` are ordered by the log and by nothing else."
+  [ground-truth]
+  (persistent!
+   (first
+    (reduce (fn [[acc i] ev]
+              [(if (and (= :merge (:event ev)) (not= :identification (:cause ev)))
+                 (reduce (fn [a p]
+                           (if (and (= :merged (:role p))
+                                    (not (contains? a (:patient-id p))))
+                             (assoc! a (:patient-id p) {:i i :t (:t ev)})
+                             a))
+                         acc (:participants ev))
+                 acc)
+               (inc i)])
+            [(transient {}) 0] ground-truth))))
+
+(defn- identity-resolutions
+  "patient-id -> `:fill` or `:identification-merge`, whichever resolved
+  that placeholder's identity."
+  [ground-truth]
+  (into {}
+        (concat
+         (for [ev ground-truth
+               :when (and (= :merge (:event ev)) (= :identification (:cause ev)))
+               p (:participants ev)
+               :when (= :merged (:role p))]
+           [(:patient-id p) :identification-merge])
+         (for [ev ground-truth
+               :when (and (= :demographic-update (:event ev))
+                          (= :identity-fill (:cause ev)))]
+           [(:patient-id (first (:participants ev))) :fill]))))
+
 (defn every-placeholder-registration-is-resolved-or-still-open
   "A placeholder registration either gets its fill or its identification
-  merge, or the run ENDED before its window was due to close.
+  merge, or is CONSUMED -- absorbed whole by a merge that never claimed
+  to have identified anybody -- or the run ENDED before its window was
+  due to close.
 
   NEVER \"or not at all\": a placeholder left dangling by a horizon is
   real traffic -- an unidentified patient whose identity nobody had
   established by the time the simulated feed stopped -- and an invariant
   that forbade it would be wrong about the world rather than about the
-  log. `:window-close-t` is what carries the second clause; part 4's
+  log. `:window-close-t` is what carries the horizon clause; part 4's
   placeholder registration mints it, and a placeholder carrying none
-  cannot be judged either way, so it is left alone."
+  cannot be judged either way, so it is left alone.
+
+  THE CONSUMED CLAUSE IS 2026-08-29's, and it is a statement about the
+  WORLD rather than a relaxation for the engine's convenience
+  (`roadmap.md#ts-4-placeholder-unresolved`). The failure shape it
+  admits is a real and named one: **an erroneous merge eats a John
+  Doe.** An unidentified record is absorbed into some other patient's
+  before anybody establishes whose it was, and the identity question it
+  was carrying does not survive -- not because the feed stopped, but
+  because a clerk merged it away. That is one of the characteristic
+  ways an MPI fails, the corpus is telling the truth about it, and the
+  engine did nothing wrong in producing it: churn merged two records,
+  which is what churn does.
+
+  THE WITNESS, so a later reader can see the shape rather than trust
+  this paragraph. At the `nobed` and `v2` 10^5 add-on cells, seed
+  20260824, `PID-007500-e98926c1` registers a placeholder John Doe at
+  t=37017 with `:window-close-t 382617`, is admitted as \"Unidentified
+  patient\" and discharged, and at t=177420 is drawn out of a
+  666-strong eligible set as the `:merged` participant of an ORDINARY
+  churn `:merge` carrying no `:cause`. Its own `:identity-fill`, seeded
+  on it at t=382617, is then never decided at all -- the run loop
+  short-circuits a queue entry whose patient is already `:merged` -- so
+  nothing is minted after the merge and nothing ever can be. One
+  violation in 129,415 events, and it was the last thing standing
+  between the traffic-scale programme and two MEASURED cells.
+
+  CONSUMPTION CLOSES THE WINDOW ONLY UP TO ITS DUE INSTANT. A merge
+  AFTER the close does not retroactively excuse a placeholder that was
+  already dangling when identification came due -- that log really does
+  show an unresolved window, and the clause is deliberately too narrow
+  to hide it.
+
+  ITS OTHER HALF is `no-resolution-after-a-placeholder-is-consumed`
+  below: once consumed, nothing may fill or identification-merge the
+  record afterwards. Read the two together -- this one says a
+  consumption ENDS the identity question, and that one says it stays
+  ended."
   [ground-truth]
   (let [last-t (:t (last ground-truth))
-        resolved (into #{}
-                       (concat
-                        (for [ev ground-truth
-                              :when (and (= :demographic-update (:event ev))
-                                         (= :identity-fill (:cause ev)))]
-                          (:patient-id (first (:participants ev))))
-                        (for [ev ground-truth
-                              :when (and (= :merge (:event ev)) (= :identification (:cause ev)))
-                              p (:participants ev)
-                              :when (= :merged (:role p))]
-                          (:patient-id p))))]
-    (for [ev ground-truth
-          :when (and (= :registered (:event ev)) (= :placeholder (:identity ev)))
-          :let [patient-id (:patient-id (first (:participants ev)))
-                close-t (:window-close-t ev)]
-          :when (and (not (resolved patient-id))
-                     (some? close-t) (some? last-t) (<= close-t last-t))]
+        resolved (identity-resolutions ground-truth)
+        consumed (consuming-merges ground-truth)]
+    (for [{:keys [patient-id at window-close-t]} (placeholder-registrations ground-truth)
+          :let [consumed-t (:t (get consumed patient-id))]
+          :when (and (some? window-close-t) (some? last-t) (<= window-close-t last-t)
+                     (not (contains? resolved patient-id))
+                     (not (and consumed-t (<= consumed-t window-close-t))))]
       {:invariant :every-placeholder-registration-is-resolved-or-still-open
-       :patient-id patient-id :at (:t ev)})))
+       :patient-id patient-id :at at})))
+
+(defn no-resolution-after-a-placeholder-is-consumed
+  "Once a merge has absorbed a placeholder record, nothing fills it and
+  nothing identification-merges it.
+
+  THE OTHER HALF of the consumed clause above, and the reason that
+  clause is safe. Making a consumption count as the end of an identity
+  question is only sound if the question really is over: a fill landing
+  on a record that was merged away would be the log claiming to have
+  identified somebody whose record no longer exists, and the invariant
+  above would have gone quiet on exactly the run where that happened.
+
+  IT IS A LATENT ENGINE DEFECT MADE PERMANENTLY VISIBLE, not a
+  hypothetical. `decide :identity-fill`'s own outcome function refuses
+  only on `(not= :placeholder (:identity (:demographics patient)))`,
+  and `evolve :merge` sets `:status :merged` while leaving the
+  demographics -- alias and all -- exactly as they were. So a
+  consumed placeholder still LOOKS fillable to that decide, and the
+  only thing standing between it and a `:demographic-update` on a
+  merged patient is the run loop's `:merged` short-circuit, which is
+  one `if` in `run` and nothing asserts it from outside.
+  `decide :identification-merge` has the same gap from the other side:
+  it guards the SURVIVOR's status and never the placeholder's own.
+  Measured at both 10^5 add-on cells: 1,062 resolution steps seeded,
+  1,061 decided, and the one that never ran is the consumed
+  placeholder's -- so the short-circuit does hold today, and this is
+  what says so tomorrow.
+
+  DELIBERATELY OVERLAPPING `no-events-after-merged-terminal`, which
+  forbids ANY later event naming a merged patient and therefore
+  subsumes this on today's catalog. Disclosed rather than quietly
+  duplicated: the two would be separated the day a merged patient is
+  allowed any trailing event at all, and the clause above depends on
+  THIS one specifically, not on the general rule that happens to imply
+  it now."
+  [ground-truth]
+  (let [consumed (consuming-merges ground-truth)
+        placeholders (into #{} (map :patient-id) (placeholder-registrations ground-truth))]
+    (for [[i ev] (map-indexed vector ground-truth)
+          :let [kind (cond (and (= :demographic-update (:event ev))
+                                (= :identity-fill (:cause ev)))
+                           :fill
+                           (and (= :merge (:event ev)) (= :identification (:cause ev)))
+                           :identification-merge)]
+          :when kind
+          p (:participants ev)
+          :let [patient-id (:patient-id p)
+                consumed-at (get consumed patient-id)]
+          :when (and (placeholders patient-id)
+                     (some? consumed-at)
+                     (> i (:i consumed-at)))]
+      {:invariant :no-resolution-after-a-placeholder-is-consumed
+       :patient-id patient-id :at (:t ev) :resolution kind})))
+
+(defn placeholder-dispositions
+  "The census behind the two invariants above: every placeholder
+  registration in a log, classified by what became of it.
+
+    {:total n :unjudgeable n :resolved-by-fill n
+     :resolved-by-identification-merge n :consumed-by-churn n
+     :still-open n :dangling n}
+
+  WHY A COUNT AND NOT ONLY A GATE. `consumed-by-churn` is a shape the
+  catalog now TOLERATES, and a tolerated shape that nothing counts is
+  indistinguishable from a shape that never happens -- which is how a
+  clause added for one witness quietly becomes a clause covering a
+  hundred. This is the column that makes the difference visible, and
+  `roadmap.md#ts-4-placeholder-unresolved` is why it exists.
+
+  `:unjudgeable` is a placeholder carrying no `:window-close-t` (the
+  engine withholds one from a window that never resolves -- the person
+  died inside it); `:still-open` is one whose close instant is past the
+  end of the log. Neither is a defect and neither is counted as one.
+  The classes are disjoint and sum to `:total`; `:dangling` is exactly
+  what `every-placeholder-registration-is-resolved-or-still-open`
+  reports."
+  [ground-truth]
+  (let [last-t (:t (last ground-truth))
+        resolved (identity-resolutions ground-truth)
+        consumed (consuming-merges ground-truth)
+        classify (fn [{:keys [patient-id window-close-t]}]
+                   (let [consumed-t (:t (get consumed patient-id))]
+                     (cond
+                       (= :fill (get resolved patient-id)) :resolved-by-fill
+                       (= :identification-merge (get resolved patient-id))
+                       :resolved-by-identification-merge
+                       (nil? window-close-t) :unjudgeable
+                       (and consumed-t (<= consumed-t window-close-t)) :consumed-by-churn
+                       (or (nil? last-t) (> window-close-t last-t)) :still-open
+                       :else :dangling)))
+        counted (frequencies (map classify (placeholder-registrations ground-truth)))]
+    (merge {:total (reduce + (vals counted))
+            :unjudgeable 0 :resolved-by-fill 0 :resolved-by-identification-merge 0
+            :consumed-by-churn 0 :still-open 0 :dangling 0}
+           counted)))
 
 (defn demographic-update-reports-a-real-change
   "The prior values a demographic event carries equal the folded state
@@ -1668,6 +1850,11 @@
    #'identity-fill-references-its-placeholder-registration
    #'identification-merge-survivor-is-the-persons-prior-patient
    #'every-placeholder-registration-is-resolved-or-still-open
+   ;; TS-4 (2026-08-29, `roadmap.md#ts-4-placeholder-unresolved`): the
+   ;; consumed clause's other half, placed beside the invariant it makes
+   ;; safe rather than appended at the end, for the reason this catalog
+   ;; is documented as being in reporting order.
+   #'no-resolution-after-a-placeholder-is-consumed
    #'demographic-update-reports-a-real-change
    #'no-demographic-event-after-a-patient-expires
    #'person-scoped-provenance-is-a-stamp-not-a-reference
