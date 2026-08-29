@@ -36,7 +36,7 @@ they differ only in what else you get.
 |---|---|
 | `ehrt sim run --seed N --patients M --format ground-truth` | the **bare EDN vector** on stdout, nothing around it — redirect it to a file, or pipe it to `ehrt sim check` |
 | `ehrt sim run --seed N --patients M` | the full result envelope, `{:status :ok :payload {:ground-truth [...] :manifest {...} :summary {...}}}` |
-| `ehrt corpus generate sim --seed N --patients M --out-dir D` | `D/events.edn` (the same vector), `D/manifest.edn` (provenance), and `D/msg-NNNN.hl7` (the lowered messages you did not ask for) |
+| `ehrt corpus generate sim --seed N --patients M --out-dir D` | `D/events.edn` (the same vector), `D/manifest.edn` (provenance), and one `D/msg-NNN.hl7` per message (the lowered messages you did not ask for; the index is zero-padded to whatever width that corpus needs, so file order is lexical order) |
 
 `--seed` is required and has no default. Determinism here is a feature,
 not a fallback.
@@ -247,7 +247,7 @@ What does **not** enter the log, verified rather than assumed:
   `TZ=Asia/Tokyo` and under the host's own `America/New_York` produced
   the same SHA-256 over `events.edn`.
 - **File order and message rendering.** `:latency` reorders the
-  `msg-NNNN.hl7` files and moves their MSH-7 values; it reaches no
+  `msg-NNN.hl7` files and moves their MSH-7 values; it reaches no
   engine key and moves no ground-truth byte. Witnessed in
   `demos/scenarios/ed-tuesday/README.md`'s "The second clock" section as
   a `diff` and a matching pair of digests.
@@ -324,7 +324,7 @@ counted rather than prevented — see [What is not warranted](#what-is-not-warra
   `:years` gives a twenty-year log however short the clinical shift is.
 - **Log order is not wire order.** The event log is in run order. With
   `:latency` on, the rendered messages are sorted by *transmit* time
-  instead, so `msg-NNNN.hl7`'s file order and the log's order disagree
+  instead, so the `msg-NNN.hl7` file order and the log's order disagree
   on purpose. Ground truth is invariant under this; only the rendering
   moves.
 
@@ -336,10 +336,10 @@ bin/ehrt sim run --seed 42 --patients 20 --churn --format ground-truth \
 ```
 
 `sim check` runs **44 invariants** over the log and reports each one it
-ran, by name, in `:payload :invariants-checked`. Exit 0 and `:status
-:ok` means every one held; `:status :rejected` with `:category
-:invariant-violation` carries a `:violations` vector naming the
-invariant, the patient and the instant for each. The catalog, in
+ran, by name, in `:payload :invariants-checked`. Exit 0 with `:status
+:ok` means every one held; exit 1 with `:status :rejected` and
+`:category :invariant-violation` carries a `:violations` vector naming
+the invariant, the patient and the instant for each. The catalog, in
 reporting order, is `ehrt.sim-check.check/catalog` plus its three
 config-needing siblings:
 
