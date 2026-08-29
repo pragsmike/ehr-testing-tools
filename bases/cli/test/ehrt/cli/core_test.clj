@@ -3538,7 +3538,12 @@
         (is (result/ok? r))
         (is (= 2 (:sent (:mllp (:payload r)))))
         (is (= 2 (:acked (:mllp (:payload r)))))
-        (is (= [0 1] (mapv :index (:pairs (:mllp (:payload r))))))
+        (testing "the CLI payload carries COUNTS, not the pair list -- a
+                  command that printed one line per message would bury
+                  its own result; the pairs stay in the component's own
+                  summary, which `ehrt.corpus-io.mllp-test` and
+                  `ehrt.conformance.mllp-pairing-test` read"
+          (is (= #{:sent :acked} (set (keys (:mllp (:payload r)))))))
         (testing "and the receiver holds exactly the bytes the file did"
           (is (= 2 (count (received-fn))))))
       (finally (stop!)))))

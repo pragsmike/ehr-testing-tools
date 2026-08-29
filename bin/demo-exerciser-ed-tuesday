@@ -236,6 +236,131 @@ if ! grep -qF 'MRN000002-A03-' out/scenarios/ed-tuesday-latency-batches/batch-00
   fail "straddle membership: Hernandez Sandra (MRN000002)'s own A03 discharge not found in batch-002.hl7"
 fi
 
+# ---- ARC 4 SWEEP 5 (ADR-0175 designs (f) and (g), ruling B1): the
+# subscriber spools and one real MLLP round trip. SCRIPT-ONLY
+# APPARATUS, outside the taught block on purpose and for a mechanical
+# reason: the loopback responder binds an EPHEMERAL port, so the play
+# command below names a port number that does not exist until this
+# script has started a server. A README cannot teach a command whose
+# argument it cannot print. The taught surface for `--sink mllp://` is
+# `ehrt help play` / docs/cli.md, which is generated from the flag's
+# own help text.
+#
+# THE SUBSEQUENCE LAW ITSELF IS NOT ASSERTED HERE. It is a property
+# over the message vector and belongs where the vector is
+# (`ehrt.sim-emit-hl7.fan-out-test`, `ehrt.sim.fan-out-run-test`).
+# What only a real end-to-end run can show is asserted instead: the
+# spools exist on disk, each DIGEST.edn matches a FRESH digest of the
+# files beside it (a stale sidecar is exactly the failure a digest
+# written by the same process that wrote the files could hide), each
+# spool routes only what its own filter names, and each is a PROPER
+# subset of the base spool rather than a copy of it.
+
+echo "== demo-exerciser-ed-tuesday: fan-out spools and the MLLP round trip =="
+
+base_msgs="$(ls out/scenarios/ed-tuesday/msg-*.hl7 2>/dev/null | wc -l | tr -d ' ')"
+if [ "${base_msgs:-0}" -lt 1 ]; then
+  fail "fan-out: the base spool is empty -- every assertion below would be vacuous"
+fi
+
+check_subscriber () {
+  local sub="$1" want_types="$2"
+  local dir="out/scenarios/ed-tuesday/fan-out/$sub"
+  [ -d "$dir" ] || fail "fan-out: no spool directory for subscriber '$sub'"
+  local n
+  n="$(ls "$dir"/msg-*.hl7 2>/dev/null | wc -l | tr -d ' ')"
+  if [ "${n:-0}" -lt 1 ]; then
+    fail "fan-out: subscriber '$sub' received NO messages -- a silently empty feed is exactly what ADR-0175 section 2(f) exists to prevent"
+  fi
+  if [ "$n" -ge "$base_msgs" ]; then
+    fail "fan-out: subscriber '$sub' holds $n of $base_msgs base messages -- a filtered feed must be a PROPER subsequence"
+  fi
+  # The digest sidecar, re-derived rather than trusted. Exactly one
+  # 64-hex token appears in DIGEST.edn, so this extraction is
+  # unambiguous -- it reads a scalar out of the file, never EDN
+  # structure (`rulings.md`: parse EDN, never grep it, is about
+  # semantics; a lone sha256 is a scalar).
+  local declared fresh
+  declared="$(grep -oE '[0-9a-f]{64}' "$dir/DIGEST.edn" | head -1)"
+  fresh="$(cat "$dir"/msg-*.hl7 | sha256sum | awk '{print $1}')"
+  if [ -z "$declared" ] || [ "$declared" != "$fresh" ]; then
+    fail "fan-out: subscriber '$sub' DIGEST.edn says $declared but its own files hash to $fresh"
+  fi
+  # Routing spot-check: every message's MSH-9 is one this subscriber
+  # actually asked for. `head -1` per file is the MSH segment.
+  local stray
+  stray="$(for f in "$dir"/msg-*.hl7; do head -1 "$f" | cut -d'|' -f9; done | sort -u | grep -vE "$want_types" || true)"
+  if [ -n "$stray" ]; then
+    fail "fan-out: subscriber '$sub' received an MSH-9 outside its own filter: $stray"
+  fi
+  echo "  fan-out: $sub holds $n of $base_msgs base messages, digest $declared verified fresh"
+}
+
+check_subscriber adt-feed '^ADT\^(A01|A02|A03)$'
+check_subscriber lab-feed '^(ORM\^O01|ORU\^R01)$'
+
+# The MSH override, on disk: the ADT feed's own MSH-5/MSH-6 carry the
+# receiving application and facility its subscriber declared, and the
+# base spool's do not (they are blank on every message this project
+# emits under the default profile -- ADR-0175 section 1(ii)).
+adt_first="$(ls out/scenarios/ed-tuesday/fan-out/adt-feed/msg-*.hl7 | head -1)"
+if [ "$(head -1 "$adt_first" | cut -d'|' -f5)" != "ADT-CONSUMER" ]; then
+  fail "fan-out: the adt-feed spool's MSH-5 is not the declared receiving application"
+fi
+if [ "$(head -1 "$adt_first" | cut -d'|' -f6)" != "WEST" ]; then
+  fail "fan-out: the adt-feed spool's MSH-6 is not the declared receiving facility"
+fi
+if [ -n "$(head -1 out/scenarios/ed-tuesday/msg-000.hl7 | cut -d'|' -f5)" ]; then
+  fail "fan-out: the BASE spool's MSH-5 is non-blank -- the override is supposed to be the only difference"
+fi
+echo "  fan-out: MSH-5/MSH-6 carry the adt-feed's own routing pair; the base spool's stay blank"
+
+# ---- one real MLLP round trip, over the adt-feed spool ----
+MLLP_PORT_FILE="$LOG_DIR/mllp-port"
+clojure -X:dev ehrt.corpus-io.mllp/ack-server-main \
+  :port-file "\"$MLLP_PORT_FILE\"" :idle-timeout-ms 120000 \
+  > "$LOG_DIR/mllp-server.out" 2> "$LOG_DIR/mllp-server.err" &
+MLLP_PID=$!
+# The responder writes its own bound (ephemeral) port; wait for it
+# rather than guessing a fixed one.
+for _ in $(seq 1 120); do
+  [ -s "$MLLP_PORT_FILE" ] && break
+  sleep 1
+done
+if [ ! -s "$MLLP_PORT_FILE" ]; then
+  kill "$MLLP_PID" 2>/dev/null || true
+  fail "mllp: the loopback responder never reported a port -- $(cat "$LOG_DIR/mllp-server.err" 2>/dev/null)"
+fi
+MLLP_PORT="$(tr -d '[:space:]' < "$MLLP_PORT_FILE")"
+
+# `--rate` is deliberately far larger than the taught commands' own
+# 10000000: this spool spans nineteen YEARS of stream time (the
+# demographic fold's horizon), and at the taught rate the pacer alone
+# would add a minute to this script for no assertion. The MLLP leg is
+# about delivery, not pacing.
+expect 0 bin/ehrt play out/scenarios/ed-tuesday/fan-out/adt-feed \
+  --sink "mllp://127.0.0.1:$MLLP_PORT" --rate 100000000000 --edn
+mllp_step=$STEP
+
+kill "$MLLP_PID" 2>/dev/null || true
+wait "$MLLP_PID" 2>/dev/null || true
+
+# `expect 0` already proved the command succeeded, and an MLLP run that
+# fails to deliver EXITS NON-ZERO by construction (a negative
+# acknowledgement, an unrecognized MSA-1 or a missing ACK is returned
+# instead of a success). What is checked here is the count: every
+# message sent, and every one acknowledged.
+adt_count="$(ls out/scenarios/ed-tuesday/fan-out/adt-feed/msg-*.hl7 | wc -l | tr -d ' ')"
+sent="$(sed -n 's/.*:sent \([0-9]*\).*/\1/p' "$LOG_DIR/step-$mllp_step.out" | head -1)"
+acked="$(sed -n 's/.*:acked \([0-9]*\).*/\1/p' "$LOG_DIR/step-$mllp_step.out" | head -1)"
+if [ "${sent:-0}" -ne "$adt_count" ]; then
+  fail "mllp: sent $sent of $adt_count adt-feed messages"
+fi
+if [ "${acked:-0}" -ne "$adt_count" ]; then
+  fail "mllp: only $acked of $sent messages were acknowledged"
+fi
+echo "  mllp: $sent messages delivered to 127.0.0.1:$MLLP_PORT and $acked acknowledged, MSA-2 checked per pair"
+
 # Tree-clean postcondition (ADR-0005's own discipline, mirrored from
 # bin/quickstart-demo): every write path above lands under the
 # gitignored /out/ -- a full run must leave the tracked tree exactly as

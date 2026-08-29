@@ -169,6 +169,68 @@ clojure -M:dev:test -e '
             (System/exit 1))))))
 ' || fail "closing-summary invariant did not hold (see FAIL detail above)"
 
+# ---- ARC 4 SWEEP 5 (ADR-0175 design (f), ruling B1): the subscriber
+# spools. Script-only apparatus, outside the taught block: a spool
+# directory is an ARTIFACT of the generate command the README already
+# teaches, not a command of its own.
+#
+# THE SUBSEQUENCE LAW ITSELF IS NOT ASSERTED HERE -- it is a property
+# over the message vector and is gated where the vector is
+# (`ehrt.sim-emit-hl7.fan-out-test`, `ehrt.sim.fan-out-run-test`). What
+# only a real end-to-end run can show is asserted instead.
+
+echo "== demo-exerciser-clinic-decade: checking the fan-out spools =="
+
+cd_base_msgs="$(ls out/scenarios/clinic-decade/msg-*.hl7 2>/dev/null | wc -l | tr -d ' ')"
+if [ "${cd_base_msgs:-0}" -lt 1 ]; then
+  fail "fan-out: the base spool is empty -- every assertion below would be vacuous"
+fi
+
+cd_check_subscriber () {
+  local sub="$1" want_types="$2"
+  local dir="out/scenarios/clinic-decade/fan-out/$sub"
+  [ -d "$dir" ] || fail "fan-out: no spool directory for subscriber '$sub'"
+  local n
+  n="$(ls "$dir"/msg-*.hl7 2>/dev/null | wc -l | tr -d ' ')"
+  if [ "${n:-0}" -lt 1 ]; then
+    fail "fan-out: subscriber '$sub' received NO messages -- a silently empty feed is exactly what ADR-0175 section 2(f) exists to prevent"
+  fi
+  if [ "$n" -ge "$cd_base_msgs" ]; then
+    fail "fan-out: subscriber '$sub' holds $n of $cd_base_msgs base messages -- a filtered feed must be a PROPER subsequence"
+  fi
+  local declared fresh
+  declared="$(grep -oE '[0-9a-f]{64}' "$dir/DIGEST.edn" | head -1)"
+  fresh="$(cat "$dir"/msg-*.hl7 | sha256sum | awk '{print $1}')"
+  if [ -z "$declared" ] || [ "$declared" != "$fresh" ]; then
+    fail "fan-out: subscriber '$sub' DIGEST.edn says $declared but its own files hash to $fresh"
+  fi
+  local stray
+  stray="$(for f in "$dir"/msg-*.hl7; do head -1 "$f" | cut -d'|' -f9; done | sort -u | grep -vE "$want_types" || true)"
+  if [ -n "$stray" ]; then
+    fail "fan-out: subscriber '$sub' received an MSH-9 outside its own filter: $stray"
+  fi
+  echo "  fan-out: $sub holds $n of $cd_base_msgs base messages, digest $declared verified fresh"
+}
+
+cd_check_subscriber adt-feed '^ADT\^(A01|A02|A03)$'
+cd_check_subscriber bed-feed '^ADT\^(A01|A20)$'
+
+# THE PV1-LESS RULE, ASSERTED ON A SHIPPED CONFIG. `bed-feed` names a
+# patient class AND names ADT^A20 explicitly. ADT^A20 carries no PV1,
+# so it survives only because of that explicit naming -- and every A01
+# it receives must be an INPATIENT one, because those do carry a PV1
+# and the class filter does apply to them.
+bed_dir="out/scenarios/clinic-decade/fan-out/bed-feed"
+a20_count="$(grep -lF '|ADT^A20|' "$bed_dir"/msg-*.hl7 2>/dev/null | wc -l | tr -d ' ')"
+if [ "${a20_count:-0}" -lt 1 ]; then
+  fail "fan-out: bed-feed carries no ADT^A20 at all -- the PV1-less rule's escape clause is not working"
+fi
+outpatient_a01="$(for f in "$bed_dir"/msg-*.hl7; do sed -n '/^PV1|/{s/^PV1|[^|]*|\([^|]*\).*/\1/p;q}' "$f"; done | grep -cvx 'I' || true)"
+if [ "${outpatient_a01:-0}" -ne 0 ]; then
+  fail "fan-out: bed-feed carries $outpatient_a01 messages whose PV1-2 is not inpatient -- the class filter is not being applied to PV1-bearing messages"
+fi
+echo "  fan-out: bed-feed carries $a20_count PV1-less ADT^A20 messages on an explicit trigger, and no non-inpatient PV1"
+
 # Tree-clean postcondition (ADR-0005's own discipline, mirrored from
 # bin/demo-exerciser-ed-tuesday): every write path above lands under
 # the gitignored /out/ -- a full run must leave the tracked tree

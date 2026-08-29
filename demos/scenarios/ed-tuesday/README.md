@@ -734,3 +734,55 @@ between the two (a real transport does both) -- a named future
 taxonomy question, not resolved here; its own origin is the author's
 "mutation as imperfect transport" framing from the driving
 conversation this session.
+
+## Subscriber feeds, and one over a socket
+
+Since arc 4 sweep 5 this scenario's `config.edn` carries a `:fan-out`
+block: a **subscriber table**. Generating the corpus writes two extra
+spools beside the base one, under the corpus root:
+
+```
+out/scenarios/ed-tuesday/
+  msg-0000.hl7 ...            the corpus itself, unchanged
+  fan-out/adt-feed/           ADT^A01, ADT^A02, ADT^A03
+  fan-out/lab-feed/           ORM^O01, ORU^R01
+```
+
+**Nothing in the base corpus moves.** Every other arc-4 opt-in --
+chatter, charges, the status ladder, SIU -- added messages to
+`msg-*.hl7` when it was turned on. This one adds none and moves none.
+Each subscriber's spool is a **byte-exact subsequence** of the base
+spool, in the same order, with at most the four MSH routing fields
+rewritten: `MSH-5` and `MSH-6` carry the receiving application and
+facility that subscriber declared, where the base corpus leaves both
+blank. Each spool also carries an `INDEX.edn` naming the base positions
+its files came from, and a `DIGEST.edn` over its own bytes.
+
+**A subscriber is identified by log position, never by `MSH-10`.** Two
+results for one patient at the same second can mint the same message
+control id -- a known, rowed defect -- so a feed keyed on that id would
+deliver one of the twins twice and the other never.
+
+**A filter that names a `TYPE^TRIGGER` this simulator cannot produce is
+a configuration error**, refused before the run starts. A feed that is
+silently empty because of a typo is the failure that rule exists to
+prevent. The same reasoning is why a `:patient-classes` filter excludes
+every message with no `PV1` segment -- `ADT^A20` bed-status traffic,
+for instance -- unless the subscriber also names that trigger
+explicitly. The `clinic-decade` scenario ships a bed feed that does.
+
+Any spool plays like any other corpus, including over a socket:
+
+```bash
+ehrt play out/scenarios/ed-tuesday/fan-out/adt-feed --sink mllp://127.0.0.1:2575
+```
+
+`--sink mllp://HOST:PORT` frames each message with the MLLP block
+envelope, sends it, and reads the receiver's `ACK` back before sending
+the next. The pairing is **positional**: the k-th acknowledgement
+answers the k-th message, and its `MSA-2` must echo that message's own
+`MSH-10`. `MSA-1` of `AA` continues; `AE` or `AR` stops delivery at
+that message rather than pushing the rest of the stream at a receiver
+that has just refused one; any other code, and an acknowledgement that
+never arrives, are named errors with a non-zero exit. There is no new
+flag -- `--sink` already took a designator.

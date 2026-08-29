@@ -252,4 +252,51 @@
  ;; SCH-25'S STATUS CODES ARE SITE-PROFILE DATA, NOT A CITATION, the
  ;; same standing the three ladder tables have: HL7 Table 0278 appears
  ;; in no jar and no resource in this tree. See `docs/site-profiles.md`.
- :siu {}}
+ :siu {}
+
+ ;; ARC 4 SWEEP 5 (ADR-0175 design (f), ruling B1, 2026-08-28):
+ ;; `:fan-out` is the subscriber table -- one spool per named
+ ;; subscriber under this corpus's own root, written from a FILTER over
+ ;; the message vector this run already produced.
+ ;;
+ ;; IT IS THE ONLY ARC-4 KEY THAT MOVES NO BYTE OF THIS CORPUS.
+ ;; `:chatter`, `:charges`, `:ladders` and `:siu` each ADDED messages
+ ;; when they were turned on, and each owed a declared digest change
+ ;; for doing it. This one adds none and moves none: every message a
+ ;; subscriber receives is a message `out/scenarios/<this>/msg-NNN.hl7`
+ ;; already holds, at the position it already held, with at most the
+ ;; four MSH routing fields rewritten. Turning it on changes what is
+ ;; ALSO written, never what is written.
+ ;;
+ ;; The two feeds below are ADR-0175 section 2(f)'s own worked example.
+ ;; `:msh` fills MSH-5/MSH-6, which section 1(ii) measured BLANK on
+ ;; every message this project emits under the default profile -- so a
+ ;; subscriber's spool is routable on its face without one new field
+ ;; position anywhere in the emitter.
+ ;;
+ ;; A FILTER NAMING A `TYPE^TRIGGER` THIS EMITTER CANNOT PRODUCE IS A
+ ;; CONFIG ERROR, rejected before the engine runs. That is deliberate:
+ ;; the alternative is a subscriber spool that is silently empty
+ ;; forever because somebody wrote `ADT^A05`.
+ ;;
+ ;; AND ONE RULE WORTH READING BEFORE ADDING A THIRD SUBSCRIBER: a
+ ;; `:patient-classes` filter reads PV1-2, and ADT^A20 has no PV1 at
+ ;; all. A class filter therefore EXCLUDES every PV1-less message
+ ;; unless the subscriber names that trigger explicitly in
+ ;; `:message-types`. Stated here rather than left to be discovered as
+ ;; a silently empty bed-management feed.
+ :fan-out [{:name :adt-feed
+            :filter {:message-types #{"ADT^A01" "ADT^A02" "ADT^A03"}}
+            :msh {:receiving-app "ADT-CONSUMER" :receiving-facility "CENTRAL"}}
+           ;; THE PV1-LESS RULE, SHIPPED AS A LIVE EXAMPLE rather than
+           ;; only as a paragraph. This feed wants inpatient movement
+           ;; AND bed housekeeping. ADT^A20 carries no PV1, so the class
+           ;; filter alone would drop every one of them -- naming the
+           ;; trigger in `:message-types` is what lets them through.
+           ;; Delete `"ADT^A20"` from this set and the bed feed goes
+           ;; silently empty of bed traffic, which is exactly the
+           ;; failure the rule exists to make legible.
+           {:name :bed-feed
+            :filter {:message-types #{"ADT^A01" "ADT^A20"}
+                     :patient-classes #{:inpatient}}
+            :msh {:receiving-app "BED-MANAGEMENT" :receiving-facility "CENTRAL"}}]}

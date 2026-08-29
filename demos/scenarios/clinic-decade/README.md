@@ -261,3 +261,34 @@ its inpatient census now comes from the person stream's own births,
 injuries and unidentified arrivals rather than from any module. The
 contrast still holds and is now about WHERE the inpatients come from
 rather than whether there are any.
+
+## Subscriber feeds
+
+Since arc 4 sweep 5 this scenario's `config.edn` carries a `:fan-out`
+block, and generating the corpus writes two extra spools beside the
+base one:
+
+```
+out/scenarios/clinic-decade/
+  msg-0000.hl7 ...            the corpus itself, unchanged
+  fan-out/adt-feed/           ADT^A01, ADT^A02, ADT^A03
+  fan-out/bed-feed/           inpatient ADT^A01 plus every ADT^A20
+```
+
+Nothing in the base corpus moves: each spool is a byte-exact
+subsequence of it, in the same order, with at most `MSH-5`/`MSH-6`
+rewritten to the receiving pair that subscriber declared.
+
+**`bed-feed` is here to make one rule legible.** It names a patient
+class (`:inpatient`) *and* names `ADT^A20` explicitly. A class filter
+reads `PV1-2`, and `ADT^A20` is `[MSH EVN NPU]` -- it has no `PV1` at
+all, so a class filter on its own drops every bed-status message in the
+run. Naming the trigger is what lets them through. Delete `"ADT^A20"`
+from that set and the bed-management feed goes quietly empty of exactly
+the traffic it exists for, which is why the rule is written down here
+rather than left to be discovered.
+
+Any spool plays like any other corpus -- `ehrt play
+out/scenarios/clinic-decade/fan-out/bed-feed --board 60`, or over a
+socket with `--sink mllp://HOST:PORT`. See the `ed-tuesday` README for
+the MLLP leg.

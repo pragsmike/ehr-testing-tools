@@ -2137,7 +2137,14 @@
                           sink-failure
                           (result/ok (merge run-result
                                             board-counts
-                                            (when summary-fn {:mllp (summary-fn)})
+                                            ;; COUNTS ONLY at the CLI. The
+                                            ;; component's own `summary-fn`
+                                            ;; carries every pair, which is
+                                            ;; what the gates read; a
+                                            ;; command that printed 273 of
+                                            ;; them would bury its own
+                                            ;; result.
+                                            (when summary-fn {:mllp (select-keys (summary-fn) [:sent :acked])})
                                             {:rate resolved-rate
                                              :idle-cap-ms resolved-idle-cap-ms
                                              :wallclock-ms (- ended-ms started-ms)

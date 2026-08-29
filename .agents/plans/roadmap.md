@@ -159,6 +159,15 @@ with them.
   half is mostly built already -- `ehrt.corpus.board` folds a paced stream
   through `sim-emit-hl7/fold-message`, so what is actually left is exposing that
   accumulator's final state as an output rather than only as a whiteboard.
+  **`:mllp` LANDED 2026-08-28** (arc 4 sweep 5, ADR-0175 design (g)):
+  `known-sink-kinds` HAS a socket now, `implemented-sink-kinds` with it, and
+  `ehrt play --sink mllp://host:port` sends each message MLLP-framed and reads
+  its ACK back -- positional pairing, MSA-2 checked per pair, AE/AR aborting
+  delivery, a missing ACK a named timeout. The codec was reused rather than
+  rewritten, under a gate that names the functions. ADR-0014's three-namespace
+  assessment held exactly: `source_sink.clj`, `source_sink_url.clj` and one new
+  socket namespace. What is left in this row is therefore the accumulator's
+  final state and the board's own event-input blind spot, and nothing else.
 
 ## Externals (author-only)
 - EXTERNAL **[ci-failure-email]** -- enable GitHub's workflow-failure
