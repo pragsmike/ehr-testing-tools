@@ -498,6 +498,86 @@ instrument error. Only the quiet-host figures appear here.
   open-encounter patient-days. `bin/ground-truth-bracket 11765bb c156690`
   is IDENTICAL over 38 roots, so no shipped corpus moves.
 
+- **MEASURED (2026-08-29, post-TS-4) — BOTH 10^5 add-on cells, UNBLOCKED,
+  and the programme's measurement arc is complete.** HEAD `62dd9b3`,
+  same driver, same scratch, same seed, warm-up plus two timed, host
+  sampled at every cell boundary (1 / 2 / 30, the 30 being the CLOSING
+  sample taken after the last run had already finished, so no figure sits
+  inside it).
+
+  | cell | events | messages | msg/event | modules | persons | generate | check | emit | spool | other | in-process | wall | peak RSS | self-check |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `nobed` 10^5 | 129,415 | 165,946 | **1.2823** | 0.333 s | 42.81 s | 135.44 s | 13.60 s | 17.62 s | 11.16 s | 2.68 s | 212.48 s | **232.67 s** | 1,745 MB | **CLEAN** |
+  | `v2` 10^5 | 171,864 | 233,286 | **1.3574** | 0.333 s | 39.10 s | 164.58 s | 17.65 s | 21.57 s | 15.09 s | 2.78 s | 246.01 s | **270.37 s** | 1,935 MB | **CLEAN** |
+
+  `roadmap.md#ts-4-placeholder-unresolved` is CLOSED (`62dd9b3`),
+  check-side: a merge that absorbs a placeholder inside its own window
+  closes that window whatever the cause. **Both event counts are
+  UNCHANGED** — 129,415 and 171,864, the identical figures the blocked
+  runs carried — which is the identity claim a check-side fix owes and
+  gets for free; `bin/ground-truth-bracket 23901f4 62dd9b3` is IDENTICAL
+  over 38 roots.
+
+  **EMIT AND SPOOL RUN AT 10^5 ON AN ADD-ON CORPUS FOR THE FIRST TIME**,
+  three sessions after the gap was named, and the msg/event figure the
+  programme was commissioned for now exists at every decade. Fan-out
+  spooled 23,197 `:adt-feed` + 8,097 `:bed-feed` beside `nobed`'s base
+  messages and 23,714 + 49,935 beside `v2`'s. **The `v2` check figure is a
+  real measurement** for the first time: every previous one was
+  parenthesised as the wall of a failing check materialising violation
+  maps (TS-6).
+
+  **The completed `v2` series, 10^3 → 10^4 → 10^5.**
+
+  | | events | messages | **msg/event** | persons | generate | check | emit | spool | wall | peak RSS |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | 75 patients | 1,488 | 1,562 | **1.0497** | 0.543 s | 0.432 s | 0.324 s | 0.445 s | 0.222 s | 8.86 s | 339 MB |
+  | 750 patients | 16,322 | 19,862 | **1.2169** | 3.149 s | 3.596 s | 2.052 s | 2.693 s | 1.642 s | 20.74 s | 713 MB |
+  | 7,500 patients | 171,864 | 233,286 | **1.3574** | 39.10 s | 164.58 s | 17.65 s | 21.57 s | 15.09 s | 270.37 s | 1,935 MB |
+
+  **msg/event climbs 1.050 → 1.217 → 1.357 across two decades and is
+  STILL CLIMBING** — it is not a settled ratio and must not be quoted as
+  one. Against the pre-arc-4 skeleton's 0.643, flat across its own
+  decade, the payload is worth **2.11× the message volume per event at
+  10^5**, up from 1.63× at 10^3. The `nobed` isolation series says the
+  same with the bed cycle removed: 1.056 → 1.214 → **1.2823**.
+
+  **The exponents over the completed series** (log-log over measured
+  event counts; first-decade slopes are startup-contaminated and printed
+  for completeness only).
+
+  | phase | 10^3 → 10^4 | 10^4 → 10^5 | 10^3 → 10^5 |
+  | --- | --- | --- | --- |
+  | persons | 0.734 | **1.070** | 0.901 |
+  | generate | 0.885 | **1.624** | 1.251 |
+  | check | 0.771 | **0.914** | 0.842 |
+  | emit | 0.752 | **0.884** | 0.817 |
+  | spool | 0.835 | **0.942** | 0.888 |
+  | process wall | 0.355 | 1.091 | 0.720 |
+
+  Generate's 1.624 is 1.635 pre-fix — unmoved, as a check-side change
+  must leave it. **Check is SUB-LINEAR at 0.914**, against the close's
+  parenthesised (1.610): the close said in so many words that its figure
+  was the cost of materialising 0.9M violation maps rather than a
+  property of the phase, and this confirms TS-6 by measurement rather
+  than by argument. Emit and spool are sub-linear at 0.884 and 0.942.
+
+- **DECLINED (2026-08-29, re-stated on the completed series) — the 10^6
+  cell keeps its label** (F3: nothing extrapolated is promoted). One
+  decade on the `v2` series' own 10^4→10^5 exponents: persons 460 s,
+  generate **6,927 s (1 h 55 min)**, check 145 s, emit 165 s, spool
+  132 s — **one run ~2 h 10 min, warm-up plus two timed ~6.5 h**.
+  Retained after generate projects to 1.57 GB, inside the 3.88 GB
+  ceiling. **Peak heap in EMIT projects to 14.5 GB, 3.7× that ceiling**,
+  and peak process RSS to 18.9 GB against a 15 GiB machine. The close's
+  central memory finding survives a completed series and sharpens: the
+  binding constraint at 10^6 is the MESSAGE VECTOR, not the event log,
+  and the margin is 3.7× rather than the 2.5× the `old`-series
+  projection gave. Two figures a reader will otherwise infer wrongly —
+  generate would be 88% of a 10^6 run's wall, and the heap wall is
+  reached in a phase (emit) that could not be measured on an add-on
+  corpus at all until today.
+
   Generate at `v2` is **165.51 s against 162.68 s** (+1.7%) and at `nobed`
   **125.45 s against 129.12 s** (−2.8%) — both inside a two-run mean's
   noise. **The `v2` wall falls 282.02 → 231.62 s (−17.9%), and 50 of
