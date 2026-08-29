@@ -435,6 +435,43 @@ instrument error. Only the quiet-host figures appear here.
   than the pre-fix 88.81 s only because there are fewer of them to
   materialise.
 
+- **STILL BLOCKED (2026-08-29, post-TS-5) — BOTH 10^5 add-on cells, and
+  the reasons are now single-instance rows rather than the row that
+  owned the mass.** HEAD `c5e5f2b`, same driver, same scratch, same
+  seed, warm-up plus two timed.
+
+  | cell | events | persons | generate | check | emit | spool | wall | peak RSS | self-check |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `nobed` 10^5 | 129,415 | 39.14 s | 129.12 s | 12.88 s | — | — | 188.63 s | 1,677 MB | **BLOCKED (1 violation)** |
+  | `v2` 10^5 | 171,835 | 40.26 s | 162.68 s | (70.24 s) | — | — | 282.02 s | 1,703 MB | **BLOCKED (33,952)** |
+
+  `roadmap.md#cancel-transfer-reinstates-a-discharged-patient` is CLOSED
+  (`c5e5f2b`) and `outpatient-patients-occupy-no-bed` went **372,123 →
+  0** at `nobed` and **495,205 → 33,950** at `v2`. What remains blocks
+  each cell ALONE and neither is TS-5-rooted:
+  `roadmap.md#ts-4-placeholder-unresolved` is the only violation in the
+  whole `nobed` run, and `roadmap.md#ts-3-outpatient-opens-over-an-encounter`
+  is the whole of `v2`'s residue — one patient, `PID-000640-f57cb996`,
+  producing all 33,950. **The prior entry's reading that TS-5 was "one
+  defect, not four" blocking these cells was true about the MASS and
+  false about the BLOCK**, and a cell is blocked by one violation
+  exactly as hard as by 372,123.
+
+  Generate at `v2` is **162.68 s against 163.05 s** — unmoved, as a
+  guard consuming no draws should be. **Event counts MOVE, in opposite
+  directions**: 129,407 → 129,415 (+8) at `nobed` and 171,913 → 171,835
+  (−78) at `v2`. The rejection substitutes one `:step-rejected` for one
+  `:cancel-transfer` and so accounts for none of that; the delta is
+  downstream, from beds that are no longer silently held being allocated
+  instead. Recovered by the untimed probe, a blocked run discarding its
+  payload. **The `nobed` check figure is a real
+  measurement** — 12.88 s materialising ONE violation, the first
+  essentially-clean check wall this programme has had at 10^5 — while
+  the `v2` figure stays parenthesised for the reason the entry above
+  gives. **Emit and spool still never run at 10^5 on either corpus, so
+  msg/event at 10^5 remains unmeasured**, two sessions after the gap was
+  named.
+
 - **PROJECTED, not measured — 10^6 events on today's generator.** One
   decade's extrapolation of the two-term fit above: generate 7.7 h +
   check 17.0 h = **~24.7 h, of which 99.3% is the quadratic term**. This
@@ -468,6 +505,22 @@ instrument error. Only the quiet-host figures appear here.
   so warm-up plus two timed is ~2 h 38 min — affordable — but peak heap in
   the emit phase projects to **9.87 GB against the shipped 3.88 GB
   ceiling**, and peak RSS to **15.5 GB against the machine's 15 GiB**.
+
+  **RE-STATED 2026-08-29 (post-TS-5), and STILL DECLINED — the label and
+  this note both stand.** The decline was on EMIT peak heap, and the two
+  cells above cannot improve that projection for the plainest possible
+  reason: **emit never ran**. `:emit-peak-heap-mb` is 0.0 in all four
+  timed runs because both cells fail their self-check before emission,
+  so the arithmetic that would license 10^6 is exactly as unmeasured as
+  it was. Taking 10^6 on the strength of a generate-phase heap that DID
+  shrink would be reasoning from the half that was never the constraint.
+  What the new figures do offer whoever gets to take it: generate peaks
+  at 703.5 MB (`nobed`) / 707.6 MB (`v2`) against the 3.88 GB ceiling,
+  and check at 1,081.6 / 1,246.6 MB while building 1 and 33,950
+  violations respectively — so a 10^6 run with a CLEAN self-check would
+  carry a check-phase heap far below the `v2` figure here, the violation
+  vector being what dominates it. None of that reaches emit, which is
+  the gate.
   The correction: this entry's 1.9 GB live set was the right quantity to
   worry about and the wrong one to be bounded by. Measured retained
   projects to **1.18 GB**, well inside the ceiling — so on the live-set

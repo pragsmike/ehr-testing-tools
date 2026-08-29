@@ -59,21 +59,6 @@ with them.
   1 in clinic-decade demo (sweep-3 record :290); fix moves every corpus, its own
   declared sweep; sweep 5's fan-out must either wait for it or derive from log
   indices.
-- OPEN **[cancel-transfer-reinstates-a-discharged-patient]** PRIORITY 5 -- a churn
-  `:cancel-transfer` landing in the SAME BATCH as a `:discharge` reinstates
-  `:location` and `:home-ward` onto a patient who is already `:discharged`, and
-  nothing ever vacates that bed again. Found 2026-08-29 while closing
-  `roadmap.md#ts-2-outpatient-holds-a-bed`, which it had been hiding behind: it is
-  the OTHER root of `outpatient-patients-occupy-no-bed` and now the whole of it:
-  that row flags 11 patients at nobed 10^5 and 12 at v2 10^5, sharing 10 (the
-  two sets are NOT nested -- checked by id, not inferred). Probed to the
-  event -- PID-004302, `:discharge` t=303660 nils the location, `:cancel-transfer`
-  t=303660 restores SURGERY-91, the follow-up `:outpatient-visit` at t=3068460
-  inherits it; PID-005562 is the same shape at t=363060. NOT FIXED HERE, and
-  deliberately: `decide`/`evolve :cancel-transfer` is reached by every shipped
-  corpus that carries churn, so a fix is a candidate declared sweep and owes its
-  own session. The design question is whether a cancel may reinstate state a
-  LATER event has already superseded. BLOCKS both 10^5 v2 cells, alone now.
 - OPEN **[ts-3-outpatient-opens-over-an-encounter]** PRIORITY 7 --
   `admission-only-when-no-open-encounter` violated by an `:outpatient-visit`, ONE
   instance (`PID-000640-f57cb996`, t=100609860, v2 10^5 only). DIAGNOSED
@@ -87,7 +72,16 @@ with them.
   routed through `:repeat-arrival`, so `encounter-openable?` is never asked.
   Same family as `roadmap.md#cancel-transfer-reinstates-a-discharged-patient` --
   a cancel reinstating state a later event superseded -- and it should be
-  weighed with it. BLOCKS nothing alone; it rides the v2 10^5 cell.
+  weighed with it. **RE-SCOPED 2026-08-29 by c5e5f2b, and NOT TS-5-rooted:
+  the TS-5 guard landed and this reproduces UNCHANGED -- same patient, same
+  instant, same invariant -- because its reinstating event is a
+  `:cancel-discharge` whose subject is `:discharged`, which is the one status
+  a cancel-discharge may legally find. It is now the LARGEST blocker of the
+  v2 10^5 cell rather than a passenger on it: `PID-000640` alone produces all
+  33,950 surviving `outpatient-patients-occupy-no-bed` violations there, the
+  whole of that invariant's residue, because the compiled second opener flips
+  `:class` to `:outpatient` on a patient still holding the bed their inpatient
+  encounter was given. BLOCKS the v2 10^5 cell, and now alone.
 - OPEN **[ts-4-placeholder-unresolved]** PRIORITY 8 --
   `every-placeholder-registration-is-resolved-or-still-open`, one violation in
   EACH 10^5 add-on cell, same patient and same instants in both. CHARACTERISED
@@ -99,8 +93,12 @@ with them.
   reads unresolved forever, and once `:merged` it can never be filled or
   identification-merged either. Whether the defect is the engine's (churn must
   not eat an open-window placeholder) or the check's (any merge resolves an
-  identity) is a real design question and is NOT answered here. BLOCKS nothing
-  alone; it rides both 10^5 cells.
+  identity) is a real design question and is NOT answered here, and was not
+  answered by c5e5f2b either -- the consuming event is a churn `:merge`, not a
+  cancel, so the TS-5 guard does not reach it. **RE-SCOPED 2026-08-29: it is
+  now the ONLY violation in the whole `nobed` 10^5 run (1 of 129,407 events),
+  and therefore the only thing between that cell and a MEASURED entry.**
+  BLOCKS the nobed 10^5 cell, alone.
 - OPEN **[corpus-player-slices]** PRIORITY 9 -- the corpus-player slices chartered
   by ADR-0014. RE-DERIVED 2026-08-29 against the live tree, and the row is now
   TWO items where it was once a list: everything else in it has shipped.
@@ -280,6 +278,7 @@ One line a row. `CLOSED` here means "no longer a roadmap row", not "the work
 was done" -- each line says which. The section is named `## Done` because that
 is where `ehrt.docs-tooling.roadmap-lint-test` requires a `CLOSED` row to live.
 
+- CLOSED 2026-08-29 c5e5f2b **[cancel-transfer-reinstates-a-discharged-patient]** -- DONE, and the design question the row refused to answer is ANSWERED: a cancel may not reinstate state a later event superseded, where "superseded" is measured RELATIVE TO THE STATUS THE CANCELLED EVENT ITSELF LEAVES BEHIND. MECHANISM MEASURED BEFORE ANY FIX, which is what the row asked for and what settles between its two candidates: a probe wrapping the `decide` VAR reports the subject `:status :discharged`, `:location` nil AT DECIDE TIME at both of the row's witnesses (`PID-004302-fa1ab125` t=303660 into SURGERY-91; `PID-005562-03ed543c` t=363060 into ED-31). So the discharge is already folded when the cancel is decided -- the run loop folds each decide's events into `world` before popping the next queue entry, and there is no simultaneous batch for a decide-time test to miss. It is the reinstate-index reading, not the batch-order one. `bed-reoccupied-by-someone-else?` passes it because the occupancy board reads NIL for both beds: the patient is gone, not displaced. THE CHANNEL'S OWN OPTION (A) WAS REFUTED BY THAT SAME MEASUREMENT and the correction is the session's main finding -- rejecting every `:discharged` subject would reject every `:cancel-discharge` in the repository (55 of 55 at nobed 10^5), since `:discharged` is the status a cancel-discharge exists to find. DRAWS ZERO ON BOTH PATHS, asserted by a test against a pristine `Random` rather than read off the source. `bin/ground-truth-bracket a4e8698 c5e5f2b` IDENTICAL over 38 roots, so NO declaration and NOTHING re-pinned, and the per-corpus count explains it exactly: the only cancel DECIDE in the whole gated population is one legal `:cancel-discharge` in seed-202, whose other 7 reinstating cancels all carry `:in-error true` and come from `decide :transfer-in-error`, which never routes through `decide :cancel-transfer`. MEASURED AFTER: `outpatient-patients-occupy-no-bed` goes 372,123 -> **0** at nobed 10^5 (all 11 patients cleared) and 495,205 -> 33,950 at v2 10^5 (11 of 12 cleared; the residue is one patient, TS-3's). THE ROW'S OWN "BLOCKS both 10^5 v2 cells, alone" IS CORRECTED: it never did. `roadmap.md#ts-4-placeholder-unresolved` blocks the nobed cell alone and `roadmap.md#ts-3-outpatient-opens-over-an-encounter` blocks the v2 cell alone, so both cells stay BLOCKED. Contract 1.7.0 -> 1.8.0 for the two new rejection reasons. Record: `.agents/session-records/2026-08-29-ts-5-superseded-cancel.md`.
 - CLOSED 2026-08-29 19a4931 **[ts-1-seventh-bed-arc]** -- DONE: the bed relation grew a SEVENTH arc, `cleaning -> occupied`, ratified into ADR-0174 section 2(c) as its fourth ratification. Reproduced at the close's own seed first (16,322 events, the same two beds at the same instants), which confirmed the close's mechanism exactly and added one detail it did not have: at ED-176 the cancel reinstates its patient into a bed a DIFFERENT patient has used and vacated in between, so the arc is not "the same occupant returns". CHECK-SIDE ONLY -- the engine was already correct, `decide :bed-ready`'s guard no-ops on the bed the cancel leaves, and `bin/ground-truth-bracket` reads IDENTICAL over the whole session. Gated by an AUTHORED hand-built witness whose `[:cleaning :occupied]` arc count is pinned `pos?`, because the shape is zero-frequency in every shipped corpus and could not be sampled.
 - CLOSED 2026-08-29 1b4e264 **[ts-2-outpatient-holds-a-bed]** -- DONE for the root it named, and the close's DIAGNOSIS CORRECTED. Not "the authored pathway walk is not gated on encounter class": the close's own witness (log index 92836, reproduced here) carries `:bed-ready true`, a field only `bed-ready-transfer-event` writes, and the reproducer that proves it has no `:transfer` step in any pathway. `waiting-boarder` never asked whether a candidate was IN A BED, so an open outpatient encounter -- `:status :admitted` from its opener, `:location` nil, `:home-ward` stale from an earlier inpatient stay -- answered its `not=` test yes and was handed the next bed to free in that ward, ranked FIRST because its `:admitted-at` was stale too. One `some?` clause. Draw-neutral: the branch it takes more often is the pre-existing zero-draw one. The v2 10^4 cell, BLOCKED since the close, now self-checks CLEAN at the same 16,322 events; the 10^5 cells drop from 24/25 offending patients to 12/13, and the remainder is a different root, rowed as `roadmap.md#cancel-transfer-reinstates-a-discharged-patient`.
 - CLOSED 2026-08-29 6eb4aa6 **[emission-add-ons]** -- DONE, not retired: traffic-scale ARC 4 IS COMPLETE, six sweeps of six, and with it ADR-0168's whole five-arc programme. Sweep 1 flipped MSH-12 to "2.4" so every message resolves to a real v2.4 structure instead of `GenericMessage$V23`; sweeps 2-4 landed ruling B1's three tranches -- re-statement chatter plus DFT^P03 charges, order/result status ladders, and SIU -- each behind its own opt-in key, each dark-then-on with both `bin/ground-truth-bracket` brackets IDENTICAL on the dark half; sweep 5 landed the fan-out subscriber table and `:mllp` as a sink kind, the first sweep with BOTH brackets identical at every commit; sweep 6 (2026-08-29) was the measurement close, which priced design (h)/ruling D1's `gate v2 --sample-add-ons` at 2.23 ms/message and a 25.2% wall saving, and measured the arc's own headline: the add-ons are worth 1.63x-1.89x the message volume per event (0.643 msg/event before, 1.05-1.21 after). Two things arc 4 did NOT do, both handed on rather than buried: NK1 stays unavailable because household state reaches no ground-truth event (ADR-0172 limitations row 8, untouched by any sweep); and sweep 6's rerun found that the nine-key configuration does not complete its own self-check at 10^4 or above -- four invariant families red, diagnosed and rowed in `.agents/session-records/2026-08-29-traffic-scale-close.md`, none reachable by any shipped corpus. Per-sweep narrative in `.agents/session-records/2026-08-2{7,8,9}-arc-4*.md` and `2026-08-29-traffic-scale-close.md`.
