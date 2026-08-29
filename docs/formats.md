@@ -1653,7 +1653,7 @@ read it from a shell instead of a REPL.
 | Verdicts, causes, findings | `ehrt.judge.finding/Finding`, `/Verdict`, `/Cause` | the same runs |
 | FHIR findings' `:disposition` / `:cause` | `ehrt.judge.fhir/interpret` | a live `ehrt gate fhir` run against a real mutant bundle, 2026-07-25 — 6554 findings, all three dispositions present |
 | Check report and its codes | `ehrt.corpus.check` | live `ehrt check` runs in both golden-equivalence and per-file-assertion modes, 2026-07-25 |
-| Event log, all 23 kinds | `ehrt.sim-engine.event-schema/Event` | the census's own 4,997 events across eleven corpora (`.agents/plans/2026-08-16-event-log-census.md`), reconciled against every `{:event ...}` construction site in the engine; the section above is GENERATED from the committed schema, and every example in it came out of a real engine run |
+| Event log, every kind | `ehrt.sim-engine.event-schema/Event` | the census's own 4,997 events across eleven corpora (`.agents/plans/2026-08-16-event-log-census.md`), reconciled against every `{:event ...}` construction site in the engine. The vocabulary was 23 kinds at that census and is **28** today, which is why this row states no count of its own; the section above is GENERATED from the committed schema, and every example in it came out of a real engine run |
 | Corpus manifest | `ehrt.provenance.manifest/ManifestV1_1` | a real generated corpus's `manifest.edn` |
 | Lineage record | `ehrt.corpus.lineage/LineageRecord` | a real mutant's lineage sidecar |
 | Operation manifest | `ehrt.corpus-io.operation-manifest/OperationManifestV1` | a real `corpus mutate` batch's `operation-manifest.edn`, 2026-07-28 |

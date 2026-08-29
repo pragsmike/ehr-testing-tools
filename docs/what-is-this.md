@@ -51,7 +51,12 @@ This workspace is that place.
   transfers, discharges, orders, results, the administrative churn
   real feeds are full of), or wraps Synthea for longitudinal
   population generation. Same seed and config, byte-identical output,
-  always.
+  always. The richest thing it produces is not the messages but the
+  **ground-truth event stream** underneath them, which is a published,
+  versioned contract you can write your own emitter against —
+  [`consuming-ground-truth.md`](consuming-ground-truth.md) is how to
+  invoke it, how to parameterize the mix, and what is and is not
+  guaranteed about it.
 - **Mutate** — deliberately breaks generated (or foreign) data with a
   registered catalog of defect operators, each labelled with exactly
   what it changed, where, and which conformance constraint the result

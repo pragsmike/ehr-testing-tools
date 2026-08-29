@@ -70,10 +70,17 @@ don't need our emitters; you need the log underneath them.
 is the path end to end: one command for the log, two worked example
 emitters, and a way to check your own coverage.
 [`formats.md`](formats.md#the-event-log)'s "The event log" is the
-contract it's written against — 21 closed event kinds, generated from a
+contract it's written against — 28 closed event kinds, generated from a
 committed schema. The narrative version is the manual's
 [Chapter 3](manual/03-a-simulated-hospital.md#the-log-underneath-every-message), "The log underneath
 every message".
+
+**And read [`consuming-ground-truth.md`](consuming-ground-truth.md)
+before you size a run.** `formats.md` tells you the shape of an event;
+that page tells you which configuration keys make the interesting
+kinds appear at all (a bare `ehrt sim run` produces the thinnest stream
+this simulator has), what a green `ehrt sim check` does and does not
+certify, and how far the thing scales before it stops.
 
 This is a different audience from "Downstream data consumer" below, and
 the difference is worth a sentence: that reader never runs the CLI and
@@ -87,6 +94,13 @@ You read `report.edn`, `manifest.edn`, or lineage records — via
 [`formats.md`](formats.md) is the reference: the report, check report,
 manifest, and lineage record shapes, each field table citing its
 schema and backed by a real captured output.
+
+If what you read is a **sim** corpus's `events.edn` or `manifest.edn`,
+read [`consuming-ground-truth.md`](consuming-ground-truth.md) beside
+it — the determinism contract, the identity model an MPI consumer
+needs, the guarantees and the stated exclusions, and the sim
+manifest's own field table, which is not the one `formats.md`
+tabulates.
 
 ## Evaluator
 

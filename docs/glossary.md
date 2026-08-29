@@ -247,7 +247,7 @@ ground-truth log also contains events that never become messages
 and the name its contract is published under. `ehrt sim run --format
 ground-truth` is how you get one;
 [`formats.md`](formats.md#the-event-log)'s "The event log" is the shape
-— twenty-one closed event kinds, the keys each carries, one real example
+— twenty-eight closed event kinds, the keys each carries, one real example
 each, generated from a committed schema — and every run's `manifest.edn`
 records the **Schema version** it was produced under. If you need
 traffic in a format this workspace does not ship, write your emitter
