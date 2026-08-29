@@ -790,3 +790,35 @@ Regeneration, if this scratch does not survive:
 **`roadmap.md#emission-add-ons` is CLOSED, 6 of 6, and ADR-0168's
 five-arc programme is complete.** What it did not deliver is stated in
 the plan beside what it did.
+
+**Suite and CI.** `make test` green at the committed tree: `MAKE_EXIT=0`,
+**wall 1001.7 s (16m42s) / poly 16m02s**, 0 failures and 0 errors in
+every namespace. That is above the ~14.5 min quiet-penny baseline, and
+the reason is disclosed rather than smoothed: other agent sessions were
+resident on the host throughout, and this is a docs-only diff whose
+suite result is a gate rather than a figure of record. CI at the pushed
+tip: run **33246661794**, conclusion **success**, head `6c9b4af`,
+verified in session with `gh run view`. No tag is paid (de-scaffold
+ruling, 2026-08-25); CI green at the tip is the close marker.
+
+## Where the next session picks up
+
+Four things this session leaves on the table, in the order they matter.
+
+1. **TS-2 first, and it is the one that blocks scale.** Nothing above
+   10^3 completes on an add-on corpus until an outpatient encounter
+   stops allocating a licensed bed. TS-1 blocks 10^4 as well and is the
+   cheaper of the two (one arc added to an enumerated relation, plus
+   whatever gate that arc owes). TS-3 and TS-4 should be re-probed once
+   TS-2 is fixed, since TS-3 may go with it.
+2. **Then re-run this session's v2 cells.** The whole v2 series, its
+   emit/spool figures, the messages-per-event ratio at 10^5, and the
+   check exponent on an add-on corpus are all waiting on those fixes,
+   and this session's scratch regenerates from appendix C.
+3. **`roadmap.md#performance-residual-sites` has a sharper target than
+   it had.** Generate's exponent is 1.474 on the pre-arc-4 config and
+   1.64 with the payload on, measured, so there is a specific super-
+   linear term the payload contributes and arc 0's list does not name.
+4. **The emit phase is where streaming is needed**, not generate or
+   check -- section 7's arithmetic, and it contradicts what plan :239
+   assumed. Any future 10^6 attempt starts there.
