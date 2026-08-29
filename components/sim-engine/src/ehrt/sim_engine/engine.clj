@@ -1624,19 +1624,59 @@
 
 (defn- waiting-boarder
   "The longest-waiting BOARDER of `ward-name` -- an admitted patient
-  whose `:home-ward` is this ward and whose current `:location` is
-  somewhere else -- or nil. Extracted verbatim from `decide :discharge`,
-  where it was inline, because the bed cycle asks the same question at
-  a different instant: the READY event, not the discharge.
+  who IS IN A BED, whose `:home-ward` is this ward, and whose current
+  `:location` is somewhere else -- or nil. Extracted verbatim from
+  `decide :discharge`, where it was inline, because the bed cycle asks
+  the same question at a different instant: the READY event, not the
+  discharge.
 
   `excluded-id` is the patient whose own departure is being processed,
   who must not be considered their own boarder. nil excludes nobody,
   which is what the READY instant wants: by then the patient who left
-  is discharged and holds no location at all."
+  is discharged and holds no location at all.
+
+  TS-2 (traffic-scale close, 2026-08-29, section 9): THE `some?` CLAUSE
+  IS THE FIX, and it took a 10^5 run to need it. A boarder is an
+  admitted patient sitting in a bed that is not their home ward's; a
+  patient in NO bed is boarding nowhere, and asking `not=` of a nil
+  location silently answered yes.
+
+  The population that answered yes wrongly is exactly the OPEN
+  OUTPATIENT ENCOUNTERS. `evolve :outpatient-visit` sets `:status
+  :admitted` (M5b re-used the existing status values rather than
+  inventing one, `:class :outpatient` being the distinguishing fact)
+  and sets no `:location`; `evolve :discharge` nils `:location` but
+  leaves `:home-ward` standing. So a patient discharged from Medicine A
+  who returns for a follow-up visit is, for the duration of that visit,
+  `:admitted` with a nil location and a stale Medicine A home ward --
+  and this predicate pulled them into the next bed that freed there,
+  emitting a `:transfer` with `:from nil`. Worse, their STALE
+  `:admitted-at` is from the earlier inpatient stay, so
+  `sort-by` ranked them AHEAD of every genuine boarder.
+
+  `some?` and not `(not= :outpatient (:class p))` deliberately: the
+  invariant `admitted-occupies-one-slot` already says an admitted
+  patient's location is never nil EXCEPT for an outpatient, so over
+  `:admitted` patients the two predicates select the same set -- and
+  this one says what a boarder IS rather than which class happens to
+  be the exception today.
+
+  DRAWS. This function consumes none, and the branch it now takes more
+  often is the pre-existing zero-draw one: both callers already emit
+  nothing and draw nothing when `waiting-boarder` returns nil (`decide
+  :bed-ready`'s `{:events [ready-event]}`, and `decide :discharge`'s
+  own nil `waiting-id`). So no draw is SKIPPED differently -- a draw
+  that should never have been made is not made. For a genuine boarder
+  nothing changes at all: removing a non-boarder from the candidate set
+  cannot reorder the rest. Where a false boarder was outranking a real
+  one, the real one now gets the bed, which is the correction itself
+  and not a side effect of it. `bin/ground-truth-bracket` is what says
+  whether any shipped corpus was reaching this at all."
   [world excluded-id ward-name]
   (->> (:patients world)
        (remove (fn [[pid _]] (= pid excluded-id)))
        (filter (fn [[_ p]] (and (= :admitted (:status p))
+                                (some? (get-in p [:location :ward]))
                                 (not= (:home-ward p) (get-in p [:location :ward]))
                                 (= ward-name (:home-ward p)))))
        (sort-by (fn [[pid p]] [(:admitted-at p) pid]))

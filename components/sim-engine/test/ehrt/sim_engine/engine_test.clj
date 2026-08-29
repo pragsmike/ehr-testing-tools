@@ -197,8 +197,22 @@
                 (is (= "Renal" (get-in world3 [:patients "P2" :location :ward])))))))))))
 
 (defn- boarding?
+  "The specification copy of `engine`'s own `waiting-boarder` predicate.
+
+  TS-2 (traffic-scale close, 2026-08-29, section 9): the LOCATION
+  clause is load-bearing and used to be missing from BOTH copies. A
+  boarder is an admitted patient sitting in a bed that is not their
+  home ward's; a patient in NO bed is boarding nowhere. Without
+  `some?` an open outpatient encounter -- `:status :admitted`,
+  `:location` nil, `:home-ward` left over from an earlier inpatient
+  stay -- satisfied the other two clauses and was pulled into the next
+  ready bed in that ward. Kept in step with the engine's own predicate
+  deliberately: this helper is what says what the property below
+  MEANS, so the two drifting apart would make the property assert
+  something the engine does not do."
   [patient]
   (and (= :admitted (:status patient))
+       (some? (get-in patient [:location :ward]))
        (not= (:home-ward patient) (get-in patient [:location :ward]))))
 
 (defspec bed-ready-transfer-relieves-the-longest-waiting-boarder 150
@@ -228,6 +242,105 @@
                                (= (:t event) (:t %)))
                          ground-truth)))))
        (engine/replay ground-truth)))))
+
+
+;; --- TS-2: an open outpatient encounter is not a waiting boarder ---------
+;;
+;; The traffic-scale close (2026-08-29,
+;; `.agents/session-records/2026-08-29-traffic-scale-close.md` section 9)
+;; found `outpatient-patients-occupy-no-bed` red across 24-25 patients at
+;; 10^5 on the arc-4 add-on configuration, and diagnosed it as an
+;; authored pathway walk that was not gated on the encounter's class.
+;; THAT DIAGNOSIS IS WRONG, and the fixture below is what says so: its
+;; only pathway is admission/delay/discharge, it contains no `:transfer`
+;; step of any kind, and the offending transfers still appear -- carrying
+;; `:bed-ready true`, which ONLY `bed-ready-transfer-event` produces.
+;; The defect is in `waiting-boarder`'s predicate, one layer down.
+
+(def ^:private followup-outpatient-config
+  "The smallest population that presents the bed-ready coupling with an
+  open OUTPATIENT encounter to choose, at the close's own seed.
+
+  Every piece earns its place. `:encounters` is required or a
+  discharged patient's follow-up visit opens nothing
+  (`encounter-openable?` degenerates to the `:new` test without it).
+  `:scheduling`'s follow-up rate is 1.0 so every discharge books a
+  return visit, and `:scheduled-fraction` is 0.0 so no ARRIVAL is
+  booked -- the outpatient encounters here all come from the follow-up
+  producer, which is the shape the close saw. 150 patients at a 60
+  minute arrival gap spans enough days that day-2 discharges land
+  inside day-1 follow-up windows, which is the coincidence the defect
+  needs; at 30 patients it never happens and the run is clean for want
+  of traffic, not for want of the bug.
+
+  ONE WARD, and that is the sharpest part: with a single ward no
+  genuine boarder can exist at all (a boarder is by definition placed
+  somewhere other than their home ward), so every boarder this
+  facility can produce is a false one. 60 licensed beds because the
+  defect LEAKS them -- `:outpatient-visit-end` sets `:status
+  :discharged` without clearing `:location`, so a bed wrongly taken by
+  an outpatient is held for the rest of the run, and a smaller
+  facility dies `:capacity-exhausted` before `check-all` is ever
+  reached."
+  {:seed 20260824
+   :patients 150
+   :arrival-gap 60
+   :facility {:id :ts2-fixture
+              :wards [{:id :renal :name "Renal" :beds 60 :surge-slots 10
+                       :surge-format "%s-H%02d" :class :inpatient
+                       :turnaround-minutes [10 10]}]}
+   :providers [{:name {:family "Reyes" :given "Priya"} :role :attending
+                :specialty "Nephrology" :wards [:renal]}]
+   :pathways [{:pathway {:name "short-stay"
+                         :steps [{:type :admission :location "Renal"}
+                                 {:type :delay :from 60 :to 180}
+                                 {:type :discharge}]}
+               :weight 1}]
+   :encounters true
+   :scheduling {:scheduled-fraction 0.0
+                :lead-time-days [1 1]
+                :no-show-rate 0.0
+                :reschedule-rate 0.0
+                :cancel-rate 0.0
+                :follow-up {:rate 1.0 :interval-days [1 1]}}})
+
+(defn- open-outpatient?
+  [patient]
+  (and (= :admitted (:status patient)) (= :outpatient (:class patient))))
+
+(deftest an-open-outpatient-encounter-is-not-a-waiting-boarder
+  (let [{:keys [ground-truth exhausted]} (engine/run followup-outpatient-config)
+        records (engine/replay ground-truth)]
+    (testing "the fixture reaches a real corpus rather than dying first"
+      (is (nil? exhausted)
+          "an exhausted run yields no log and no self-check, so it would prove nothing"))
+    (testing "the OPPORTUNITY is counted, so a green row cannot be green for want of traffic"
+      (is (pos? (count (filter #(= :outpatient-visit (:event %)) ground-truth)))
+          "the population really does open outpatient encounters")
+      (is (pos? (->> records
+                     (filter #(= :discharge (:event (:event %))))
+                     (mapcat (fn [{:keys [event world-before patient-id]}]
+                               (let [ward (get-in world-before [patient-id :location :ward])]
+                                 (for [[pid p] world-before
+                                       :when (and (not= pid patient-id)
+                                                  (open-outpatient? p)
+                                                  (= ward (:home-ward p)))]
+                                   [(:t event) pid]))))
+                     count))
+          "and a bed really is freed in the home ward of an OPEN outpatient encounter --
+           the exact choice `waiting-boarder` is asked to make"))
+    (testing "TS-2: no allocation is ever made on behalf of an open outpatient encounter"
+      (is (empty? (->> records
+                       (filter (fn [{:keys [event world-before patient-id]}]
+                                 (and (#{:admission :transfer} (:event event))
+                                      (open-outpatient? (get world-before patient-id)))))
+                       (mapv (fn [{:keys [event patient-id]}]
+                               {:at (:t event) :patient patient-id
+                                :event (:event event) :bed (get-in event [:location :bed])}))))
+          "an outpatient encounter occupies no bed, so nothing may put one in a bed"))
+    (testing "and the catalog agrees, which is the row the close saw go red"
+      (is (empty? (check/outpatient-patients-occupy-no-bed ground-truth)))
+      (is (= :ok (:status (check/check-all ground-truth (:facility followup-outpatient-config))))))))
 
 (def ^:private one-bed-one-surge-facility
   "ADR-0153: the smallest facility that can hold, at one instant, a
