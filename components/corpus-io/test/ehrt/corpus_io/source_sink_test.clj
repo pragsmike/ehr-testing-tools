@@ -4,7 +4,8 @@
   parser's own round-trip property lives in source_sink_url_test.clj
   (Step 3); this file covers the canonical-map shape and the dir/file
   constructors."
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.set]
+            [clojure.test :refer [deftest is testing]]
             [ehrt.corpus-io.source-sink :as ss]
             [ehrt.kernel.interface :as kernel]))
 
@@ -19,9 +20,14 @@
     (is (every? ss/implemented-source-kinds ss/printable-source-kinds))))
 
 (deftest sink-kinds-test
-  (is (= #{:dir :file :stdout :blaze} ss/known-sink-kinds))
-  (is (= #{:dir :file :stdout} ss/implemented-sink-kinds))
-  (is (every? ss/known-sink-kinds ss/implemented-sink-kinds)))
+  (testing "ARC 4 SWEEP 5 (ADR-0175 design (g)): `:mllp` joins both sets
+            -- the first sink kind that is neither a filesystem
+            location nor a byte stream but a SOCKET"
+    (is (= #{:dir :file :stdout :blaze :mllp} ss/known-sink-kinds))
+    (is (= #{:dir :file :stdout :mllp} ss/implemented-sink-kinds)))
+  (is (every? ss/known-sink-kinds ss/implemented-sink-kinds))
+  (testing ":blaze remains the one recognized-but-unimplemented sink"
+    (is (= #{:blaze} (clojure.set/difference ss/known-sink-kinds ss/implemented-sink-kinds)))))
 
 (deftest valid-source?-test
   (testing "a minimal :kind-only map is a valid generic Source (kind is open, D4)"

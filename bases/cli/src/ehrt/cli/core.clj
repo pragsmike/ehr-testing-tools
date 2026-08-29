@@ -1849,29 +1849,54 @@
   filled in; a caller who already wrote a query string (any query,
   including a different format) is left completely alone."
   [designator]
-  (if (str/includes? designator "?")
-    designator
-    (str designator "?format=v2-er7&framing=er7-multi")))
+  (cond
+    (str/includes? designator "?") designator
+    ;; ARC 4 SWEEP 5 (ADR-0175 design (g)): a `:mllp` sink IMPLIES
+    ;; `:framing :mllp` and REJECTS any other framing at construction,
+    ;; so filling in the er7-multi default here would make every bare
+    ;; `mllp://host:port` an :invalid-sink. The implication is honoured
+    ;; rather than worked around: the framing is left absent, which is
+    ;; what the schema already means by "implied".
+    (str/starts-with? designator "mllp:") (str designator "?format=v2-er7")
+    :else (str designator "?format=v2-er7&framing=er7-multi")))
 
 (defn- resolve-play-sink
   "--sink DESIGNATOR (ADR-0014: reuses the existing source-sink
   designator vocabulary, never a parallel flag scheme) -> kernel/ok
   {:sink-fn :close-fn :cue-fn} for a supported kind, or an operational
-  error naming what's unsupported. Scoped to :file this session
-  (:dir/:blaze -- including the future :mllp transport -- are named,
-  disclosed deferrals, ADR-0014's own bail-out procedure); nil sink
-  (no --sink given) means \"use the ticker\" and isn't resolved here."
+  error naming what's unsupported.
+
+  ARC 4 SWEEP 5 (ADR-0175 design (g)): `:mllp` joins `:file`, and it
+  cost NO NEW FLAG -- the prompt sketched `--transport`, and
+  `--sink mllp://host:port` was chosen instead because `--sink` already
+  takes a designator and already inherits ADR-0017's vocabulary and its
+  round-trip parse/print law. Disclosed as a deviation from that
+  sketch. `:dir`/`:blaze` remain named, disclosed deferrals
+  (ADR-0014's own bail-out procedure); nil sink (no --sink given) means
+  \"use the ticker\" and isn't resolved here.
+
+  The MLLP leg returns two extra keys the ticker/file legs do not:
+  `:failure-fn`, whose non-nil value `play-command` returns INSTEAD of
+  a success (a negative acknowledgement, a timeout or a closed stream
+  must make the command fail, not print a cheerful summary), and
+  `:summary-fn`, merged into the ok payload as `:mllp`."
   [designator println-fn]
   (let [parsed (source-sink-url/parse-sink-designator (ensure-default-play-sink-format designator))]
     (if-not (result/ok? parsed)
       parsed
-      (let [{:keys [kind path]} (:payload parsed)]
+      (let [{:keys [kind path host port]} (:payload parsed)]
         (case kind
           :file (let [{:keys [sink-fn close-fn]} (file-sink-fn path)]
                   (result/ok {:sink-fn sink-fn :close-fn close-fn :cue-fn stderr-cue-fn}))
+          :mllp (let [opened (source-sink/mllp-open-sink! host port)]
+                  (if-not (result/ok? opened)
+                    opened
+                    (let [{:keys [send-fn failure-fn summary-fn close-fn]} (:payload opened)]
+                      (result/ok {:sink-fn send-fn :close-fn close-fn :cue-fn stderr-cue-fn
+                                  :failure-fn failure-fn :summary-fn summary-fn}))))
           (result/error :play-sink-kind-unsupported
                         {:kind kind :path path
-                         :hint "ehrt play only supports a file: sink this session -- dir:/blaze: (and a future mllp: transport) are named, disclosed deferrals (ADR-0014)"}))))))
+                         :hint "ehrt play supports file: and mllp:// sinks -- dir:/blaze: are named, disclosed deferrals (ADR-0014)"}))))))
 
 (defn- slurp-play-input
   "Result or loud (ADR-0096 Finding 2, ADR-0100): result/ok the file's
@@ -2088,7 +2113,8 @@
                                             :cue-fn (ticker-cue-fn println-fn)}))]
                     (if-not (result/ok? sink-result)
                       sink-result
-                      (let [{:keys [sink-fn close-fn cue-fn finalize-fn snapshot-count-fn unfolded-count-fn]} (:payload sink-result)
+                      (let [{:keys [sink-fn close-fn cue-fn finalize-fn snapshot-count-fn unfolded-count-fn
+                                    failure-fn summary-fn]} (:payload sink-result)
                             run-result (run-plan! plan-result sleep-fn cue-fn sink-fn)
                             _ (when finalize-fn (finalize-fn))
                             _ (close-fn)
@@ -2096,14 +2122,27 @@
                             first-ts (some timestamp-fn events)
                             last-ts (some timestamp-fn (reverse events))
                             board-counts (when finalize-fn {:snapshot-count (snapshot-count-fn)
-                                                             :unfolded-count (unfolded-count-fn)})]
-                        (result/ok (merge run-result
-                                           board-counts
-                                           {:rate resolved-rate
-                                            :idle-cap-ms resolved-idle-cap-ms
-                                            :wallclock-ms (- ended-ms started-ms)
-                                            :stream-span-ms (when (and first-ts last-ts) (- last-ts first-ts))
-                                            :sink (or sink "ticker")}))))))))))))))))
+                                                             :unfolded-count (unfolded-count-fn)})
+                            ;; ARC 4 SWEEP 5 (ADR-0175 design (g)): the
+                            ;; MLLP leg is the first sink that can FAIL
+                            ;; after the run has started -- a negative
+                            ;; acknowledgement, a missing ACK, a closed
+                            ;; stream. Its error is returned INSTEAD of
+                            ;; a success, so `ehrt play --sink mllp://`
+                            ;; exits non-zero on a receiver that refused
+                            ;; or never answered rather than printing a
+                            ;; cheerful summary of an undelivered run.
+                            sink-failure (when failure-fn (failure-fn))]
+                        (if sink-failure
+                          sink-failure
+                          (result/ok (merge run-result
+                                            board-counts
+                                            (when summary-fn {:mllp (summary-fn)})
+                                            {:rate resolved-rate
+                                             :idle-cap-ms resolved-idle-cap-ms
+                                             :wallclock-ms (- ended-ms started-ms)
+                                             :stream-span-ms (when (and first-ts last-ts) (- last-ts first-ts))
+                                             :sink (or sink "ticker")})))))))))))))))))
 
 (defn- parse-canonicalizer-steps
   "\"id@v,id2@v2\" -> [[:id \"v\"] [:id2 \"v2\"]] -- the ordered

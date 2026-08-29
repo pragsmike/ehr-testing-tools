@@ -55,9 +55,17 @@
   {"file" :file "dir" :dir "stdin" :stdin "synthea" :synthea "sim" :sim "blaze" :blaze})
 
 (def sink-schemes
-  "scheme string -> :kind, the four sink spellings (D3): dir/file share
-  source's spellings, stdout is sink-only, blaze is shared."
-  {"file" :file "dir" :dir "stdout" :stdout "blaze" :blaze})
+  "scheme string -> :kind, the sink spellings (D3): dir/file share
+  source's spellings, stdout is sink-only, blaze is shared, and
+  `mllp` is sink-only (arc 4 sweep 5, ADR-0175 design (g)).
+
+  `mllp://host:port` COSTS NO NEW FLAG, which is the whole reason it is
+  here rather than behind a `--transport`: `ehrt play --sink` already
+  takes a designator, so the transport inherits ADR-0017's vocabulary
+  and this namespace's own round-trip parse/print law. Disclosed as a
+  deviation from the session prompt's own `--transport` sketch, chosen
+  because the seam exists."
+  {"file" :file "dir" :dir "stdout" :stdout "blaze" :blaze "mllp" :mllp})
 
 (defn- url-decode [^String s] (URLDecoder/decode s "UTF-8"))
 (defn- url-encode [^String s] (URLEncoder/encode s "UTF-8"))
@@ -108,11 +116,24 @@
     (cond-> (merge {:kind kind} (extract-format-framing (parse-query query-str)))
       (seq path) (assoc :path path))))
 
-(defn- parse-blaze
-  "blaze://host[:port][/path][?query] -- the one scheme with an
-  authority, since it names a network endpoint. nil when the input
-  after \"blaze:\" doesn't start with \"//\" (malformed)."
-  [rest]
+(def authority-schemes
+  "The kinds spelled `scheme://host[:port]...` rather than
+  `scheme:path` -- the ones that name a NETWORK ENDPOINT. `:blaze`
+  since D-a; `:mllp` since arc 4 sweep 5 (ADR-0175 design (g)), for the
+  identical reason and through the identical parser."
+  #{:blaze :mllp})
+
+(defn- parse-authority
+  "scheme://host[:port][/path][?query] -- the shape both authority
+  kinds share. nil when the input after the scheme colon doesn't start
+  with \"//\" (malformed).
+
+  `:port` stays a STRING for `:blaze`, which only ever re-prints it,
+  and is coerced to an INT for `:mllp`, whose constructor hands it to a
+  socket. A non-numeric `:mllp` port yields nil here -- rejected by
+  name as a malformed designator rather than silently dropped, which
+  is what a bare `(cond-> ... port (assoc :port port))` would do."
+  [kind rest]
   (when (str/starts-with? rest "//")
     (let [[authority-and-path query-str] (split-path-query (subs rest 2))
           [host-port path] (let [i (str/index-of authority-and-path "/")]
@@ -123,16 +144,21 @@
                         (if i
                           [(subs host-port 0 i) (subs host-port (inc i))]
                           [host-port nil]))]
-      (cond-> (merge {:kind :blaze :host host} (extract-format-framing (parse-query query-str)))
-        port (assoc :port port)
-        (seq path) (assoc :path path)))))
+      (let [port (if (and (= :mllp kind) port)
+                   (when (re-matches #"\d+" port) (parse-long port))
+                   port)]
+        (when-not (and (= :mllp kind) (nil? port))
+          (cond-> (merge {:kind kind :host host} (extract-format-framing (parse-query query-str)))
+            port (assoc :port port)
+            (seq path) (assoc :path path)))))))
 
 (defn- finish-sink
   [kind m]
   (case kind
     :dir (ss/dir-sink m)
     :file (ss/file-sink m)
-    :stdout (ss/stdout-sink m)))
+    :stdout (ss/stdout-sink m)
+    :mllp (ss/mllp-sink m)))
 
 (defn parse-designator
   "Shared parse skeleton for parse-sink-designator (below) and, cross-
@@ -151,9 +177,12 @@
     :else
     (if-let [[scheme rest] (split-scheme url)]
       (if-let [kind (get schemes scheme)]
-        (let [m (if (= kind :blaze) (parse-blaze rest) (parse-plain kind rest))]
+        (let [m (if (contains? authority-schemes kind) (parse-authority kind rest) (parse-plain kind rest))]
           (if (nil? m)
-            (kernel/rejected malformed-category {:url url :hint "blaze: requires blaze://host..."})
+            (kernel/rejected malformed-category
+                              {:url url
+                               :hint (str (name kind) ": requires " (name kind)
+                                          "://host" (when (= :mllp kind) ":<numeric port>") "...")})
             (if (contains? implemented-kinds kind)
               (finish kind m)
               (kernel/rejected unsupported-kind-category
@@ -193,8 +222,17 @@
       (let [query-pairs (cond-> []
                            format (conj (str "format=" (url-encode (name format))))
                            framing (conj (str "framing=" (url-encode (name framing)))))
-            query-str (when (seq query-pairs) (str "?" (str/join "&" query-pairs)))]
-        (kernel/ok (str (name kind) ":" (or path "") query-str))))))
+            query-str (when (seq query-pairs) (str "?" (str/join "&" query-pairs)))
+            ;; An authority kind prints its endpoint, never a :path --
+            ;; the inverse of `parse-authority` above, so the D4
+            ;; round-trip law holds for `mllp://` exactly as it does
+            ;; for `dir:`/`file:`. This branch was unreachable until
+            ;; arc 4 sweep 5: :blaze is recognized but not implemented,
+            ;; and the printer only ever sees implemented kinds.
+            body (if (contains? authority-schemes kind)
+                   (str "//" (:host m) (when (:port m) (str ":" (:port m))) (or path ""))
+                   (or path ""))]
+        (kernel/ok (str (name kind) ":" body query-str))))))
 
 (defn print-source-designator
   "Renders a canonical Source map back to its URL string. Only :dir/

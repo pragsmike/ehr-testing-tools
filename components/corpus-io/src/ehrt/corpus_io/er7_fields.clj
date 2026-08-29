@@ -119,3 +119,36 @@
     (when-let [sep (msh-separator-char msh)]
       (when-let [pid (segment-starting-with message "PID")]
         (segment-field pid sep 3)))))
+
+(defn message-control-id
+  "message -> its MSH-10 (the message control id), or nil.
+
+  ARC 4 SWEEP 5 (ADR-0175 design (g)): the MLLP sink reads this to
+  state its own ACK pairing law -- MSA-2 must echo the MSH-10 of the
+  message at the same POSITION. It is deliberately not used as a KEY
+  anywhere: `ehrt.sim-emit-hl7.emit-hl7/control-id-for` is known
+  non-injective over `:result-available`
+  (`roadmap.md#oru-control-id-collision`), so two messages in one
+  shipped corpus can carry the same value here."
+  [message]
+  (msh-field (first-segment message) 10))
+
+(defn segment-field-of
+  "1-based field N of the FIRST segment in `message` whose 3-char id is
+  `segment-id` -- nil when the message carries no such segment, no
+  readable MSH, or too few fields.
+
+  MSH is handled by its own rule rather than the ordinary one: MSH-1 IS
+  the separator character, so an MSH field sits one index earlier in a
+  naive split than the same-numbered field of any other segment. That
+  asymmetry is the reason this function exists rather than a caller
+  splitting on `|` itself -- `ehrt.corpus-io.mllp` reads MSA-1/MSA-2
+  off an ACK and MSH-7 off the message it answers, and getting one of
+  the two rules wrong is an off-by-one nobody would see."
+  [message segment-id n]
+  (let [msh (first-segment message)]
+    (when-let [sep (msh-separator-char msh)]
+      (if (= "MSH" segment-id)
+        (msh-field msh n)
+        (when-let [seg (segment-starting-with message segment-id)]
+          (segment-field seg sep n))))))

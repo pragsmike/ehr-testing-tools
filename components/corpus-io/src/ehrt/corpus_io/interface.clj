@@ -35,7 +35,8 @@
             [ehrt.corpus-io.source-sink-url :as source-sink-url]
             [ehrt.corpus-io.sink-write :as sink-write]
             [ehrt.corpus-io.operation-manifest :as operation-manifest]
-            [ehrt.corpus-io.canonicalizers :as canonicalizers]))
+            [ehrt.corpus-io.canonicalizers :as canonicalizers]
+            [ehrt.corpus-io.mllp :as mllp]))
 
 ;; corpus-io.framing
 (def decode framing/decode)
@@ -60,6 +61,8 @@
 (def message-timestamp-ms er7-fields/message-timestamp-ms)
 (def message-type-trigger er7-fields/message-type-trigger)
 (def message-patient-id er7-fields/message-patient-id)
+(def message-control-id er7-fields/message-control-id)
+(def segment-field-of er7-fields/segment-field-of)
 
 ;; corpus-io.batch (ADR-0111): the corpus batcher's own pure partition
 ;; fn -- messages -> epoch-aligned, schedule-partitioned buckets.
@@ -82,6 +85,7 @@
 (def dir-sink source-sink/dir-sink)
 (def file-sink source-sink/file-sink)
 (def stdout-sink source-sink/stdout-sink)
+(def mllp-sink source-sink/mllp-sink)
 
 ;; corpus-io.source-sink-url. `parse-designator` is the shared parse
 ;; skeleton (see namespace docstring) -- its own cross-brick caller is
@@ -117,3 +121,14 @@
 ;; docs-tooling.lint depends on)
 (def strip-run-timestamp-suffix canonicalizers/strip-run-timestamp-suffix)
 (def strip-synthea-run-metadata canonicalizers/strip-synthea-run-metadata)
+
+;; --- ARC 4 SWEEP 5 (ADR-0175 design (g)): the MLLP socket sink and
+;; its loopback ACK responder. `ehrt play --sink mllp://host:port` is
+;; the one caller of `mllp-open-sink!`; `mllp-ack-server!` is test/demo
+;; apparatus -- AN ACK IS RECEIVED, never emitted by this project's
+;; generator, and the responder is what a loopback round trip needs.
+
+(def mllp-open-sink! mllp/open-sink!)
+(def mllp-ack-server! mllp/ack-server!)
+(def mllp-ack-codes mllp/ack-codes)
+(def mllp-default-ack-timeout-ms mllp/default-ack-timeout-ms)

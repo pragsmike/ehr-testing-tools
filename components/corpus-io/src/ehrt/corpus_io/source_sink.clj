@@ -60,8 +60,12 @@
   #{:dir :file})
 
 (def known-sink-kinds
-  "Every sink kind the design names (Part III, D3)."
-  #{:dir :file :stdout :blaze})
+  "Every sink kind the design names (Part III, D3), plus `:mllp` (arc 4
+  sweep 5, ADR-0175 design (g)) -- the first sink kind in this
+  namespace that is not a filesystem location or a byte stream but a
+  SOCKET. See `MllpSink` below for the kind/framing name collision and
+  the one sentence that pays for it."
+  #{:dir :file :stdout :blaze :mllp})
 
 (def Framing
   "The five framing kinds Part II names (D2), as a closed enum -- SS-1
@@ -96,8 +100,21 @@
   exist yet. Kept exported anyway, mirroring the source side exactly,
   so the player's own sink slice has a ready-made answer to consume
   once the sink-designator path lands, rather than a var to invent from
-  scratch."
-  #{:dir :file :stdout})
+  scratch.
+
+  ARC 4 SWEEP 5 (ADR-0175 design (g)): `:mllp` joins, and it is the
+  first kind here with a real lifecycle -- ADR-0014's own assessment,
+  which still stands and is quoted at whoever reads this, is that
+  building it \"was found to cross three namespace boundaries rather
+  than one\" and that \"a half-built network sink with no ACK handling
+  and untested lifecycle is a worse outcome than a clearly named
+  deferral\". `ehrt.corpus-io.mllp` is what pays that: the framing codec
+  is REUSED rather than rewritten (a no-drift gate names the
+  functions), ACK pairing is a stated positional law, and every failure
+  mode -- timeout, negative acknowledgement, unrecognized code, stream
+  close, refused connection -- has its own named error and its own
+  test."
+  #{:dir :file :stdout :mllp})
 
 (def Source
   "The canonical Source map's well-known fields (Part IV, D4): :kind is
@@ -141,6 +158,31 @@
   schema, D3's no-inference-on-write law); :framing defaults to
   default-framing when absent, same as every other Source/Sink."
   [:and Sink [:map [:kind [:= :stdout]]]])
+
+(def MllpSink
+  "ARC 4 SWEEP 5 (ADR-0175 design (g)): the socket sink.
+
+  THE NAME COLLISION, RESOLVED EXPLICITLY AND HERE. `:mllp` as a
+  `:framing` means \"these bytes are VT/FS-CR framed\"; `:mllp` as a
+  `:kind` means \"send these to a socket\". They live in different
+  fields of the same map and never collide mechanically, but they WILL
+  collide in a reader's head -- so the sentence that pays for the
+  collision is this one: A `:mllp` SINK IMPLIES `:framing :mllp`, and
+  declaring any other framing on it is a CONSTRUCTION-TIME ERROR, never
+  a silent override. That is what `[:= :mllp]` below buys, and
+  `mllp-sink-implies-mllp-framing` is the gate.
+
+  `:host` and `:port` rather than `:path`: this kind names a network
+  endpoint, the same shape `blaze://host:port` already parses. `:port`
+  is an INT here (blaze's parser leaves its port a string, which is
+  fine for a URL it only ever re-prints) because a socket constructor
+  needs a number, so the designator parser coerces and rejects a
+  non-numeric port by name."
+  [:and Sink [:map
+              [:kind [:= :mllp]]
+              [:host :string]
+              [:port :int]
+              [:framing {:optional true} [:= :mllp]]]])
 
 (defn valid-source?
   [m]
@@ -206,3 +248,15 @@
   here, same discipline as stdin-source above)."
   [{:keys [format framing]}]
   (build :invalid-sink :stdout StdoutSink {:format format :framing framing}))
+
+(defn mllp-sink
+  "Constructs+validates a canonical `:mllp` Sink map (arc 4 sweep 5,
+  ADR-0175 design (g)). `:host`, `:port` and `:format` are all required
+  -- D3's no-inference-on-write law, and a socket with no endpoint is
+  not a sink. `:framing` is optional and, when present, must be
+  `:mllp`: the IMPLICATION RULE, enforced by `MllpSink` rather than
+  applied silently, so a caller who writes `?framing=er7-multi` on an
+  `mllp://` designator learns that at construction rather than by
+  finding unframed bytes on a wire."
+  [{:keys [host port format framing]}]
+  (build :invalid-sink :mllp MllpSink {:host host :port port :format format :framing framing}))

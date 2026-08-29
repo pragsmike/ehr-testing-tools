@@ -11,6 +11,7 @@
             [ehrt.corpus.interface :as generate]
             [ehrt.judge-v2-nist.interface :as gate-v2-nist]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]
+            [ehrt.corpus-io.interface :as source-sink]
             [ehrt.cli.core :as cli]
             [ehrt.cli.help :as help])
   (:import [java.io File]))
@@ -3521,3 +3522,65 @@
         "every real sim ground-truth event carries a numeric :t")
     (is (some #(clojure.string/includes? % ":registered") @printed)
         "the real event log actually played through the event-line ticker")))
+
+;; ---- ARC 4 SWEEP 5 (ADR-0175 design (g)): `ehrt play --sink
+;; mllp://HOST:PORT`. NO NEW FLAG -- the transport rides the designator
+;; `--sink` already takes, so what is gated here is the CLI's own end
+;; of it: a real loopback round trip, and the three ways a receiver can
+;; make the command fail. ----
+
+(deftest play-command-mllp-sink-delivers-every-message-and-reads-its-ack-test
+  (let [{:keys [port received-fn stop!]} (source-sink/mllp-ack-server!)]
+    (try
+      (let [r (cli/play-command {:path (temp-file-with-content (two-message-blob))
+                                 :sink (str "mllp://127.0.0.1:" port)
+                                 :sleep-fn (fn [_ms] nil)})]
+        (is (result/ok? r))
+        (is (= 2 (:sent (:mllp (:payload r)))))
+        (is (= 2 (:acked (:mllp (:payload r)))))
+        (is (= [0 1] (mapv :index (:pairs (:mllp (:payload r))))))
+        (testing "and the receiver holds exactly the bytes the file did"
+          (is (= 2 (count (received-fn))))))
+      (finally (stop!)))))
+
+(deftest play-command-mllp-sink-fails-on-a-negative-acknowledgement-test
+  (testing "a receiver that refuses must make `ehrt play` FAIL rather
+            than print a cheerful summary of an undelivered run"
+    (let [{:keys [port stop!]} (source-sink/mllp-ack-server! {:ack-code "AR"})]
+      (try
+        (let [r (cli/play-command {:path (temp-file-with-content (two-message-blob))
+                                   :sink (str "mllp://127.0.0.1:" port)
+                                   :sleep-fn (fn [_ms] nil)})]
+          (is (result/rejected? r))
+          (is (= :mllp-negative-acknowledgement (:category r)))
+          (is (= "AR" (:code (:payload r)))))
+        (finally (stop!))))))
+
+(deftest play-command-mllp-sink-times-out-visibly-test
+  (let [{:keys [port stop!]} (source-sink/mllp-ack-server! {:silent? true})]
+    (try
+      (let [r (cli/play-command {:path (temp-file-with-content (two-message-blob))
+                                 :sink (str "mllp://127.0.0.1:" port)
+                                 :sleep-fn (fn [_ms] nil)})]
+        (is (result/rejected? r))
+        (is (= :mllp-ack-timeout (:category r))))
+      (finally (stop!)))))
+
+(deftest play-command-mllp-sink-declaring-another-framing-is-a-config-error-test
+  (testing "the implication rule reaches the CLI: `?framing=er7-multi`
+            on an mllp: designator is rejected at construction, never a
+            silent override"
+    (let [r (cli/play-command {:path (temp-file-with-content (two-message-blob))
+                               :sink "mllp://127.0.0.1:2575?format=v2-er7&framing=er7-multi"
+                               :sleep-fn (fn [_ms] nil)})]
+      (is (result/rejected? r))
+      (is (= :invalid-sink (:category r))))))
+
+(deftest play-command-mllp-sink-refused-connection-is-an-error-test
+  (let [{:keys [port stop!]} (source-sink/mllp-ack-server!)
+        _ (stop!)
+        r (cli/play-command {:path (temp-file-with-content (two-message-blob))
+                             :sink (str "mllp://127.0.0.1:" port)
+                             :sleep-fn (fn [_ms] nil)})]
+    (is (result/rejected? r))
+    (is (= :mllp-connect-failed (:category r)))))
