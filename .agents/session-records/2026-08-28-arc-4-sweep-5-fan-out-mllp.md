@@ -288,5 +288,20 @@ Per-commit suite figures along the way: `d41c51b` 23,463 passes;
 `048bc28` 23,685; `4e54e6f` 23,915 — all 0 failures, 0 errors,
 `MAKE_EXIT=0`.
 
-No tag is paid (de-scaffold ruling, 2026-08-25); CI green at the pushed
-tip is the close marker.
+CI at the pushed tip: run **33233044576**, conclusion **success**, head
+`6729c56`. The two intermediate pushes' own runs also concluded success
+-- **33228135923** at `d41c51b` (step 0) and **33230810894** at
+`4e54e6f` (the two mechanism commits). No tag is paid (de-scaffold
+ruling, 2026-08-25); CI green at the tip is the close marker.
+
+## Where sweep 6 picks up
+
+The throughput-spike rerun is the last item under
+`roadmap.md#emission-add-ons`. Two things this sweep leaves on the
+table for whoever takes it: `roadmap.md#oru-control-id-collision` is
+still OPEN and still cosmetic -- ruling (b) routed around it rather than
+fixing it, and both the fan-out spools and the MLLP pairing are now
+structurally immune to it, which lowers its priority rather than raising
+it. And `roadmap.md#corpus-player-slices` is down to two items:
+exposing the board accumulator's final state as an output, and the
+board's own event-input blind spot.
