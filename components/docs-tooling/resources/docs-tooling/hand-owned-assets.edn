@@ -93,10 +93,37 @@
  {:asset "docs/manual/assets/straddle-timeline.svg"
   :source "demos/scenarios/ed-tuesday/README.md"
   :trigger "regenerate by hand if the cited section's own witnessed values change"
-  :reviewed-at "11664e0"
+  :reviewed-at "7eb94a1"
   :verdict :fresh
   :note
-  "RE-WITNESSED 2026-08-28 (arc 4 sweep 3, ADR-0175 design (b), the
+  "RE-WITNESSED AND PARTIALLY REDRAWN 2026-08-28 (arc 4 sweep 4,
+   ADR-0175 ruling B1, the SIU turn-on). The trigger fired a NINTH
+   time, and THE DEPICTED FACT SURVIVED for the third consecutive
+   sweep: the encounter still spans three windows and the middle one
+   still holds neither half. Verified directly rather than inferred --
+   `grep -cF MRN000002 batch-001.hl7` returns 0, `batch-000.hl7` holds
+   her A28 and A01, `batch-002.hl7` holds her A03 and DFT.
+
+   THREE PRINTED VALUES MOVED and are redrawn: the window counts 9, 14
+   and 16 became 10, 15 and 18. The admission's own 00:37:39Z and the
+   discharge's own 02:10:37Z did NOT move, and could not have: SIU is
+   emission, so it changes no draw and no ground truth, which
+   `bin/ground-truth-bracket` asserts IDENTICAL at both commits of this
+   sweep.
+
+   WHY THIS SWEEP MOVED THREE WINDOWS WHERE THE LADDER MOVED NONE, one
+   commit earlier. A rung's instant is derived from an order-to-result
+   interval that already exists, so it can only thicken an occupied
+   hour; an appointment's instant is derived from nothing on the wire
+   at all -- a booking fires days before the visit it names, a no-show
+   at an instant the patient never reached -- so it can open new hours,
+   and did: the corpus's hourly bucket count moved 615 -> 620 where the
+   ladder left it at 615 exactly.
+
+   Bumped in the turn-on's OWN successor commit rather than after CI,
+   for the reason the prior review already records below.
+
+   Prior review, kept: RE-WITNESSED 2026-08-28 (arc 4 sweep 3, ADR-0175 design (b), the
    STATUS LADDER turn-on). The README moved at 11664e0 and this drawing
    did NOT need to: the three window counts it pins are batch-000,
    batch-001 and batch-002 of the ed-tuesday-latency corpus, and

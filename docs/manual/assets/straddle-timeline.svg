@@ -14,6 +14,29 @@
   config-latency.edn), byte-identical to the README's own witnessed
   run.
 
+  RE-WITNESSED AND PARTIALLY REDRAWN 2026-08-28 (arc 4 sweep 4,
+  ADR-0175 ruling B1's SIU turn-on). The trigger fired a NINTH time,
+  and THE DEPICTED FACT IS UNCHANGED: three windows, the middle one
+  still holding neither half. Verified directly rather than inferred --
+  `grep -cF MRN000002 batch-001.hl7` returns 0, batch-000.hl7 still
+  holds her A28 and A01, batch-002.hl7 still holds her A03 and DFT.
+
+  THREE PRINTED VALUES MOVED and are redrawn: the window counts 9, 14
+  and 16 became 10, 15 and 18, because 57 SIU messages joined this
+  wire. The admission's 00:37:39Z and the discharge's 02:10:37Z did NOT
+  move, and could not have: SIU is emission, so it changes no draw and
+  no ground truth, which `bin/ground-truth-bracket` asserts at every
+  commit of this sweep.
+
+  WHY THIS SWEEP MOVED THREE WINDOWS WHERE THE LADDER MOVED NONE, since
+  the two sit one commit apart and read alike. A rung lands strictly
+  INSIDE an order-to-result interval, so it can only thicken an hour
+  that already carried its own order; an appointment, a reschedule and
+  a no-show sit at instants nothing else chose -- days or months from
+  the visit they name -- so they can and do open new hours. The whole
+  corpus's hourly bucket count moved 615 -> 620 for the same reason,
+  where the ladder left it at 615 exactly.
+
   REDRAWN 2026-08-27 (arc 3b sweep 2, ADR-0174 section 2(c)'s turn-on
   commit cb81dff), and THIS TIME THE DEPICTED FACT CHANGED — the first
   of the four redraws for which that is true, so it is said first. The
@@ -81,11 +104,11 @@
   <rect x="226" y="170" width="186" height="60" rx="6" fill="#eaf3ea" stroke="#22492a" stroke-width="2" />
   <rect x="412" y="170" width="186" height="60" rx="6" fill="#eaf3ea" stroke="#22492a" stroke-width="2" />
   <text x="133" y="195" text-anchor="middle" font-size="13" font-weight="600" fill="#22492a">batch-000.hl7</text>
-  <text x="133" y="213" text-anchor="middle" font-size="11" fill="#3d6b46">[00:00Z, 01:00Z) — 9/9 verified</text>
+  <text x="133" y="213" text-anchor="middle" font-size="11" fill="#3d6b46">[00:00Z, 01:00Z) — 10/10 verified</text>
   <text x="319" y="195" text-anchor="middle" font-size="13" font-weight="600" fill="#22492a">batch-001.hl7</text>
-  <text x="319" y="213" text-anchor="middle" font-size="11" fill="#3d6b46">[01:00Z, 02:00Z) — 14/14 verified</text>
+  <text x="319" y="213" text-anchor="middle" font-size="11" fill="#3d6b46">[01:00Z, 02:00Z) — 15/15 verified</text>
   <text x="505" y="195" text-anchor="middle" font-size="13" font-weight="600" fill="#22492a">batch-002.hl7</text>
-  <text x="505" y="213" text-anchor="middle" font-size="11" fill="#3d6b46">[02:00Z, 03:00Z) — 16/16 verified</text>
+  <text x="505" y="213" text-anchor="middle" font-size="11" fill="#3d6b46">[02:00Z, 03:00Z) — 18/18 verified</text>
 
   <!-- Wall-clock boundaries, cutting through both the windows and the encounter bar -->
   <line x1="226" y1="90" x2="226" y2="230" stroke="#8a2f2f" stroke-width="2" stroke-dasharray="5 4" />
