@@ -58,6 +58,38 @@
               [{:event :outpatient-visit :t 0 :participants (subject "P1")}
                {:event :outpatient-visit :t 10 :participants (subject "P1")}])))))
 
+(deftest admission-only-when-no-open-encounter-detects-the-ts-3-reopen-shape
+  (testing "TS-3 (roadmap.md#ts-3-outpatient-opens-over-an-encounter), the
+            hand-built log for the reopen-with-empty-queue case. A
+            `:cancel-discharge` RE-OPENS the encounter its own
+            `:discharge` closed (`evolve`'s `reopen-encounter` -- a
+            reinstated stay is ONE encounter, deliberate), and nothing
+            re-queues a closer for it: measured 2026-08-29 at 54 of 55
+            cancel-discharges at the v2 10^5 cell, and rowed as
+            `roadmap.md#cancel-discharge-reopens-an-encounter-that-never-closes`.
+            An opener landing on that re-opened encounter is a violation,
+            and the reinstatement is what makes it one -- the SAME three
+            events without the cancel are legal, which is the second
+            assertion and is what keeps the first from passing for the
+            wrong reason."
+    (let [reopened [(admit 0 "RENAL-01")
+                    {:event :discharge :t 10 :participants (subject "P1")}
+                    {:event :cancel-discharge :t 10 :cancels-event-id 1
+                     :home-ward "Renal" :attending "DR-1"
+                     :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}
+                     :participants (subject "P1")}
+                    {:event :outpatient-visit :t 100609860 :participants (subject "P1")}]]
+      (is (= 1 (count (check/admission-only-when-no-open-encounter reopened)))
+          "the re-opened encounter is open, so the later opener is illegal")
+      (is (= :outpatient-visit (:event (first (check/admission-only-when-no-open-encounter reopened))))
+          "and it is the OPENER that is reported, not the cancel")
+      (is (empty? (check/admission-only-when-no-open-encounter
+                   [(admit 0 "RENAL-01")
+                    {:event :discharge :t 10 :participants (subject "P1")}
+                    {:event :outpatient-visit :t 100609860 :participants (subject "P1")}]))
+          "without the cancel the encounter is closed and the second opener
+           is exactly the legal second visit ADR-0174 lifted the horizon for"))))
+
 (deftest admission-only-when-no-open-encounter-holds-for-legit-log
   (is (empty? (check/admission-only-when-no-open-encounter
                [(admit 0 "RENAL-01")

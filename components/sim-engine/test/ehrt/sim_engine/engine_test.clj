@@ -1712,7 +1712,20 @@
                                           closure)
               decision (registered-decision-at seed 0 closure)]
           (is (= persona (:persona (first (:events decision)))))
-          (is (= (:steps compiled) (:prepend-steps decision)))
+          ;; TS-3 (2026-08-29): `decide :registered` now RE-BRACKETS the
+          ;; compiled list before attaching it -- each encounter it
+          ;; carries goes behind one `:repeat-arrival` step, so the
+          ;; existing `encounter-openable?` guard owns the span. The
+          ;; claim this line makes is therefore no longer raw equality
+          ;; but the stronger one the re-bracket owes: splicing every
+          ;; wrapper's own `:steps` back in recovers `compile-patient`'s
+          ;; output EXACTLY, nothing lost, nothing added, order kept.
+          ;; Stated as a splice rather than by calling the gate again,
+          ;; which would assert nothing.
+          (is (= (:steps compiled)
+                 (when-let [attached (:prepend-steps decision)]
+                   (into [] (mapcat #(if (= :repeat-arrival (:type %)) (:steps %) [%]))
+                         attached))))
           (is (= (seq (:registration-facts compiled))
                  (seq (:pre-horizon-facts (first (:events decision))))))))))
   (testing "a patient with no closure compiles to a persona and nothing else"
@@ -1721,6 +1734,122 @@
                                       arrival-time-independence-world nil)]
       (is (some? persona))
       (is (nil? compiled)))))
+
+;; --- TS-3 (roadmap.md#ts-3-outpatient-opens-over-an-encounter, ruled
+;; 2026-08-29): a COMPILED encounter opener never asked
+;; `encounter-openable?` -----------------------------------------------
+;;
+;; The defect, measured at the 2026-08-29 v2 10^5 cell: `decide
+;; :registered` attached the module-compiled step list RAW, so a
+;; compiled `:outpatient-visit` was popped straight into its own decide
+;; and opened a second encounter over one that a `:cancel-discharge` had
+;; re-opened -- 33,950 `outpatient-patients-occupy-no-bed` rows behind
+;; one opener. Every OTHER producer of an encounter already routes
+;; through a step that asks the guard for the whole span.
+;;
+;; The fix re-brackets the compiled list rather than guarding the opener
+;; alone, and these three gates say why that distinction is the whole
+;; ruling: the span is one step (1), everything before it stays outside
+;; (1), a list with no encounter is untouched (2), and a refused span
+;; takes its ENTIRE tail with it rather than leaving a closer behind (3).
+
+(def ^:private ts3-compiled-steps
+  "The shape `bronchitis` compiles for TS-3's own patient, with the
+  delay's real magnitude: 1,676,160 minutes is 100,569,600 seconds, and
+  40,260 + that is 100,609,860 -- the row's instant, to the second."
+  [{:type :delay :from 1676160 :to 1676160}
+   {:type :outpatient-visit :citation {:module "bronchitis" :state :doctor-visit}}
+   {:type :procedure :citation {:module "bronchitis" :state :lung-function-test}}
+   {:type :delay :from 27360 :to 27360}
+   {:type :care-plan-start :citation {:module "bronchitis" :state :nonsmoker-careplan}}
+   {:type :medication-order :citation {:module "bronchitis" :state :cough-suppressant}}
+   {:type :outpatient-visit-end :citation {:module "bronchitis" :state :end-doctor-visit}}])
+
+(defn- ts3-attached
+  "What `decide :registered` attaches for a hand-built world whose
+  `:compiled-patients` carries `steps` -- the carrier path, so no module
+  walk runs and the assertion is about the ATTACH, not about a compile."
+  [steps]
+  (:prepend-steps
+   (engine/decide {:patient (engine/stream 7 :patient 0)}
+                  40260
+                  (assoc arrival-time-independence-world
+                         :compiled-patients
+                         {"PID-000000-deadbeef" {:persona {:sex :female}
+                                                 :compiled {:steps steps}}})
+                  "PID-000000-deadbeef"
+                  {:type :registered})))
+
+(deftest a-compiled-encounter-is-attached-behind-one-gated-step
+  (testing "TS-3: the compiled encounter -- opener THROUGH closer -- is one
+            step, so `decide :repeat-arrival`'s `encounter-openable?` owns
+            all of it. This is ADR-0174's own `the whole arrival is
+            prepended or none of it is', applied to the one producer that
+            never had it."
+    (let [attached (ts3-attached ts3-compiled-steps)]
+      (is (= [:delay :repeat-arrival] (mapv :type attached))
+          "the compiled list must attach as the parking delay plus ONE gated step")
+      (is (= (first ts3-compiled-steps) (first attached))
+          "the delay that parks the encounter stays OUTSIDE the wrapper -- the
+           guard is owed at the instant the encounter would open (t=100,609,860),
+           not at registration (t=40,260)")
+      (is (= (subvec ts3-compiled-steps 1) (:steps (second attached)))
+          "the span is opener-through-closer, verbatim and in order")))
+  (testing "the re-bracket loses and adds nothing: splicing every wrapper's
+            own `:steps` back in recovers the compiled list exactly"
+    (is (= ts3-compiled-steps
+           (into [] (mapcat #(if (= :repeat-arrival (:type %)) (:steps %) [%]))
+                 (ts3-attached ts3-compiled-steps)))))
+  (testing "a span with no closer of its own -- an encounter the horizon ended
+            inside -- is wrapped to the end of the list rather than dropped"
+    (let [open-ended (subvec ts3-compiled-steps 0 3)
+          attached (ts3-attached open-ended)]
+      (is (= [:delay :repeat-arrival] (mapv :type attached)))
+      (is (= (subvec open-ended 1) (:steps (second attached)))))))
+
+(deftest a-compiled-list-with-no-encounter-attaches-unchanged
+  (testing "TS-3: the gate is a re-bracket and never a rewrite. 19 of the 31
+            vendored modules emit no encounter at all, and their compiled
+            lists must reach the queue byte-identical -- this is the half
+            that keeps `bin/ground-truth-bracket` IDENTICAL."
+    (let [no-encounter [{:type :delay :from 10 :to 10}
+                        {:type :medication-order :citation {:module "m" :state :s}}
+                        {:type :medication-end :citation {:module "m" :state :e}}]]
+      (is (= no-encounter (ts3-attached no-encounter)))
+      (is (= (pr-str no-encounter) (pr-str (ts3-attached no-encounter)))
+          "`=` is not enough here -- the claim is byte identity")))
+  (testing "and the nil/empty compiled lists a patient with no closure
+            attaches are passed through as they are, never coerced"
+    (is (nil? (ts3-attached nil)))
+    (is (= [] (ts3-attached [])))))
+
+(deftest a-refused-compiled-encounter-takes-its-whole-tail-with-it
+  (testing "TS-3, and the reason the ruling rejected guarding the opener
+            alone: with the span behind one step, a patient whose encounter
+            is already open gets NONE of it. Guarding the opener by itself
+            would leave `:procedure`/`:care-plan-start`/`:medication-order`
+            to be stamped with the OTHER encounter, and the trailing
+            `:outpatient-visit-end` to close it -- all of which the whole
+            `check.clj` catalog passes."
+    (let [span (subvec ts3-compiled-steps 1)
+          world-with-open-encounter
+          (assoc-in arrival-time-independence-world
+                    [:patients "PID-000000-deadbeef"]
+                    {:patient-id "PID-000000-deadbeef" :mrns #{"MRN000001"}
+                     :active-mrn "MRN000001" :status :admitted :class :inpatient
+                     :location {:ward "Emergency" :bed "ED-153" :placement :licensed}
+                     :encounter {:ordinal 0 :admitted-at 240300
+                                 :encounter-id "ENC-000000-00-deadbeef"}})
+          decide-wrapper (fn [world]
+                           (engine/decide {} 100609860 (assoc world :encounter-minting {:seed 1 :ordinals {}})
+                                          "PID-000000-deadbeef"
+                                          {:type :repeat-arrival :steps span}))]
+      (is (empty? (:prepend-steps (decide-wrapper world-with-open-encounter)))
+          "an open encounter must swallow the WHOLE span, closer included")
+      (is (empty? (:events (decide-wrapper world-with-open-encounter))))
+      (is (= span (:prepend-steps (decide-wrapper arrival-time-independence-world)))
+          "and the same span on a patient with no open encounter is prepended
+           whole -- the gate is not vacuous"))))
 
 ;; --- ADR-0173 section 2(a) (arc 3a, 2026-08-26): the carried person
 ;; index -----------------------------------------------------------------

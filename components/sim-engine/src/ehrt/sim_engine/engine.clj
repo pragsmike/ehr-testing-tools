@@ -648,6 +648,78 @@
          (not (#{:merged :expired} (:status patient))))
     (= :new (:status patient))))
 
+(def ^:private compiled-encounter-openers
+  "The two STEP types that open an encounter. Named here beside
+  `encounter-openable?` because `gate-compiled-encounters` (below) is
+  the only reader; `check.clj`'s own `encounter-openers` is the same
+  two names asked of EVENTS, over a finished log."
+  #{:admission :outpatient-visit})
+
+(def ^:private compiled-encounter-closers
+  "And the two that close one. `:discharge` closes an `:admission`
+  and `:outpatient-visit-end` closes an `:outpatient-visit`, but the
+  span-finder below takes the FIRST closer of either kind rather than
+  the matching one: `compile-trajectory`'s own
+  `encounter-end->step` chooses the closer off the opener it is
+  closing, so a compiled list cannot interleave them."
+  #{:discharge :outpatient-visit-end})
+
+(defn- gate-compiled-encounters
+  "TS-3 (roadmap.md#ts-3-outpatient-opens-over-an-encounter, ruled
+  2026-08-29): re-bracket a COMPILED step list so each encounter it
+  carries sits behind ONE `:repeat-arrival` step, opener through
+  closer.
+
+  WHY THIS AND NOT A GUARD IN THE OPENER'S OWN DECIDE. Every other
+  producer of an encounter already obeys ADR-0174's law -- the whole
+  arrival is prepended or none of it is (`decide :repeat-arrival`,
+  `decide :appointment`, `decide :person-encounter` each say so in
+  their own docstrings). The module-compiled list was the ONE producer
+  that never got it: its steps are attached raw by `decide :registered`
+  and popped straight into `decide :outpatient-visit`, so nothing ever
+  asked `encounter-openable?` of them. Wrapping here puts the EXISTING,
+  unchanged guard in charge of the whole span rather than adding a
+  second copy of the same question to the two opener decides -- and a
+  guard on the opener ALONE would be worse than the defect: the tail
+  would still run, its clinical content would be stamped with whatever
+  OTHER encounter was open, and its trailing closer would close that
+  other encounter while passing every row in `check.clj`'s catalog.
+  Measured, at the 2026-08-29 v2 10^5 cell; the session record has the
+  step-by-step table.
+
+  WHAT STAYS OUTSIDE THE WRAPPER, and it is the point: everything
+  BEFORE the opener, including the compiled `:delay` that parks the
+  whole encounter (1,676,160 minutes for TS-3's own patient). The guard
+  must be asked at the instant the encounter would open, not at
+  registration -- so the delay runs first and the wrapper is decided
+  after it.
+
+  `compile-trajectory` emits AT MOST ONE encounter per patient (its
+  loop short-circuits on `encounter-closed?`), so the loop below finds
+  at most one span today. It is written as a loop anyway rather than as
+  a find-the-one, because a step list with two would otherwise leave
+  the second unguarded silently, which is the failure this row already
+  had once.
+
+  NIL IN, NIL OUT and `[]` in, `[]` out -- `decide :registered`
+  attaches `(:steps compiled)` verbatim for a patient with no closure,
+  and `compile-patient-is-what-registered-attaches` reads that."
+  [steps]
+  (if-not (seq steps)
+    steps
+    (let [v (vec steps)
+          n (count v)]
+      (loop [i 0 out []]
+        (if (>= i n)
+          out
+          (let [step (nth v i)]
+            (if-not (compiled-encounter-openers (:type step))
+              (recur (inc i) (conj out step))
+              (let [close (first (keep #(when (compiled-encounter-closers (:type (nth v %))) %)
+                                       (range (inc i) n)))
+                    end (if close (inc close) n)]
+                (recur end (conj out {:type :repeat-arrival :steps (subvec v i end)}))))))))))
+
 (def ^:private two-encounter-event-types
   "The event kinds naming TWO patients, and therefore two encounters.
   `run`'s stamp skips them: one top-level `:encounter-id` cannot name
@@ -1044,7 +1116,10 @@
                                     :window-close-t window-close-t
                                     :residence {:status :unknown}))]
      :advance 0
-     :prepend-steps (:steps compiled)}))
+     ;; TS-3: through the gate, never raw -- `gate-compiled-encounters`
+     ;; above says why the re-bracket belongs here and not in the two
+     ;; opener decides.
+     :prepend-steps (gate-compiled-encounters (:steps compiled))}))
 
 (defn- citation-fields
   "M5b: :citation/:conditions ride through onto the ground-truth event
