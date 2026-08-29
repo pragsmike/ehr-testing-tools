@@ -93,10 +93,41 @@
  {:asset "docs/manual/assets/straddle-timeline.svg"
   :source "demos/scenarios/ed-tuesday/README.md"
   :trigger "regenerate by hand if the cited section's own witnessed values change"
-  :reviewed-at "b7e0ac1"
+  :reviewed-at "06ce007"
   :verdict :fresh
   :note
-  "RE-WITNESSED 2026-08-28 (arc 4 sweep 5, ADR-0175 designs (f) and (g),
+  "RE-WITNESSED 2026-08-29 (the consumer-contract session's own P2
+   narrative refresh, `roadmap.md#post-partition-narrative-refresh`).
+   The trigger fired an ELEVENTH time and NOT ONE VALUE THIS DRAWING
+   CARRIES MOVED.
+
+   THE SOURCE DIFF IS FIVE EDITS AND NONE OF THEM IS A BATCH FACT. Two
+   corrected the PV1-19 fill (630 of 631 -> 679 of 681, and `The ONE`
+   -> `The TWO`); one the board's dirty/cleaning line total (43 -> 44);
+   one the census figures (4 occupied beds -> 3, peak 14 -> 12); one
+   the two `:wallclock-ms` fields of the two closing summaries. This
+   asset draws three batch windows, one encounter bar and the middle
+   window's emptiness, and no edit above is within a mile of any of
+   them.
+
+   RE-WITNESSED VALUE BY VALUE against this session's own regenerated
+   run rather than inferred from that: batch-000 holds 10 messages,
+   batch-001 15, batch-002 18; MRN000002 admits at 20260811003739+0000
+   and discharges at 20260811021037+0000; MRN000002's messages in
+   batch-000 are her A28 and A01 and in batch-002 her A03 and DFT, and
+   batch-001 holds none of hers at all -- the fact this drawing exists
+   to show. Identical to the prior review's own figures.
+
+   Bumped in the refresh's OWN successor commit rather than after CI,
+   for the structural reason every prior review of this row records:
+   the tripwire reads `git log -1` on the SOURCE, so no commit can
+   carry the sha that names itself, and 06ce007 is therefore a
+   RED-FIRST commit under `rulings.md#R-red-pushed-with-green` --
+   pushed together with this one, never alone. PREDICTED, not
+   discovered: this registry's sources were read before any of the six
+   narrative files was touched.
+
+   Prior review, kept: RE-WITNESSED 2026-08-28 (arc 4 sweep 5, ADR-0175 designs (f) and (g),
    the fan-out/MLLP turn-on). The trigger fired a TENTH time and NOT ONE
    VALUE THIS DRAWING CARRIES MOVED -- no redraw, only this row, and for
    the strongest reason any fire of this tripwire has yet had.

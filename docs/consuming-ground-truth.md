@@ -65,16 +65,33 @@ same `--churn`, differing only in whether a `--config` file is supplied:
 
 ```bash
 bin/ehrt sim run --seed 42 --patients 20 --churn --format ground-truth
-bin/ehrt sim run --seed 42 --patients 20 --churn --config rich.edn --format ground-truth
+bin/ehrt sim run --seed 42 --patients 20 --churn --config demos/scenarios/ed-tuesday/config.edn --format ground-truth
 ```
 
-| | events | distinct kinds | kinds produced |
-|---|---|---|---|
-| no `--config` | **74** | **7** | `:admission` `:bed-swap` `:cancel-transfer` `:discharge` `:registered` `:step-rejected` `:transfer` |
-| `rich.edn` below | **261** | **15** | six of the seven above (all but `:step-rejected`) plus nine more: `:appointment` `:appointment-cancel` `:bed-status-change` `:cancel-discharge` `:coverage-change` `:demographic-update` `:outpatient-visit` `:outpatient-visit-end` `:reschedule` |
+| | events | distinct kinds |
+|---|---|---|
+| no `--config` | **74** | **7** |
+| `ed-tuesday`'s own `config.edn` | **399** | **18** |
 
-3.5× the events and more than double the vocabulary, from configuration
-alone. A consumer who benchmarks their transform against a bare
+The bare run produces `:admission` `:bed-swap` `:cancel-transfer`
+`:discharge` `:registered` `:step-rejected` `:transfer` and nothing
+else. The configured one keeps six of those seven and adds twelve:
+`:appointment` `:bed-status-change` `:cancel-admit` `:coverage-change`
+`:demographic-update` `:merge` `:no-show` `:order-placed`
+`:outpatient-visit` `:outpatient-visit-end` `:reschedule`
+`:result-available`.
+
+**Five times the events and more than twice the vocabulary, from a
+configuration file.** Be precise about what that file changed, because
+it changed two different kinds of thing: it scripts clinical content
+(`:pathways`, `:facility`, `:modules`, `:order-profiles`) *and* it takes
+the four opt-in keys the next section is about. To separate them: the
+minimal config at the end of this section — the four opt-in keys and
+their emission companions, no pathways and no modules — gives **261
+events across 15 kinds** at the same seed and patient count, so the
+opt-in keys alone account for most of the gap.
+
+A consumer who benchmarks their transform against a bare
 `ehrt sim run` has benchmarked it against the thinnest stream this
 simulator produces.
 
@@ -119,19 +136,22 @@ noted. Each of these reaches the simulation itself.
 | `:modules` | — | vendored Synthea-format module names to compile clinical trajectories from |
 | `:module-assignment` | — | which patient ordinals walk which module |
 | `:module-horizon-days` | — | how far forward a module walk is compiled |
-| `:module-initial-attributes` | — | seed attributes for a module walk's entry state |
+| `:module-initial-attributes` | — | seed attributes for a module walk's entry state. The one key here that is *config-facing*: `ehrt.sim.run` folds it into the resolved module closures rather than passing it on, so it is not itself a `config-keys` member |
 | `:history` | — | whether pre-horizon clinical history is attached to `:registered` |
 | **`:persons`** | — | **the demographic fold.** `{:count N :years Y}` runs a population of `N` people through `Y` years of life alongside the clinical shift: residence moves, coverage changes, births, occupational injuries, unidentified arrivals. Produces `:demographic-update`, `:coverage-change`, and the identity traffic below |
 | **`:encounters`** | — | **the encounter horizon.** Truthy lifts the one-encounter-per-patient wall and mints an `:encounter-id` at every opener, so a returning person opens a *second* encounter on the same patient and the same MRN — which is what an MPI under test needs to see |
 | **`:bed-cycle`** | — | **the bed-status cycle.** Truthy makes a vacated bed go `:dirty` → `:cleaning` → `:ready` at each ward's own pace, gates allocation on `:ready`, and produces `:bed-status-change` |
 | **`:scheduling`** | — | **appointments.** Splits arrivals scheduled-vs-walk-in and books follow-ups at discharge; produces `:appointment`, `:reschedule`, `:appointment-cancel`, `:no-show` |
 
-The five bold rows are the ones that make the stream rich, and the four
-of them below `:persons` did not exist in any corpus this repository
+The four bold rows are the ones that make the stream rich, and the
+three below `:persons` did not exist in any corpus this repository
 produced before 2026-08-26. The canonical list is
-`ehrt.sim-engine.engine/config-keys`, which carries a per-key comment
-for each; every member of it reaches the engine whether it arrived by
-flag or by `--config`.
+`ehrt.sim-engine.engine/config-keys` — nineteen keys, one per row above
+except that `:pathway` and `:pathways` share a row and
+`:module-initial-attributes` is not a member — and it carries a per-key
+comment for each. Every member of it reaches the engine whether it
+arrived by flag or by `--config`, which is that list's own gated
+plumbing-completeness property.
 
 ### Emission keys — these cannot change the facts
 
@@ -172,8 +192,10 @@ is its deliberate contrast: population-scale ambulatory incidence over
 ten years rather than one scripted ED shift. Read one of those before
 writing your own.
 
-The minimal rich config, which is what produced the 261-event column
-above:
+The minimal rich config referred to above — the four opt-in keys and
+their emission companions, and nothing else. Save it anywhere and pass
+it as `--config`; at seed 42 and 20 patients it gives 261 events across
+15 kinds, against the bare run's 74 across 7:
 
 ```clojure
 {:persons {:count 40 :years 20}
@@ -256,7 +278,7 @@ Six identifier kinds, and an MPI consumer needs to keep them apart.
 | Identifier | Where it appears | What it identifies |
 |---|---|---|
 | `:person-id` | on `:registered`, and on person-scoped events | **a human being**, across their whole modelled life. Present only when `:persons` is on |
-| `:patient-id` | every event, under `:participants` | **a medical record** at this facility. `"PID-000000-1522c269"`. One person may hold several |
+| `:patient-id` | under `:participants`, on every event about a patient | **a medical record** at this facility. `"PID-000000-1522c269"`. One person may hold several. A `:bed-status-change`'s participant is a bed instead — `{:bed-id :ward :role}` — so a participant map is not always a patient |
 | `:active-mrn` | most events | the MRN that record currently answers to. `"MRN000001"`. A `:merge` moves MRNs between records |
 | `:encounter-id` | openers and their content, when `:encounters` is on | **one visit**. `"ENC-000000-00-4a75c0cb"`; renders as PV1-19 |
 | `:appointment-id` | scheduling kinds, and the encounter kept against a booking | **one booking**. `"APT-000017-01-24a12efa"` |
@@ -309,8 +331,8 @@ counted rather than prevented — see [What is not warranted](#what-is-not-warra
 ## What `ehrt sim check` certifies
 
 ```bash
-bin/ehrt sim run --seed 42 --patients 20 --churn --config rich.edn --format ground-truth \
-  | bin/ehrt sim check
+bin/ehrt sim run --seed 42 --patients 20 --churn --format ground-truth \
+  --config demos/scenarios/ed-tuesday/config.edn | bin/ehrt sim check
 ```
 
 `sim check` runs **44 invariants** over the log and reports each one it
@@ -410,11 +432,14 @@ the 44 invariants in that catalog and about nothing else.
   merge eating a John Doe is a real MPI failure and the corpus is
   telling the truth about it. `no-resolution-after-a-placeholder-is-consumed`
   is the companion gate that keeps the tolerated clause safe — no
-  resolution may follow the merge that consumed its placeholder — and
-  `placeholder-dispositions` counts six disjoint columns of which
-  `consumed-by-churn` is one, so the tolerated shape is **counted, not
-  hidden**. Read those two counts before concluding a corpus's
-  identity traffic is clean.
+  resolution may follow the merge that consumed its placeholder — and it
+  IS in the catalog, so `sim check` runs it. Beside it,
+  `ehrt.sim-check.check/placeholder-dispositions` sorts every placeholder
+  into six disjoint columns, of which `consumed-by-churn` is one, so the
+  tolerated shape is **counted rather than hidden**. That census is a
+  function this repository's own tests call and not a row `sim check`
+  reports: to see your own corpus's split you have to call it. Do that
+  before concluding a corpus's identity traffic is clean.
 
 **Every hazard rate in the person process is authored-provisional.** No
 cited table stands behind any number in `person-simulator`: each is a
@@ -460,11 +485,16 @@ appendix.
 **10^5 events is comfortable; 10^6 is not, and the reason is the
 emitter.**
 
-| Cell | events | messages | msg/event | wall |
+| Cell | events | messages | msg/event | in-process wall |
 |---|---|---|---|---|
 | all nine opt-in keys | 171,864 | 233,286 | **1.3574** | 270.37 s |
 | the same, less `:bed-cycle` | 129,415 | 165,946 | **1.2823** | 232.67 s |
 | no opt-in key at all | 105,214 | 67,638 | **0.643** | 118.9 s |
+
+The first two rows are the traffic-scale programme's own closing
+measurement of 2026-08-29; the third is its `old` continuity series.
+Each is one seed at one machine, sampled as warm-up plus two timed runs;
+read them as an order of magnitude, not as a benchmark.
 
 **Messages per event rises with scale rather than settling.** The
 all-keys series reads **1.050 → 1.217 → 1.357** across 10^3 → 10^4 →
@@ -474,9 +504,9 @@ across a full decade — the opt-in payload is worth **1.63× the message
 volume per event at 10^3, and 2.11× at 10^5**.
 
 **Generate dominates, and it is super-linear.** Log-log slope over the
-10^4 → 10^5 decade: generate **1.624**, and the person layer **1.061**
-(linear, 13% of the cell). Check is **sub-linear at 0.914**. The
-remaining generate-side super-linearity is tracked at
+10^4 → 10^5 decade, all-keys series: generate **1.624**, the person
+layer **1.061** (linear, and 13% of the cell), check **sub-linear at
+0.914**. The remaining generate-side super-linearity is tracked at
 `.agents/plans/roadmap.md#performance-residual-sites`.
 
 **Ground-truth-only is the cheap path, and it is the only one that
@@ -511,7 +541,7 @@ subprocess `:invocation`. A sim manifest looks like this:
 | `:engine-params` | the engine keys this run used | the flag-reachable half of the config |
 | `:invocation` | `{:verb "run" :opts {…}}` | **the whole config, engine and emission keys alike** |
 | `:config` | `{:path :sha256}` | the `--config` file by content hash; `"(inline)"` when there was none |
-| `:environment` | `{:locale :timezone :jvm-version}` | provenance only — none of it enters the log |
+| `:environment` | `{:locale :timezone :jvm-version}` | provenance only. The log carries no wall clock, and the timezone half of that is verified directly under [Determinism](#determinism) |
 | `:runtime` | absent for a sim run | the JVM artifact record, for externally-generated corpora |
 | `:canonicalizers-applied` | `[]` | ordered `[id version]` pairs |
 
@@ -530,8 +560,9 @@ reached a real system.
 
 ## Fault injection, as it stands today
 
-Three mechanisms, at three different layers. **Only two of them exist**;
-the third is a roadmap row and is named here so nobody plans around it.
+Three mechanisms exist, at three different layers. **A fourth — the one
+a ground-truth consumer asks for most often — does not**, and is named
+below so nobody plans around it.
 
 | Layer | Mechanism | What it produces |
 |---|---|---|
