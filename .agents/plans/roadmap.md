@@ -59,7 +59,43 @@ with them.
   1 in clinic-decade demo (sweep-3 record :290); fix moves every corpus, its own
   declared sweep; sweep 5's fan-out must either wait for it or derive from log
   indices.
-- OPEN **[corpus-player-slices]** PRIORITY 7 -- the corpus-player slices chartered
+- OPEN **[ts-1-seventh-bed-arc]** PRIORITY 5 -- a reinstating `:cancel-transfer`
+  landing while its bed is `:cleaning` produces `[:cleaning :occupied]`, which
+  `legal-bed-transitions` does not hold, so the run fails its own self-check;
+  the engine behaves correctly and the RELATION is what is incomplete, so a
+  SEVENTH arc is owed. BLOCKS the v2 10^4 cell. 2 of 16,322 events at 750
+  patients, 16 at 7,500; zero in every shipped corpus.
+  `.agents/session-records/2026-08-29-traffic-scale-close.md` section 9 (TS-1),
+  whose report said these four were "rowed" while the tree held no row -- rowed
+  here 2026-08-29, late, and this clause is the disclosure.
+- OPEN **[ts-2-outpatient-holds-a-bed]** PRIORITY 6 -- a `:transfer` inside an
+  OUTPATIENT encounter allocates a licensed bed (`:from nil` is the tell), after
+  which `outpatient-patients-occupy-no-bed` fires at every later event for that
+  patient. BLOCKS both 10^5 add-on cells and, through them, the isolation
+  series. 762,301 violations across 24 patients (nobed 10^5) and 897,579 across
+  25 (v2 10^5) -- 24-25 patients is the size, not the violation count. The
+  record's mechanism claim (nothing gates the authored pathway walk on the
+  encounter's class) is a HYPOTHESIS, not a finding.
+  `.agents/session-records/2026-08-29-traffic-scale-close.md` section 9 (TS-2);
+  rowed here 2026-08-29, late, with TS-1.
+- OPEN **[ts-3-outpatient-opens-over-an-encounter]** PRIORITY 7 --
+  `admission-only-when-no-open-encounter` violated by an `:outpatient-visit`,
+  ONE instance (`PID-000640-f57cb996`, t=100609860, v2 10^5 only). BLOCKS
+  nothing on its own; it rides the v2 10^5 cell TS-2 already blocks. The record
+  calls it "almost certainly the same root as TS-2 seen from the other side" and
+  that is UNPROVEN -- one event against TS-2's 24 patients is why it is rowed
+  separately rather than assumed.
+  `.agents/session-records/2026-08-29-traffic-scale-close.md` section 9 (TS-3);
+  rowed here 2026-08-29, late, with TS-1.
+- OPEN **[ts-4-placeholder-unresolved]** PRIORITY 8 --
+  `every-placeholder-registration-is-resolved-or-still-open`, exactly one
+  violation in EACH of the two 10^5 add-on cells. BLOCKS nothing on its own; it
+  rides the cells TS-2 blocks. NOT CHARACTERISED: the close spent its
+  investigation budget on TS-1 and TS-2 and reported this one un-probed rather
+  than described from a guess, so this row carries no diagnosis to verify.
+  `.agents/session-records/2026-08-29-traffic-scale-close.md` section 9 (TS-4);
+  rowed here 2026-08-29, late, with TS-1.
+- OPEN **[corpus-player-slices]** PRIORITY 9 -- the corpus-player slices chartered
   by ADR-0014. RE-DERIVED 2026-08-29 against the live tree, and the row is now
   TWO items where it was once a list: everything else in it has shipped.
   - **The board accumulator's final state, as an output.** `ehrt.corpus.board`
