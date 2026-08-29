@@ -59,6 +59,21 @@ with them.
   1 in clinic-decade demo (sweep-3 record :290); fix moves every corpus, its own
   declared sweep; sweep 5's fan-out must either wait for it or derive from log
   indices.
+- OPEN **[engine-namespace-extraction-and-apply-unification]** PRIORITY 5 --
+  intra-brick extraction of `engine.clj` (4,884 lines at `da21a28`; the ruling's
+  4,705 was true at `1b4e264`, 179 lines earlier the same day) and `emit_hl7.clj`
+  (2,498) into cohesive namespaces behind unchanged interfaces, FOLLOWED by
+  application-path unification (decide-drawn / module-compiled / churn-injected
+  events through one apply choke point); one program, each commit
+  output-identical and bracket-proven; TS-3's A' span-gate paid part; the
+  unified path is also event-stream mutation's injection point. Author-ruled
+  2026-08-29.
+- OPEN **[event-stream-mutation]** PRIORITY 6 -- mutation moves to the
+  ground-truth event stream (emitters inherit mutations); ADR-0166's test-side
+  event mutations promoted to a shipped operator catalog with `check` as oracle;
+  file-level operators remain only for lowering-layer faults; AFTER
+  `roadmap.md#engine-namespace-extraction-and-apply-unification`; design ADR
+  first. Author-ruled 2026-08-29.
 - OPEN **[cancel-discharge-reopens-an-encounter-that-never-closes]** PRIORITY 9 --
   MEASURED 2026-08-29 while tracing `roadmap.md#ts-3-outpatient-opens-over-an-encounter`,
   and it is a population fact rather than one patient's: a legal

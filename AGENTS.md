@@ -27,6 +27,8 @@ guide chapter have landed -- so half of that condition is now met. A finding a p
 line in that session's record, not a roadmap row, not a rulings row, and
 not a register of its own. A law worth keeping is worth a test: laws land
 as gates or not at all (`.agents/rulings.md`, FROZEN 2026-08-25).
+LIFTED 2026-08-29: arc 1 landed 41081dd (2026-08-25); guide chapter 35
+landed ehr-testing-guide@1dbe6a5 (2026-08-29).
 
 **All git operations — especially `git commit` — must be run from WSL,
 never from native Windows**, enforced by `.githooks/pre-commit` once
