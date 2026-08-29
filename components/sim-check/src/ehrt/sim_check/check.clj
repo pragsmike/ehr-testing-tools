@@ -548,8 +548,27 @@
   invent a seventh (ADR-0174 section 2(c), invariant 3).
 
   The cycle itself:      ready -> occupied -> dirty -> cleaning -> ready
-  The reinstatement arc: dirty -> occupied
+  The reinstatement arcs: dirty -> occupied, cleaning -> occupied
   The correction arc:    occupied -> ready
+
+  THE SECOND REINSTATEMENT ARC IS A SEVENTH, and it was found by
+  VOLUME rather than by reading: the traffic-scale close of 2026-08-29
+  (its section 9, TS-1) ran the arc-4 add-on configuration at 750 and
+  7,500 patients and this relation refused 2 and 16 transitions
+  respectively -- zero in every corpus this repository ships, because
+  the window is one `:turnaround-minutes` draw wide and the gated
+  corpora are thin on churn. ADR-0174 section 2(c) carves the
+  reinstatement out of `:dirty` ONLY, and `ehrt.sim-engine.engine`'s
+  own comment says so -- a `:cancel-discharge` can reinstate a patient
+  into a bed whose cycle is already in flight -- but the cycle has
+  TWO in-flight legs, and a reinstating cancel can land in the second
+  just as easily as the first. THE ENGINE IS CORRECT AND THIS
+  ENUMERATION WAS INCOMPLETE: `decide :bed-ready`'s own guard sees the
+  non-`:cleaning` bed the cancel leaves behind and emits nothing, so
+  the bed ends up correctly occupied and no other row disagreed.
+  Ratified into ADR-0174 section 2(c) as its fourth ratification,
+  2026-08-29. Carried in the same three places the sixth arc is, and
+  gated by `ehrt.sim-engine.bed-cycle-test`'s own authored witness.
 
   THE CORRECTION ARC IS A SIXTH THE ADR DOES NOT NAME, and it is
   disclosed rather than quietly added. ADR-0174 enumerated the cycle's
@@ -573,6 +592,7 @@
     [:dirty :cleaning]
     [:cleaning :ready]
     [:dirty :occupied]
+    [:cleaning :occupied]
     [:occupied :ready]})
 
 (def ^:private bed-correction-event-types
@@ -723,7 +743,7 @@
 
 (defn bed-cycle-transitions-are-legal
   "ADR-0174 section 2(c), invariant 3: every bed-status transition is
-  one of the six in `legal-bed-transitions`, and a `:bed-status-change`
+  one of the seven in `legal-bed-transitions`, and a `:bed-status-change`
   event's DECLARED `:from` is the status the log says the bed was
   actually in.
 

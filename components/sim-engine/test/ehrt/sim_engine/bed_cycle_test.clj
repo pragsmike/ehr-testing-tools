@@ -234,6 +234,56 @@
       (is (empty? (check/no-assignment-to-a-non-ready-bed gt))
           "a cancel is not an allocation: it goes through no `allocate` call site"))))
 
+(deftest a-reinstatement-into-a-cleaning-bed-is-the-seventh-arc
+  (testing "TS-1 (traffic-scale close, 2026-08-29, section 9): the
+            turnaround has TWO in-flight legs and a reinstating cancel
+            can land in EITHER. `dirty -> occupied` was carved out for
+            the first; this is the second, and the relation had to grow
+            a SEVENTH arc rather than the engine change -- `decide
+            :bed-ready`'s guard already no-ops on the non-`:cleaning`
+            bed the cancel leaves behind, so the bed ends up correctly
+            occupied and only the check-side enumeration disagreed.
+
+            Reachable only at volume: 2 of 16,322 events at 750
+            patients on the traffic-scale `v2` config, 16 at 7,500,
+            ZERO in every corpus this repository ships. So the witness
+            is AUTHORED here rather than sampled, and counted rather
+            than assumed -- `bed-transitions` is asked how many
+            `[:cleaning :occupied]` arcs this fixture actually
+            produces, because a fold that recorded none would make the
+            row below pass for the wrong reason."
+    (let [gt [{:event :registered :t 0 :warm-up false :active-mrn "M1"
+               :participants [{:patient-id "P1" :role :subject}]
+               :persona nil :identity :known}
+              {:event :admission :t 0 :warm-up false :active-mrn "M1"
+               :home-ward "Renal" :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}
+               :attending "N1" :forced false
+               :participants [{:patient-id "P1" :role :subject}]}
+              {:event :discharge :t 100 :warm-up false :active-mrn "M1"
+               :location {:ward "Renal" :bed "RENAL-01" :placement :licensed} :attending "N1"
+               :participants [{:patient-id "P1" :role :subject}]}
+              {:event :bed-status-change :t 100 :warm-up false :bed "RENAL-01" :ward "Renal"
+               :from :occupied :to :dirty :last-patient-id "P1"
+               :participants [{:bed-id "RENAL-01" :ward "Renal" :role :subject}]}
+              ;; the SECOND leg starts -- and the cancel lands inside it,
+              ;; one turnaround draw wide, which is the whole window.
+              {:event :bed-status-change :t 700 :warm-up false :bed "RENAL-01" :ward "Renal"
+               :from :dirty :to :cleaning
+               :participants [{:bed-id "RENAL-01" :ward "Renal" :role :subject}]}
+              {:event :cancel-discharge :t 800 :warm-up false :active-mrn "M1"
+               :cancels-event-id 2 :home-ward "Renal"
+               :location {:ward "Renal" :bed "RENAL-01" :placement :licensed} :attending "N1"
+               :participants [{:patient-id "P1" :role :subject}]}]
+          arcs (frequencies (map (juxt :from :to) (#'check/bed-transitions gt)))]
+      (is (pos? (get arcs [:cleaning :occupied] 0))
+          "the counted witness: this fixture really does produce the arc under test")
+      (is (empty? (check/bed-cycle-transitions-are-legal gt))
+          "cleaning -> occupied is the reinstatement arc's SECOND leg and is legal")
+      (is (empty? (check/no-assignment-to-a-non-ready-bed gt))
+          "a cancel is not an allocation: it goes through no `allocate` call site")
+      (is (empty? (check/every-ready-follows-a-cleaning gt))
+          "and nothing reached :ready at all, so invariant 2 has nothing to say"))))
+
 (deftest a-correction-returns-its-bed-straight-to-ready
   (testing "the SIXTH arc, disclosed: an occupancy a cancel retracts
             leaves no dirt behind it"

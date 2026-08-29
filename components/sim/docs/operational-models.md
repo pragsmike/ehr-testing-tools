@@ -163,12 +163,21 @@ names a **bed** rather than a patient, and each renders one **ADT^A20**
 (`[MSH EVN NPU]`, no PID and no PV1) so `ehrt play --board` can show a
 dirty bed instead of an invisible one.
 
-Two arcs sit outside the cycle proper:
+Three arcs sit outside the cycle proper:
 
 - **Reinstatement, `:dirty → :occupied`.** A `:cancel-discharge` or
   `:cancel-transfer` puts a patient back in a bed that has been dirty
   since they left it; the cancel restores the bed's status alongside the
   location.
+- **Reinstatement, `:cleaning → :occupied`** — the same arc, one leg
+  later. The turnaround has TWO in-flight legs and a reinstating cancel
+  can land in either; a cancel arriving after housekeeping has started
+  reoccupies a `:cleaning` bed rather than a `:dirty` one. The pending
+  `:bed-ready` tick then finds a bed that is no longer `:cleaning` and
+  emits nothing, which is why the engine needed no change when this was
+  found. Added 2026-08-29 (ADR-0174 section 2(c) ratification 4) after
+  the traffic-scale close saw it at 750 and 7,500 patients and at no
+  shipped corpus.
 - **Correction, `:occupied → :ready`.** A `:cancel-admit`, and the
   erroneously-taken bed of a `:cancel-transfer`, return their bed
   straight to `:ready` with no event and no turnaround — an occupancy a
@@ -226,10 +235,10 @@ below — recorded as an exemption, not silently allowed.
   nothing).
 - A bed reaching `:ready` was `:cleaning` immediately before, except at
   run start, where every bed is born ready.
-- Every bed-status transition is one of the six the cycle admits:
+- Every bed-status transition is one of the seven the cycle admits:
   `ready→occupied`, `occupied→dirty`, `dirty→cleaning`,
-  `cleaning→ready`, the reinstatement's `dirty→occupied`, and the
-  correction's `occupied→ready`.
+  `cleaning→ready`, the two reinstatements' `dirty→occupied` and
+  `cleaning→occupied`, and the correction's `occupied→ready`.
 
 **Deliberate non-invariant, recorded so it isn't rediscovered as a
 bug:** there is **no census floor for surge use**. A real hospital's

@@ -663,6 +663,50 @@ drafted to do.
    itself asks. The CLAIM is unchanged; only the reading of "exhausted"
    moved, and it moved to the ladder's own.
 
+4. **A SEVENTH transition arc, `:cleaning -> :occupied`, joins item 3's
+   relation (2026-08-29).** Ratification 1 above grew the relation from
+   five arcs to six and closed with *"the enumeration stands against a
+   seventh on the same terms"*. It is now owed, on exactly those terms.
+   Item 3 carves the reinstatement out of `:dirty` ONLY, and
+   `engine.clj`'s own comment reads the same way -- *"a
+   `:cancel-discharge` can reinstate a patient into a bed whose cycle is
+   already in flight (the dirty->occupied arc ADR-0174's invariant 3
+   carves out)"*. **But the cycle has TWO in-flight legs**, and a
+   reinstating cancel can land in the second (`:cleaning`) as easily as
+   in the first (`:dirty`).
+
+   **The engine is correct; this enumeration was incomplete.**
+   `update-beds`' second rule reads the participant's location delta and
+   writes `:occupied` without consulting the bed's prior status, and the
+   pending `:bed-ready` tick then finds a bed that is no longer
+   `:cleaning` and emits nothing -- its guard doing exactly what it is
+   for. The bed ends up correctly occupied. Only the check-side relation
+   disagreed, so this ratification is CHECK-SIDE ONLY: no corpus moves,
+   no event changes, and `bin/ground-truth-bracket` reads IDENTICAL
+   across it.
+
+   **Found by VOLUME, not by reading**, which is the part worth keeping.
+   The traffic-scale close (2026-08-29,
+   `.agents/session-records/2026-08-29-traffic-scale-close.md` section 9,
+   TS-1) ran the arc-4 add-on configuration at 750 and 7,500 patients and
+   `bed-cycle-transitions-are-legal` refused **2 of 16,322 events** and
+   **16 of 171,925** respectively. **Zero in every corpus this repository
+   ships**: the window is one `:turnaround-minutes` draw wide and the
+   gated corpora are thin on churn. Both witnesses at 750 are
+   `:cancel-transfer`, and one of them reinstates its patient into a bed
+   that a DIFFERENT patient has occupied and vacated in the meantime --
+   so the arc is not merely "the same occupant returns", and the
+   enumeration must not be re-narrowed to that.
+
+   Carried in the same three places the sixth arc is --
+   `legal-bed-transitions`, `engine.clj`'s own comments, and
+   `components/sim/docs/operational-models.md` -- and gated by an
+   AUTHORED witness in `ehrt.sim-engine.bed-cycle-test`, whose fixture is
+   counted (`pos?` on the fold's own `[:cleaning :occupied]` arcs) rather
+   than assumed, because a fold that recorded no transition would make
+   the row pass for the wrong reason. **The relation is now SEVEN arcs,
+   and the enumeration stands against an eighth on the same terms.**
+
 **And item 4's premise is WITHDRAWN: `:exhausted` is not visible, it is
 FATAL.** Item 4 argues the effective-capacity risk is acceptable because
 *"`allocate` returns `{:exhausted true}` and the engine emits a

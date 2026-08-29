@@ -1892,6 +1892,16 @@
 ;; a bed whose cycle is already in flight (the dirty->occupied arc
 ;; ADR-0174's invariant 3 carves out), and the tick that then fires
 ;; must do NOTHING rather than drag an occupied bed to `:cleaning`.
+;;
+;; THE CYCLE HAS TWO IN-FLIGHT LEGS AND THE CANCEL CAN LAND IN EITHER.
+;; The sentence above says `dirty->occupied` because that is the leg
+;; ADR-0174 carved out; a cancel landing after `:cleaning` has begun
+;; produces `cleaning->occupied`, which the traffic-scale close of
+;; 2026-08-29 found at volume (section 9, TS-1) and which is now the
+;; relation's SEVENTH arc. THESE TWO GUARDS ARE WHY NO ENGINE CHANGE
+;; WAS OWED: `decide :bed-ready` below sees a non-`:cleaning` bed and
+;; emits nothing, so the bed stays correctly occupied and only the
+;; check-side enumeration was incomplete.
 
 (defmethod decide :bed-cleaning
   [{facility-rng :facility} t world _patient-id {:keys [bed ward]}]
@@ -2911,7 +2921,14 @@
 
   ADR-0174's invariant 3 enumerates ready->occupied, occupied->dirty,
   dirty->cleaning, cleaning->ready and the reinstatement's
-  dirty->occupied. THE CORRECTION ARC, occupied->ready, IS A SIXTH, and
+  dirty->occupied. A SEVENTH, cleaning->occupied, joined it on
+  2026-08-29 (ADR-0174 section 2(c) ratification 4, traffic-scale close
+  section 9 TS-1): the turnaround has TWO in-flight legs and a
+  reinstating cancel can land in either. That arc changes nothing HERE
+  -- neither of this set's two kinds produces it, and the guard in
+  `decide :bed-ready` below already handles the bed it leaves -- it is
+  named so a reader of this comment finds the whole relation.
+  THE CORRECTION ARC, occupied->ready, IS A SIXTH, and
   the ADR does not name it -- it enumerated the cycle's own transitions
   and the two cancel classes that RE-OCCUPY, and did not reach the two
   that VACATE. Disclosed rather than smuggled: without it a cancelled
