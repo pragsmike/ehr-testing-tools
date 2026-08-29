@@ -472,6 +472,43 @@ instrument error. Only the quiet-host figures appear here.
   msg/event at 10^5 remains unmeasured**, two sessions after the gap was
   named.
 
+- **STILL BLOCKED (2026-08-29, post-TS-3) — BOTH 10^5 add-on cells, and
+  the SAME single row now blocks both.** HEAD `c156690`, same driver,
+  same scratch, same seed, warm-up plus two timed.
+
+  | cell | events | persons | generate | check | emit | spool | wall | peak RSS | self-check |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `nobed` 10^5 | 129,415 | 39.79 s | 125.45 s | 12.71 s | — | — | 185.48 s | 1,478 MB | **BLOCKED (1 violation)** |
+  | `v2` 10^5 | 171,864 | 40.45 s | 165.51 s | 17.91 s | — | — | 231.62 s | 1,918 MB | **BLOCKED (1 violation)** |
+
+  `roadmap.md#ts-3-outpatient-opens-over-an-encounter` is CLOSED
+  (`c156690`): `admission-only-when-no-open-encounter` goes 1 → **0** and
+  `outpatient-patients-occupy-no-bed` **33,950 → 0** at `v2`. What is left
+  is one violation in each cell and it is the SAME one —
+  `roadmap.md#ts-4-placeholder-unresolved`, `PID-007500-e98926c1` at
+  t=37017, in both.
+
+  **The fix fires ONCE in a 424-span population**: 423 compiled encounter
+  spans go through the new wrapper at `nobed` with ZERO refused and the
+  corpus byte-count IDENTICAL at 129,415 events; 424 at `v2` with exactly
+  one refused, moving that corpus 171,835 → **171,864 (+29)**. The +29 is
+  downstream and is a declared corpus change: with the second encounter
+  never opening, the reinstated inpatient encounter stays open for the
+  rest of the run and this config bills restatement chatter against
+  open-encounter patient-days. `bin/ground-truth-bracket 11765bb c156690`
+  is IDENTICAL over 38 roots, so no shipped corpus moves.
+
+  Generate at `v2` is **165.51 s against 162.68 s** (+1.7%) and at `nobed`
+  **125.45 s against 129.12 s** (−2.8%) — both inside a two-run mean's
+  noise. **The `v2` wall falls 282.02 → 231.62 s (−17.9%), and 50 of
+  those 50.4 seconds are the check phase**: 17.91 s against a
+  parenthesised (70.24 s), which are not the same measurement — the old
+  one materialised 33,952 violation maps and this one materialises ONE.
+  **The parenthesis is retired for this cell**, on the ground the entry
+  above retired it for `nobed`. **Emit and spool STILL never run at 10^5
+  on either corpus, so msg/event at 10^5 remains unmeasured**, three
+  sessions after the gap was named.
+
 - **PROJECTED, not measured — 10^6 events on today's generator.** One
   decade's extrapolation of the two-term fit above: generate 7.7 h +
   check 17.0 h = **~24.7 h, of which 99.3% is the quadratic term**. This
@@ -505,6 +542,16 @@ instrument error. Only the quiet-host figures appear here.
   so warm-up plus two timed is ~2 h 38 min — affordable — but peak heap in
   the emit phase projects to **9.87 GB against the shipped 3.88 GB
   ceiling**, and peak RSS to **15.5 GB against the machine's 15 GiB**.
+
+  **RE-STATED AGAIN 2026-08-29 (post-TS-3), and STILL DECLINED.** The
+  reason is unchanged and unchangeable by these cells: emit never ran,
+  `:emit-peak-heap-mb` is 0.0 in all four timed runs, and the decline was
+  on emit peak heap. What the post-TS-3 cells add is the first
+  check-phase heap figure at `v2` that is NOT dominated by a violation
+  vector — 1,460.2 MB while building ONE violation, against 1,246.6 MB
+  building 33,950 — so a clean 10^6 run's check heap can at last be
+  projected off a comparable quantity. None of that reaches emit, which
+  is the gate.
 
   **RE-STATED 2026-08-29 (post-TS-5), and STILL DECLINED — the label and
   this note both stand.** The decline was on EMIT peak heap, and the two

@@ -59,29 +59,6 @@ with them.
   1 in clinic-decade demo (sweep-3 record :290); fix moves every corpus, its own
   declared sweep; sweep 5's fan-out must either wait for it or derive from log
   indices.
-- OPEN **[ts-3-outpatient-opens-over-an-encounter]** PRIORITY 7 --
-  `admission-only-when-no-open-encounter` violated by an `:outpatient-visit`, ONE
-  instance (`PID-000640-f57cb996`, t=100609860, v2 10^5 only). DIAGNOSED
-  2026-08-29 and the close's reading REFUTED: it is NOT "the same root as TS-2
-  seen from the other side". The trace is a module-cohort patient whose
-  module-compiled `:admission` at t=240300 was discharged at t=244620 and then
-  REINSTATED by a `:cancel-discharge` in the same batch, re-opening
-  ENC-000640-00 with nothing left in the queue to close it; the module's own
-  LATER compiled `:outpatient-visit`, 100M seconds on, then opens over it. The
-  mechanism is that a COMPILED encounter opener is queued directly and never
-  routed through `:repeat-arrival`, so `encounter-openable?` is never asked.
-  Same family as `roadmap.md#cancel-transfer-reinstates-a-discharged-patient` --
-  a cancel reinstating state a later event superseded -- and it should be
-  weighed with it. **RE-SCOPED 2026-08-29 by c5e5f2b, and NOT TS-5-rooted:
-  the TS-5 guard landed and this reproduces UNCHANGED -- same patient, same
-  instant, same invariant -- because its reinstating event is a
-  `:cancel-discharge` whose subject is `:discharged`, which is the one status
-  a cancel-discharge may legally find. It is now the LARGEST blocker of the
-  v2 10^5 cell rather than a passenger on it: `PID-000640` alone produces all
-  33,950 surviving `outpatient-patients-occupy-no-bed` violations there, the
-  whole of that invariant's residue, because the compiled second opener flips
-  `:class` to `:outpatient` on a patient still holding the bed their inpatient
-  encounter was given. BLOCKS the v2 10^5 cell, and now alone.
 - OPEN **[ts-4-placeholder-unresolved]** PRIORITY 8 --
   `every-placeholder-registration-is-resolved-or-still-open`, one violation in
   EACH 10^5 add-on cell, same patient and same instants in both. CHARACTERISED
@@ -98,8 +75,41 @@ with them.
   cancel, so the TS-5 guard does not reach it. **RE-SCOPED 2026-08-29: it is
   now the ONLY violation in the whole `nobed` 10^5 run (1 of 129,407 events),
   and therefore the only thing between that cell and a MEASURED entry.**
-  BLOCKS the nobed 10^5 cell, alone.
-- OPEN **[corpus-player-slices]** PRIORITY 9 -- the corpus-player slices chartered
+  **RE-SCOPED AGAIN 2026-08-29 by c156690, and upward: it is now the only
+  violation in BOTH 10^5 add-on cells** -- 1 of 129,415 events at `nobed`
+  and 1 of 171,864 at `v2`, the same patient at the same instant in each --
+  so it is the last thing standing between the whole traffic-scale
+  programme and two MEASURED entries, and the only reason emit and spool
+  have still never run at 10^5 on an add-on corpus. Its design question is
+  untouched by both intervening fixes and remains genuinely open.
+  BLOCKS BOTH 10^5 cells, alone.
+- OPEN **[cancel-discharge-reopens-an-encounter-that-never-closes]** PRIORITY 9 --
+  MEASURED 2026-08-29 while tracing `roadmap.md#ts-3-outpatient-opens-over-an-encounter`,
+  and it is a population fact rather than one patient's: a legal
+  `:cancel-discharge` re-opens the encounter its own `:discharge` closed
+  (`evolve`'s `reopen-encounter`, deliberate -- a reinstated stay is ONE
+  encounter), and NOTHING EVER RE-QUEUES A CLOSER FOR IT. At v2 10^5, 55 of
+  55 cancel-discharges re-open and 54 have no closer of any kind for the
+  remaining ~144,000 events; the 55th is TS-3's patient, whose only "closer"
+  is the illegitimate second encounter's own `:outpatient-visit-end`.
+  seed-202-ed-tuesday (`PID-000071-e552a7cc`, t=98100) and demo-ed-tuesday
+  (`PID-000039-77bfc3a1`, t=128100) each carry one, same shape. It is
+  STRUCTURAL, not accidental: `churn/applicable?` gates `:cancel-discharge`
+  on `:has-uncancelled-discharge?`, which the static oracle sets only after
+  the pathway's own `:discharge` -- the last authored step of both dense
+  pathways and of ed-tuesday's -- so the insertion can only land in the end
+  gap, with nothing behind it. THE CATALOG PERMITS IT BY CONSTRUCTION:
+  `every-encounter-is-opened-and-closed-or-still-open` reads "or still
+  open", so a stay that never ends is green, and the 54 stay `:class
+  :inpatient` holding the bed the reinstatement gave back, which
+  `admitted-occupies-one-slot` requires. So this row is INVISIBLE to every
+  gate today and produced no red anywhere -- it is a fidelity question (does
+  this repository want reinstated stays that outlive the run?), not a
+  correctness one, and it is NOT a candidate fix for TS-3: see that row's
+  option (B), rejected there for reasons that apply here too. Any fix is
+  draw-affecting and owes its own declared sweep. Record:
+  `.agents/session-records/2026-08-29-ts-3-compiled-opener.md`.
+- OPEN **[corpus-player-slices]** PRIORITY 10 -- the corpus-player slices chartered
   by ADR-0014. RE-DERIVED 2026-08-29 against the live tree, and the row is now
   TWO items where it was once a list: everything else in it has shipped.
   - **The board accumulator's final state, as an output.** `ehrt.corpus.board`
@@ -278,6 +288,7 @@ One line a row. `CLOSED` here means "no longer a roadmap row", not "the work
 was done" -- each line says which. The section is named `## Done` because that
 is where `ehrt.docs-tooling.roadmap-lint-test` requires a `CLOSED` row to live.
 
+- CLOSED 2026-08-29 c156690 **[ts-3-outpatient-opens-over-an-encounter]** -- DONE, and the row's own MECHANISM CORRECTED IN ITS PARTICULARS by the trace it asked for while its CONCLUSION survives intact. The row said a module-compiled `:admission` was followed by "the module's own LATER compiled `:outpatient-visit`". Neither half is so: `compile-trajectory` short-circuits on `encounter-closed?` after the first horizon-phase `:encounter-end`, so a compiled step list holds AT MOST ONE encounter, and the `:admission` at t=240300 is the first step of the authored `dense_fast` pathway carried by a REPEAT ARRIVAL, correctly routed through `decide :repeat-arrival`. Bronchitis compiles `[:delay 1,676,160 min -> :outpatient-visit -> ... -> :outpatient-visit-end]` and 40,260 + 100,569,600 = 100,609,860 to the second. THE STRUCTURAL FACT THE FIRST DIAGNOSIS COULD NOT SEE FROM THE LOG is that the patient holds TWO CONCURRENT QUEUE ENTRIES -- the module's is parked at t=100,609,860 from t=40,260 by its own compiled delay, and the whole inpatient episode happens on a different entry inside that gap, so "nothing left in the queue to close it" is true of the wrong queue. The conclusion stands and is what was fixed: a compiled encounter opener is attached raw by `decide :registered` and never asks `encounter-openable?`; both wrappers that DO ask ran for this patient and both correctly refused. LETTERED, and the author ruled option (A') -- re-bracket the compiled list so each encounter it carries sits behind ONE `:repeat-arrival` step, opener through closer, putting the EXISTING unchanged guard in charge of the whole span, with everything before the opener (the parking delay) left outside it. BARE OPTION (A), a guard on the opener alone, WAS REFUTED BY ITS OWN DANGLING-STEP ANALYSIS: the tail would still run, its clinical content would be stamped with whatever other encounter was open, and its trailing `:outpatient-visit-end` would close that other encounter -- passing every row in the catalog, so 33,950 red rows would have become zero red rows and a silently false log. Option (B) close-at-reopen was rejected (unaskable predicate, draw-affecting, and it fixes TS-3 by TIMING rather than by law) and option (C) compile-time was struck. `bin/ground-truth-bracket 11765bb c156690` IDENTICAL over 38 roots, so NO declaration and NOTHING re-pinned; `make docsgen` moved no generated file at all and the event contract stays 1.8.0. MEASURED AFTER, and the fix fires ONCE in the whole population: 423 compiled spans at nobed with ZERO refused and the corpus byte-count unchanged at 129,415 events, 424 at v2 with exactly ONE refused. At v2 10^5 `admission-only-when-no-open-encounter` goes 1 -> **0** and `outpatient-patients-occupy-no-bed` 33,950 -> **0**, leaving ONE violation in 171,864 events. BOTH 10^5 cells now stay BLOCKED on the SAME single row, `roadmap.md#ts-4-placeholder-unresolved`, same patient and same instant at each. Record: `.agents/session-records/2026-08-29-ts-3-compiled-opener.md`.
 - CLOSED 2026-08-29 c5e5f2b **[cancel-transfer-reinstates-a-discharged-patient]** -- DONE, and the design question the row refused to answer is ANSWERED: a cancel may not reinstate state a later event superseded, where "superseded" is measured RELATIVE TO THE STATUS THE CANCELLED EVENT ITSELF LEAVES BEHIND. MECHANISM MEASURED BEFORE ANY FIX, which is what the row asked for and what settles between its two candidates: a probe wrapping the `decide` VAR reports the subject `:status :discharged`, `:location` nil AT DECIDE TIME at both of the row's witnesses (`PID-004302-fa1ab125` t=303660 into SURGERY-91; `PID-005562-03ed543c` t=363060 into ED-31). So the discharge is already folded when the cancel is decided -- the run loop folds each decide's events into `world` before popping the next queue entry, and there is no simultaneous batch for a decide-time test to miss. It is the reinstate-index reading, not the batch-order one. `bed-reoccupied-by-someone-else?` passes it because the occupancy board reads NIL for both beds: the patient is gone, not displaced. THE CHANNEL'S OWN OPTION (A) WAS REFUTED BY THAT SAME MEASUREMENT and the correction is the session's main finding -- rejecting every `:discharged` subject would reject every `:cancel-discharge` in the repository (55 of 55 at nobed 10^5), since `:discharged` is the status a cancel-discharge exists to find. DRAWS ZERO ON BOTH PATHS, asserted by a test against a pristine `Random` rather than read off the source. `bin/ground-truth-bracket a4e8698 c5e5f2b` IDENTICAL over 38 roots, so NO declaration and NOTHING re-pinned, and the per-corpus count explains it exactly: the only cancel DECIDE in the whole gated population is one legal `:cancel-discharge` in seed-202, whose other 7 reinstating cancels all carry `:in-error true` and come from `decide :transfer-in-error`, which never routes through `decide :cancel-transfer`. MEASURED AFTER: `outpatient-patients-occupy-no-bed` goes 372,123 -> **0** at nobed 10^5 (all 11 patients cleared) and 495,205 -> 33,950 at v2 10^5 (11 of 12 cleared; the residue is one patient, TS-3's). THE ROW'S OWN "BLOCKS both 10^5 v2 cells, alone" IS CORRECTED: it never did. `roadmap.md#ts-4-placeholder-unresolved` blocks the nobed cell alone and `roadmap.md#ts-3-outpatient-opens-over-an-encounter` blocks the v2 cell alone, so both cells stay BLOCKED. Contract 1.7.0 -> 1.8.0 for the two new rejection reasons. Record: `.agents/session-records/2026-08-29-ts-5-superseded-cancel.md`.
 - CLOSED 2026-08-29 19a4931 **[ts-1-seventh-bed-arc]** -- DONE: the bed relation grew a SEVENTH arc, `cleaning -> occupied`, ratified into ADR-0174 section 2(c) as its fourth ratification. Reproduced at the close's own seed first (16,322 events, the same two beds at the same instants), which confirmed the close's mechanism exactly and added one detail it did not have: at ED-176 the cancel reinstates its patient into a bed a DIFFERENT patient has used and vacated in between, so the arc is not "the same occupant returns". CHECK-SIDE ONLY -- the engine was already correct, `decide :bed-ready`'s guard no-ops on the bed the cancel leaves, and `bin/ground-truth-bracket` reads IDENTICAL over the whole session. Gated by an AUTHORED hand-built witness whose `[:cleaning :occupied]` arc count is pinned `pos?`, because the shape is zero-frequency in every shipped corpus and could not be sampled.
 - CLOSED 2026-08-29 1b4e264 **[ts-2-outpatient-holds-a-bed]** -- DONE for the root it named, and the close's DIAGNOSIS CORRECTED. Not "the authored pathway walk is not gated on encounter class": the close's own witness (log index 92836, reproduced here) carries `:bed-ready true`, a field only `bed-ready-transfer-event` writes, and the reproducer that proves it has no `:transfer` step in any pathway. `waiting-boarder` never asked whether a candidate was IN A BED, so an open outpatient encounter -- `:status :admitted` from its opener, `:location` nil, `:home-ward` stale from an earlier inpatient stay -- answered its `not=` test yes and was handed the next bed to free in that ward, ranked FIRST because its `:admitted-at` was stale too. One `some?` clause. Draw-neutral: the branch it takes more often is the pre-existing zero-draw one. The v2 10^4 cell, BLOCKED since the close, now self-checks CLEAN at the same 16,322 events; the 10^5 cells drop from 24/25 offending patients to 12/13, and the remainder is a different root, rowed as `roadmap.md#cancel-transfer-reinstates-a-discharged-patient`.
