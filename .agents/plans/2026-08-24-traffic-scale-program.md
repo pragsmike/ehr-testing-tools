@@ -358,6 +358,83 @@ it — nothing transcribed. Full detail: session record
   negative one: the program's target scale is not currently reachable by
   the configuration the program itself describes.
 
+  **SUPERSEDED IN PART, 2026-08-29 (later the same day), by the two
+  entries below.** The 10^4 cell is no longer blocked and is MEASURED;
+  the 10^5 cell still is, but by ONE defect rather than four, and the
+  "probably the same root" and "not characterised" clauses above are
+  both retired -- two of the four diagnoses this entry summarises turned
+  out to be wrong. This entry keeps its NOT MEASURED label and its date
+  because it is a true record of what was known when it was written;
+  read it with the two below.
+
+**Run parameters common to every MEASURED figure dated 2026-08-29 (post-fix).**
+The preamble above holds unchanged -- same machine, same boot, same JVM, same
+driver (`spike/driver2.clj`, six vars rebound around one real `run-command`
+call), same seed 20260824, same warm-up-plus-two-timed protocol, same
+`dense-<N>-v2.edn` bytes. What differs: **HEAD is `1b4e264`**, not `6eb4aa6`
+— the two fixes below it are the reason these cells run at all. Host sampled
+on the Windows side at every cell boundary AND every ten seconds in flight
+(the boundary series is the one comparable to the entries above): boundary
+readings 4/5/12/15, in-flight 81 samples, mean 9, max 51, and the in-flight
+sampler is itself a Windows-side process so its readings are an upper bound.
+**A FIRST ATTEMPT AT THESE TWO CELLS WAS DISCARDED**, its host reading 52–65:
+its 10^4 wall came out 34–39 s against 20.7–21.0 s on the quiet host, a 1.7×
+instrument error. Only the quiet-host figures appear here.
+
+- **MEASURED (2026-08-29, post-fix) — the v2 10^4 cell, UNBLOCKED.** The
+  cell the entry above reports as blocked now completes its own
+  self-check CLEAN, at the same **16,322 events**, and its emit, spool
+  and message figures exist for the first time.
+
+  | phase | modules | persons | generate | check | emit | spool | other | in-process | process wall | peak RSS |
+  | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+  | v2, 750 patients | 0.317 s | 3.149 s | 3.596 s | 2.052 s | 2.693 s | 1.642 s | 0.959 s | 12.77 s | **20.74 s** | 713 MB |
+
+  **16,322 events, 19,862 messages, msg/event 1.2169** — the first
+  second decade the v2 series has had. The ratio was 1.050 at the v2
+  10^3 cell, so **the v2 series climbs 1.050 → 1.217 across the
+  decade**, landing on top of the `nobed` isolation series' own 1.214 at
+  the same scale. That agreement is worth stating: the bed cycle adds
+  events and messages in nearly the same proportion, so it moves the
+  ratio hardly at all. Fan-out spooled 2,218 `:adt-feed` and 4,657
+  `:bed-feed` re-deliveries beside the 19,862 base messages.
+
+  Against the same cell's BLOCKED figures in the entry above: persons
+  3.149 s against 3.156 s and generate 3.596 s against 3.439 s, so the
+  fix is not measurable in the generate phase. Check is 2.052 s against a
+  parenthesised 2.005 s — and the new figure is a PASSING check where
+  the old one was a failing check materialising two violations, so the
+  two are not the same measurement even though the numbers nearly agree.
+
+- **STILL BLOCKED (2026-08-29, post-fix) — the v2 10^5 cell, and the new
+  reason.** One defect, not four: a churn `:cancel-transfer` landing in
+  the same batch as a `:discharge` reinstates `:location` onto an
+  already-discharged patient, and a later `:outpatient-visit` inherits
+  the bed
+  (`roadmap.md#cancel-transfer-reinstates-a-discharged-patient`). The
+  offending population fell from 25 distinct patients to 13 (that row
+  alone flags 11 at nobed and 12 at v2, sharing 10 -- the two cells'
+  sets are not nested) and the violation count from 897,579 to 495,205; `bed-cycle-transitions-are-legal` is
+  clean where it fired 16 times. Two single-instance rows also survive,
+  both now diagnosed
+  (`roadmap.md#ts-3-outpatient-opens-over-an-encounter`,
+  `roadmap.md#ts-4-placeholder-unresolved`). Emit and spool therefore
+  still never run and **no message figure exists at 10^5 on any
+  add-on-bearing corpus** — the gap the entry above names is unchanged.
+
+  The phases that DO run, for what they are worth: persons **39.93 s**,
+  generate **163.05 s**, check **(84.84 s)**, process wall **300.9 s**,
+  peak RSS 2,278 MB, retained after generate 157.5 MB, peak heap
+  generate 804 MB. Event count **171,913** (recovered by the untimed
+  shape probe, since a blocked run discards its payload) against the
+  close's 171,925 — **12 fewer events, which is exactly the 12 erroneous
+  bed-ready transfers the fix removes.** Generate is 163.05 s against
+  161.52 s pre-fix, +0.9%, i.e. unmoved. **The check figure is
+  parenthesised and is NOT a check measurement**: it is the wall of a
+  failing check materialising 495,205 violation maps, and it is lower
+  than the pre-fix 88.81 s only because there are fewer of them to
+  materialise.
+
 - **PROJECTED, not measured — 10^6 events on today's generator.** One
   decade's extrapolation of the two-term fit above: generate 7.7 h +
   check 17.0 h = **~24.7 h, of which 99.3% is the quadratic term**. This
