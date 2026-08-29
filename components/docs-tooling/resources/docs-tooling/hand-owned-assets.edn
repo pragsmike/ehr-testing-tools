@@ -93,10 +93,45 @@
  {:asset "docs/manual/assets/straddle-timeline.svg"
   :source "demos/scenarios/ed-tuesday/README.md"
   :trigger "regenerate by hand if the cited section's own witnessed values change"
-  :reviewed-at "7eb94a1"
+  :reviewed-at "b7e0ac1"
   :verdict :fresh
   :note
-  "RE-WITNESSED AND PARTIALLY REDRAWN 2026-08-28 (arc 4 sweep 4,
+  "RE-WITNESSED 2026-08-28 (arc 4 sweep 5, ADR-0175 designs (f) and (g),
+   the fan-out/MLLP turn-on). The trigger fired a TENTH time and NOT ONE
+   VALUE THIS DRAWING CARRIES MOVED -- no redraw, only this row, and for
+   the strongest reason any fire of this tripwire has yet had.
+
+   THE SWEEP THAT FIRED IT CHANGES NO MESSAGE BYTE AT ALL. Every
+   previous fire moved something because a draw moved (arc 1b, arc 3a
+   part 4, arc 3b sweeps 2 and 3) or because a message count moved (arc
+   4 sweeps 2 and 4). Fan-out adds no message and moves none: it
+   re-delivers bytes the base spool already holds, into spools of its
+   own. `bin/ground-truth-bracket` AND `bin/regression-oracle` both
+   report IDENTICAL at all three of this sweep's commits -- the first
+   arc-4 sweep for which that is true of the message half too.
+
+   RE-WITNESSED VALUE BY VALUE against this session's own exerciser run
+   rather than inferred from that: batch-000 holds 10 messages,
+   batch-001 15, batch-002 18; MRN000002 admits at 20260811003739+0000
+   and discharges at 20260811021037+0000; and `grep -cF MRN000002
+   batch-001.hl7` is 0, so the middle window still holds neither half of
+   the encounter -- the fact this drawing exists to show.
+
+   The source diff is one APPENDED section, `## Subscriber feeds, and
+   one over a socket`, describing the two spools this scenario now
+   writes beside its corpus and the `--sink mllp://` leg. It carries no
+   batch window, no transmit time and no message count that this asset
+   draws.
+
+   Bumped in the turn-on's OWN successor commit rather than after CI,
+   for the structural reason the prior review already records: this
+   tripwire reads `git log -1` on the SOURCE, so no commit can carry the
+   sha that names itself, and b7e0ac1 is therefore a RED-FIRST commit
+   under `rulings.md#R-red-pushed-with-green` -- pushed together with
+   this one, never alone. PREDICTED, not discovered: the registry's
+   sources were read before the README was touched.
+
+   Prior review, kept: RE-WITNESSED AND PARTIALLY REDRAWN 2026-08-28 (arc 4 sweep 4,
    ADR-0175 ruling B1, the SIU turn-on). The trigger fired a NINTH
    time, and THE DEPICTED FACT SURVIVED for the third consecutive
    sweep: the encounter still spans three windows and the middle one
