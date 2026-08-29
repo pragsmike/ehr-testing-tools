@@ -50,9 +50,10 @@ featured-placement ruling `.agents/rulings.md` names.[^featured-placement]
    Chapter 1's own out-of-order board.
 5. **Batch delivery** *(featured)* — hourly/nightly BHS/BTS delivery,
    every batch BTS-1 self-verified, taught through one encounter
-   (Smith, James, MRN000002) split cleanly across two adjacent,
-   individually transport-clean batch files: transport-complete, yet
-   clinically half-there either file alone.
+   (Hernandez, Sandra, MRN000002) split across two individually
+   transport-clean batch files with a third between them holding
+   neither half: transport-complete, yet clinically half-there in any
+   one of them alone.
 6. **Breaking data on purpose** — `ehrt corpus mutate`, choosing an
    operator by the contract you want proven, full lineage provenance,
    and the inject-a-defect-expect-the-matching-finding loop that makes

@@ -14,7 +14,7 @@
 **You type:**
 
 ```sh
-# Generate the ed-tuesday scenario's latency wire (283 messages,
+# Generate the ed-tuesday scenario's latency wire (1,554 messages,
 # seed-pinned, byte-reproducible).
 bin/ehrt corpus generate sim --seed 20260811 --patients 100 \
   --reference-date 2026-08-11 --churn \

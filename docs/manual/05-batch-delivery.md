@@ -48,8 +48,8 @@ own reference date happens to be.
 ## The witnessed batch listing
 
 Witnessed this session (same seed-20260811 run Chapter 4 generated:
-283 messages across 34 occupied hourly buckets, `2026-08-11T00:00Z`
-through `2026-08-12T13:00Z`), re-derived by fresh regeneration from
+1,554 messages across 620 occupied hourly buckets, `2026-08-11T00:00Z`
+through `2046-08-01T15:00Z`), re-derived by fresh regeneration from
 `demos/scenarios/ed-tuesday/config-latency.edn` — byte-identical to
 `ed-tuesday`'s own README:
 
@@ -59,26 +59,24 @@ through `2026-08-12T13:00Z`), re-derived by fresh regeneration from
  {:out-dir "out/scenarios/ed-tuesday-latency-batches",
   :interval-ms 3600000,
   :batches
-  [{:file "batch-000.hl7", :count 3,
+  [{:file "batch-000.hl7", :count 10,
     :start-ms 1786406400000, :end-ms 1786410000000, :verified true}
-   {:file "batch-001.hl7", :count 4,
+   {:file "batch-001.hl7", :count 15,
     :start-ms 1786410000000, :end-ms 1786413600000, :verified true}
-   {:file "batch-002.hl7", :count 5,
+   {:file "batch-002.hl7", :count 18,
     :start-ms 1786413600000, :end-ms 1786417200000, :verified true}
-   ;; ... batch-003.hl7 through batch-030.hl7, one per occupied hour ...
-   {:file "batch-031.hl7", :count 1,
-    :start-ms 1786518000000, :end-ms 1786521600000, :verified true}
-   {:file "batch-032.hl7", :count 2,
-    :start-ms 1786528800000, :end-ms 1786532400000, :verified true}
-   {:file "batch-033.hl7", :count 1,
-    :start-ms 1786536000000, :end-ms 1786539600000, :verified true}],
-  :span {:earliest-ms 1786406400000, :latest-ms 1786539600000}}}
+   ;; ... batch-003.hl7 through batch-617.hl7, one per occupied hour ...
+   {:file "batch-618.hl7", :count 2,
+    :start-ms 2400498000000, :end-ms 2400501600000, :verified true}
+   {:file "batch-619.hl7", :count 1,
+    :start-ms 2416748400000, :end-ms 2416752000000, :verified true}],
+  :span {:earliest-ms 1786406400000, :latest-ms 2416752000000}}}
 ```
 
-**Every one of the 34 written files self-verified.**
+**Every one of the 620 written files self-verified.**
 `write-and-verify-batch!` decodes what it just wrote straight back and
 checks BTS-1 against the real message count before ever reporting
-success — `:verified true` on all 615 is that check, exercised, not
+success — `:verified true` on all 620 is that check, exercised, not
 merely claimed. That word matters for what comes next: "verified"
 here means transport-level verified, and transport-level is exactly
 the level this chapter is about to show you isn't the whole story.
@@ -86,11 +84,16 @@ the level this chapter is about to show you isn't the whole story.
 **The interior gap is real, and it's disclosed, not hidden.**
 `batch-032` spans `[08:00Z, 09:00Z)` and `batch-033` spans `[11:00Z,
 12:00Z)` on 2026-08-12 — the two hours between them, `09:00Z`–`11:00Z`,
-carried no traffic at all in this run's own tail and are simply
-absent, never written as an empty file. This is a named v1 deferral
-(an interior empty batch isn't represented, only skipped), not a bug
-— worth knowing before you write a receiver that assumes every
-interval in a span gets its own file.
+carried no traffic at all and are simply absent, never written as an
+empty file. This is a named v1 deferral (an interior empty batch isn't
+represented, only skipped), not a bug — worth knowing before you write
+a receiver that assumes every interval in a span gets its own file.
+
+That is the *small* gap. The large ones are the reason twenty years of
+stream partition into 620 files rather than 175,000: past the ED shift,
+this corpus is a population living its life, and a batch holding one
+birth or one residence-move restatement can sit years from the batch
+before it. `batch-618` is in January 2046 and `batch-619` in August.
 
 ## The wrapper itself
 
@@ -105,12 +108,12 @@ MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811000000+0000||ADT^A28|MRN000001-A28-0-0|P|
 $ tail -c 45 out/scenarios/ed-tuesday-latency-batches/batch-000.hl7 | cat -A
 mergency^^ED-H08^general-hospital|U^M$
 $
-BTS|9$
+BTS|10$
 $
 ```
 
-`BHS|^~\&` opens the batch; `BTS|9` closes it, `BTS-1` naming the true
-count of 9 messages this file actually carries — the minimal,
+`BHS|^~\&` opens the batch; `BTS|10` closes it, `BTS-1` naming the true
+count of 10 messages this file actually carries — the minimal,
 deterministic field set the batcher's own design rules for v1: no
 creation-time field populated at all, so the
 [determinism](../glossary.md) contract
@@ -121,8 +124,9 @@ bytes.
 That truncated `head -c 100` cuts off mid-segment — it's the first
 patient's REGISTRATION, an ADT^A28, which is what a real feed sends
 before anything else and what this project only began sending on
-2026-08-28. The patient this chapter is building toward is two
-messages further in. Her full admission MSH segment, witnessed this
+2026-08-28. The patient this chapter is building toward is the very
+next message in the file — her own A28 — and her admission is the
+seventh of the ten. Her full admission MSH segment, witnessed this
 session by fresh regeneration (byte-identical to the values
 `ed-tuesday`'s own README states):
 
@@ -169,7 +173,7 @@ direct, compounding effect of the previous chapter's own mechanism
 meeting a delivery schedule — not a new, unrelated phenomenon.
 
 **A receiver holding only `batch-000.hl7` has a transport-complete
-file.** Nine of nine messages present, exactly as `BTS-1` declares,
+file.** Ten of ten messages present, exactly as `BTS-1` declares,
 `:verified true` — by every transport-level measure, nothing is wrong
 with this file. And yet, clinically, her own encounter is only half
 there: her registration and her admission, and nothing else for her.
@@ -187,7 +191,7 @@ The lesson isn't "remember to pass `--baseline`" or any other flag —
 it's a question a receiver has to ask itself, one this workspace can't
 ask on its behalf: **do I have all of this encounter?** Transport-level
 completeness — every `BTS-1` count checks out, exactly as this run's
-own 615-for-615 self-verification shows — says nothing about
+own 620-for-620 self-verification shows — says nothing about
 clinical-level completeness — whether an encounter's own full record
 set has actually arrived yet. Her own case is exactly the input a
 receiver's own "do I have all of this?" decision needs to be tested
@@ -225,7 +229,7 @@ receiver has to be ready for it regardless.
 | strip | source |
 |---|---|
 | `bin/ehrt corpus batch out/scenarios/ed-tuesday-latency --interval 60 ...` | `demos/scenarios/ed-tuesday/README.md`, "Batched delivery" |
-| The 615-batch listing (`:status :ok, :payload {...}`) | `demos/scenarios/ed-tuesday/README.md`, "Batched delivery"; re-derived byte-identical by fresh regeneration this session |
+| The 620-batch listing (`:status :ok, :payload {...}`) | `demos/scenarios/ed-tuesday/README.md`, "Batched delivery"; re-derived byte-identical by fresh regeneration this session |
 | `head -c 100`/`tail -c 45` of `batch-000.hl7` | `demos/scenarios/ed-tuesday/README.md`, "Batched delivery" > "The wrapper itself" |
 | Hernandez's full A01 MSH segment | witnessed this session, fresh regeneration; the README's own truncated `head -c 100` excerpt now opens on a different message (an ADT^A28 registration), so this segment is quoted in full rather than extended from it |
 | Hernandez's A03 MSH segment (`batch-002.hl7`) | witnessed this session, fresh regeneration; matches the MSH-7 value (`2026-08-11T02:10:37Z`) the README's own "A straddling encounter" section states in prose |
@@ -248,3 +252,21 @@ the README has said `Hernandez, Sandra` for at least as long -- so the
 chapter and the gate had disagreed about the same message for a sweep.
 Nothing gates a manual excerpt, which is why it went unnoticed; it is
 corrected here against a fresh run rather than carried.
+
+**RE-WITNESSED 2026-08-29, and this time the divergence was ARITHMETIC
+rather than cast.** The straddle itself — Hernandez, her two MSH-7
+values, her EVN-2 times, and the three batch windows around her — came
+back byte-identical from a fresh run and needed no change at all. What
+had rotted was every number *around* it: the chapter opened on "283
+messages across 34 occupied hourly buckets" and closed on
+"615-for-615", two figures that could not both be true of one run and
+neither of which was true of any run at this commit. The corpus is
+1,554 messages across 620 buckets, and it has been since the SIU
+opt-in of 2026-08-28; the wrapper's own `BTS-1` went 9 to 10 the same
+day. THE SHAPE OF THE ERROR IS WORTH NAMING because it is the one this
+chapter is least able to catch on its own: the batch listing, the
+self-verification count and the `BTS` count are three separate
+statements of the same fact, written at three different sittings, and
+nothing holds them to each other. `bin/demo-exerciser-ed-tuesday`
+asserts the straddle — which is why the straddle survived four sweeps
+intact — and asserts nothing about how many batches there are.

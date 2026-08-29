@@ -118,7 +118,7 @@
    :get "Deterministic BHS/BTS batch files, epoch-aligned to the delivery schedule, every written file's BTS-1 message count decoded back and verified before success -- containing at least one encounter whose admission and discharge land in different batches. Transport-level completeness with clinical-level incompleteness: the exact case a receiver's \"do I have all of this encounter?\" decision needs, and one that trips up the unaware in real feeds."
    :maturity :usable
    :commands
-   {:lines ["# Generate the ed-tuesday scenario's latency wire (283 messages,"
+   {:lines ["# Generate the ed-tuesday scenario's latency wire (1,554 messages,"
             "# seed-pinned, byte-reproducible)."
             "bin/ehrt corpus generate sim --seed 20260811 --patients 100 \\"
             "  --reference-date 2026-08-11 --churn \\"

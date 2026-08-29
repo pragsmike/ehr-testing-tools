@@ -55,7 +55,7 @@ Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entr
 | register | count |
 |---|---|
 | ADR files (`notes/adr/NNNN-*.md`) | 173 |
-| roadmap rows (all sections) | 67 |
+| roadmap rows (all sections) | 69 |
 | rulings rows | 113 |
 | rulings rows superseded | 6 |
 | session records | 199 |
@@ -65,7 +65,7 @@ Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entr
 
 | section | rows | tokens in use |
 |---|---|---|
-| Next | 6 | `OPEN` |
+| Next | 8 | `OPEN` |
 | Externals | 8 | `EXTERNAL` |
 | Deferred | 20 | `DEFERRED` |
 | Done | 33 | `CLOSED` |
@@ -76,11 +76,11 @@ Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entr
 
 | set | paths | actual | budget | baseline | headroom |
 |---|---|---|---|---|---|
-| :corpus | 7 | 1889 | 2045 | 2045 | 156 |
-| :docs | 5 | 785 | 785 | 785 | 0 |
-| :judge | 8 | 975 | 1000 | 1000 | 25 |
-| :onboarding | 10 | 1428 | 1530 | 1530 | 102 |
-| :sim | 6 | 1337 | 1405 | 1405 | 68 |
+| :corpus | 7 | 1891 | 2045 | 2045 | 154 |
+| :docs | 5 | 787 | 785 | 785 | -2 |
+| :judge | 8 | 977 | 1000 | 1000 | 23 |
+| :onboarding | 10 | 1445 | 1530 | 1530 | 85 |
+| :sim | 6 | 1339 | 1405 | 1405 | 66 |
 
 ## What this page reads
 

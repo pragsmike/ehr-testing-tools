@@ -39,34 +39,47 @@ Real transport delays messages — differently, per message type, per
 event. [`ed-tuesday`](../../demos/scenarios/ed-tuesday/README.md)'s
 "The second clock" section plays the exact same ground truth onto two
 wires: one instant, one latency-realistic. On the latency wire, patient
-Walker, William (MRN000013)'s own discharge message happens to transmit
-*before* his admission message — a shorter sampled delay on the later
-event outrunning a longer one on the earlier event. The board, folding
+Gonzalez, Olivia (MRN000095)'s own three messages arrive in an order
+none of them was written in — the transfer first, the discharge second,
+and the admission *last* — because a shorter sampled delay on a later
+event outruns a longer one on an earlier event. The board, folding
 messages strictly in the order they arrive, shows this:
 
 ```
--- board snapshot: 2026-08-11T05:43:41Z --
+-- board snapshot: 2026-08-12T00:01:02Z --
+
+Cardiology:
+  CARDIOLOGY-02  Smith, Michelle  MRN MRN000027  inpatient  attending: 5761303028
 
 Emergency:
-  ED-H01  Garcia-Lopez, Amanda  MRN MRN000018  inpatient  attending: 3327386918
-  ED-H03  Moore, Amanda  MRN MRN000015  inpatient  attending: 3327386918
-  ED-H13  Walker, William  MRN MRN000013  inpatient  attending: 3327386918
-  ED-H13  Gonzalez, Emma  MRN MRN000017  inpatient  attending: 3327386918
-  ED-H14  Johnson, Joshua  MRN MRN000014  inpatient  attending: 3327386918
-  ED-H16  Anderson-Lee, Linda  MRN MRN000009  inpatient  attending: 3327386918
+  ED-H10  Miller, Robert  MRN MRN000096  ?
+  ED-H14  Gonzalez, Olivia  MRN MRN000095  ?  attending: 5761303028
+  ED-H16  Johnson, Matthew  MRN MRN000092  inpatient  attending: 5761303028
+  ED-H13  (cleaning)
 
-inpatients: 6  active outpatients: 0  discharged: 10  merged: 0
+Renal:
+  RENAL-01  Brown, Richard  MRN MRN000082  inpatient  attending: 5761303028
+  RENAL-02  Garcia, Lisa  MRN MRN000081  inpatient  attending: 5761303028
+  RENAL-03  Nguyen, James  MRN MRN000020  inpatient  attending: 5761303028
+
+inpatients: 5  active outpatients: 0  discharged: 52  merged: 0
 ```
 
-Walker's already-discharged, but his admission message arrives late and
-puts him right back on the board — in bed `ED-H13`, the same bed the
-board already shows occupied by a different patient. One of 8 (of 92
-admitted patients, that seed) whose own admission message trails its
-own later event on the wire. Nobody drafting sample messages by hand
-writes this on purpose — producing it for real takes an actual second,
-independently-seeded transmit-delay clock sampling per message type,
-which is precisely the kind of machinery a hand-built fixture never
-runs.
+Read the `ED-H14` line. Gonzalez is on the board with a `?` where her
+patient class should be, and in the wrong bed: that is the transfer
+arriving *alone*, and a transfer carries a location but no admission,
+so the board knows where she is and nothing about what kind of patient
+she is. `ED-H13`, the bed she is actually in, reads `(cleaning)` in the
+same snapshot — the bed cycle's own view of her stay has already moved
+on. Her discharge lands next; then her admission arrives four minutes
+after that and puts her right back on the board, `inpatient` in a bed
+she vacated an hour and a half of clinical time earlier. She is one of
+5 (of 111 admitted patients, that seed) whose own admission message
+trails its own later event on the wire. Nobody drafting sample messages
+by hand writes this on purpose — producing it for real takes an actual
+second, independently-seeded transmit-delay clock sampling per message
+type, which is precisely the kind of machinery a hand-built fixture
+never runs.
 
 ### The encounter split across two deliveries
 
@@ -80,22 +93,25 @@ section runs the batcher hourly over that same latency wire:
  {:out-dir "out/scenarios/ed-tuesday-latency-batches",
   :interval-ms 3600000,
   :batches
-  [{:file "batch-000.hl7", :count 3,
+  [{:file "batch-000.hl7", :count 10,
     :start-ms 1786406400000, :end-ms 1786410000000, :verified true}
-   {:file "batch-001.hl7", :count 4,
+   {:file "batch-001.hl7", :count 15,
     :start-ms 1786410000000, :end-ms 1786413600000, :verified true}
-   ;; ... batch-002.hl7 through batch-033.hl7, one per occupied hour ...
+   {:file "batch-002.hl7", :count 18,
+    :start-ms 1786413600000, :end-ms 1786417200000, :verified true}
+   ;; ... batch-003.hl7 through batch-619.hl7, one per occupied hour ...
    ],
-  :span {:earliest-ms 1786406400000, :latest-ms 1786539600000}}}
+  :span {:earliest-ms 1786406400000, :latest-ms 2416752000000}}}
 ```
 
-(Excerpted for the two batches that matter here — the full 34-batch
-listing is in the source, linked above.) Patient Smith, James
-(MRN000002, bed ED-H05) is admitted in
-`batch-000.hl7` and discharged in `batch-001.hl7` — one clock-hour
-later, the very next batch. A receiver holding only the first batch has
-a transport-complete, `BTS`-verified file (every message it declares is
-actually present) whose clinical content is nonetheless half there.
+(Excerpted for the three batches that matter here — the full 620-batch
+listing is in the source, linked above.) Patient Hernandez, Sandra
+(MRN000002, bed ED-H09) is admitted in
+`batch-000.hl7` and discharged in `batch-002.hl7` — two clock-hours
+later, skipping the batch in between entirely. A receiver holding the
+first batch, or the first two, has transport-complete, `BTS`-verified
+files (every message each declares is actually present) whose clinical
+content is nonetheless half there.
 Nobody hand-authoring a test set chooses to split one
 [encounter](../glossary.md) across
 two separately-valid delivery files on purpose — it takes an actual

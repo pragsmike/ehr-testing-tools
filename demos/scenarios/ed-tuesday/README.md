@@ -145,12 +145,17 @@ test has to see the same MRN twice.
 
 **And every message now carries a visit number.** PV1-19 was EMPTY on
 every message this project had ever produced; it now renders the
-encounter's own `ENC-` id (ADR-0174 ruling C1). 630 of this run's 631
-PV1 segments carry one. The ONE that does not is an ORU^R01 result
-arriving after its patient's discharge -- the pending-labs-at-discharge
-case, which belongs to no open encounter and correctly says so. (The
-blank count was five before the bed cycle reshuffled this run; four of
-those five messages now fall inside an open encounter instead.)
+encounter's own `ENC-` id (ADR-0174 ruling C1). 679 of this run's 681
+PV1 segments carry one. The TWO that do not are both `ORU^R01` results
+arriving after their patient's discharge -- the pending-labs-at-discharge
+case, which belongs to no open encounter and correctly says so.
+(RE-WITNESSED 2026-08-29: this paragraph read `630 of this run's 631`
+and `The ONE`, figures the arc 4 sweep 3 dated note two paragraphs below
+had already superseded to 681 without anyone carrying them up here. The
+second blank is the STATUS LADDER's own: a rung restating a pending lab
+is rendered by the same builder as the result it restates, so it
+inherits the same absent visit. The blank count was five before the bed
+cycle reshuffled this run.)
 
 Note that the A20 bed-status messages carry NO PV1 at all -- an
 `ADT^A20` is `[MSH EVN NPU]`, no PID and no PV1, because a bed that
@@ -191,21 +196,26 @@ clinic-decade is about the first one. Read the board with that in mind:
 the busy shift is the opening minute of the playback, and the long
 sparse tail after it is the population.
 
-**Inpatients rise and fall.** The first snapshot already shows 4
-occupied beds; the census climbs through the shift to a peak of 14
-concurrent inpatients, then drains to 1 by the run's own last snapshot.
+**Inpatients rise and fall.** The first snapshot already shows 3
+occupied beds -- it is the `01:12:00Z` snapshot quoted below, so the
+figure and the transcript can be checked against each other on this
+page; the census climbs through the shift to a peak of 12 concurrent
+inpatients, then drains to 1 by the run's own last snapshot.
 The peak moved 11 -> 15 with the horizon lift, for the obvious reason
-(a returning patient occupies a bed the second time too), and 15 -> 14
+(a returning patient occupies a bed the second time too), and 15 -> 12
 with the bed cycle, for a less obvious one: the reshuffle moves which
 patients overlap, and a bed held out of service for housekeeping is a
-bed nobody is admitted into.
+bed nobody is admitted into. (RE-WITNESSED 2026-08-29: this paragraph
+read `4 occupied beds` and `a peak of 14`, and the first of those
+contradicted the transcript printed further down this same file.)
 
 **And the board now shows beds nobody is in.** Before this scenario
 took the bed cycle, an empty bed was INVISIBLE on the whiteboard --
 a room being turned over looked exactly like a room standing free.
 The A20 stream fixed that: a `(dirty)` or `(cleaning)` line appears
-under its ward for as long as housekeeping has it, and 43 such lines
-render across this run's snapshots (15 `(dirty)`, 28 `(cleaning)`).
+under its ward for as long as housekeeping has it, and 44 such lines
+render across this run's snapshots (15 `(dirty)`, 29 `(cleaning)`).
+(RE-WITNESSED 2026-08-29, from 43 and 28.)
 
 ```
 -- board snapshot: 2026-08-11T09:00:00Z --
@@ -311,7 +321,7 @@ show sparse-to-zero live content; this run's own zero is that expected
 outcome, not a config defect.
 
 Full closing summary: `{:unparseable-count 0, :snapshot-count 579,
-:skip-count 0, :rate 1.0E7, :idle-cap-ms 5000, :wallclock-ms 64855,
+:skip-count 0, :rate 1.0E7, :idle-cap-ms 5000, :wallclock-ms 65607,
 :stream-span-ms 630342955000, :clamped-count 0, :emitted 1554,
 :unfolded-count 0, :sink "ticker"}`.
 
@@ -527,7 +537,7 @@ patients the mechanism cannot reach, and saying "5 of 112" without
 saying which 112 would understate it.
 
 Closing summary: `{:unparseable-count 0, :snapshot-count 620,
-:skip-count 0, :rate 1.0E7, :idle-cap-ms 5000, :wallclock-ms 64832,
+:skip-count 0, :rate 1.0E7, :idle-cap-ms 5000, :wallclock-ms 65389,
 :stream-span-ms 630342955000, :clamped-count 0, :emitted 1554,
 :unfolded-count 0, :sink "ticker"}` -- the same 1,554 messages as the
 base run, FORTY-ONE more snapshots than it (620 against 579), and a

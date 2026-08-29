@@ -25,7 +25,7 @@ invocations below create; run those first, or run
 `bin/demo-exerciser-ed-tuesday` once.)
 
 ```bash
-bin/ehrt play out/scenarios/ed-tuesday-latency --board 60 --rate 100000
+bin/ehrt play out/scenarios/ed-tuesday-latency --board 60 --rate 10000000
 ```
 
 [`docs/use-cases/play-a-generated-corpus-back-over-time.md`](../use-cases/play-a-generated-corpus-back-over-time.md)
@@ -104,12 +104,12 @@ differs. Witnessed directly, not merely asserted:
 ```
 $ diff out/scenarios/ed-tuesday-base/events.edn out/scenarios/ed-tuesday-latency/events.edn
 $ sha256sum out/scenarios/ed-tuesday-base/events.edn out/scenarios/ed-tuesday-latency/events.edn
-d00bf49c5df558b0fba91465090d533c09213d3183e500d0e903483f0c6842ca  out/scenarios/ed-tuesday-base/events.edn
-d00bf49c5df558b0fba91465090d533c09213d3183e500d0e903483f0c6842ca  out/scenarios/ed-tuesday-latency/events.edn
+fe13a7ba59939e548be8d98589b005ff7c14e33ef8e82d4d54d47ad388bbb8d8  out/scenarios/ed-tuesday-base/events.edn
+fe13a7ba59939e548be8d98589b005ff7c14e33ef8e82d4d54d47ad388bbb8d8  out/scenarios/ed-tuesday-latency/events.edn
 ```
 
-`diff` prints nothing; the digests match. The same 383 ground-truth
-events, either way — only `msg-%03d.hl7`'s own MSH-7 values, and the
+`diff` prints nothing; the digests match. The same 1,269 ground-truth
+events, either way — only `msg-NNNN.hl7`'s own MSH-7 values, and the
 file order `emit-wire` sorts them into (by transmit time, never log
 order), differ between the two out-dirs. This is the general case of
 a narrower identity `docs/dev/simulator-architecture.md` section 4
@@ -125,41 +125,41 @@ one proves, rather than assumes, that it adds nothing else.
 **Play the latency wire into the board:**
 
 ```bash
-bin/ehrt play out/scenarios/ed-tuesday-latency --board 60 --rate 100000
+bin/ehrt play out/scenarios/ed-tuesday-latency --board 60 --rate 10000000
 ```
 
 ## What one message's own two clocks look like
 
-Walker, William (MRN000013), [pathway](../glossary.md) `ed-fast-track`: admitted, EVN-2
-clinical time `2026-08-11T03:36:00Z`; discharged 37 minutes later,
-`04:13:00Z` — ordinary, unremarkable, log-order-correct clinical
-history, per the demo README's own narration. On the wire, the two
-messages' own sampled transmit delays don't preserve that order: the
-discharge's own delay (20m54s) is shorter than the admission's own
-(1h00m46s), so the discharge (A03) transmits first, MSH-7
-`04:33:54Z`, and the admission (A01) transmits second, MSH-7
-`04:36:46Z` — reordered on the wire, never in ground truth. This is
-the figure below: one message (Walker's own admission, A01) with its
-EVN-2 (clinical) and MSH-7 (transmit) fields both shown, an hour apart.
+Gonzalez, Olivia (MRN000095), bed `ED-H13`: admitted, EVN-2 clinical
+time `2026-08-11T23:11:00Z`; discharged 31 minutes later, `23:42:00Z` —
+ordinary, unremarkable, log-order-correct clinical history, per the demo
+README's own narration. On the wire, her messages' own sampled transmit
+delays don't preserve that order: the transfer's delay is 48m29s, the
+discharge's 39m08s, and the admission's 1h14m22s, so they transmit
+transfer-first (MSH-7 `23:59:29Z`), discharge-second
+(`2026-08-12T00:21:08Z`) and admission-*last* (`00:25:22Z`) — reordered
+on the wire, never in ground truth. This is the figure below: one
+message (her own admission, A01) with its EVN-2 (clinical) and MSH-7
+(transmit) fields both shown, an hour and a quarter apart.
 
 <img src="assets/two-clocks.svg" alt="One HL7v2 message carrying two clocks: EVN-2 clinical time and MSH-7 transmit time, offset by a sampled latency delay" width="640" />
 
 A board that folds strictly in arrival order has no way to know the
-admission it just received is already stale — it puts Walker right
-back on the board, in the same bed the board already shows occupied
-by someone else. Chapter 1 already showed you that exact board
+admission it just received is already stale — it puts Gonzalez right
+back on the board, in a bed she vacated an hour and a half of clinical
+time earlier. Chapter 1 already showed you that exact board
 snapshot; this chapter's own job was the mechanism producing it, not
 the symptom itself. `ed-tuesday`'s own README states plainly what
 this workspace does and doesn't do about it: "a receiver that buffered
 incoming messages briefly and reconciled by clinical time (EVN-2, when
 present) rather than folding strictly in arrival order would not have
-produced Walker's own phantom re-admission" — a receiver's own design
+produced her own phantom re-admission" — a receiver's own design
 question, not this workspace's to answer. Supplying the case is the
 job; Chapter 5 supplies a second, complementary one.
 
 ## When the result is late
 
-Walker's story above is an admission — an ADT message, whose clinical
+The story above is an admission — an ADT message, whose clinical
 time rides EVN-2. A *result* has no EVN segment at all (EVN is
 ADT-specific, by HL7v2 convention), so until 2026-08-16 a lagged
 `ORU^R01` on this wire carried exactly one timestamp and a receiver
@@ -167,37 +167,42 @@ could not tell a stale result from a fresh one. It now carries its own
 clinical instant twice over: **OBR-7** on the order-context segment,
 and **OBX-14** on every observation.
 
-Rodriguez, Jacob (MRN000005) had a CBC panel resulted at
-**03:22:00Z**. The `:result-available` band in
+Gonzalez, Joshua (MRN000010) had a CBC panel resulted at
+**04:52:00Z**. The `:result-available` band in
 [`config-latency.edn`](../../demos/scenarios/ed-tuesday/config-latency.edn)
-is 20–120 minutes, and this run's own sample came out at 45m40s, so
-the message transmitted at **04:07:40Z**. Both wires, same seed, same
+is 20–120 minutes, and this run's own sample came out at 43m13s, so
+the message transmitted at **05:35:13Z**. Both wires, same seed, same
 patient, same message — the whole difference is which clock moved:
 
 ```
---- out/scenarios/ed-tuesday-base/msg-020.hl7 (the instant wire)
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811032200+0000||ORU^R01|MRN000005-R01-12120|P|2.4
-OBR|1|||58410-2^CBC panel - Blood by Automated count^LN|||20260811032200+0000
-OBX|1|NM|6690-2^Leukocytes [#/volume] in Blood by Automated count^LN||6.1|K/uL|4.5-11.0|N||||||20260811032200+0000
+--- out/scenarios/ed-tuesday-base/msg-0072.hl7 (the instant wire)
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811045200+0000||ORU^R01|MRN000010-R01-17520|P|2.4
+OBR|1|||58410-2^CBC panel - Blood by Automated count^LN|||20260811045200+0000||||||||||||||||||F
+OBX|1|NM|6690-2^Leukocytes [#/volume] in Blood by Automated count^LN||5.7|K/uL|4.5-11.0|N|||F|||20260811045200+0000
 
---- out/scenarios/ed-tuesday-latency/msg-023.hl7 (the latency wire)
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811040740+0000||ORU^R01|MRN000005-R01-12120|P|2.4
-OBR|1|||58410-2^CBC panel - Blood by Automated count^LN|||20260811032200+0000
-OBX|1|NM|6690-2^Leukocytes [#/volume] in Blood by Automated count^LN||6.1|K/uL|4.5-11.0|N||||||20260811032200+0000
+--- out/scenarios/ed-tuesday-latency/msg-0084.hl7 (the latency wire)
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811053513+0000||ORU^R01|MRN000010-R01-17520|P|2.4
+OBR|1|||58410-2^CBC panel - Blood by Automated count^LN|||20260811045200+0000||||||||||||||||||F
+OBX|1|NM|6690-2^Leukocytes [#/volume] in Blood by Automated count^LN||5.7|K/uL|4.5-11.0|N|||F|||20260811045200+0000
 ```
 
-`MSH-7` moved by 45m40s. `OBR-7` and `OBX-14` did not move at all —
+(One line of each message, of five OBX segments; the other four move
+the same way, which is to say not at all. The trailing `F`s in OBR-25
+and OBX-11 are the status **ladder**'s doing, not latency's — a
+terminal result says "final" because its ladder said so.)
+
+`MSH-7` moved by 43m13s. `OBR-7` and `OBX-14` did not move at all —
 they are the *same bytes* on both wires. So is everything else: the
-values, the flags, the reference ranges. Only the transmit clock, and
-the message's position in the stream (`msg-020` on the instant wire,
-`msg-023` on the latency wire, since `emit-wire` sorts by transmit
-time) reflect the delay.
+values, the flags, the reference ranges, the status codes. Only the
+transmit clock, and the message's position in the stream (`msg-0072` on
+the instant wire, `msg-0084` on the latency wire, since `emit-wire`
+sorts by transmit time) reflect the delay.
 
 That is the whole payoff. A receiver folding this stream in arrival
-order sees the result at 04:07:40Z, but the message itself says the
-observation happened at 03:22:00Z — enough to reconcile by clinical
-time rather than by arrival, which is exactly the defence Walker's
-phantom re-admission had no equivalent of on the ADT side. This
+order sees the result at 05:35:13Z, but the message itself says the
+observation happened at 04:52:00Z — enough to reconcile by clinical
+time rather than by arrival, which is exactly the defence Gonzalez,
+Olivia's phantom re-admission had no equivalent of on the ADT side. This
 workspace still does not fold that way itself; supplying the case is
 the job.
 
@@ -214,11 +219,11 @@ byte-frozen."
 
 | strip | source |
 |---|---|
-| `bin/ehrt play out/scenarios/ed-tuesday-latency --board 60 --rate 100000` | `demos/scenarios/ed-tuesday/README.md`, "The second clock" |
+| `bin/ehrt play out/scenarios/ed-tuesday-latency --board 60 --rate 10000000` | `demos/scenarios/ed-tuesday/README.md`, "The second clock" |
 | `bin/ehrt corpus generate sim ...` (base + latency, two commands) | `demos/scenarios/ed-tuesday/README.md`, "The second clock" |
-| `diff`/`sha256sum` ground-truth-invariance transcript | `demos/scenarios/ed-tuesday/README.md`, "The second clock"; re-witnessed 2026-08-18 against this chapter's own two commands. The digest MOVED, `b4e776f7…` → `d00bf49c…`, and the property it witnesses did not: `diff` is still silent and the two out-dirs still agree. The move is the event contract's 1.0.0 → 1.1.0 rename of a result entry's `:units` to `:unit`[^adr-0150-mv] — a key spelling in the ground truth, not a fact about it |
-| Walker EVN-2/MSH-7 values (`03:36:00Z`, `04:13:00Z`, `04:33:54Z`, `04:36:46Z`) | `demos/scenarios/ed-tuesday/README.md`, "What the board actually shows" |
-| Rodriguez ORU pair (`msg-020.hl7` / `msg-023.hl7`, MSH-7 `03:22:00Z` vs `04:07:40Z`, OBR-7/OBX-14 `03:22:00Z` both) | this chapter's own two `corpus generate sim` commands above, run 2026-08-16 at seed 20260811 with `out/` cleared first[^result-clock] |
+| `diff`/`sha256sum` ground-truth-invariance transcript | `demos/scenarios/ed-tuesday/README.md`, "The second clock"; re-witnessed 2026-08-29 against this chapter's own two commands. The digest has MOVED twice, `b4e776f7…` → `d00bf49c…` → `fe13a7ba…`, and the property it witnesses has not: `diff` is still silent and the two out-dirs still agree. The first move was the event contract's 1.0.0 → 1.1.0 rename of a result entry's `:units` to `:unit`[^adr-0150-mv]; the second is the four arc-3 opt-in keys `config.edn` took between 2026-08-26 and 2026-08-27, which is also why the event count on this page went 383 → 1,269 — the run models a twenty-year population now, not one shift |
+| Gonzalez EVN-2/MSH-7 values (`23:11:00Z`, `23:42:00Z`, `23:59:29Z`, `00:21:08Z`, `00:25:22Z`) | `demos/scenarios/ed-tuesday/README.md`, "What the board actually shows"; re-witnessed 2026-08-29 by fresh regeneration. This chapter named `Walker, William (MRN000013)` until then, a cast the demo README replaced on 2026-08-28 |
+| Gonzalez ORU pair (`msg-0072.hl7` / `msg-0084.hl7`, MSH-7 `04:52:00Z` vs `05:35:13Z`, OBR-7/OBX-14 `04:52:00Z` both) | this chapter's own two `corpus generate sim` commands above, re-run 2026-08-29 at seed 20260811 with `out/` cleared first[^result-clock]. Named `Rodriguez, Jacob (MRN000005)` at `msg-020`/`msg-023` until then — a pair witnessed 2026-08-16, before the stream partition, and superseded by it |
 
 [^result-clock]: `notes/adr/0142-result-clinical-time.md` — the field
     audit, the author rulings behind OBR-7's value and OBX-14's
