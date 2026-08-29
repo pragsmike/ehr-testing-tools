@@ -751,7 +751,7 @@
 
     [:appointment
      (kind :appointment
-           {:doc "A future visit is booked for a patient (HL7v2 SIU^S12 -- deliberately unrendered in 1.7.0, see ruling C)."
+           {:doc "A future visit is booked for a patient (HL7v2 SIU^S12, rendered when the :siu emission key is on; absent by default)."
             :transition "Opens the patient's :appointment record; terminal only when an encounter keeps it, a cancel closes it, or a no-show closes it."}
            [:active-mrn :string]
            [:appointment-id :string]
@@ -764,7 +764,7 @@
 
     [:reschedule
      (kind :reschedule
-           {:doc "A booked appointment moves to a different instant (HL7v2 SIU^S14 -- deliberately unrendered in 1.7.0)."
+           {:doc "A booked appointment moves to a different instant (HL7v2 SIU^S14, rendered when the :siu emission key is on; absent by default)."
             :transition "Moves :scheduled-t on the OPEN record and is NOT terminal; the id is kept rather than re-minted."}
            [:active-mrn :string]
            ;; THE SAME ID, never a new one pointing back at the old.
@@ -778,14 +778,14 @@
 
     [:appointment-cancel
      (kind :appointment-cancel
-           {:doc "A booked appointment is cancelled before its instant (HL7v2 SIU^S15 -- deliberately unrendered in 1.7.0)."
+           {:doc "A booked appointment is cancelled before its instant (HL7v2 SIU^S15, rendered when the :siu emission key is on; absent by default)."
             :transition "Closes the open record TERMINALLY, outcome :cancelled. No encounter follows."}
            [:active-mrn :string]
            [:appointment-id :string])]
 
     [:no-show
      (kind :no-show
-           {:doc "A booked appointment's instant arrives and the patient does not (HL7v2 SIU^S26 -- deliberately unrendered in 1.7.0)."
+           {:doc "A booked appointment's instant arrives and the patient does not (HL7v2 SIU^S26, rendered when the :siu emission key is on; absent by default)."
             :transition "Closes the open record TERMINALLY, outcome :no-show, and opens NOTHING -- which is exactly why a no-show cannot be derived from an encounter."}
            [:active-mrn :string]
            [:appointment-id :string])]
