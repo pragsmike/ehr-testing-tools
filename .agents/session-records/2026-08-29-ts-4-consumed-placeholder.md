@@ -544,6 +544,7 @@ is why this arithmetic could not be done until today.
 | `bin/ground-truth-bracket 23901f4 62dd9b3` | **IDENTICAL over 38 roots** |
 | `bin/preflight` | exit 1, ONE finding: working tree not clean (this session's own work in flight, listed file by file). Last five CI runs on `main` all green; repo root not under `/mnt/`; `core.fileMode` true; local HEAD matched `origin/main` at `23901f4`. DISCLOSED: HEAD not tagged `stable-*` -- correct, no tag is paid (the tag law is retired). |
 | both 10^5 cells, self-check | **CLEAN**, both |
+| CI at the tip (`b4bc4ce`) | **success**, run 33275738522. Both commits went up in one push, so CI covers the tip; `make test` and `make integration` were run locally at `62dd9b3` as well and are recorded above. |
 
 ## 10. Scratch
 
