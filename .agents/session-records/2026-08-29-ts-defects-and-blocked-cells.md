@@ -377,7 +377,7 @@ believed. Both contaminated cells are kept in the scratch under a
 | `fba3646` | docs-only: four `## Next` rows, TS-1..TS-4, before any `src/` moved |
 | `19a4931` | TS-1: `legal-bed-transitions` gains `[:cleaning :occupied]`; ADR-0174 section 2(c) ratification 4; `operational-models.md`; the authored counted witness |
 | `1b4e264` | TS-2: `waiting-boarder`'s `some?` clause, its specification copy in `engine_test.clj`, and the population red-test at the close's seed |
-| (this commit) | the four rows re-scoped, two closed by sha and one new defect rowed; the plan appendix's blocked entries converted; this record and its prompt archive |
+| `e932f9c` | the four rows re-scoped, two closed by sha and one new defect rowed; the plan appendix's blocked entries converted; this record and its prompt archive |
 
 ## 6. Judgment calls, and their ratification status
 
@@ -460,9 +460,13 @@ green through the MLLP one -- then failed its own last step:
 
 The tree was not clean because this record and the roadmap were still
 uncommitted. **`make integration` postconditions on a clean worktree**, so it
-cannot be run beside unfinished documentation; the docs commit lands first and
-the target is re-run against the real tip. Noted here because the failure
+cannot be run beside unfinished documentation. Noted here because the failure
 reads like a test failure and is not one.
+
+Re-run against the real tip `e932f9c`, tree clean: **EXIT 0**, 148
+namespaces, **7,463 assertions, 0 failures, 0 errors**, both demo exercisers
+and all five use-case scripts green, MLLP 273 sent / 273 acked with MSA-2
+checked per pair.
 
 
 ## 8. Close
