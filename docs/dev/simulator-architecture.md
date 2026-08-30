@@ -89,7 +89,8 @@ supersedes it):
   `bed-ready-location` helper, the bed-ready-transfer coupling), and a merge names a survivor and a
   merged patient in one call (`defmethod decide :merge`).
 - **`evolve`** — `(patient-state, event) -> patient-state'`
-  (`engine.clj`'s `defmulti evolve`, dispatching on `(:event event)`).
+  (`evolve.clj`'s `defmulti evolve`, dispatching on `(:event event)`;
+  `engine.clj` keeps a delegating `def` of the same multifn).
   Pure and total: no RNG, no knowledge of the step or decision that
   produced the event, no knowledge of `world` or of any patient but the
   one the event names. This is the **only** function that ever
