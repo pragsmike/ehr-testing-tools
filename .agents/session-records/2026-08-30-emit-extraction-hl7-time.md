@@ -476,3 +476,27 @@ The next session takes `registry` -- thirteen forms, ten public, SEVEN
 of them `interface.clj` re-exports, and the first to meet census
 constraint 6 for real, at `patient-simulator/docs/limitations.md`'s
 pinned five-word phrase inside `message-type-registry`.
+
+### CI at the pushed tip -- the close marker
+
+`gh run watch 33342013524 --exit-status` exits 0; the run is **completed
+/ success** in 12m33s at `f766d65f45efc591585284d61d894ecc5256195b`, the
+pushed tip
+(https://github.com/pragsmike/ehr-testing-tools/actions/runs/33342013524).
+That is the close marker under `rulings.md#R-session-verifies-ci-via-gh`,
+which the de-scaffold ruling of 2026-08-25 retired as a TAG condition and
+kept as this. No tag was paid.
+
+**No red-first pair exists this session, and that is the substantive
+difference from five of the ten engine sessions.** Nothing went red
+locally, so nothing had to be pushed in a pair to clear it: the
+`gt-emitters` tripwire never fired, because no source it names was
+edited. `bin/post-push-verify 74a8e6a f766d65` reports the remote tip
+matching HEAD and every commit message in range pure ASCII, and the
+push's own gate (`gitleaks detect` over 1,267 commits, `clojure -M:poly
+check`) was clean.
+
+**Three commits, and the middle one is the whole claim**: the census
+order (`892c416`), the output-identical move (`62a6877`), and this
+close (`f766d65`). The emit phase is open and its first cluster has
+landed with both gates IDENTICAL and no declaration.
