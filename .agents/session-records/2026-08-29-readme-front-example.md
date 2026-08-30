@@ -208,3 +208,15 @@ change is prose INSIDE this record file. `INDEX.md`'s own listing --
 the only thing any gate reads about this file -- was regenerated and
 frozen before the run, and lists this filename either way. Recorded
 rather than left for a reader to notice from two adjacent commits.
+
+## 8. Close
+
+Pushed `079072e..8a0c5a2` in two commits.
+`bin/post-push-verify 079072e 8a0c5a2` reported all three checks:
+remote tip matches HEAD, every commit message in range pure ASCII, and
+the CI run at the tip. **CI concluded `success` at `8a0c5a2`, run
+33284611702** -- the close marker (`rulings.md#R-session-verifies-ci-
+via-gh`, kept as the marker after the tag law's retirement). No tag was
+paid.
+
+HEAD landed: `8a0c5a2`, plus this marker commit.
