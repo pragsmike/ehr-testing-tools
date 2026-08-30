@@ -86,20 +86,27 @@ with them.
   its own** (author ruling C4(b), 2026-08-30, which decided the residual
   question the ninth session put). The partition closes at 202 forms across
   eleven namespaces: 157 real forms, the facade's 43 delegating defs, and the
-  two-form constraint-1 shim `ehrt.sim-engine.run` had to add. NEXT IN THIS PROGRAM:
-  `emit_hl7.clj` (census section 2), then the apply-path unification this row's
-  second half names.
+  two-form constraint-1 shim `ehrt.sim-engine.run` had to add. **EMIT PHASE OPENED
+  2026-08-30** (census 2a): the order is DERIVED -- 3b's sixteen edges and counts
+  reproduce EXACTLY; the leaves are THREE (`hl7-time`, `registry`, `timelines`),
+  `er7` not among them. ELEVENTH LANDING `hl7-time` -- 7 forms / 47 form-lines in
+  three regions, 3 delegating defs, ONE forced widening, both gates IDENTICAL.
+  Remaining: `registry`, `timelines`, `er7`, `segments`, `messages`, `planners`, `facade`.
   FIVE of the ten sessions fire the hand-owned-asset tripwire, for one reason:
   `docs/dev/simulator-architecture.md` names engine forms by DEFINING FORM, so
   each is RED-FIRST with a successor bumping `gt-emitters.svg`'s `:reviewed-at`.
   Reading that registry's sources during the pre-move sweep is the recipe, not a
-  lucky catch: the sixth read them, found no mover named, fired nothing. A GREEN
+  lucky catch: the sixth read them and fired nothing, and so did the ELEVENTH --
+  that page names ENGINE forms by DEFINING FORM but EMITTER forms as BARE NAMES,
+  so the five-in-ten rate does not carry into the emit phase. A GREEN
   LOCAL SUITE IS NOT EVIDENCE THE ROW WILL STAY GREEN -- the test reads `git
   log -1` on the SOURCE and cannot see an uncommitted edit. NEW WITH THE TENTH,
   a hazard for every later sweep: a sweep can be forced to edit
   `components/oracle/src/ehrt/oracle/digest.clj`, the BRACKET'S OWN SOURCE, and
   the bracket then aborts its soundness check over a comment. Bracket the MOVE
   alone (sound, no declaration) and prove the sweep output-inert from its diff.
+  NEW WITH THE ELEVENTH: THE INSTRUMENTS SWAP AT THE EMISSION LAYER -- the
+  bracket excludes the `:hl7` half BY CONSTRUCTION, so the ORACLE is load-bearing.
   THE CENSUS IS CORRECTED BY SESSION: the sixth found section 1's rendering
   drops `^:private` from a `def` and its cluster line totals disagree with the
   tree; the ninth found the `decide` list one form stale and its "26 private
@@ -141,7 +148,8 @@ with them.
   `.agents/session-records/2026-08-30-engine-extraction-log-index.md`,
   `.agents/session-records/2026-08-30-engine-extraction-config-assignment.md`,
   `.agents/session-records/2026-08-30-engine-extraction-decide.md`,
-  `.agents/session-records/2026-08-30-engine-extraction-run.md`.
+  `.agents/session-records/2026-08-30-engine-extraction-run.md`,
+  `.agents/session-records/2026-08-30-emit-extraction-hl7-time.md`.
 - OPEN **[event-stream-mutation]** PRIORITY 6 -- mutation moves to the
   ground-truth event stream (emitters inherit mutations); ADR-0166's test-side
   event mutations promoted to a shipped operator catalog with `check` as oracle;
