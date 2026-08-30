@@ -30,10 +30,43 @@
 [{:asset "docs/manual/assets/gt-emitters.svg"
   :source "docs/dev/simulator-architecture.md"
   :trigger "regenerate by hand if simulator-architecture.md section 4's own equations change"
-  :reviewed-at "5637cbe5"
+  :reviewed-at "ff26bb6c"
   :verdict :fresh
   :note
-  "Reviewed 2026-08-30 (engine extraction 4 of N, the `evolve` cluster).
+  "Reviewed 2026-08-30 (engine extraction 5 of N, the `fold` cluster).
+   simulator-architecture.md moved at ff26bb6c, TWO hunks, and both land
+   in sections 1 and 2, not section 4. Both name `replay` by DEFINING
+   FORM: the brick table's `replay` -> its `defn replay` and section 2's
+   `replay` (`engine.clj`'s `defn replay`). The extraction moved that
+   defn to `ehrt.sim-engine.fold`, so both lines now name `fold.clj` and
+   add that `engine.clj` keeps a delegating `def` -- which here is
+   load-bearing rather than ceremonial, since `interface.clj:89`
+   re-exports `replay` through it.
+
+   Section 4's EQUATION BLOCK -- `walk`, `engine`, `emitH`/`emitF`,
+   `replay`, `check` -- which is what this row's trigger names, is
+   byte-identical across the diff, verified by diffing the block itself
+   rather than inferred from the hunk headers. `replay` is still a name
+   in that block and still means the same function; what changed is only
+   which FILE defines it. This asset depicts only GT -> emitH/emitF ->
+   ER7*/FHIR*, and an intra-brick namespace split moves no arrow on it:
+   `bin/regression-oracle` reports IDENTICAL across 41 roots and
+   `bin/ground-truth-bracket` IDENTICAL across 38, both with no
+   declaration. Not stale.
+
+   PREDICTED, NOT DISCOVERED, for the SECOND extraction running -- and
+   the prediction is now the recipe rather than a lucky catch. The
+   fourth extraction fired this tripwire because `defmulti evolve` was
+   named here by defining form; the fifth read that record, swept the
+   registry's four sources during its own pre-move citation sweep at
+   `c3c414e`, and found `defn replay` named the same way in the same
+   file. This row is again the extraction's IMMEDIATE SUCCESSOR: the
+   test reads `git log -1` on the SOURCE, so no commit can carry the sha
+   that names itself, and `ff26bb6c` is therefore a RED-FIRST commit
+   under `rulings.md#R-red-pushed-with-green` -- pushed with this one,
+   never alone.
+
+   Prior review, 2026-08-30 (engine extraction 4 of N, the `evolve` cluster), kept.
    simulator-architecture.md moved at 5637cbe5, ONE hunk, and it lands
    in section 2, not section 4. The `evolve` bullet said the defmulti
    was `engine.clj`'s; the extraction moved it to
