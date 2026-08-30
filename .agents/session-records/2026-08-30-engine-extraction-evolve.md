@@ -577,3 +577,21 @@ point.
   `INDEX.md`/`state-derived.md` rows. `make traces` was not run and no
   trace moved: a namespace split that both brackets call IDENTICAL
   cannot move a derived capture.
+
+## 8. Close marker
+
+`gh run view 33310841775` -- workflow `test`, head `ee972442`,
+completed, conclusion **success**. That is this session's CLOSE MARKER:
+CI green at the pushed tip, which under the de-scaffold ruling of
+2026-08-25 is what marks a landing rather than a tag.
+`bin/post-push-verify 54551d7 ee97244` reported checks 1 and 2 OK
+(remote tip matches HEAD; every commit message in range pure ASCII) and
+DISCLOSED check 3 as reported-not-awaited per AR-CI-4 -- it was awaited
+here instead.
+
+Four commits: `315263f` the pre-move sweep, `5637cbe` the extraction,
+`f156ff9` the tripwire successor that `5637cbe`'s RED-FIRST status owes,
+and `ee97244` the record, the prompt archive and the roadmap row. All
+pushed together. No tag, no ADR -- this is a refactor under an existing
+roadmap row and an existing program ruling, and the de-scaffold ruling
+gives process work neither.
