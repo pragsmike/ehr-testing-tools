@@ -517,7 +517,7 @@
   whatever `ehrt.sim-model.pathway/Step` shape the caller attempted,
   including one naming a peer patient-id (`:with`) that may not exist
   -- which is exactly why it stays plain data no invariant has to
-  resolve (`engine.clj`'s own `rejected-outcome` docstring)."
+  resolve (`decide.clj`'s own `rejected-outcome` docstring)."
   [:map [:type :keyword]])
 
 ;; --- the event schema -----------------------------------------------------

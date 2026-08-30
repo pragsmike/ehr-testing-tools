@@ -78,8 +78,9 @@ stated verbatim in `engine.clj`'s own ns docstring (its
 supersedes it):
 
 - **`decide`** — `(streams, t, world, patient-id, step) -> {:events [...]
-  :advance <seconds>}` (`engine.clj`'s `defmulti decide`, dispatching on
-  `(:type step)`). Reads `world` — every patient's own state so far,
+  :advance <seconds>}` (`decide.clj`'s `defmulti decide`, dispatching on
+  `(:type step)`; `engine.clj` keeps a delegating `def` of the same
+  multifn). Reads `world` — every patient's own state so far,
   plus static facility/provider config — read-only, and consumes the
   run's seeded RNG *streams* (ADR-0171: a map by family, one per
   patient plus two run-scoped), to decide what happens. **Never returns a

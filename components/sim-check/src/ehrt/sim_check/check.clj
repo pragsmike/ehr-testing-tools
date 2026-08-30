@@ -1015,7 +1015,7 @@
   Deliberately NOT extended to :result-available: a result's own
   turnaround is asynchronous to the rest of the patient's pathway (the
   patient's OTHER steps, including :discharge, are not blocked waiting
-  for it -- engine.clj's :order docstring), so a result legitimately
+  for it -- decide.clj's :order docstring), so a result legitimately
   arriving after discharge is a real, common clinical pattern (pending
   labs at discharge), not a bug -- an engine/run integration test
   surfaced exactly this case during this milestone's own development,

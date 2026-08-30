@@ -176,7 +176,7 @@
    ;; catalog (world's :order-profiles, default order-profiles/default-
    ;; profiles). NO authorable :result step -- the engine auto-pairs a
    ;; result-available event after a profile-sampled turnaround
-   ;; (engine.clj's own :order decide method), the choice this
+   ;; (decide.clj's own :order decide method), the choice this
    ;; milestone documents there: it keeps authored pathways ergonomic
    ;; (just write the order; the result follows automatically) and
    ;; avoids inventing an :order-ref authoring burden a hand-authored

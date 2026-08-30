@@ -19,7 +19,7 @@
   a SEPARATE, pure function of value vs reference-range -- the flag is
   computed truth, never sampled independently (Milestone M3 Task 4's
   own mini-law; this namespace is where that law's mechanism lives, the
-  order/result step types (engine.clj) just call it)."
+  order/result step types (decide.clj) just call it)."
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [ehrt.sim-model.interface :as sim-model]
