@@ -87,7 +87,7 @@
   NOBODY ELSE, and that is not a nicety -- it is what a population-scale
   probe of `demos/scenarios/ed-tuesday` at seed 202 found on the day
   this row landed. `run`'s stamp reads the first participant's own open
-  encounter (`engine.clj`'s `stamp-encounter`), while
+  encounter (`ehrt.sim-engine.encounters`'s `stamp-encounter`), while
   `events-by-patient` above puts a multi-participant event in EVERY
   participant's sequence -- so a `:merge` stamped with the SURVIVOR's
   encounter also appears in the MERGED patient's own log, where that id
