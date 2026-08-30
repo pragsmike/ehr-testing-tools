@@ -62,7 +62,7 @@ with them.
   `.agents/plans/engine-extraction-census.md` -- every top-level form of both
   files assigned to exactly one proposed namespace, the cross-seam edges, and
   the apply-path inventory that also serves
-  `roadmap.md#event-stream-mutation`. FIVE clusters have landed, each in
+  `roadmap.md#event-stream-mutation`. SIX clusters have landed, each in
   its own session, in the census's dependency order and each with both
   `bin/regression-oracle` and `bin/ground-truth-bracket` IDENTICAL with no
   declaration: `ehrt.sim-engine.streams` (16 forms, 11 delegating defs),
@@ -80,10 +80,18 @@ with them.
   ceremonial because `interface.clj:89` re-exports the brick's `replay`
   through it; the FIRST move to relocate an APPLY SITE, census section
   4c, whose six-concern divergence from `run`'s in-loop fold is
-  unchanged here and stays payable at unification). `engine.clj` is
-  3,794 lines / 108 forms plus `ns`; the partition closes at 183 forms
-  across the six namespaces. FIVE clusters remain -- `config` and
-  `assignment` are the last leaves, then `log-index`, `decide`, and
+  unchanged here and stays payable at unification), and
+  `ehrt.sim-engine.log-index` (10 forms in FOUR non-contiguous regions,
+  the most scattered cluster of the six; ONE delegating def --
+  `events-for-patient`, and the FIRST whose def is owed not to
+  `interface.clj` (no mover is on that seam's re-export list) but to
+  `engine_test.clj`'s ten call sites, which C1(a) forbids touching; the
+  SECOND move to relocate an APPLY SITE, census section 4d's
+  `reinstated-state` replay fallback, moved verbatim and still payable
+  at unification). `engine.clj` is
+  3,571 lines / 99 forms plus `ns`; the partition closes at 184 forms
+  across the seven namespaces. FOUR clusters remain -- `config` and
+  `assignment` are the last leaves, then `decide` and
   `run` as the facade's residue -- followed by the apply-path unification this row's
   second half names. The evolve and fold sessions BOTH fire the
   hand-owned-asset tripwire, for one reason:
@@ -92,13 +100,28 @@ with them.
   fifth -- so each extraction is a RED-FIRST commit whose successor
   bumps `gt-emitters.svg`'s `:reviewed-at`. The fifth predicted it from
   the fourth's record rather than catching it, which makes reading that
-  registry's four sources during the pre-move sweep part of the recipe.
+  registry's four sources during the pre-move sweep part of the recipe;
+  the SIXTH read the same four sources and found no mover named in any
+  of them, so it fires no tripwire and is NOT a RED-FIRST commit --
+  the check that establishes a quiet tripwire is the same check that
+  would have caught a loud one. THE SIXTH ALSO CORRECTS THE CENSUS
+  FOUR TIMES OVER: section 1's rendering drops `^:private` from four of
+  that cluster's `def` forms (five private movers shown, NINE in the
+  tree), its two line totals for the cluster disagree with each other
+  and with the tree, and section 4d's apply-site-3 line citation is
+  stale -- while section 3a's edge counts (11 + 2) are confirmed exactly
+  right. COVERAGE, disclosed: the oracle reaches no cancel decide and
+  the gated corpora resolve no citation, so both brackets are blind to
+  six of that cluster's ten forms; the suite's cancel family, run-test's
+  two post-hoc equivalence proofs and a live `-M:dev` resolution check
+  carry them instead.
   Records:
   `.agents/session-records/2026-08-29-engine-extraction-opener.md`,
   `.agents/session-records/2026-08-30-engine-extraction-state.md`,
   `.agents/session-records/2026-08-30-engine-extraction-encounters.md`,
   `.agents/session-records/2026-08-30-engine-extraction-evolve.md`,
-  `.agents/session-records/2026-08-30-engine-extraction-fold.md`.
+  `.agents/session-records/2026-08-30-engine-extraction-fold.md`,
+  `.agents/session-records/2026-08-30-engine-extraction-log-index.md`.
 - OPEN **[event-stream-mutation]** PRIORITY 6 -- mutation moves to the
   ground-truth event stream (emitters inherit mutations); ADR-0166's test-side
   event mutations promoted to a shipped operator catalog with `check` as oracle;

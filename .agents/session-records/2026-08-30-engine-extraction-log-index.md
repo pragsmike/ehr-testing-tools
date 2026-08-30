@@ -373,3 +373,182 @@ carries the load instead:
 
 Said here in advance, as the fold session said it, so that an IDENTICAL
 bracket is not read as evidence it cannot be.
+
+## 3. Step 3 -- the extraction
+
+`ehrt.sim-engine.log-index`, 301 lines, `ns` plus the ten forms in
+`engine.clj`'s own source order. Commit `25d926e`, parent `2cca99d`.
+
+**Verbatim, and measured rather than asserted.** The 220 moved lines
+were cut to a scratch file BEFORE any edit, and the new file's form
+region diffed against it. The diff is **eleven lines**: the ten
+widenings, and `reinstated-state`'s `(replay ground-truth)` becoming
+`(fold/replay ground-truth)`. Nothing else in 220 lines differs by a
+character.
+
+| widening | from | to |
+|---|---|---|
+| `reinstatable-event-types` | `def ^:private` | `def` |
+| `last-uncancelled-index` | `defn-` | `defn` |
+| `cited-opening-event-types` | `def ^:private` | `def` |
+| `last-cited-index` | `defn-` | `defn` |
+| `bed-reoccupied-by-someone-else?` | `defn-` | `defn` |
+| `status-a-cancel-target-leaves` | `def ^:private` | `def` |
+| `statuses-that-supersede-a-reinstatement` | `def ^:private` | `def` |
+| `subject-superseded?` | `defn-` | `defn` |
+| `reinstated-state` | `defn-` | `defn` |
+| `events-for-patient` | `defn` (public) | unchanged; **delegating def in `engine.clj`** |
+
+`engine.clj` keeps `(def events-for-patient ... log-index/events-for-
+patient)` in the place the `defn` stood, gains one require, and
+`log-index/`-qualifies all thirteen call sites. Two continuation lines
+of the two `last-cited-index` calls were re-indented by ten columns to
+follow their own opening form; the `(and ...)` continuation at `:3477`
+was NOT, because `(and` itself did not move.
+
+**The partition closes, and the arithmetic is now three terms long.**
+`engine.clj` is 3,571 lines / **99** top-level forms plus the `ns`.
+99 + `streams`' 16 + `state`'s 14 + `encounters`' 10 + `evolve`'s 32 +
+`fold`'s 3 + `log-index`'s 10 = **184**, which is 181 plus the evolve,
+fold and log-index moves' three delegating defs.
+
+### Gates
+
+* **`make test` MAKE_EXIT=0**, 16 min 46 s wall / 22 min 21 s user on an
+  UNSAMPLED host -- reported as this run's own line, not offered as a
+  timing claim.
+
+  **Namespaces 408 and tests 4,751 are IDENTICAL** to the fold
+  extraction's own recorded run. Assertions are **+2** against its
+  24,119, and the +2 is explained to the assertion rather than waved at:
+  `ehrt.docs-tooling.io-vocabulary-lint-test` is a `doseq` over every
+  production source file with one `is` per file plus a population guard;
+  it reported **126** in each of the two projects it runs in at the fold
+  session and reports **127** in each here, and the tree gained one
+  file. One new file is +1 twice. The same benign class the streams,
+  state, encounters, evolve and fold sessions each recorded, and the
+  class this session's own prompt named in advance.
+
+  **The first run was green, and that is the disclosure.** The evolve
+  session's first run was RED on `state-derived-test` because its
+  `simulator-architecture.md` repoint moved a `:sim` reading-set member.
+  This session's sweep (2e) established in advance that NO reading-set
+  member is touched -- the five repoints land in `churn.clj`, `fold.clj`
+  and `engine.clj`, none of them a set member -- so the gate had nothing
+  to fire on. `.agents/state-derived.md` was regenerated at step 2
+  anyway, for this record's own addition. A green gate proves nothing
+  about whether it was going to fire; this one was not.
+
+* **`clojure -M:poly check`** OK. Because `poly check` does not compile
+  -- a standing finding of the arc-4 sweeps, not new here -- the real
+  check is the `-M:dev` load below.
+
+* **`bin/regression-oracle 2cca99d 25d926e`** -- the script's own
+  output: `IDENTICAL: every root's digest matches between 2cca99d and
+  25d926e`, over **41 roots**, `declared-digest-change: no (soundness:
+  yes outside the leading docstring)`. No declaration was owed and none
+  was made.
+
+* **The live resolution check**, and it is what actually covers this
+  cluster. Under `-M:dev`:
+
+  * all ten vars resolve in `ehrt.sim-engine.log-index` and all ten are
+    public -- `ns-publics` returns exactly the ten, no more;
+  * `engine/events-for-patient` is `identical?` to
+    `log-index/events-for-patient` -- the delegating def holds the same
+    object, not a copy of the code;
+  * `engine/replay` is `identical?` to `fold/replay`, which is what
+    makes `reinstated-state`'s new direct call the same function reached
+    one hop shorter rather than a different one;
+  * every mover was driven on a three-event log: `events-for-patient`
+    returns `[:registered :admission :discharge]`;
+    `last-uncancelled-index` returns `1`; `reinstatable-event-types` and
+    `cited-opening-event-types` answer their memberships;
+    `last-cited-index` returns nil on a nil citation (its own guard);
+    `subject-superseded?` returns **true** for `:discharged`/
+    `:cancel-transfer` and **false** for `:discharged`/
+    `:cancel-discharge`, which is TS-5's asymmetry reproduced exactly;
+  * **apply site 3 was driven down BOTH branches** -- `reinstated-state`
+    with a carried `:reinstate-index` returns the carried entry, and
+    with no such key it takes the `fold/replay` fallback and returns the
+    same pre-discharge `:admitted` status. The moved apply site works,
+    and it works the same way on both paths.
+
+## 4. Step 4 -- the ground-truth bracket
+
+**`bin/ground-truth-bracket 2cca99d 25d926e`** -- the script's own
+output: `IDENTICAL: every digested root's :ground-truth matches between
+2cca99d and 25d926e (38 roots)`, with `coverage: 38 roots carry
+:ground-truth and are digested; 3 skipped (no such key):
+appendicitis.edn, ear-infections.edn, sore-throat.edn` and
+`declared-digest-change: no`.
+
+**BOTH brackets IDENTICAL at the move commit, with no declaration owed
+-- the DARK bracket, and the strongest proof a pure refactor can
+offer.** It is also, for this cluster and this cluster alone among the
+six, the WEAKEST evidence, for the reason section 2f recorded in
+advance: the oracle's roots reach no cancel decide and resolve no
+citation, so six of the ten movers are simply not exercised by either
+bracket. The brackets prove the four that are -- `events-for-patient`,
+and the three log indexes `run`'s own loop maintains through
+`reinstatable-event-types` and `cited-opening-event-types` -- and the
+suite plus the live check prove the rest. Recorded this way rather than
+reported as a clean sweep.
+
+## 5. Census corrections
+
+Five, each one sentence:
+
+1. **Section 1 drops `^:private` from four of this cluster's `def`
+   forms** -- `reinstatable-event-types`, `cited-opening-event-types`,
+   `status-a-cancel-target-leaves`,
+   `statuses-that-supersede-a-reinstatement` -- so it shows five private
+   movers where the tree has nine.
+2. **Section 1's two line totals for this cluster disagree with each
+   other** (202 in the table, 230 in the form listing) and neither
+   matches the tree's 220.
+3. **Section 1's spans are five extractions stale**, and the four
+   regions have MERGED into two contiguous pairs, one contiguous block
+   of five, and one lone form -- not drifted apart.
+4. **Section 4d's apply-site-3 citation `engine.clj:3229-3271` is
+   stale**; the form was at `2139-2181` at `c82436b` and now lives in
+   `log-index.clj`.
+5. **Section 3a's edge counts are CORRECT** -- `decide → log-index` 11
+   and `run → log-index` 2, confirmed exactly against the tree when read
+   as (form, callee) pairs -- and this is recorded as a correction only
+   in the sense that it is the first cluster for which the census's
+   numbers were checked and found right.
+
+## 6. P5 after this session
+
+**SIX landings**, in the census's own dependency order:
+
+| # | cluster | namespace | delegating defs |
+|---:|---|---|---:|
+| 1 | `streams` | `ehrt.sim-engine.streams` | 5 |
+| 2 | `state` | `ehrt.sim-engine.state` | 0 |
+| 3 | `encounters` | `ehrt.sim-engine.encounters` | 0 |
+| 4 | `evolve` | `ehrt.sim-engine.evolve` | 1 |
+| 5 | `fold` | `ehrt.sim-engine.fold` | 1 |
+| 6 | `log-index` | `ehrt.sim-engine.log-index` | 1 |
+
+`engine.clj` is down from 4,884 lines / 157 forms at the census sha to
+**3,571 / 99**. What remains under the census's map is `decide` (59
+forms, the largest cluster by a wide margin), `assignment` (3), `config`
+(5) and `run` (6) -- and `decide` is the next one the DAG allows, since
+every incoming edge this session left behind points at it.
+
+**Two apply sites of the three now live outside `engine.clj`** (`replay`
+in `fold`, `reinstated-state`'s fallback in `log-index`); `run`'s
+in-loop fold, apply site 1, is the one still inside it. The ruled
+unification pass therefore now spans three namespaces rather than one,
+which is a fact for that session's scoping and not a cost this one
+incurred.
+
+### The require set, re-confirmed against step 1
+
+`ehrt.sim-engine.log-index` requires exactly `[ehrt.sim-engine.fold :as
+fold]` and `[ehrt.sim-model.interface :as sim-model]` -- the two
+outgoing edges step 1 derived by whole-symbol scan, and nothing more.
+No third require was needed at compile time, which is the confirmation
+step 1's derivation was owed.
