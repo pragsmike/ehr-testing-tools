@@ -403,3 +403,19 @@ is also `roadmap.md#event-stream-mutation`'s injection point.
 * `make docsgen` was run for the generated `INDEX.md`/`state-derived.md`
   rows; `make traces` produced no diff, as a docs-and-refactor session
   should not move a trace.
+
+## 8. Close marker
+
+`gh run view 33306716025` -- workflow `test`, head `007af247`,
+completed, conclusion **success**. That is this session's CLOSE MARKER:
+CI green at the pushed tip, which under the de-scaffold ruling of
+2026-08-25 is what marks a landing rather than a tag. `bin/post-push-
+verify 3e0b65a 007af24` reported checks 1 and 2 OK (remote tip matches
+HEAD; every commit message in range pure ASCII) and DISCLOSED check 3 as
+reported-not-awaited per AR-CI-4 -- it was awaited here instead.
+
+Three commits: `cdd49a6` the pre-move sweep, `dd956b0` the extraction,
+`007af24` the record, the prompt archive and the roadmap row. All
+pushed. No tag, no ADR -- this is a refactor under an existing roadmap
+row and an existing program ruling, and the de-scaffold ruling gives
+process work neither.
