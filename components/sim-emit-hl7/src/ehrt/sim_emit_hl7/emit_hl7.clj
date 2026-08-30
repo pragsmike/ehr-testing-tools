@@ -25,22 +25,36 @@
   (:require [com.nervestaple.hl7-parser.parser :as parser]
             [clojure.string :as str]
             [ehrt.sim-model.interface :as sim-model]
+            [ehrt.sim-emit-hl7.hl7-time :as hl7-time]
             [ehrt.sim-emit-hl7.site-profile :as site-profile]))
 
-(def default-reference-date
-  "Pinned default for the :reference-date run-config input (an ISO
-  date string, midnight local time is the run's t=0). Arbitrary but
-  fixed -- determinism does not care which date, only that every run
-  states one explicitly (never buried in :invocation, per tools'
-  ManifestV1 lesson)."
-  "2024-01-01")
+;; --- moved to ehrt.sim-emit-hl7.hl7-time -----------------------------
+;;
+;; SEVEN forms left this file, from three regions: the two defaults
+;; here; `hl7-timestamp-formatter`, `reference-instant`,
+;; `hl7-offset-suffix` and `hl7-timestamp` from just above
+;; `control-id-for`; and `transmit-seconds` from just above
+;; `single-subject-message`. This is the first cluster of `emit_hl7.
+;; clj`'s own namespace extraction, and a leaf: it called nothing else
+;; in this file.
+;;
+;; The THREE public movers keep a delegating def below, so
+;; `interface.clj` (`default-reference-date`, `default-utc-offset`) and
+;; the test tree resolve exactly as before. `hl7-timestamp`'s def is
+;; owed to the tree rather than to `interface.clj`, which never
+;; re-exported it: thirteen `emit-hl7/hl7-timestamp` call sites across
+;; `emit_hl7_test.clj`, `result_clock_test.clj` and `latency_test.clj`,
+;; plus twenty-one bare-name sites in this file that keep resolving
+;; through the def below.
+;;
+;; The FOUR private movers get no def -- that would widen this file's
+;; public surface, which C1(a) does not ask for. `transmit-seconds` is
+;; public in `hl7-time` instead, because eleven forms here still call
+;; it; those twelve call sites name it `hl7-time/transmit-seconds`.
 
-(def default-utc-offset
-  "Pinned default for the :utc-offset run-config input (`sim/ADR-0011`): a
-  fixed ISO-style offset (\"+00:00\"), no DST, no timezone database.
-  Rendered in HL7v2's own colon-free zone-suffix convention
-  (\"+0000\") -- see `hl7-timestamp`."
-  "+00:00")
+(def default-reference-date hl7-time/default-reference-date)
+(def default-utc-offset hl7-time/default-utc-offset)
+(def hl7-timestamp hl7-time/hl7-timestamp)
 
 (def message-type-registry
   "Event type -> HL7 message type/trigger: the emitter's own catalytic
@@ -221,32 +235,6 @@
   `:invalid-siu` precedent), never a subscriber feed that is silently
   empty because of a typo."
   (into skeleton-message-types add-on-message-types))
-
-(def ^:private hl7-timestamp-formatter
-  (java.time.format.DateTimeFormatter/ofPattern "yyyyMMddHHmmss"))
-
-(defn- reference-instant
-  [reference-date]
-  (.atStartOfDay (java.time.LocalDate/parse reference-date)))
-
-(defn- hl7-offset-suffix
-  "ISO-style offset (\"+00:00\", \"-05:00\") rendered in HL7v2's own
-  zone-suffix convention: colon-free (\"+0000\", \"-0500\")."
-  [utc-offset]
-  (str/replace utc-offset ":" ""))
-
-(defn hl7-timestamp
-  "Renders the absolute HL7 timestamp for `seconds` (a log event's :t,
-  SECONDS from the run's epoch -- sim/ADR-0011, was minutes before M2a)
-  anchored to :reference-date, suffixed with :utc-offset in HL7's own
-  colon-free zone convention -- the timestamp-anchoring law, extended
-  to state which fixed offset the naive wall-clock arithmetic is
-  asserted to be in (no timezone database, no DST: the arithmetic
-  itself never shifts across zones, sim/ADR-0011). Pure: reference-date +
-  seconds + utc-offset in, string out, nothing else consulted."
-  [reference-date seconds utc-offset]
-  (str (.format (.plusSeconds (reference-instant reference-date) seconds) hl7-timestamp-formatter)
-       (hl7-offset-suffix utc-offset)))
 
 (defn control-id-for
   "MSH-10 (message control id) for one ground-truth event -- the SAME
@@ -759,19 +747,6 @@
                 (map (partial z-segment-for context)))
           (:z-segments site-profile))))
 
-(defn- transmit-seconds
-  "ADR-0109's own second clock: `t` (the event's clinical instant, log-
-  relative seconds) shifted by `offsets`' own entry for this event's
-  `control-id`, or unshifted (offset 0) when `control-id` has no entry
-  -- absent/nil/{} `offsets` is therefore the identity input for every
-  event, the mechanism the identity property (emit-hl7-test) rests on.
-  `offsets` is plain data here (never an RNG) -- sampling stays out of
-  emit, per this namespace's own renders-only doctrine (docs/dev/
-  simulator-architecture.md section 5); `plan-latency` is the one place
-  offsets are ever sampled, upstream of this function."
-  [offsets control-id t]
-  (+ t (long (get offsets control-id 0))))
-
 (defn- single-subject-message
   "Renders one single-participant ground-truth event to an ER7 string,
   or nil when the event's :event isn't in `message-type-registry`. Every
@@ -799,7 +774,7 @@
   (when-let [type+trigger (message-type-registry event)]
     (let [control-id (control-id-for ev)
           clinical-ts (hl7-timestamp reference-date t utc-offset)
-          transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
+          transmit-ts (hl7-timestamp reference-date (hl7-time/transmit-seconds offsets control-id t) utc-offset)
           facility-name (name (:id facility))
           provider (provider-by-id providers attending)
           persona (demographics-at demographics (:patient-id (first participants)) t)
@@ -834,7 +809,7 @@
   (let [type+trigger (message-type-registry :bed-swap)
         control-id (control-id-for ev)
         clinical-ts (hl7-timestamp reference-date t utc-offset)
-        transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
+        transmit-ts (hl7-timestamp reference-date (hl7-time/transmit-seconds offsets control-id t) utc-offset)
         facility-name (name (:id facility))
         [p1 p2] (mapv :patient-id participants)
         ;; ARC 3B SWEEP 1: PV1-19 comes from the same per-side entry
@@ -908,7 +883,7 @@
   (let [type+trigger (message-type-registry :bed-status-change)
         control-id (control-id-for ev)
         clinical-ts (hl7-timestamp reference-date t utc-offset)
-        transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
+        transmit-ts (hl7-timestamp reference-date (hl7-time/transmit-seconds offsets control-id t) utc-offset)
         facility-name (name (:id facility))]
     (parser/str-message
      (parser/create-message
@@ -1074,7 +1049,7 @@
    {:keys [event t active-mrn participants encounter-id scheduled-t] :as ev}]
   (let [type+trigger (message-type-registry event)
         control-id (control-id-for ev)
-        transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
+        transmit-ts (hl7-timestamp reference-date (hl7-time/transmit-seconds offsets control-id t) utc-offset)
         facility-name (name (:id facility))
         persona (demographics-at demographics (:patient-id (first participants)) t)
         scheduled-ts (when scheduled-t (hl7-timestamp reference-date scheduled-t utc-offset))]
@@ -1099,7 +1074,7 @@
   (let [type+trigger (message-type-registry :merge)
         control-id (control-id-for ev)
         clinical-ts (hl7-timestamp reference-date t utc-offset)
-        transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
+        transmit-ts (hl7-timestamp reference-date (hl7-time/transmit-seconds offsets control-id t) utc-offset)
         facility-name (name (:id facility))
         survivor-id (:patient-id (first (filter #(= :survivor (:role %)) participants)))]
     (parser/str-message
@@ -1334,7 +1309,7 @@
    (let [type+trigger (message-type-registry :order-placed)
          control-id (or (:control-id status) (control-id-for ev))
          transmit-ts (hl7-timestamp reference-date
-                                    (transmit-seconds offsets
+                                    (hl7-time/transmit-seconds offsets
                                                       (or (:basis-control-id status) control-id)
                                                       t)
                                     utc-offset)
@@ -1395,7 +1370,7 @@
          control-id (or (:control-id status) (control-id-for ev))
          clinical-ts (hl7-timestamp reference-date t utc-offset)
          transmit-ts (hl7-timestamp reference-date
-                                    (transmit-seconds offsets
+                                    (hl7-time/transmit-seconds offsets
                                                       (or (:basis-control-id status) control-id)
                                                       t)
                                     utc-offset)
@@ -1495,7 +1470,7 @@
   (let [type+trigger (message-type-registry :observation)
         control-id (control-id-for ev)
         clinical-ts (hl7-timestamp reference-date t utc-offset)
-        transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
+        transmit-ts (hl7-timestamp reference-date (hl7-time/transmit-seconds offsets control-id t) utc-offset)
         facility-name (name (:id facility))
         provider (provider-by-id providers attending)]
     (parser/str-message
@@ -1529,7 +1504,7 @@
   (let [type+trigger (message-type-registry :diagnostic-report)
         control-id (control-id-for ev)
         clinical-ts (hl7-timestamp reference-date t utc-offset)
-        transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
+        transmit-ts (hl7-timestamp reference-date (hl7-time/transmit-seconds offsets control-id t) utc-offset)
         facility-name (name (:id facility))
         provider (provider-by-id providers attending)
         obx-segments (map-indexed (fn [i o] (observation-obx-segment (inc i) clinical-ts o)) observations)]
@@ -1664,7 +1639,7 @@
   (let [control-id (str active-mrn "-P03-" t)
         clinical-ts (hl7-timestamp reference-date t utc-offset)
         transmit-ts (hl7-timestamp reference-date
-                                   (transmit-seconds offsets (control-id-for ev) t)
+                                   (hl7-time/transmit-seconds offsets (control-id-for ev) t)
                                    utc-offset)
         facility-name (name (:id facility))
         provider (provider-by-id providers attending)
@@ -1695,7 +1670,7 @@
   own output) threads to every builder for the split-clock rendering
   (each builder's own docstring has the per-type field-audit detail);
   the lower arities pass {} -- unconditionally the identity input,
-  since `transmit-seconds` (this namespace, private) falls back to a 0
+  since `hl7-time/transmit-seconds` (a sibling namespace) falls back to a 0
   offset for any control-id absent from the map."
   ([reference-date utc-offset facility providers ev]
    (event->messages reference-date utc-offset facility providers {} nil {} {} ev))
@@ -2474,7 +2449,7 @@
                    (map-indexed
                     (fn [i ev]
                       (let [control-id (control-id-for ev)
-                            transmit-t (transmit-seconds offsets control-id (:t ev))]
+                            transmit-t (hl7-time/transmit-seconds offsets control-id (:t ev))]
                         (map-indexed
                          (fn [j message] [transmit-t i 0 j message])
                          (event->messages reference-date utc-offset facility providers demographics
@@ -2488,7 +2463,7 @@
                                                demographics site-profile spans ins)])
                            chatter)
          ladder-rungs (map (fn [ins]
-                             [(transmit-seconds offsets (:basis-control-id ins) (:at ins))
+                             [(hl7-time/transmit-seconds offsets (:basis-control-id ins) (:at ins))
                               (:basis ins) 2 (:seq ins)
                               (ladder-message reference-date utc-offset facility providers
                                               demographics site-profile offsets ground-truth ins)])
