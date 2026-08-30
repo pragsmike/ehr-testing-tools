@@ -30,11 +30,55 @@
 [{:asset "docs/manual/assets/gt-emitters.svg"
   :source "docs/dev/simulator-architecture.md"
   :trigger "regenerate by hand if simulator-architecture.md section 4's own equations change"
-  :reviewed-at "b8b9acb"
+  :reviewed-at "76b0e56"
   :verdict :fresh
   :note
-  "Reviewed 2026-08-30 (engine extraction 7 of N, the `config` and
-   `assignment` clusters). simulator-architecture.md moved at b8b9acb,
+  "Reviewed 2026-08-30 (engine extraction 9 of N, the `decide` cluster --
+   the last and largest of the nine). simulator-architecture.md moved at
+   76b0e56, ONE hunk, three lines replacing two, and it lands in section
+   2, not section 4.
+
+   THE TRIGGER DID NOT FIRE IN SUBSTANCE. Section 2's `decide` bullet
+   said the `defmulti` was `engine.clj`'s; the extraction moved it to
+   `ehrt.sim-engine.decide`, so the line now names `decide.clj` and adds
+   that `engine.clj` keeps a delegating `def` of the same multifn --
+   which is verbatim what the fourth extraction did to the `evolve`
+   bullet a few lines below it, and what the fifth did to `replay`.
+   Register row L2-17's class again: this doc names engine forms by
+   DEFINING FORM, and a defining form is exactly what an extraction
+   relocates.
+
+   Section 4's EQUATION BLOCK -- `walk`, `engine`, `emitH`/`emitF`,
+   `replay`, `check` -- which is what this row's trigger names, is
+   byte-identical across the diff, verified by diffing section 4 as a
+   BLOCK (`193-372` at b8b9acb against `194-373` here, the one-line
+   offset the section-2 edit introduces) rather than inferred from the
+   hunk header.
+
+   AND THE MOVE BEHIND IT CHANGES NO OUTPUT. This asset depicts only
+   GT -> emitH/emitF -> ER7*/FHIR*, and an intra-brick namespace split
+   moves no arrow on it. `bin/regression-oracle 76b0e56 4a9296b`:
+   'IDENTICAL: every root's digest matches', 41 roots,
+   'declared-digest-change: no'. `bin/ground-truth-bracket ac27ee9
+   4a9296b`, spanning the sweep and the move in one bracket:
+   'IDENTICAL: every digested root's :ground-truth matches ... (38
+   roots)', 3 skipped for carrying no `:ground-truth` key
+   (appendicitis, ear-infections, sore-throat), no declaration. Not
+   stale.
+
+   PREDICTED, NOT DISCOVERED, for the FOURTH extraction running -- and
+   this time the fire was predicted at a commit that is NOT the move.
+   This session's prompt asked the citation sweep's dispositions to land
+   BEFORE the move rather than with it, so the red-first commit is the
+   sweep (76b0e56) and this row is its successor across the move.
+   `make test` was GREEN at MAKE_EXIT=0 over the very tree carrying the
+   repoint -- the test reads `git log -1` on the SOURCE and cannot see
+   an uncommitted edit -- so a green pre-push suite is again not
+   evidence this row was not going to fire. Both red commits are pushed
+   with this one, never alone (`rulings.md#R-red-pushed-with-green`).
+
+   Prior review, 2026-08-30 (engine extraction 7 of N, the `config` and
+   `assignment` clusters), kept. simulator-architecture.md moved at b8b9acb,
    ONE hunk of ONE line, and it lands in section 5, not section 4.
 
    THE TRIGGER DID NOT FIRE IN SUBSTANCE, and this is the first fire of
