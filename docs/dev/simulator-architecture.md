@@ -53,7 +53,7 @@ only what a reader orienting to the *architecture* needs first.
 |---|---|---|
 | `sim-model` | Pure schemas and sampling: pathway IR, facility/ward allocation, `Persona`, provider config. No engine, no RNG threading of its own beyond what its sampling functions take as an argument. | `components/sim-model/src/ehrt/sim_model/interface.clj` |
 | `patient-simulator` | GMF module loading and interpretation: `load-closure` resolves a module (plus its `CallSubmodule` targets and lookup tables) into a closure; `run-module` walks it, RNG-driven, into a `Trajectory`; `compile-trajectory` reshapes that trajectory into pathway IR the engine can execute. This is "the GMF walk." | `components/patient-simulator/src/ehrt/patient_simulator/interface.clj` (`load-closure` → `gmf.clj:1580`; `run-module` → `gmf_interpreter.clj:2161`, driving `walk-module` → `gmf_interpreter.clj:2061`; `compile-trajectory` → `compile_trajectory.clj:1`) |
-| `sim-engine` | The discrete-event core: the `decide`/`evolve` multimethod pair (`sim/ADR-0008`), the `run` loop, `replay`, plus the churn and order-profiles catalytics. | `components/sim-engine/src/ehrt/sim_engine/interface.clj` (`run` → `engine.clj`'s `defn run`; `replay` → its `defn replay`) |
+| `sim-engine` | The discrete-event core: the `decide`/`evolve` multimethod pair (`sim/ADR-0008`), the `run` loop, `replay`, plus the churn and order-profiles catalytics. | `components/sim-engine/src/ehrt/sim_engine/interface.clj` (`run` → `engine.clj`'s `defn run`; `replay` → `fold.clj`'s `defn replay`, of which `engine.clj` keeps a delegating `def`) |
 | `sim-emit-hl7` | Ground-truth log → HL7v2 ER7 messages (`emit`), plus the wire-side replay accumulator (`fold-message`, `v2_replay.clj`) a stranger's own paced stream can be folded through — the same accumulator the emitter-coherence property reasons about. | `components/sim-emit-hl7/src/ehrt/sim_emit_hl7/interface.clj` |
 | `sim-emit-fhir` | Folded state (never the log directly) → FHIR R4 Bundle (`bundle-run`, built on the pure `snapshot-at`/resource-builder functions). A rendering accent over state, sim-emit-hl7's sibling, not its dependent. | `components/sim-emit-fhir/src/ehrt/sim_emit_fhir/interface.clj` |
 | `sim-check` | The invariant catalog (`check-all`): internal-consistency claims over a ground-truth log, built on `sim-engine/replay` — the same fold `evolve` always was, reused rather than reimplemented. | `components/sim-check/src/ehrt/sim_check/interface.clj` |
@@ -97,7 +97,8 @@ supersedes it):
   produces a new patient state.
 
 **Patient state exists only as the fold of `evolve` over events.**
-`replay` (`engine.clj`'s `defn replay`) is that fold, re-run: given a
+`replay` (`ehrt.sim-engine.fold`'s `defn replay`, of which `engine.clj`
+keeps a delegating `def`) is that fold, re-run: given a
 ground-truth log, it walks every event, folding each participant's own
 slice of state through `evolve`, and returns a parallel sequence of
 `{:event :patient-id :before :after :world-before :world-after}`

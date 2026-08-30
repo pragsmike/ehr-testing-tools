@@ -84,6 +84,7 @@
             [ehrt.sim-engine.churn :as churn]
             [ehrt.sim-engine.encounters :as encounters]
             [ehrt.sim-engine.evolve :as evolve]
+            [ehrt.sim-engine.fold :as fold]
             [ehrt.sim-engine.order-profiles :as order-profiles]
             [ehrt.sim-engine.person-fold :as person-fold]
             [ehrt.sim-engine.state :as state]
@@ -1973,8 +1974,11 @@
 ;; `defmulti` -- keeps a delegating def below, in the place it stood.
 ;; A delegating `def` of a multimethod shares the one multifn object, so
 ;; every method registered over there dispatches through this var too,
-;; and `replay` and `run` below still call `evolve` unqualified exactly
-;; as they did. The four helpers were PRIVATE and get none, which is
+;; and `run` below still calls `evolve` unqualified exactly as it did.
+;; `replay` did too when this banner was written; the FIFTH extraction
+;; moved it to `ehrt.sim-engine.fold` (see the banner below), where it
+;; takes the edge directly as `evolve/evolve` rather than back through
+;; this def. The four helpers were PRIVATE and get none, which is
 ;; what keeps this namespace's public surface exactly what it was.
 ;; `ehrt.sim-engine.interface` re-exports none of the five and is
 ;; untouched.
@@ -1987,109 +1991,55 @@
   method registered there is dispatched through this var."
   evolve/evolve)
 
-(def ^:private bed-correction-event-types
-  "The two kinds that leave a bed empty by SAYING IT WAS NEVER FILLED --
-  `:cancel-admit` (the admission did not happen) and `:cancel-transfer`
-  (the transfer did not happen). Their bed goes straight back to
-  `:ready`, with no `:bed-status-change` event and no turnaround: an
-  occupancy a cancel retracts leaves no dirt behind it, and pretending
-  otherwise would charge a correction the housekeeping cost of a real
-  stay.
+;; --- moved to ehrt.sim-engine.fold ----------------------------------------
+;;
+;; The derived-state fold -- `replay`, `update-beds` and the correction
+;; table `bed-correction-event-types` -- now lives in
+;; `ehrt.sim-engine.fold`, extracted OUTPUT-IDENTICAL as the fifth step of
+;; `roadmap.md#engine-namespace-extraction-and-apply-unification` (author
+;; ruling C1(a); the census's own dependency order puts `fold` after
+;; `evolve` and before `log-index`, whose `reinstated-state` calls
+;; `replay`). Nothing moved changed: the three forms there are this
+;; file's own text, and this cluster had no interior comment block for a
+;; banner to have to travel with -- the first of the five for which that
+;; is true.
+;;
+;; THIS MOVE MOVES AN APPLY SITE. `replay` is the census's apply site 2
+;; (section 4c), and it does not do six of the ten things `run`'s own
+;; in-loop fold does (section 4b): no encounter stamp, no warm-up mark,
+;; no bed index, and none of the three log indexes. That divergence is
+;; documented and is RULED to be paid at application-path unification,
+;; not here. Nothing `replay` folds was added, removed or reordered.
+;;
+;; Under C1(a) THIS namespace stays the one every existing requirer
+;; resolves against, so the ONE var that was public here -- `replay` --
+;; keeps a delegating def below, in the place it stood. That def is not a
+;; formality: `ehrt.sim-engine.interface` re-exports `replay` at its
+;; `:89` (`(def replay engine/replay)`), and census constraint 4 requires
+;; that file to keep naming `engine/...`, so this def is what keeps the
+;; brick's own public surface resolving. `reinstated-state` below still
+;; calls `replay` unqualified through it too.
+;;
+;; `update-beds` was `defn-` and `bed-correction-event-types` was
+;; `^:private`, so under constraint 5 they become public THERE and get no
+;; def HERE -- that would widen this namespace's public surface, which
+;; C1(a) does not ask for. `run`'s one `update-beds` call site below is
+;; `fold/`-qualified instead.
+;;
+;; `ehrt.sim-check.check` deliberately reimplements both the bed index
+;; and the correction table rather than calling these -- it is the
+;; independent judge, and calling the engine's own index-builder would
+;; prove only that the engine agrees with itself. Its own three prose
+;; attributions were repointed to `ehrt.sim-engine.fold` by this move,
+;; because a private mover has no delegating def to forward them.
 
-  ADR-0174's invariant 3 enumerates ready->occupied, occupied->dirty,
-  dirty->cleaning, cleaning->ready and the reinstatement's
-  dirty->occupied. A SEVENTH, cleaning->occupied, joined it on
-  2026-08-29 (ADR-0174 section 2(c) ratification 4, traffic-scale close
-  section 9 TS-1): the turnaround has TWO in-flight legs and a
-  reinstating cancel can land in either. That arc changes nothing HERE
-  -- neither of this set's two kinds produces it, and the guard in
-  `decide :bed-ready` below already handles the bed it leaves -- it is
-  named so a reader of this comment finds the whole relation.
-  THE CORRECTION ARC, occupied->ready, IS A SIXTH, and
-  the ADR does not name it -- it enumerated the cycle's own transitions
-  and the two cancel classes that RE-OCCUPY, and did not reach the two
-  that VACATE. Disclosed rather than smuggled: without it a cancelled
-  admission's bed stays `:occupied` for the rest of the run and the
-  ward silently loses capacity, which no reading of section 2(c)
-  intends.
-
-  `:transfer-in-error` is deliberately not a THIRD member. Its own
-  decide emits an ordinary `:transfer` plus that transfer's
-  `:cancel-transfer`, atomically at one instant, so the pair is already
-  handled by the `:cancel-transfer` entry -- and the bed it came FROM
-  is never dirtied at all, because `decide :transfer-in-error` does not
-  call `vacate-bed`."
-  #{:cancel-admit :cancel-transfer})
-
-(defn- update-beds
-  "The bed index, folded one event forward (ADR-0174 section 2(c)).
-
-  Two rules and no others:
-
-  * a `:bed-status-change` writes its own `:to`, which is the whole of
-    the cycle's three legs;
-  * every other event is read through its participants' LOCATION delta
-    -- a bed newly named becomes `:occupied`, and a bed newly left
-    becomes `:ready` only under `bed-correction-event-types` above. A
-    bed left by a real vacate is untouched HERE, because the
-    `:bed-status-change` its own decide emitted in the SAME batch is
-    what turns it `:dirty`.
-
-  A `:bed-swap` needs no case of its own and gets none: each side's
-  post-event bed is named by the other participant, so both come out
-  `:occupied`, which is what they are."
-  [beds ev patients-before patients-after]
-  (if (= :bed-status-change (:event ev))
-    (let [{:keys [bed to t last-patient-id]} ev]
-      (update beds bed merge (cond-> {:status to :since-t t}
-                               last-patient-id (assoc :last-patient-id last-patient-id))))
-    (reduce (fn [bs {:keys [patient-id]}]
-              (let [before (get-in patients-before [patient-id :location :bed])
-                    after (get-in patients-after [patient-id :location :bed])]
-                (cond-> bs
-                  (and after (not= after before))
-                  (update after merge {:status :occupied :since-t (:t ev) :last-patient-id patient-id})
-
-                  (and before (not= after before) (bed-correction-event-types (:event ev)))
-                  (update before merge {:status :ready :since-t (:t ev)}))))
-            beds
-            (filter :patient-id (:participants ev)))))
-
-(defn replay
-  "Replays `ground-truth` through `evolve`, returning a parallel seq of
-  {:event :patient-id :before :after :world-before :world-after} --
-  `:patient-id` is a convenience view of the event's PRIMARY (first)
-  participant, since every check.clj invariant needs at most one
-  patient's pre/post state even once M2b's bed-swap/merge span two
-  (cross-participant invariants read world-before/world-after
-  directly instead). Every participant in :participants folds via
-  `evolve`, not just the primary one -- sim/ADR-0010: a patient's state
-  folds exactly the events they participate in. `world-before`/
-  `world-after` are the full {patient-id -> patient-state} map
-  immediately before/after this event (sim/ADR-0008: state-history is
-  derived -- this IS that derivation, generalized across patients)."
-  [ground-truth]
-  (loop [events ground-truth patients {} acc (transient [])]
-    (if (empty? events)
-      (persistent! acc)
-      (let [event (first events)
-            ;; ARC 3B SWEEP 2: a `:bed-status-change`'s participant names
-            ;; a BED, not a patient. Filtering on `:patient-id` being
-            ;; present is what keeps a nil-keyed phantom patient out of
-            ;; every `world-before`/`world-after` this function hands to
-            ;; `ehrt.sim-check.check`.
-            participant-ids (mapv :patient-id (filter :patient-id (:participants event)))
-            patients (reduce (fn [ps pid]
-                                (if (contains? ps pid)
-                                  ps
-                                  (assoc ps pid (initial-patient pid (:active-mrn event)))))
-                              patients participant-ids)
-            patients' (reduce (fn [ps pid] (update ps pid evolve event)) patients participant-ids)
-            subject-id (first participant-ids)]
-        (recur (rest events) patients'
-               (conj! acc {:event event :patient-id subject-id
-                           :before (get patients subject-id) :after (get patients' subject-id)
-                           :world-before patients :world-after patients'}))))))
+(def replay
+  "Replays a ground-truth log through `evolve` from an empty world,
+  returning a parallel seq of {:event :patient-id :before :after
+  :world-before :world-after}. Delegates to
+  `ehrt.sim-engine.fold/replay`, which carries the contract -- and which
+  `ehrt.sim-engine.interface` re-exports through THIS var."
+  fold/replay)
 
 ;; --- M2b cancel-transfer/cancel-discharge: defined here, AFTER `replay`,
 ;; because their decide methods query it directly (docs/patient-state-
@@ -3775,8 +3725,8 @@
                                                    w (filter :patient-id (:participants ev)))]
                                 [(cond-> w-next
                                    (:beds w-next)
-                                   (assoc :beds (update-beds (:beds w-next) ev
-                                                             (:patients w) (:patients w-next))))
+                                   (assoc :beds (fold/update-beds (:beds w-next) ev
+                                                                  (:patients w) (:patients w-next))))
                                  ridx' cidx' gidx'])))
                           [world (:reinstate-index world) (:citation-index world)
                            (:registration-index world)]

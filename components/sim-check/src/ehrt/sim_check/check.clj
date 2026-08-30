@@ -519,7 +519,7 @@
 ;; generated AND judged. So the three rows below read the LOG, like
 ;; every other function in this namespace.
 ;;
-;; THE FOLD BELOW IS DELIBERATELY NOT `ehrt.sim-engine.engine`'s OWN
+;; THE FOLD BELOW IS DELIBERATELY NOT `ehrt.sim-engine.fold`'s OWN
 ;; `update-beds`, though it computes the same thing. This namespace is
 ;; the independent judge; calling the engine's own index-builder here
 ;; would prove only that the engine agrees with itself, which is the
@@ -580,7 +580,7 @@
   occupancy they retract did not happen. Without this arc that bed would
   stay `:occupied` for the rest of the run and its ward would silently
   lose capacity, which no reading of section 2(c) intends. The reason
-  lives in `ehrt.sim-engine.engine`'s own `bed-correction-event-types`
+  lives in `ehrt.sim-engine.fold`'s own `bed-correction-event-types`
   and is repeated here because this is where a reader checks the
   relation.
 
@@ -597,7 +597,7 @@
 
 (def ^:private bed-correction-event-types
   "The two kinds whose vacate returns a bed straight to `:ready` --
-  `ehrt.sim-engine.engine`'s own set, restated here because this
+  `ehrt.sim-engine.fold`'s own set, restated here because this
   namespace reconstructs the index independently and may not read the
   engine's."
   #{:cancel-admit :cancel-transfer})
