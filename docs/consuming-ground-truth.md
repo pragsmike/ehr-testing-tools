@@ -146,7 +146,7 @@ noted. Each of these reaches the simulation itself.
 The four bold rows are the ones that make the stream rich, and the
 three below `:persons` did not exist in any corpus this repository
 produced before 2026-08-26. The canonical list is
-`ehrt.sim-engine.engine/config-keys` — nineteen keys, one per row above
+`ehrt.sim-engine.config/config-keys` — nineteen keys, one per row above
 except that `:pathway` and `:pathways` share a row and
 `:module-initial-attributes` is not a member — and it carries a per-key
 comment for each. Every member of it reaches the engine whether it
@@ -593,7 +593,7 @@ oracle that will tell you what you broke.
 - [`use-cases/custom-emitter-from-the-event-log.md`](use-cases/custom-emitter-from-the-event-log.md) — the worked path, two runnable emitters
 - [`glossary.md`](glossary.md) — the vocabulary this page assumes
 - [`cli.md`](cli.md#ehrt-sim) — every flag `ehrt sim` accepts, generated from the CLI's own spec
-- `ehrt.sim-engine.engine/config-keys` — the canonical engine-key list, with a comment per key
+- `ehrt.sim-engine.config/config-keys` — the canonical engine-key list, with a comment per key
 - `ehrt.sim-model.config` — the five emission-key schemas
 - `ehrt.sim-check.check/catalog` — the invariant catalog
 - `demos/scenarios/ed-tuesday/config.edn` and `demos/scenarios/clinic-decade/config.edn` — the authored examples
