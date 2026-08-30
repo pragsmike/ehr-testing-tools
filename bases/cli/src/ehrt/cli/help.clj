@@ -247,8 +247,10 @@
     {:group "play"
      :doc "Pace a corpus's own events against their own timestamps and render (or write) them over time -- `ehrt show` plus time. PATH is an HL7 v2 (ER7) file or directory (paced by MSH-7), or a sim event log (a single .edn file, paced by each event's own :t) -- see the PATH description below for both shapes. A directory's files must share the v2 format and are concatenated in LEXICAL FILENAME ORDER before pacing: that ordering is the contract, so name files so sort order is play order (the sim generator pads its own msg-NNN index to the width that corpus needs, so its output always is). FHIR or mixed message input is a named deferral (:play-input-unsupported)."
      ;; B2 (R3-B3-1, ADR-0118): witnessed verbatim, README.md "See it
-     ;; run" fence, line 33 -- source cited in notes/adr/0118-*.md.
-     :example "bin/ehrt play out/corpus/clinic-decade --board 60 --rate 60"
+     ;; run" fence, line 34 -- source cited in notes/adr/0118-*.md. The
+     ;; source moved 2026-08-29 when that fence's own lead scenario went
+     ;; clinic-decade -> ed-tuesday; the sourced copy follows it.
+     :example "bin/ehrt play out/scenarios/ed-tuesday --board 60 --rate 3600"
      :positional "PATH"
      :positional-doc "an HL7 v2 (ER7) file, a directory of files sharing the sniffed v2 format (concatenated in lexical filename order; a .edn event log sitting in that same directory is ignored), or a single .edn sim event log (a vector of ground-truth event maps -- `ehrt sim run --format ground-truth`'s own output, or `ehrt corpus generate sim`'s own events.edn), given as a trailing positional argument, not --path -- an explicit --path is never overridden by it"
      :flags [{:flag "--path" :doc "alternative to the positional PATH"}

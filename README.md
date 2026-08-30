@@ -21,28 +21,41 @@ inside; no Clojure skills required.
 
 ## See it run
 
-A clinic-decade at a 200-patient hospital, watched on a live bed board
-at an hour of hospital time per minute:
+One emergency-department shift — 100 patients arriving into a scripted
+ED, watched on a live bed board at an hour of hospital time per
+wallclock second:
 
 ```bash
-bin/ehrt corpus generate sim --seed 5 --patients 200 \
-  --reference-date 2026-08-04 --churn \
-  --config demos/scenarios/clinic-decade/config.edn \
-  --out-dir out/corpus/clinic-decade
+bin/ehrt corpus generate sim --seed 20260811 --patients 100 \
+  --reference-date 2026-08-11 --churn \
+  --config demos/scenarios/ed-tuesday/config.edn \
+  --out-dir out/scenarios/ed-tuesday
 
-bin/ehrt play out/corpus/clinic-decade --board 60 --rate 60
+bin/ehrt play out/scenarios/ed-tuesday --board 60 --rate 3600
 ```
 
-What actually renders is sparse — most of this
-scenario's own population's care unfolds as intake and follow-up
-spread across a decade, not a single shift, so the board mostly
-idle-skips forward through quiet stretches rather than filling with
-beds, and only one inpatient is ever admitted across the whole run.
-That sparseness is genuine to this scenario's own module mix and
-patient population, not a player defect.
-[`demos/scenarios/clinic-decade/README.md`](demos/scenarios/clinic-decade/README.md)
-carries the full closing-summary numbers this session actually
-witnessed.
+Beds cycle rather than flip: a vacated room renders `(dirty)`, then
+`(cleaning)`, and is not handed out again until it is ready — 15
+`(dirty)` and 29 `(cleaning)` lines across the run's 579 snapshots.
+The census is real — inpatients climb to a peak of 12 concurrent and
+spill out of Emergency into Cardiology and Renal — and the counter
+line under each snapshot moves with it, `discharged` climbing to 88.
+No `Doe, Unknown` ever holds a bed at this seed, but `merged` does
+tick 0 → 1: one of the run's unidentified arrivals is joined to the
+record that person already had. And the board has two phases — its
+last snapshot is dated 2046, not 2026, because the scripted shift is
+the opening stretch and a twenty-year population tail follows it.
+[`demos/scenarios/ed-tuesday/README.md`](demos/scenarios/ed-tuesday/README.md)
+is where every one of those figures is witnessed, alongside the
+1,269 ground-truth events and 1,554 HL7 v2 messages this run produces.
+
+**And the longitudinal version.** Point the same engine at a decade
+instead of a shift and you get
+[`demos/scenarios/clinic-decade/`](demos/scenarios/clinic-decade/README.md):
+200 patients, twenty-odd everyday ambulatory ailments, care that
+unfolds as intake and follow-up across years. It is thin on a bed
+board by construction and rich in longitudinal history, which is the
+other thing an integration under test needs to see.
 
 More scenarios and small, fully readable captured traces: `demos/`.
 
@@ -177,15 +190,75 @@ copy-paste prompt that walks it through everything.
 interface, an internal schema, a vendor's flat file. Every message this
 workspace emits is a projection of one **ground-truth event log**, and
 that log is a published, versioned contract you can render yourself
-instead of reverse-engineering our emitters. One command shows it:
-`bin/ehrt sim run --seed 42 --patients 5 --format ground-truth`.
+instead of reverse-engineering our emitters. The shift the bed board
+above plays, as its own event stream — byte-for-byte the `events.edn`
+that same generate command already wrote beside its messages:
+
+`bin/ehrt sim run --seed 20260811 --patients 100 --reference-date 2026-08-11 --churn --config demos/scenarios/ed-tuesday/config.edn --format ground-truth`
+
+Seven of its 1,269 events, all one patient's, keys elided with `...`:
+
+```clojure
+{:home-ward "Emergency", ..., :active-mrn "MRN000001", ..., :reason "Minor laceration",
+ :encounter-id "ENC-000000-00-4a75c0cb", :event :admission, :t 0,
+ :location {:ward "Emergency", :bed "ED-H08", :placement :surge}, :forced false}
+
+;; ... two more arrivals, then this patient's own discharge (5 events) ...
+
+{:ward "Emergency", :participants [{:bed-id "ED-H08", :ward "Emergency", :role :subject}],
+ :last-patient-id "PID-000000-1522c269", ..., :event :bed-status-change,
+ :from :occupied, :bed "ED-H08", :t 2220, :to :dirty}
+
+{:appointment-class :outpatient, ..., :active-mrn "MRN000001", ..., :reason "Follow-up",
+ :event :appointment, :appointment-id "APT-000000-00-b82f275e", :t 2220,
+ :scheduled-t 1384620}
+
+{:event :bed-status-change, :t 3060, :bed "ED-H08", :ward "Emergency",
+ :from :dirty, :to :cleaning, ...}
+
+;; ... one arrival's registration ...
+
+{:event :bed-status-change, :t 3480, :bed "ED-H08", :ward "Emergency",
+ :from :cleaning, :to :ready, ...}
+
+;; ... 686 events ...
+
+{:participants [{:patient-id "PID-000000-1522c269", :role :subject}], :active-mrn "MRN000001",
+ ..., :reason "Follow-up", :encounter-id "ENC-000000-01-2300e027",
+ :event :outpatient-visit, :appointment-id "APT-000000-00-b82f275e", :t 1384620}
+
+;; ... 126 events ...
+
+{:cause :eligibility, ..., :prior-payer {:id "commercial-hmo", :name "Commercial HMO", :type :commercial},
+ :active-mrn "MRN000001", :payer {:id "medicaid", :name "Medicaid", :type :medicaid},
+ ..., :event :coverage-change, :t 101535041}
+```
+
+An admission, the bed going out of service behind it, a follow-up
+booked at the discharge that emptied it, the visit that kept that
+booking, and a coverage change on the same person long after. `:t` is
+seconds from the run's own start, so the appointment is kept exactly
+sixteen days after it was made and the insurance changes a little over
+three years after that — one flat, timestamped vector, no message
+format anywhere in it.
+[`docs/consuming-ground-truth.md`](docs/consuming-ground-truth.md) is
+the consumer contract for that vector — what is guaranteed, what is
+not, and how to read it;
 [`docs/use-cases/custom-emitter-from-the-event-log.md`](docs/use-cases/custom-emitter-from-the-event-log.md)
 is the path end to end, with two worked example emitters that depend on
 nothing in this repo;
-[`docs/formats.md`](docs/formats.md#the-event-log) is the contract
-itself; and the manual's
+[`docs/formats.md`](docs/formats.md#the-event-log) is the wire-level
+shape; and the manual's
 [Chapter 3](docs/manual/03-a-simulated-hospital.md#the-log-underneath-every-message)
 tells it as a story.
+
+How much wire traffic one event turns into depends on what you switch
+on: at 10^5 events the HL7 v2 projection runs **1.3574 messages per
+event** with all nine opt-in keys enabled and **0.643** with none of
+them, which
+[`docs/consuming-ground-truth.md`](docs/consuming-ground-truth.md#scale)
+measures on one machine at one seed and asks to be read as an order of
+magnitude rather than a benchmark.
 
 **I want to maintain or extend this workspace** — start at
 [`docs/dev/architecture.md`](docs/dev/architecture.md) and read

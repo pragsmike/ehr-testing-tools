@@ -48,7 +48,7 @@
     additionally filters to genuinely-paired blocks only before
     building its flattened command list, because a :paired-kind
     register row targets paired content specifically: README.md's own
-    \"See it run\" ```bash fence (clinic-decade) is the same language as
+    \"See it run\" ```bash fence (ed-tuesday) is the same language as
     the \"What you get\" section's two ```bash/```clojure pairs but is
     followed by prose, not an output fence, so `command-output-pairs`
     correctly returns it with nil :output-lines and `check-entry`

@@ -27,15 +27,26 @@
 ;; substitute for the reason.
 
 [{:file "README.md"
-  :first-command "bin/ehrt corpus generate sim --seed 5 --patients 200 \\"
+  :first-command "bin/ehrt corpus generate sim --seed 20260811 --patients 100 \\"
   :reason
-  "Teaches a real-time viewing rate on purpose: `--board 60 --rate 60`
-   is 'an hour of hospital time per minute', which is what the section
-   is about. Run verbatim against a 200-patient, ten-year clinic-decade
-   corpus it is weeks of wallclock, so no checker can run it as taught
-   without changing the one flag the prose exists to show."
-  :covered-by "bin/demo-exerciser-clinic-decade"
-  :witness {:adr "ADR-0158" :date "2026-08-19"}}
+  "Teaches a real-time viewing rate on purpose: `--board 60 --rate 3600`
+   is 'an hour of hospital time per wallclock second', which is what the
+   section is about. Run verbatim the playback does not stop at the ED
+   shift the prose is about -- ed-tuesday's stream runs twenty years past
+   it, and this rate paces the whole of it: measured 2026-08-29, 100
+   wallclock seconds of `--board 60 --rate 3600` reached snapshot 56 of
+   the run's 579. So a checker cannot run it as taught without changing
+   the one flag the prose exists to show; `bin/demo-exerciser-ed-tuesday`
+   runs these same two commands at `--rate 10000000` instead.
+
+   Re-anchored 2026-08-29 from the clinic-decade fence this section led
+   with until then (same disposition, same reason
+   shape, a different scenario): the front door now leads with the ED
+   shift, and clinic-decade is demoted to a prose paragraph carrying no
+   fence of its own -- which is why this row moved rather than a second
+   one being added."
+  :covered-by "bin/demo-exerciser-ed-tuesday"
+  :witness {:date "2026-08-29"}}
 
  {:file "SETUP.md"
   :first-command "sudo apt update && sudo apt install -y openjdk-21-jdk git"
