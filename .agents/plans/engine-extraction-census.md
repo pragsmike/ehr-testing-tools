@@ -360,6 +360,91 @@ Forms, with line spans at `517a96d`:
   * `1776-1821` `defn emit`
   * `2403-2499` `defn emit-wire`
 
+### 2a. ADDENDUM, 2026-08-30 -- the extraction order, derived at `74a8e6a`
+
+Section 2 proposed the clusters; it did not commit an order. This
+addendum does, and it is DERIVED rather than transcribed: a char-level
+scanner re-read `emit_hl7.clj` at `74a8e6a` for every top-level form's
+true span, and a whole-symbol scan over each form's body (string
+literals, character literals and line comments stripped) rebuilt the
+cross-seam graph from the tree. Section 3b was the prior, not the
+authority.
+
+**Section 3b is confirmed exactly.** All sixteen edges, and every one
+of the sixteen edge counts (62, 21, 18, 16, 13, 10, 6, 4, 4, 3, 3, 2,
+2, 1, 1, 1), reproduce at `74a8e6a`. Section 2's population closes too:
+86 def-forms in the tree, 86 names in section 2's map, zero in either
+and not the other. The graph has NO back edge -- section 3b's "already
+a DAG, no breaker needed" holds.
+
+**Three corrections, all small.**
+
+* **There are THREE leaves, not one.** `hl7-time`, `registry` and
+  `timelines` each have zero outgoing edges. The design channel
+  expected `hl7-time` or `er7`; `er7` is NOT a leaf -- it carries one
+  outgoing edge into `timelines` (`context-for-event` ->
+  `demographics-at`), which section 3b itself names as the reason
+  `context-for-event` was placed there.
+* **`planners` has zero INCOMING edges.** Nothing inside
+  `emit_hl7.clj` calls a planner; every caller is `interface.clj` or
+  `ehrt.sim.run`. Its position is therefore free anywhere after its own
+  three dependencies, and the order below places it by judgment, not by
+  the graph.
+* **Section 2's line spans run to the next form's START, so they
+  include the banner comment blocks between forms.** True form spans
+  are shorter -- `evn-segment` is `320-325`, not `320-341`; `pv1-segment`
+  is `646-697`, not `646-703`. Per-cluster FORM-line totals are
+  correspondingly smaller than section 2's table: `hl7-time` 47,
+  `registry` 278, `timelines` 151, `er7` 193, `segments` 518,
+  `messages` 578, `planners` 364, `facade` 136. Neither figure is
+  wrong; they measure different things, and this one is what a mover
+  actually moves.
+
+**The order, and why each cluster sits where it does.**
+
+```
+hl7-time -> registry -> timelines -> er7 -> segments
+   -> messages -> planners -> facade
+```
+
+1. **`hl7-time`** -- a leaf, and the smallest cluster in the file (7
+   forms, 47 form-lines): the least code that can prove the seam.
+2. **`registry`** -- a leaf; pure data tables plus one predicate, and
+   the delegating-def-heaviest cluster (seven of `interface.clj`'s
+   sixteen re-exports), so C1(a)'s obligation is exercised at scale
+   early.
+3. **`timelines`** -- a leaf; all five forms private, so C1(a) owes no
+   def and constraint 5 forbids one, and every mover widens because all
+   four of its consumers stay behind.
+4. **`er7`** -- its one dependency, `timelines`, has landed by here;
+   nothing below it can reach it.
+5. **`segments`** -- depends on `er7`, `registry` and `hl7-time`, all
+   landed.
+6. **`messages`** -- depends on five clusters, all landed; the heaviest
+   in the file (62 crossings into `segments` alone).
+7. **`planners`** -- depends on `registry`, `timelines` and `segments`;
+   free by the graph, placed here because it is the arc-4 add-on layer
+   and four of its five public forms are `interface.clj` re-exports.
+8. **`facade`** -- last by definition: it is what `emit_hl7.clj` keeps
+   under C1(a).
+
+**`interface.clj` re-exports sixteen `emit-hl7` forms**, distributed
+`hl7-time` 2, `registry` 7, `segments` 1, `planners` 4, `facade` 2;
+`timelines`, `er7` and `messages` owe none. (`beds-key`/`fold-message`
+resolve through `v2-replay` and `plan-fan-out`/`mask-msh` through
+`fan-out`; neither is this file's business.)
+
+**The caller-travels hazard does not arise until the end.** In every
+one of clusters 1-7 the CALLERS stay behind in `emit_hl7.clj`, so their
+bare names keep resolving through the delegating defs and no shim is
+needed -- the opposite of the `run` extraction, where the caller
+travelled and `ehrt.sim-engine.run` had to pay a `requiring-resolve`
+shim. The analog here arises only if the `facade` cluster itself ever
+moves, which is an OPEN question this order does not settle: whether
+`emit_hl7.clj` ends as a pure facade the way `engine.clj` did under
+ruling C4(b) is the author's, and it is not a precondition for
+clusters 1-7.
+
 ## 3. Cross-seam call census
 
 Method: every top-level form's body (line comments and string literals
