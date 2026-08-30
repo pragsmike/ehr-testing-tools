@@ -62,75 +62,68 @@ with them.
   `.agents/plans/engine-extraction-census.md` -- every top-level form of both
   files assigned to exactly one proposed namespace, the cross-seam edges, and
   the apply-path inventory that also serves
-  `roadmap.md#event-stream-mutation`. SIX clusters have landed, each in
-  its own session, in the census's dependency order and each with both
-  `bin/regression-oracle` and `bin/ground-truth-bracket` IDENTICAL with no
-  declaration: `ehrt.sim-engine.streams` (16 forms, 11 delegating defs),
-  `ehrt.sim-engine.state` (14 forms, 13 delegating defs, and the cycle
-  breaker `observation-value-fields` moved down out of `decide` so
-  `evolve` and `fold` are now unblocked), `ehrt.sim-engine.encounters`
-  (10 forms, ZERO delegating defs -- all ten movers were private, so
-  C1(a)'s obligation did not arise and constraint 5 forbade one),
-  `ehrt.sim-engine.evolve` (32 forms, ONE delegating def -- the
-  `defmulti`, the cluster's only public mover; a `def` of a multimethod
+  `roadmap.md#event-stream-mutation`. NINE clusters have landed, each in the
+  census's dependency order and each with both `bin/regression-oracle` and
+  `bin/ground-truth-bracket` IDENTICAL with no declaration:
+  `ehrt.sim-engine.streams` (16 forms, 11 delegating defs),
+  `state` (14/13, plus the cycle breaker `observation-value-fields` moved
+  down out of `decide`), `encounters` (10/ZERO -- all ten movers were
+  private, so C1(a)'s obligation did not arise and constraint 5 forbade
+  one), `evolve` (32/ONE -- the `defmulti`; a `def` of a multimethod
   shares the one multifn object, verified live, so that single def
-  carries all 27 methods across the seam and `run` calls `evolve`
-  unqualified exactly as it did), and `ehrt.sim-engine.fold` (3 forms,
-  ONE delegating def -- `replay`, whose def is load-bearing rather than
-  ceremonial because `interface.clj:89` re-exports the brick's `replay`
-  through it; the FIRST move to relocate an APPLY SITE, census section
-  4c, whose six-concern divergence from `run`'s in-loop fold is
-  unchanged here and stays payable at unification), and
-  `ehrt.sim-engine.log-index` (10 forms in FOUR non-contiguous regions,
-  the most scattered cluster of the six; ONE delegating def --
-  `events-for-patient`, and the FIRST whose def is owed not to
-  `interface.clj` (no mover is on that seam's re-export list) but to
-  `engine_test.clj`'s ten call sites, which C1(a) forbids touching; the
-  SECOND move to relocate an APPLY SITE, census section 4d's
-  `reinstated-state` replay fallback, moved verbatim and still payable
-  at unification), and -- in ONE session, the first of the program to
-  land two namespaces -- `ehrt.sim-engine.config` (5 forms, FIVE
-  delegating defs, and the first mover whose def is owed to
-  `interface.clj` AND to test files independently; zero widening lines,
-  because all five vars were already public) and
-  `ehrt.sim-engine.assignment` (3 forms, TWO delegating defs, both owed
-  to `engine_test.clj` alone). `engine.clj` is
-  3,469 lines / 98 forms plus `ns`; the partition closes at 191 forms
-  across the nine namespaces, which is 181 plus the evolve, fold,
-  log-index, config and assignment moves' ten delegating defs. TWO
-  clusters remain -- `decide`, then `run` as the facade's residue --
-  followed by the apply-path unification this row's second half names. The evolve and fold sessions BOTH fire the
-  hand-owned-asset tripwire, for one reason:
-  `docs/dev/simulator-architecture.md` names engine forms by DEFINING
-  FORM -- `defmulti evolve` for the fourth, `defn replay` twice for the
-  fifth -- so each extraction is a RED-FIRST commit whose successor
-  bumps `gt-emitters.svg`'s `:reviewed-at`. The fifth predicted it from
-  the fourth's record rather than catching it, which makes reading that
-  registry's four sources during the pre-move sweep part of the recipe;
-  the SIXTH read the same four sources and found no mover named in any
-  of them, so it fires no tripwire and is NOT a RED-FIRST commit --
-  the check that establishes a quiet tripwire is the same check that
-  would have caught a loud one. THE SIXTH ALSO CORRECTS THE CENSUS
-  FOUR TIMES OVER: section 1's rendering drops `^:private` from four of
-  that cluster's `def` forms (five private movers shown, NINE in the
-  tree), its two line totals for the cluster disagree with each other
-  and with the tree, and section 4d's apply-site-3 line citation is
-  stale -- while section 3a's edge counts (11 + 2) are confirmed exactly
-  right. COVERAGE, disclosed: the oracle reaches no cancel decide and
-  the gated corpora resolve no citation, so both brackets are blind to
-  six of that cluster's ten forms; the suite's cancel family, run-test's
-  two post-hoc equivalence proofs and a live `-M:dev` resolution check
-  carry them instead. THE SEVENTH fires the tripwire again but its
-  repoint is in section 5, not the section 4 the trigger names, and its
-  local suite was GREEN over the tree carrying it -- the test reads `git
-  log -1` on the SOURCE, so a green pre-push suite is NOT evidence the
-  row will stay green. Its second predicted fire (`state-derived`) did
-  not happen: a line-neutral repoint moves no budget. It also reads
-  constraint 5 the other way -- `weighted-pick` is the first private
-  mover to stay `defn-`, the widening half having been FORCED in every
-  earlier cluster by call sites left behind -- and caught `poly check`
-  returning OK over a namespace that did not READ, the third
-  consecutive session to catch it missing a broken file here.
+  carries all 27 methods across the seam), `fold` (3/ONE -- `replay`,
+  load-bearing because `interface.clj:89` re-exports the brick's
+  `replay` through it; the FIRST move to relocate an APPLY SITE, census
+  4c, whose divergence from `run`'s in-loop fold stays payable at
+  unification), `log-index` (10 forms in FOUR non-contiguous regions;
+  ONE def, the first owed to `engine_test.clj` rather than to
+  `interface.clj`; the SECOND apply site, census 4d), then -- in one
+  session -- `config` (5/FIVE, the first def owed to `interface.clj` AND
+  to tests independently, zero widening lines) and `assignment` (3/TWO),
+  and finally `decide` (58 forms/SEVEN defs, the largest of the nine:
+  the `defmulti`, its 32 methods and 25 helpers, moved from TWO
+  non-contiguous regions -- the two reinstating cancels sat below the
+  `evolve`/`replay` defs because they were written to follow `replay`
+  when it was a real `defn` there). `engine.clj` is now 1,968 lines / 47
+  forms plus `ns`, of which FORTY-ONE are delegating defs and six are
+  real code; the partition closes at 198 forms across the ten
+  namespaces, which is 181 plus seventeen delegating defs. ONE cluster
+  remains -- `run` as the facade's residue, AUTHOR-RULED not yet decided
+  -- followed by the apply-path unification this row's second half
+  names. FOUR of the nine sessions fire the hand-owned-asset tripwire,
+  for one reason: `docs/dev/simulator-architecture.md` names engine
+  forms by DEFINING FORM (`defmulti evolve`, `defn replay` twice,
+  `assign-pathway`/`assign-module` by file, `defmulti decide`), so each
+  is a RED-FIRST commit whose successor bumps `gt-emitters.svg`'s
+  `:reviewed-at`. Reading that registry's four sources during the
+  pre-move sweep is now the recipe, not a lucky catch: the sixth read
+  them and found no mover named, so it fired nothing -- the check that
+  establishes a quiet tripwire is the check that would have caught a
+  loud one. A GREEN LOCAL SUITE IS NOT EVIDENCE THE ROW WILL STAY
+  GREEN: the test reads `git log -1` on the SOURCE and cannot see an
+  uncommitted edit. THE CENSUS IS CORRECTED BY SESSION: the sixth found
+  section 1's rendering drops `^:private` from a `def` (five private
+  movers shown, NINE in the tree) and its cluster line totals disagree
+  with the tree; the ninth found section 1's `decide` list one form
+  stale (`observation-value-fields` left with `state`) and its "26
+  private helpers" wrong twice -- 25 helpers, six of them public --
+  while its privacy renderings are 26 for 26 right, this cluster having
+  no private `def` for the known defect to fire on, and section 3a's
+  edge counts and section 4a's sole-producer claim confirmed exactly.
+  CONSTRAINT 5 IS READ AS A PROHIBITION, not an instruction to widen:
+  the eighth left `weighted-pick` `defn-` (both callers travelled) and
+  the ninth left EIGHTEEN of nineteen private movers `defn-`, widening
+  only `days->seconds`, whose one caller `prelude` stays behind. A `run`
+  extraction would retire that widening and three of `decide`'s seven
+  defs outright, since `prelude` is their only caller -- priced here so
+  the residual ruling can weigh it. COVERAGE, disclosed: neither bracket
+  reaches a cancel decide and the gated corpora resolve no citation, so
+  the sixth's and ninth's brackets are blind to six forms each; the
+  suite's cancel family, `run-test`'s reinstatement proofs and a live
+  `-M:dev` seam check carry them. A FENCED-CITATION BACKLOG IS GROWING:
+  C1(a) forbids touching test files, and the ninth alone leaves TWELVE
+  stale `engine.clj`-by-file citations across ten test files, including
+  a NAMESPACE claim about a private mover. That backlog is the ruled repoint pass's work.
   Records:
   `.agents/session-records/2026-08-29-engine-extraction-opener.md`,
   `.agents/session-records/2026-08-30-engine-extraction-state.md`,
@@ -138,7 +131,8 @@ with them.
   `.agents/session-records/2026-08-30-engine-extraction-evolve.md`,
   `.agents/session-records/2026-08-30-engine-extraction-fold.md`,
   `.agents/session-records/2026-08-30-engine-extraction-log-index.md`,
-  `.agents/session-records/2026-08-30-engine-extraction-config-assignment.md`.
+  `.agents/session-records/2026-08-30-engine-extraction-config-assignment.md`,
+  `.agents/session-records/2026-08-30-engine-extraction-decide.md`.
 - OPEN **[event-stream-mutation]** PRIORITY 6 -- mutation moves to the
   ground-truth event stream (emitters inherit mutations); ADR-0166's test-side
   event mutations promoted to a shipped operator catalog with `check` as oracle;
