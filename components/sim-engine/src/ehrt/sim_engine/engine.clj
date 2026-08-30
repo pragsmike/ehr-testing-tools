@@ -81,6 +81,7 @@
   log -- events here are format-free."
   (:require [ehrt.sim-model.interface :as sim-model]
             [ehrt.patient-simulator.interface :as patient-simulator]
+            [ehrt.sim-engine.assignment :as assignment]
             [ehrt.sim-engine.churn :as churn]
             [ehrt.sim-engine.config :as config]
             [ehrt.sim-engine.encounters :as encounters]
@@ -2016,83 +2017,60 @@
                      :participants [{:patient-id patient-id :role :subject}]}]
            :advance 0})))))
 
-;; --- M3-adjacent: per-patient pathway assignment (roadmap.md's M3 entry,
-;; SimHospital's percentage_of_patients analogue -- the distribution layer
-;; M5's CompileTrajectory will also need, one pathway per patient) --------
+;; --- moved to ehrt.sim-engine.assignment -----------------------------------
+;;
+;; Weighted per-patient pathway and module assignment -- `weighted-pick`
+;; and the two assigners built on it -- now lives in
+;; `ehrt.sim-engine.assignment`, extracted OUTPUT-IDENTICAL as the
+;; eighth step of
+;; `roadmap.md#engine-namespace-extraction-and-apply-unification` (author
+;; ruling C1(a); the census's dependency order puts `assignment` in the
+;; LEAF rank, so it was free from the start). Nothing moved changed: the
+;; three forms there are this file's own text, and BOTH interior comment
+;; blocks travelled with the forms they introduce -- including the
+;; second's positional "the SAME shape/law as `assign-pathway` just
+;; above", which is still true over there because the order is
+;; preserved.
+;;
+;; Under C1(a) THIS namespace stays the one every existing requirer
+;; resolves against, so the two vars that were PUBLIC here keep
+;; delegating defs below, in the order they stood in. Neither is on
+;; `ehrt.sim-engine.interface`'s re-export list and census constraint 4
+;; names neither: what makes them load-bearing is `engine_test.clj`'s
+;; seven `engine/assign-pathway` and three `engine/assign-module` call
+;; sites, which C1(a) forbids touching. `run`'s own two call sites below
+;; still call both unqualified, through these.
+;;
+;; `weighted-pick` gets NO def here -- that would widen this namespace's
+;; public surface, which C1(a) does not ask for and constraint 5
+;; forbids outright. It also STAYS `defn-` over there, the first
+;; private mover of the eight extractions to do so: constraint 5's
+;; other half, that a private mover "becomes public in its new
+;; namespace", was in every earlier cluster FORCED by call sites left
+;; behind here, and `weighted-pick`'s only two callers travel with it.
+;; Nothing here needs qualifying, because nothing here calls it. Its one
+;; cross-brick prose attribution, `sim_model/persona.clj`'s docstring
+;; naming "ehrt.sim-engine.engine's own private weighted-pick", was
+;; repointed by this move -- a private mover has no def to forward a
+;; citation, the same class the fold and log-index moves paid in
+;; `check.clj` and `churn.clj` -- and that sentence cites the PRIVACY,
+;; so widening would have falsified the repoint in the same commit that
+;; made it.
 
-(defn- weighted-pick
-  "Which pool member `draw` (a uniform double in [0,1), already
-  consumed by the caller) falls into, among `pool` ({value-key :weight}
-  maps) -- cumulative-weight bucketing, falling through to the last
-  member on any floating-point-boundary edge case rather than nil.
-  `value-key` is which field names the resolved value -- :pathway for
-  sim-model/PathwaysConfig, :module-id for M5b's own
-  ehrt.patient-simulator.gmf/ModulesConfig -- the same pool shape, two resource
-  kinds."
-  [pool draw value-key]
-  (let [total (reduce + (map :weight pool))
-        target (* draw total)]
-    (loop [members pool acc 0.0]
-      (let [m (first members)
-            more (rest members)
-            acc' (+ acc (double (:weight m)))]
-        (if (or (empty? more) (< target acc'))
-          (get m value-key)
-          (recur more acc'))))))
+(def assign-pathway
+  "Resolves the pathway a `sim-model/PathwaysConfig` assigns to patient
+  ordinal `i`, ALWAYS consuming exactly one `.nextDouble`. Delegates to
+  `ehrt.sim-engine.assignment/assign-pathway`, which carries the
+  contract and the fixed-consumption argument behind it."
+  assignment/assign-pathway)
 
-(defn assign-pathway
-  "Resolves the pathway `pathways-config` (sim-model/
-  PathwaysConfig) assigns to patient ordinal `i` (0-indexed arrival
-  order): an explicit {:patient-ordinal i :pathway ...} entry when one
-  names this ordinal, otherwise a weighted pick among the config's
-  {:pathway :weight} pool entries. Today's single-:pathway `run` config
-  is this function's degenerate case, expressed as a one-entry weighted
-  pool with :weight 1 -- see `run`'s own docstring for why that case is
-  NOT wired to skip the draw below (it would perturb the very law this
-  paragraph states next).
-
-  ALWAYS consumes exactly one `.nextDouble` from `rng`, whether the
-  outcome is the explicit override or the weighted pick -- fixed RNG
-  consumption per patient, sim/ADR-0009's own rejected-alternative reasoning
-  extended here: making draw count depend on whether THIS patient
-  happens to have an explicit override would mean adding one scripted
-  override for patient N shifts every OTHER patient's downstream draws,
-  the exact surprising coupling sim/ADR-0009 already rejected for bed
-  choice (there: 'consumption changed once, for a documented reason' is
-  the accepted property; making it depend on candidate count is not)."
-  [^Random rng pathways-config i]
-  (let [draw (.nextDouble rng)
-        explicit (first (filter #(= i (:patient-ordinal %)) pathways-config))]
-    (if explicit
-      (:pathway explicit)
-      (weighted-pick (filterv :weight pathways-config) draw :pathway))))
-
-;; --- M5b: per-patient module assignment (ehrt.patient-simulator.gmf/
-;; ModulesConfig) -- the SAME shape/law as assign-pathway just above,
-;; extended to modules per components/patient-simulator/docs/gmf-interpreter.md's own Task 4 (module
-;; assignment composes with :pathways -- both just IR entering the union).
-
-(defn assign-module
-  "Resolves the module id `modules-config` (ehrt.patient-simulator.gmf/
-  ModulesConfig) assigns to patient ordinal `i` -- an explicit
-  {:patient-ordinal i :module-id ...} entry when one names this ordinal,
-  otherwise a weighted pick among the config's {:module-id :weight} pool
-  entries, or nil when NEITHER covers this ordinal (unlike
-  assign-pathway's own PathwaysConfig, a real population is expected to
-  have patients with no assigned module at all -- most people don't have
-  chronic sinusitis -- so an empty/non-covering pool is a legitimate,
-  common case, not a caller error). ALWAYS consumes exactly one
-  `.nextDouble` from `rng` regardless of outcome, the same fixed-
-  consumption law `assign-pathway` already establishes, for the
-  identical reason (sim/ADR-0009's own rejected-alternative reasoning)."
-  [^Random rng modules-config i]
-  (let [draw (.nextDouble rng)
-        explicit (first (filter #(= i (:patient-ordinal %)) modules-config))
-        pool (filterv :weight modules-config)]
-    (cond
-      explicit (:module-id explicit)
-      (seq pool) (weighted-pick pool draw :module-id)
-      :else nil)))
+(def assign-module
+  "Resolves the module id a `ehrt.patient-simulator.gmf/ModulesConfig`
+  assigns to patient ordinal `i`, or nil when neither an override nor a
+  pool covers it, ALWAYS consuming exactly one `.nextDouble`. Delegates
+  to `ehrt.sim-engine.assignment/assign-module`, which carries the
+  contract."
+  assignment/assign-module)
 
 (defn- pop-min
   "Removes and returns the earliest queue entry. Queue is a sorted-map

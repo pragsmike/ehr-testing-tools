@@ -393,7 +393,7 @@ pure — never a third RNG-consuming stage between `engine` and
 LatencyProfile → offsets`, fixed RNG consumption — exactly one draw
 per ground-truth event, draw-and-discard for a type the profile
 doesn't cover, the same law `assign-pathway`/`assign-module` already
-establish in `engine.clj`) and `emit-hl7/emit-wire` (`GT ×
+establish in `assignment.clj`) and `emit-hl7/emit-wire` (`GT ×
 reference-date × utc-offset × facility × providers × site-profile ×
 offsets → TimedWire`, no RNG at all — sampling stays out of emit,
 this section's own doctrine, unchanged) — `plan-latency`'s own

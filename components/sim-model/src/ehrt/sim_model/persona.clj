@@ -148,7 +148,7 @@
 (defn- weighted-pick
   "Which member of `pool` (a seq of maps carrying :weight) `draw` (a
   uniform double in [0,1), already consumed) falls into -- cumulative-
-  weight bucketing, the same shape ehrt.sim-engine.engine's own private
+  weight bucketing, the same shape ehrt.sim-engine.assignment's own private
   weighted-pick uses, kept as an independent small copy here rather
   than a shared dependency (persona.clj must stay engine-independent --
   the engine calls INTO persona at patient-init, so the reverse
