@@ -675,3 +675,29 @@ state-derived` must be the LAST edit before the gate. It was run, then a
 four-line roadmap correction was applied on top, and `state-derived-test`
 failed on a one-line `:onboarding` difference the renderer had already
 been asked about. Regenerate after the last hand edit, not before it.
+
+### CI at the pushed tip -- the close marker
+
+`gh run watch 33330091837 --exit-status` exits **0**; the run is
+**completed / success** in 12m57s at
+`d84363c5f977105cd618c35f3c6196cf5625fe5f`, the pushed tip
+(https://github.com/pragsmike/ehr-testing-tools/actions/runs/33330091837).
+That is the close marker under `rulings.md#R-session-verifies-ci-via-gh`,
+which the de-scaffold ruling of 2026-08-25 retired as a TAG condition
+and kept as this. No tag was paid.
+
+It also settles the RED-FIRST PAIR from the outside, and this session's
+pair is two commits wide rather than one. `76b0e56` (the sweep) reddened
+`hand-owned-asset-freshness-test`, `4a9296b` (the move) inherited that
+red because the tripwire reads `git log -1` on the source and the move
+does not touch it, and `e385c74` cleared it. All four were pushed
+together; CI -- which sees committed state and therefore CAN see what
+the local suite could not -- is green over the range containing all of
+them. `bin/post-push-verify` over `ac27ee9a..d84363c5` also reports the
+remote tip matching HEAD and every commit message in range pure ASCII.
+
+**The extraction half of P5 is complete for `engine.clj`'s nine ruled
+clusters.** What is left in this program is the `run`/residual ruling
+(section 6), `emit_hl7.clj`'s own eight clusters, and the apply-path
+unification the row's second half names.
+
