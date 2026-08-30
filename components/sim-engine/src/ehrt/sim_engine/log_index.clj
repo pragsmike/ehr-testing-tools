@@ -38,8 +38,11 @@
   The other nine were `defn-` or `^:private` -- NINE, where the census's
   section-1 rendering shows five, because that rendering drops
   `^:private` from every `def` -- so under constraint 5 they become
-  public HERE and get no def THERE. `engine.clj`'s thirteen remaining
-  call sites are `log-index/`-qualified instead, which is the treatment
+  public HERE and get no def THERE. The call sites that stayed behind
+  are `log-index/`-qualified instead -- thirteen of them then, eleven of
+  which left with the ninth extraction's `decide` cluster and the last
+  two with the tenth's `run`, so `engine.clj` holds none today -- which
+  is the treatment
   the `encounters` and `fold` moves gave their own.
 
   Two edges, both taken DIRECTLY into the namespace that owns them

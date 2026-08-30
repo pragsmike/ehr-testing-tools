@@ -91,7 +91,7 @@
             ;; The ambulatory module tail -- disjoint from the ED pool
             ;; above by explicit ordinal, per this file's own header
             ;; comment. Empty pathway: the module's own compiled content
-            ;; is the whole of this patient's queue (engine.clj's own
+            ;; is the whole of this patient's queue (run.clj's own
             ;; module-only-patient pattern).
             {:patient-ordinal 6 :pathway {:name "module-only" :steps []}}
             {:patient-ordinal 18 :pathway {:name "module-only" :steps []}}

@@ -41,18 +41,22 @@
   at its `:93`. `decide` and `person-entry` are owed to the test tree
   instead -- `engine_test.clj` alone calls `engine/decide` at ninety
   sites -- which C1(a) forbids this session to touch. The three
-  `*-stay-minutes` tables have no caller outside `engine.clj` at all:
-  their defs are load-bearing for the residue's own `prelude`, which
-  still names all three unqualified.
+  `*-stay-minutes` tables had no caller outside `engine.clj` at all:
+  their defs were load-bearing for `prelude`, which named all three
+  unqualified. The TENTH extraction moved `prelude` to
+  `ehrt.sim-engine.run`, where all three are `decide/`-qualified, so
+  those three defs now have no caller anywhere and are retirement
+  candidates for the ruled repoint pass.
 
   EIGHTEEN OF THE NINETEEN PRIVATE MOVERS STAY `defn-`, which is the
   `weighted-pick` precedent (extraction 8) applied at scale: constraint
   5's prohibition is the obligation, and its first sentence describes
   the widenings earlier clusters were FORCED into by call sites left
-  behind. Here exactly one caller stays behind, so exactly one mover
+  behind. Here exactly one caller stayed behind, so exactly one mover
   widens: `days->seconds`, which `prelude` calls for the follow-up
-  interval and now reaches as `decide/days->seconds`. Nothing else in
-  the residue calls a private mover of this cluster.
+  interval and reaches as `decide/days->seconds`. That call site is now
+  in `ehrt.sim-engine.run`, so the widening outlived the residue that
+  forced it. Nothing else calls a private mover of this cluster.
 
   Extracted OUTPUT-IDENTICAL: every form below is `engine.clj`'s own
   text, moved and not rewritten, with two prose exceptions and no code
@@ -69,9 +73,10 @@
   `gate-compiled-encounters`), `state` (`observation-value-fields`, the
   cycle breaker), plus `sim-model`, `patient-simulator` and
   `order-profiles`. Nothing here resolves in `engine.clj`: every
-  occurrence of a name that stays behind -- `run`, `prelude`, `evolve`,
+  occurrence of a name defined elsewhere -- `run`, `prelude`, `evolve`,
   `replay`, `initial-patient`, `assign-pathway`, `one-stream` -- is
-  docstring or comment prose, verified form by form.
+  docstring or comment prose, verified form by form. `run` and
+  `prelude` left too, with the tenth extraction.
 
   COVERAGE, disclosed rather than implied. `bin/regression-oracle` and
   `bin/ground-truth-bracket` exercise this namespace heavily -- it

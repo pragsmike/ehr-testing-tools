@@ -288,7 +288,7 @@
 ;; three above (there is no 'before' to diff against; `:history` is
 ;; new this session). `:history` false (every root above) is the
 ;; identity-bracketed set AR-5 argues stays byte-identical BY THE
-;; GATING ITSELF (engine.clj's own `:history` default `false` never
+;; GATING ITSELF (run.clj's own `:history` default `false` never
 ;; reaches this new code at all) -- these two are the opt-in, ordinary-
 ;; seed proof that turning it ON produces real, recordable content.
 ;; UTI: the SAME closure/population/horizon as the legacy

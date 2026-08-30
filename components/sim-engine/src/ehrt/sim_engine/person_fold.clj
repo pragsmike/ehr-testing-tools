@@ -175,7 +175,7 @@
 ;;
 ;; ADR-0173 sections 2(c) and 2(d). Nothing below mints a ground-truth
 ;; EVENT: these functions read one person's stream and answer questions
-;; `engine/prelude` asks of it -- which arrivals land unidentified, which
+;; `run/prelude` asks of it -- which arrivals land unidentified, which
 ;; person events create an encounter, and which person has a newborn.
 ;; The minting is `engine`'s, in `decide`, the same division of labour
 ;; `demographic-effect`/`wire-step` above already draw.
@@ -202,7 +202,7 @@
   is not a state a person is quietly in, it is an unidentified
   PRESENTATION -- which is what the author's \"unhoused unresponsive
   John Does\" describes. It therefore mints an arrival the same way an
-  occupational injury does. `engine/prelude` carries both rules; this
+  occupational injury does. `run/prelude` carries both rules; this
   set is what makes the second one a hook."
   #{:delivery :occupational-injury :identity-unavailable})
 

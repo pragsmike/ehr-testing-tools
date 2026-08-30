@@ -24,8 +24,10 @@
   keeps a delegating `(def evolve evolve/evolve)` there under ruling
   C1(a). That def and this one are the SAME multifn object, so every
   method registered here is dispatched by `ehrt.sim-engine.engine/
-  evolve` too, and `engine.clj`'s own `replay` and `run` call it
-  unqualified through that def exactly as they always did. The four
+  evolve` too. `replay` and `run` called it unqualified through that
+  def until the fifth and tenth extractions took them to
+  `ehrt.sim-engine.fold` and `ehrt.sim-engine.run`, where each names
+  `evolve/evolve` directly -- the same multifn, one hop shorter. The four
   helpers (`fold-condition-annotation`, `fold-conditions`,
   `resolve-appointment`, `keep-appointment`) were `defn-`, so under
   constraint 5 they become public HERE and get no def THERE.
