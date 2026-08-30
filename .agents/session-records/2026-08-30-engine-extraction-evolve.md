@@ -328,3 +328,252 @@ nearly double the phrase count.
   session's fences.
 
 **Gate for step 2: this hit list is committed before the move.**
+
+## 3. Step 3 -- the extraction (`5637cbe`)
+
+`ehrt.sim-engine.evolve`, 32 forms plus the eleven interior comment
+blocks, **469 lines** (425 moved, 44 of `ns`). No collision:
+`components/sim-engine/src/ehrt/sim_engine/` held `churn`, `encounters`,
+`engine`, `event_schema`, `interface`, `order_profiles`, `person_fold`,
+`state` and `streams`, and no `ehrt.sim-engine.evolve` was referenced
+anywhere in the tree.
+
+**The verbatim claim is proven, not asserted.** `sed -n '1954,2378p'` of
+`engine.clj` at `315263f`, diffed against `evolve.clj` lines `45-469`,
+is 425 lines against 425 differing on **exactly eight**:
+
+| difference | count | why it is required |
+|---|---:|---|
+| `(defn- X` -> `(defn X` | 4 | constraint 5 -- a private mover becomes public in its new namespace |
+| `(placeholder-demographics ...)` -> `(state/...)` | 1 | edge into `state`, taken DIRECTLY rather than through `engine.clj`'s delegating def |
+| `(demographics-from-persona ...)` -> `(state/...)` | 2 | the same |
+| `(next-appointment-ordinal ...)` -> `(streams/...)` | 1 | edge into `streams`, the same |
+
+Nothing else differs. Every bare-name mention of those three inside a
+docstring or a comment is left alone -- `:2021`, `:2071` and `:2266` at
+their old numbers -- exactly as the encounters move left its own.
+
+**ONE delegating def, and it is a multimethod, so the sharing was
+verified live rather than assumed.** In a `-M:dev` load:
+
+* `(identical? engine/evolve evolve/evolve)` is **true** -- one
+  `clojure.lang.MultiFn` object, not two;
+* `(count (methods engine/evolve))` is **27**, equal to
+  `(count (methods evolve/evolve))`, and the two dispatch-key sets are
+  `=`;
+* folding an `:admission` through `engine/evolve` returns
+  `:status :admitted` -- the method registered in the NEW namespace,
+  dispatched through the OLD var;
+* `engine.clj`'s `replay` and `run` therefore keep calling `evolve`
+  unqualified through that def, exactly as they did, and no test file
+  changed;
+* the four helpers resolve public in `ehrt.sim-engine.evolve`
+  (`[true true true true]`) and resolve to NOTHING in
+  `ehrt.sim-engine.engine` (`[false false false false]`) -- constraint 5
+  in both directions;
+* `evolve`'s alias set, read off the LOADED namespace rather than off
+  its `ns` form, is exactly `(encounters state streams)`.
+
+**The whole `engine.clj` diff is FOUR hunks and nothing else**: the
+`:require` insertion, the two repoints section 2c found owing
+(`:975`, `:1546`), and the block replaced by a banner plus the
+delegating def. **ZERO qualified call sites**, where the encounters move
+needed ten -- the only mover `engine.clj` still calls is `evolve`
+itself, and a delegating def is what it calls. A whole-symbol scan of
+the file's CODE (comments and string literals stripped) returns zero
+unqualified references to any of the four helpers.
+
+`engine.clj` is 4,234 -> **3,844 lines**, 141 forms plus `ns` -> **110**.
+The partition closes at **182** -- 181 before, plus this move's one
+delegating def -- and the per-session arithmetic holds end to end:
+157 - 16 + 11 = 152, - 14 + 13 = 151, - 10 + 0 = 141, - 32 + 1 = 110,
+and 110 + 16 + 14 + 10 + 32 = 182.
+
+`ehrt.sim-engine.interface` re-exports none of the five movers and was
+not opened, per this session's fences.
+
+### The derived count the diff does not show
+
+`docs/dev/simulator-architecture.md:92` is one line longer after the
+repoint, and that file is a `:sim` reading-set member: the set moved
+**1339 -> 1340** lines, headroom **66 -> 65** against an unchanged 1405
+budget, so `.agents/state-derived.md` is regenerated in the same commit.
+**Found by the suite, not by inspection** --
+`ehrt.docs-tooling.state-derived-test` went red on the first full run of
+this session and was the ONLY failure in it. That is the standing
+`feedback_repo_gate_ordering` lesson met head-on: a docs edit's
+consequence was invisible in the diff and only a whole-suite run saw it.
+
+### Gates
+
+* **Suite.** `make test` exit 0, zero failures and zero errors:
+  **408 namespaces, 4,751 tests, 24,117 assertions**, run over the tree
+  this session pushes -- extraction, tripwire bump, record, prompt
+  archive, roadmap row and regenerated docs all present, so every
+  derived-count gate saw its final input. Namespaces and tests are
+  IDENTICAL to the encounters extraction's own recorded run (408 /
+  4,751); assertions are **+2** against its 24,115, and the +2 is
+  explained to the assertion rather than waved at.
+  `ehrt.docs-tooling.io-vocabulary-lint-test` is a `doseq` over every
+  production source file with one `is` per file plus a population guard;
+  it reported **125** assertions in EACH of the two projects it runs in,
+  against **124** in the encounters session, and the tree gained one
+  file. One new file is +1 twice. The same benign class the streams,
+  state and encounters sessions each recorded, and the class this
+  session's own prompt named in advance. Execution time 16 min 14 s, on
+  an UNSAMPLED host -- reported as the run's own line, not offered as a
+  timing claim.
+
+  **The FIRST run of this session was RED**, and the disclosure matters
+  more than the green one: `ehrt.docs-tooling.state-derived-test` failed
+  on a stale `.agents/state-derived.md`, because the
+  `simulator-architecture.md` repoint added one line to a `:sim`
+  reading-set member. One failure in the whole suite, in a gate no part
+  of the refactor touches, from a docs edit of two lines.
+* **`bin/regression-oracle 315263f 5637cbe`** -- the script's own
+  output: `IDENTICAL: every root's digest matches between 315263f and
+  5637cbe`, over **41 roots**, `declared-digest-change: no (soundness:
+  yes outside the leading docstring)`. No declaration was owed and none
+  was made.
+* **`clojure -M:poly check`** OK. Because `poly check` does not compile
+  -- a standing finding of the arc-4 sweeps, not new here -- the real
+  check is the `-M:dev` load above, which resolved and dispatched
+  through both vars.
+
+## 4. Step 4 -- the ground-truth bracket
+
+**`bin/ground-truth-bracket 315263f 5637cbe`** -- `IDENTICAL: every
+digested root's :ground-truth matches between 315263f and 5637cbe (38
+roots)`, coverage `38 roots carry :ground-truth and are digested; 3
+skipped (no such key): appendicitis.edn, ear-infections.edn,
+sore-throat.edn`; `declared-digest-change: no`.
+
+Both brackets IDENTICAL with no declaration, for the **fourth**
+consecutive extraction. It is what ruling S1(a)'s equivalence proof asks
+for in place of red-before-green, and taking the clusters in the
+census's dependency order is what keeps earning it.
+
+## 5. Step 5 -- the tripwire, the suite at the tip, and what the next session takes
+
+### The tripwire, and why this extraction is a RED-FIRST commit
+
+`docs/dev/simulator-architecture.md` is `gt-emitters.svg`'s `:source` in
+`components/docs-tooling/resources/docs-tooling/hand-owned-assets.edn`,
+and `ehrt.docs-tooling.hand-owned-asset-freshness-test` claim (d)
+compares `:reviewed-at` against `git log -1` on the SOURCE. No commit
+can carry the sha that names itself, so `5637cbe` is a RED-FIRST commit
+under `rulings.md#R-red-pushed-with-green` and `f156ff9` is its
+immediate successor, pushed with it and never alone.
+
+The review was done, not skipped: the source diff is ONE hunk, in
+section 2; section 4's own EQUATION BLOCK -- `walk`, `engine`,
+`emitH`/`emitF`, `replay`, `check`, which is what this row's trigger
+names -- is byte-identical across it, and `replay` is still
+`engine.clj`'s own `defn`. Both brackets IDENTICAL is the positive
+evidence that no arrow on the drawing moved. `two-clocks.svg` cites the
+same source but is `:verdict :stale`, and claim (d) skips non-`:fresh`
+rows, so it owed nothing.
+
+**This is the FIRST of the four engine extractions to fire this
+tripwire.** The three before it could each record that no moving name
+occurred in any of the four registry sources. This one could not,
+because `defmulti evolve` was named there by DEFINING FORM -- which is
+register row L2-17's own class, the one the de-scaffold session closed
+by converting twelve stale `engine.clj:NNN` citations into `defn` names.
+A `defn`-name citation is more durable than a line citation and still
+not durable against an extraction. Predicted, not discovered: the
+registry's sources were read during the pre-move sweep, at `315263f`,
+before the doc was touched.
+
+### The DAG, and what the next session takes
+
+**No back-edge into the remaining `engine.clj` from `evolve`. Confirmed
+two ways.** Structurally: `evolve.clj`'s `ns` requires exactly
+`encounters`, `state` and `streams`, read off the LOADED namespace.
+Mechanically: the pre-move whole-symbol scan against all 82 of
+`engine.clj`'s top-level names returned eight, five of them the
+cluster's own and three delegating defs whose definitions live in
+already-extracted namespaces.
+
+So the census's remaining order is unchanged: `config` and `assignment`
+are the last leaves, then **`fold`** (3 forms -- `replay`,
+`update-beds`, `bed-correction-event-types` -- whose `replay` call into
+`evolve` is now a call into an extracted namespace), then `log-index`,
+then `decide`, with `run` last as the facade's residue.
+Application-path unification stays last, against section 4 of the
+census, and is also `roadmap.md#event-stream-mutation`'s injection
+point.
+
+## 6. Census corrections, one sentence each
+
+1. **`evolve` has 27 defmethods, not 28**, and the census's own section-1
+   list agrees at 27 while its SUMMARY TABLE says "27 methods plus THREE
+   private fold helpers" and then lists four -- 1 + 27 + 4 = 32 is the
+   census's own form count, so the table's "three" is the error, and
+   this session's prompt inherited the miscount from somewhere other
+   than the list.
+2. **The cluster's forms are separated by ELEVEN comment blocks, one of
+   which -- `1991-1996` -- the PREVIOUS EXTRACTION WROTE**, and it moves
+   with the cluster because its last sentence ("The methods below call
+   them `encounters/`-qualified") is a positional claim about the 27
+   methods; the comment-block recipe has now fired in three consecutive
+   extractions, on a block a docstring cited, a block nothing cited, and
+   a block a prior mover left behind, which retires any reading of it as
+   an anecdote.
+3. **`defmulti evolve` is PUBLIC and is the cluster's only public mover**,
+   so this extraction owes exactly one delegating def -- and because a
+   `def` of a multimethod shares the one multifn object, that single def
+   carries all 27 methods across the seam, which no prior extraction's
+   delegating def had to do.
+4. **Four positional `below`s inside the moving text were ALREADY FALSE
+   where they stood** (`:2223` `EmitState`, `:2261` `keep-appointment`,
+   `:2327` `:result-available`, `:2348` `decide`), each naming something
+   ABOVE it or nothing in the file at all; moved verbatim and named here
+   rather than corrected inside a commit whose whole claim is that the
+   moved text is unchanged -- the encounters session's own disposition
+   for "These three are the whole of the encounter's fold".
+5. **The census's sizes are now stale by THREE extractions, as designed**:
+   `engine.clj` is 4,234 lines / 141 forms plus `ns` at this session's
+   start against section 1's 4,884 / 157, and 3,844 / 110 at its end.
+
+## 7. Disclosures
+
+* **A premise mismatch in this session's own prompt, fixed forward with
+  disclosure rather than stopped on.** The prompt's "its 28 defmethods"
+  does not hold; there are 27. Under
+  `rulings.md#R-stop-only-on-two-defensible-readings` STOP-AND-REPORT
+  binds where two readings are both defensible; a form count is
+  mechanical, and the cluster is enumerated form by form in section 1.
+  The consequence is a SMALLER cluster than the prompt anticipated, not
+  a larger one. The prompt's other two hedges were both right: it asked
+  to be corrected from the tree about the delegating defs (one, the
+  defmulti, exactly as it guessed), and it asked for the multifn
+  delegation to be verified live rather than assumed, which section 3
+  does.
+* **The census's two blocks did become contiguous**, as the prompt
+  anticipated -- with the six-line banner of correction 2 standing in
+  the seam.
+* No fresh clone; the existing clone was at `54551d7`, clean, and equal
+  to `origin/main`. Every span was re-derived, by paren balance.
+* `make test` runs `poly test :all skip:integration`, so the integration
+  tier did not execute here. That is the standing W-1 disclosure, not
+  new to this session.
+* **No timing figure is offered.** The Windows side was not sampled
+  before either suite run, and `reference_measurement_host_contamination`'s
+  rule is that an unsampled host cannot carry a timing claim.
+* Three pieces of text that did not move were edited, all three because
+  the move makes them false, and all three dispositioned in section 2c
+  BEFORE the move rather than discovered during it: `engine.clj:975`'s
+  and `:1546`'s "below", and `docs/dev/simulator-architecture.md:92`'s
+  "engine.clj's `defmulti evolve`". The streams, state and encounters
+  sessions each set this precedent for the first two; the third is new.
+* `.agents/state-derived.md` still records the `:docs` reading set at
+  787 lines against a 785 budget, headroom **-2**. PRE-EXISTING, carried
+  forward from the streams session through the state and encounters
+  sessions, untouched by anything here, and named again rather than left
+  to be rediscovered. The `:sim` set moved 1339 -> 1340 in this session
+  and stays 65 under its own budget.
+* `make state-derived` was run for the generated
+  `INDEX.md`/`state-derived.md` rows. `make traces` was not run and no
+  trace moved: a namespace split that both brackets call IDENTICAL
+  cannot move a derived capture.
