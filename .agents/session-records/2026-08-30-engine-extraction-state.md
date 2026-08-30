@@ -155,3 +155,159 @@ re-exports none of the fourteen. All 99 test-side uses of a moving var
 (checked, including the `#'engine/` var-quote form).
 
 **Gate for step 2: this hit list is committed before the move.**
+
+## 3. Step 3 -- the extraction (`efe2b26`)
+
+`ehrt.sim-engine.state`. No collision: `components/sim-engine/src/ehrt/
+sim_engine/` held `churn`, `engine`, `event_schema`, `interface`,
+`order_profiles`, `person_fold` and `streams`, and no `state` of any
+kind. Fourteen forms plus the header comment block.
+
+**The verbatim claim is proven, not asserted.** `sed -n '93,466p'` of
+`engine.clj` at `6fb698a` diffed against `state.clj` lines 37-410 is
+**IDENTICAL, 374 lines**. The cycle breaker diffed against its own
+former span differs on exactly one line -- `(defn- ` becomes `(defn ` --
+which is constraint 5's required widening and nothing else.
+
+**Thirteen delegating defs** in `engine.clj`, in the order the
+originals stood in, each a short summary plus "Delegates to
+`ehrt.sim-engine.state/<var>`, which carries the contract".
+`interface.clj` re-exports none of the thirteen and was not opened.
+No test file changed.
+
+**`observation-value-fields` gets no delegating def**, per constraint
+5, and is `state/`-qualified at its three sites. Verified live rather
+than assumed: `(resolve 'ehrt.sim-engine.engine/observation-value-
+fields)` returns `nil`, so the engine's public surface is exactly what
+it was.
+
+The whole `engine.clj` diff is FOUR hunks and nothing else: the
+`:require` insertion, the moved block replaced by the banner and the
+thirteen defs, the cycle breaker's deletion plus its one qualified site,
+and the two remaining qualified sites with the repointed comment
+between them. `engine.clj` is 4,697 -> 4,419 lines.
+
+### Gates
+
+* **Suite.** `make test` exit 0, zero failures and zero errors in every
+  namespace: **408 namespaces, 4,751 tests, 24,113 assertions**.
+  Namespaces and tests are IDENTICAL to the streams extraction's own
+  recorded run (408 / 4,751); assertions are +2 against its 24,111, and
+  the +2 is explained to the assertion rather than waved at.
+  `ehrt.docs-tooling.io-vocabulary-lint-test` is a `doseq` over every
+  source file with one `is` per file (`io_vocabulary_lint_test.clj:94`,
+  the `is` at `:98`) plus a population guard at `:90`; it reported
+  3 tests / 123 assertions in EACH of the two projects it runs in, and
+  the tree gained one file. One new file is +1 twice. This is the same
+  benign class the streams session recorded.
+* **`bin/regression-oracle 6fb698a efe2b26`** -- the script's own
+  output: `IDENTICAL: every root's digest matches between 6fb698a and
+  efe2b26`, `declared-digest-change: no (soundness: yes outside the
+  leading docstring)`. No declaration was owed and none was made.
+* **`poly check`** OK. `clojure -M:dev` loads `ehrt.sim-engine.state`,
+  `ehrt.sim-engine.engine` and `ehrt.sim-engine.interface`, and
+  evaluates `initial-patient`, `valid-patient?`,
+  `demographics-from-persona` and `PatientState` through the delegating
+  defs -- the last by value identity against `state/PatientState`.
+  (`poly check` does not compile, so the load is the real check; that
+  is a standing finding of the arc-4 sweeps, not new here.)
+
+## 4. Step 4 -- the ground-truth bracket
+
+**`bin/ground-truth-bracket 6fb698a efe2b26`** -- `IDENTICAL: every
+digested root's :ground-truth matches between 6fb698a and efe2b26 (38
+roots)`, coverage `38 roots carry :ground-truth and are digested; 3
+skipped (no such key): appendicitis.edn, ear-infections.edn,
+sore-throat.edn`; `declared-digest-change: no`.
+
+Both brackets IDENTICAL with no declaration is the strongest shape a
+pure-refactor commit can report, and it is what ruling S1(a)'s
+equivalence proof asks for in place of red-before-green.
+
+**CI.** `gh run view 33302680710` -- workflow `test`, head
+`efe2b26c`, completed, conclusion **success**: the extraction, green on
+CI's own runner and not only on this host. `bin/post-push-verify`
+reported checks 1 and 2 OK over the range `867e73af..efe2b26c` (remote
+tip matches HEAD; every commit message pure ASCII) and DISCLOSED check
+3 as reported-not-awaited per AR-CI-4 -- it was awaited here instead,
+above.
+
+## 5. Step 5 -- the DAG, and what the next session takes
+
+**The census DAG has NO back-edge into the remaining `engine.clj` from
+`state`. Confirmed, two ways.** Structurally: `state.clj`'s `ns` form
+requires `ehrt.sim-model.interface`, `malli.core` and `malli.util`, and
+no `sim-engine` namespace at all -- the same shape that made `streams`
+provably a leaf. Mechanically: a whole-symbol scan of `state.clj`'s
+body (line comments and string literals stripped) for every one of the
+**79** distinct top-level names still defined in `engine.clj` that
+`state` does not itself define returns **NONE**. (79 and not 151: the
+file's 151 forms carry only 92 distinct names, because its 32 `decide`
+methods share one name and its 27 `evolve` methods another, and 13 of
+those 92 are the delegating defs `state` also defines.)
+
+So `state` joins `streams` as a leaf, and the census's §3a order holds
+unchanged for the rest: `config` and `assignment` are the remaining
+leaves, then `encounters`, then `evolve`, then `fold`, then
+`log-index`, then `decide`, with `run` last as the facade's residue.
+The natural next cluster is `encounters` (10 forms; its only outgoing
+edge is one call into `streams`, which is already extracted).
+
+Application-path unification stays last, against §4 of the census, and
+is also `roadmap.md#event-stream-mutation`'s injection point.
+
+## 6. Census corrections, one sentence each
+
+1. **The thirteen `state` forms are CONTIGUOUS** (`103-466` at this
+   sha), which §1's span list does not say, and moving them is
+   therefore one cut rather than thirteen.
+2. **The cluster includes a COMMENT BLOCK, and §1 cannot see it**: the
+   nine-line `M6 Task 1` header above `ConditionRecord` (`93-101`) is
+   cited by position from inside `PatientState`'s own docstring, so it
+   had to move with the forms -- a form-span census enumerates forms,
+   and the gap between two forms is invisible to it, which is the same
+   class of blind spot §5 item 7 already names for cross-file docstring
+   pins.
+3. **`observation-value-fields`' docstring is wrong about its own
+   callers, and was wrong before this session**: it says "shared by
+   `decide :observation` and `decide :diagnostic-report`", but `decide
+   :diagnostic-report` passes `:observations` through whole and never
+   calls it -- the live sharers are `decide :observation` and `evolve
+   :observation`/`:diagnostic-report`, exactly the three the prompt
+   named. Moved verbatim and named here rather than corrected inside a
+   commit whose whole claim is that the moved text is unchanged.
+4. **Constraint 6's recipe works, and its yield is mostly noise**: 1,861
+   phrases over 1,715 files returned hits in about thirty files, and
+   every one was a sibling restating the same ADR language rather than a
+   citation, so the cost of the recipe is the dispositioning, not the
+   grep. It found ZERO path-pinned citations this time -- which is a
+   checked zero, corroborated by a second, independently written grep
+   implementation, not an absence of looking.
+5. **The census's sizes are stale by one extraction, as designed**:
+   `engine.clj` is 4,697 lines / 152 forms plus `ns` here against §1's
+   4,884 / 157, which is exactly the streams extraction's -16 +11, and
+   152 + `streams`' own 16 = 168 = 157 + the 11 defs it left behind.
+   The partition still closes; a later session should re-derive rather
+   than transcribe, as this one did.
+
+## 7. Disclosures
+
+* No fresh clone; the existing clone was at `867e73a`, clean, and equal
+  to `origin/main` after a `git fetch`. Every span was re-derived.
+* `make test` runs `poly test :all skip:integration`, so the
+  integration tier did not execute here. That is the standing W-1
+  disclosure, not new to this session.
+* The suite's 15m51s execution time (16m30s wall) is NOT offered as a
+  measurement: the Windows side was not sampled before the run, and
+  `reference_measurement_host_contamination`'s own rule is that an
+  unsampled host cannot carry a timing claim. It is recorded only as
+  evidence the run completed.
+* One comment inside `engine.clj` was corrected rather than left --
+  `:2777`'s "this namespace's own header comment above `PatientState`",
+  which the move makes false. Disclosed on the streams session's
+  precedent; it is the one edit in this commit to text that did not
+  move.
+* `.agents/state-derived.md` still records the `:docs` reading set at
+  787 lines against a 785 budget, headroom -2. PRE-EXISTING, carried
+  forward from the streams session's own disclosure, untouched by
+  anything here, and named again rather than left to be rediscovered.
