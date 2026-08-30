@@ -594,3 +594,25 @@ clusters, so the sites reconverge when they land.
   section 4: `IDENTICAL` across 41 roots does not witness the cancel
   family, `reinstated-state`'s `replay` fallback, or `sim-check` at
   all. The suite is what covers those.
+
+## 8. Close marker
+
+`gh run view 33314907785` -- workflow `test`, head `28d3706d`,
+completed, conclusion **success**, job `test` in 7m12s. That is this
+session's CLOSE MARKER: CI green at the pushed tip, which under the
+de-scaffold ruling of 2026-08-25 is what marks a landing rather than a
+tag. (Its two annotations are the standing Node-20 and setup-java
+deprecation warnings the repository's workflow carries on every run,
+not findings of this session.)
+
+`bin/post-push-verify 5b6ab85 28d3706` reported checks 1 and 2 OK
+(remote tip matches HEAD; every commit message in range pure ASCII) and
+DISCLOSED check 3 as reported-not-awaited per AR-CI-4 -- it was awaited
+here instead.
+
+Four commits: `c3c414e` the pre-move sweep, `ff26bb6` the extraction,
+`4da2f0c` the tripwire successor that `ff26bb6`'s RED-FIRST status
+owes, and `28d3706` the record, the prompt archive and the roadmap row.
+All pushed together. No tag, no ADR -- this is a refactor under an
+existing roadmap row and an existing program ruling, and the
+de-scaffold ruling gives process work neither.
