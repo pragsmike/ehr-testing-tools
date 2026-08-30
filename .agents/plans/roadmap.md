@@ -62,7 +62,7 @@ with them.
   `.agents/plans/engine-extraction-census.md` -- every top-level form of both
   files assigned to exactly one proposed namespace, the cross-seam edges, and
   the apply-path inventory that also serves
-  `roadmap.md#event-stream-mutation`. FOUR clusters have landed, each in
+  `roadmap.md#event-stream-mutation`. FIVE clusters have landed, each in
   its own session, in the census's dependency order and each with both
   `bin/regression-oracle` and `bin/ground-truth-bracket` IDENTICAL with no
   declaration: `ehrt.sim-engine.streams` (16 forms, 11 delegating defs),
@@ -70,25 +70,35 @@ with them.
   breaker `observation-value-fields` moved down out of `decide` so
   `evolve` and `fold` are now unblocked), `ehrt.sim-engine.encounters`
   (10 forms, ZERO delegating defs -- all ten movers were private, so
-  C1(a)'s obligation did not arise and constraint 5 forbade one), and
+  C1(a)'s obligation did not arise and constraint 5 forbade one),
   `ehrt.sim-engine.evolve` (32 forms, ONE delegating def -- the
   `defmulti`, the cluster's only public mover; a `def` of a multimethod
   shares the one multifn object, verified live, so that single def
-  carries all 27 methods across the seam and `replay`/`run` call
-  `evolve` unqualified exactly as they did). `engine.clj` is 3,844 lines
-  / 110 forms plus `ns`; the partition closes at 182 forms across the
-  five namespaces. SIX clusters remain -- `config` and `assignment` are
-  the last leaves, then `fold`, `log-index`, `decide`, and `run` as the
-  facade's residue -- followed by the apply-path unification this row's
-  second half names. The evolve session is also the FIRST to fire the
-  hand-owned-asset tripwire: `docs/dev/simulator-architecture.md` named
-  `defmulti evolve` by defining form, so the extraction is a RED-FIRST
-  commit whose successor bumps `gt-emitters.svg`'s `:reviewed-at`.
+  carries all 27 methods across the seam and `run` calls `evolve`
+  unqualified exactly as it did), and `ehrt.sim-engine.fold` (3 forms,
+  ONE delegating def -- `replay`, whose def is load-bearing rather than
+  ceremonial because `interface.clj:89` re-exports the brick's `replay`
+  through it; the FIRST move to relocate an APPLY SITE, census section
+  4c, whose six-concern divergence from `run`'s in-loop fold is
+  unchanged here and stays payable at unification). `engine.clj` is
+  3,794 lines / 108 forms plus `ns`; the partition closes at 183 forms
+  across the six namespaces. FIVE clusters remain -- `config` and
+  `assignment` are the last leaves, then `log-index`, `decide`, and
+  `run` as the facade's residue -- followed by the apply-path unification this row's
+  second half names. The evolve and fold sessions BOTH fire the
+  hand-owned-asset tripwire, for one reason:
+  `docs/dev/simulator-architecture.md` names engine forms by DEFINING
+  FORM -- `defmulti evolve` for the fourth, `defn replay` twice for the
+  fifth -- so each extraction is a RED-FIRST commit whose successor
+  bumps `gt-emitters.svg`'s `:reviewed-at`. The fifth predicted it from
+  the fourth's record rather than catching it, which makes reading that
+  registry's four sources during the pre-move sweep part of the recipe.
   Records:
   `.agents/session-records/2026-08-29-engine-extraction-opener.md`,
   `.agents/session-records/2026-08-30-engine-extraction-state.md`,
   `.agents/session-records/2026-08-30-engine-extraction-encounters.md`,
-  `.agents/session-records/2026-08-30-engine-extraction-evolve.md`.
+  `.agents/session-records/2026-08-30-engine-extraction-evolve.md`,
+  `.agents/session-records/2026-08-30-engine-extraction-fold.md`.
 - OPEN **[event-stream-mutation]** PRIORITY 6 -- mutation moves to the
   ground-truth event stream (emitters inherit mutations); ADR-0166's test-side
   event mutations promoted to a shipped operator catalog with `check` as oracle;
