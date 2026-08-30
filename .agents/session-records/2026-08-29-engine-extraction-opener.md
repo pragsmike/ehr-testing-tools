@@ -178,6 +178,9 @@ equivalence proof asks for in place of red-before-green.
   completed, conclusion **success** (the census). `gh run view
   33289768550` -- workflow `test`, head `16fe24cd`, completed,
   conclusion **success** (the extraction).
+  `gh run view 33291238933` -- workflow `test`, head `03c735b9`,
+  completed, conclusion **success** (this record's own commit). That
+  last one is the CLOSE MARKER: CI green at the pushed tip.
 
 ## 3. What the next session takes
 
