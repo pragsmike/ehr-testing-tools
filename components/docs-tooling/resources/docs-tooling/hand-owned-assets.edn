@@ -30,10 +30,39 @@
 [{:asset "docs/manual/assets/gt-emitters.svg"
   :source "docs/dev/simulator-architecture.md"
   :trigger "regenerate by hand if simulator-architecture.md section 4's own equations change"
-  :reviewed-at "75cde83f"
+  :reviewed-at "5637cbe5"
   :verdict :fresh
   :note
-  "Reviewed 2026-08-25 (arc 1b, ADR-0171's stream-partition migration).
+  "Reviewed 2026-08-30 (engine extraction 4 of N, the `evolve` cluster).
+   simulator-architecture.md moved at 5637cbe5, ONE hunk, and it lands
+   in section 2, not section 4. The `evolve` bullet said the defmulti
+   was `engine.clj`'s; the extraction moved it to
+   `ehrt.sim-engine.evolve`, so the line now names `evolve.clj` and adds
+   that `engine.clj` keeps a delegating `def` of the same multifn.
+   Section 4's EQUATION BLOCK -- `walk`, `engine`, `emitH`/`emitF`,
+   `replay`, `check` -- which is what this row's trigger names, is
+   byte-identical across the diff, and `replay` is still `engine.clj`'s
+   own `defn`. This asset depicts only GT -> emitH/emitF ->
+   ER7*/FHIR*, and an intra-brick namespace split moves no arrow on it:
+   `bin/regression-oracle` and `bin/ground-truth-bracket` both report
+   IDENTICAL across the extraction, with no declaration. Not stale.
+
+   PREDICTED, NOT DISCOVERED, and this is the FIRST of the four engine
+   extractions to fire this tripwire at all. The three before it could
+   record that no moving name occurred in any of the four sources;
+   this one could not, because `defmulti evolve` was named there by
+   defining form -- which is register row L2-17's own class, the one
+   the de-scaffold session closed by converting twelve stale
+   `engine.clj:NNN` citations into `defn` names. The registry's sources
+   were read during the cluster's pre-move citation sweep, BEFORE the
+   doc was touched, and this row was written as the extraction's
+   immediate successor commit: the tripwire reads `git log -1` on the
+   SOURCE, so no commit can carry the sha that names itself, and the
+   extraction is therefore a RED-FIRST commit under
+   `rulings.md#R-red-pushed-with-green` -- pushed with this one, never
+   alone.
+
+   Prior review, 2026-08-25 (arc 1b, ADR-0171's stream-partition migration), kept.
    simulator-architecture.md moved at 75cde83f, which re-stated the
    RNG-path prose for the five-family stream partition. TWO hunks, and
    both land OUTSIDE section 4: @@ -77,11 in section 2 (decide's own
