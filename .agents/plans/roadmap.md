@@ -88,12 +88,18 @@ with them.
   `engine_test.clj`'s ten call sites, which C1(a) forbids touching; the
   SECOND move to relocate an APPLY SITE, census section 4d's
   `reinstated-state` replay fallback, moved verbatim and still payable
-  at unification). `engine.clj` is
-  3,571 lines / 99 forms plus `ns`; the partition closes at 184 forms
-  across the seven namespaces. FOUR clusters remain -- `config` and
-  `assignment` are the last leaves, then `decide` and
-  `run` as the facade's residue -- followed by the apply-path unification this row's
-  second half names. The evolve and fold sessions BOTH fire the
+  at unification), and -- in ONE session, the first of the program to
+  land two namespaces -- `ehrt.sim-engine.config` (5 forms, FIVE
+  delegating defs, and the first mover whose def is owed to
+  `interface.clj` AND to test files independently; zero widening lines,
+  because all five vars were already public) and
+  `ehrt.sim-engine.assignment` (3 forms, TWO delegating defs, both owed
+  to `engine_test.clj` alone). `engine.clj` is
+  3,469 lines / 98 forms plus `ns`; the partition closes at 191 forms
+  across the nine namespaces, which is 181 plus the evolve, fold,
+  log-index, config and assignment moves' ten delegating defs. TWO
+  clusters remain -- `decide`, then `run` as the facade's residue --
+  followed by the apply-path unification this row's second half names. The evolve and fold sessions BOTH fire the
   hand-owned-asset tripwire, for one reason:
   `docs/dev/simulator-architecture.md` names engine forms by DEFINING
   FORM -- `defmulti evolve` for the fourth, `defn replay` twice for the
@@ -114,14 +120,25 @@ with them.
   the gated corpora resolve no citation, so both brackets are blind to
   six of that cluster's ten forms; the suite's cancel family, run-test's
   two post-hoc equivalence proofs and a live `-M:dev` resolution check
-  carry them instead.
+  carry them instead. THE SEVENTH fires the tripwire again but its
+  repoint is in section 5, not the section 4 the trigger names, and its
+  local suite was GREEN over the tree carrying it -- the test reads `git
+  log -1` on the SOURCE, so a green pre-push suite is NOT evidence the
+  row will stay green. Its second predicted fire (`state-derived`) did
+  not happen: a line-neutral repoint moves no budget. It also reads
+  constraint 5 the other way -- `weighted-pick` is the first private
+  mover to stay `defn-`, the widening half having been FORCED in every
+  earlier cluster by call sites left behind -- and caught `poly check`
+  returning OK over a namespace that did not READ, the third
+  consecutive session to catch it missing a broken file here.
   Records:
   `.agents/session-records/2026-08-29-engine-extraction-opener.md`,
   `.agents/session-records/2026-08-30-engine-extraction-state.md`,
   `.agents/session-records/2026-08-30-engine-extraction-encounters.md`,
   `.agents/session-records/2026-08-30-engine-extraction-evolve.md`,
   `.agents/session-records/2026-08-30-engine-extraction-fold.md`,
-  `.agents/session-records/2026-08-30-engine-extraction-log-index.md`.
+  `.agents/session-records/2026-08-30-engine-extraction-log-index.md`,
+  `.agents/session-records/2026-08-30-engine-extraction-config-assignment.md`.
 - OPEN **[event-stream-mutation]** PRIORITY 6 -- mutation moves to the
   ground-truth event stream (emitters inherit mutations); ADR-0166's test-side
   event mutations promoted to a shipped operator catalog with `check` as oracle;

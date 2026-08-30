@@ -456,3 +456,314 @@ nor any file it touches is a registry source or a set member.
 which is why they are landed in that order, config first, so the
 red-first pair is the last thing on the branch and the pushed tip is
 green whatever else happens.
+
+## 3. Step 3 -- `ehrt.sim-engine.config` (`bc595a5`)
+
+Five forms, one contiguous region, `2104-2246`. **`config.clj`'s body
+diffs against `engine.clj`'s own text at `b177982` as ZERO differing
+lines** -- and not one widening line was needed, which no earlier
+extraction could say: all five vars were already public, so constraint
+5 never arose.
+
+Five delegating defs, and what makes each load-bearing differs enough
+to be worth writing down rather than summarising:
+
+* `config-keys` -- `interface.clj:46`, which census constraint 4 pins,
+  and through it `identifiers.clj:148`'s `(select-keys opts
+  engine/config-keys)` plus `charges_run_test`, `siu_run_test`,
+  `ladders_run_test` and `chatter_run_test`, all four of which alias the
+  INTERFACE. AND, independently, six direct call sites against
+  `ehrt.sim-engine.engine`: `engine_test.clj:1557`,
+  `run_test.clj:99/:172/:284`, `emit_hl7_test.clj:1031`,
+  `persons_test.clj:90`. **The first mover of the program whose def is
+  owed to `interface.clj` and to test files independently** -- `fold`'s
+  was interface-only, `log-index`'s test-only.
+* `valid-persons?` -- `interface.clj:82`, and through it
+  `persons_run_test.clj:87`.
+* `valid-scheduling?` -- `scheduling_test.clj:450` and `:452`, and
+  nothing else. The program's SECOND test-only def.
+* `Persons`, `Scheduling` -- nothing at all, as section 1 records.
+
+### Gates
+
+* **`make test` MAKE_EXIT=0**, 16 min 22 s wall on an UNSAMPLED host --
+  this run's own line, not a timing claim.
+
+  **Namespaces 408 and tests 4,751 are IDENTICAL** to the log-index
+  extraction's own recorded run. Assertions are **24,123**, +2 against
+  its 24,121, explained to the assertion:
+  `ehrt.docs-tooling.io-vocabulary-lint-test` reported **127** in each
+  of the two projects it runs in there and **128** in each here, and the
+  tree gained one production file. One new file is +1 twice -- the
+  benign class the six prior extractions each recorded and this
+  session's prompt named in advance.
+* **`clojure -M:poly check`** OK.
+* **`bin/regression-oracle 6a93136 bc595a5`**: `IDENTICAL: every root's
+  digest matches`, `declared-digest-change: no`. That script's own
+  output, per `rulings.md#R-oracle-script-contract`.
+* **Live `-M:dev` resolution check.** All five vars resolve and are
+  public in the new namespace; each delegating def is `identical?` to
+  the var it delegates to; `interface/config-keys` is `identical?` to
+  `engine/config-keys` at 19 keys; and both guard predicates were driven
+  down BOTH branches -- a well-formed value, a malformed `:persons`, and
+  a `:scheduling` whose bands sum past 1.
+
+### One thing found and deliberately not fixed
+
+`malli.util` was ALREADY an unused `:require` in `engine.clj` at
+`b177982` -- `grep -c 'mu/'` returns 0 there. This move neither caused
+it nor removes it. Named because a reader of the extraction diff will
+notice `mu` surviving a commit that took the last malli-heavy forms out,
+and might reasonably suspect the move dropped a use.
+
+## 4. Step 4 -- `ehrt.sim-engine.assignment` (`b8b9acb`)
+
+Three forms, one contiguous region, `2018-2094` at `b177982` (`2019-
+2095` after the config commit's one added `:require` line -- the region
+was re-located by CONTENT, never by the remembered number, and
+re-diffed before the cut). **`assignment.clj`'s body diffs against
+`engine.clj`'s own text as ZERO differing lines.**
+
+**The travelling positional claim survives unedited**, the first of the
+eight extractions for which that is true. `assign-module`'s M5b banner
+says it has "the SAME shape/law as `assign-pathway` just above", and
+`assign-pathway` is still directly above it. The `state` extraction had
+to move a header block to keep such a claim true; `log-index` had to
+RESTATE one, because the form it pointed at was not coming along.
+
+### `weighted-pick` stays `defn-` -- constraint 5 read carefully
+
+**This is the session's sharpest reading, and it went the other way
+from the six extractions before it.** Census constraint 5 reads:
+
+> **A private var that moves becomes public in its new namespace.**
+> `rand-int-in`, `uniform-choice`, ... are all `defn-`/`^:private`
+> today. They must NOT gain a delegating def in `engine.clj` -- that
+> would widen the engine's public surface, which C1(a) does not ask for
+> and `poly check` would not catch.
+
+The PROHIBITION is the obligation, and it is honoured: `engine/
+weighted-pick` does not resolve, asserted live under `-M:dev` rather
+than inferred from the diff. The first sentence is a DESCRIPTION of
+what happened in the streams cluster, and in every cluster since it was
+FORCED by call sites left behind -- `streams`' four private movers,
+`state`'s cycle breaker, `encounters`' ten, `log-index`'s nine all had
+to stay reachable FROM `engine.clj`, so widening was the only way to
+move them at all. `weighted-pick`'s only two callers are
+`assign-pathway` and `assign-module`, which travel with it.
+
+Two things then decide it. Widening would enlarge the new namespace's
+public surface for no caller. And it would have **falsified this
+commit's own repoint inside the commit that made it**: `sim_model/
+persona.clj`'s docstring cites this function's PRIVACY -- "the same
+shape `ehrt.sim-engine.assignment`'s own private `weighted-pick` uses,
+kept as an independent small copy here" -- to explain why persona must
+not depend on the engine. A public `weighted-pick` makes that sentence
+wrong. Recorded at length because a later session reading only the
+first line of constraint 5 would widen it and never notice.
+
+### Gates
+
+* **`make test` MAKE_EXIT=0**, 22 min 45 s wall, unsampled host.
+  **Namespaces 408 and tests 4,751 are IDENTICAL** to both prior runs.
+  Assertions **24,125**: +2 on the config commit's 24,123, +4 on
+  log-index's 24,121, explained to the assertion each time --
+  io-vocabulary-lint reports **129** per project here against 128 and
+  127, and this session adds two production files at +1 twice each.
+* **`clojure -M:poly check`** OK.
+* **`bin/regression-oracle bc595a5 b8b9acb`**: `IDENTICAL: every root's
+  digest matches`, no declaration.
+* **`bin/ground-truth-bracket 6a93136 b8b9acb`**, named as spanning
+  BOTH moves in one bracket, from the sweep sha to this one:
+  `IDENTICAL: every digested root's :ground-truth matches ... (38
+  roots)`, 3 skipped for carrying no `:ground-truth` key
+  (`appendicitis`, `ear-infections`, `sore-throat`), no declaration.
+* **Live `-M:dev` check.** All three vars resolve, `weighted-pick`
+  private and the other two public; both delegating defs `identical?`;
+  and **the fixed-consumption law driven on EVERY branch** --
+  `assign-pathway`'s override and weighted branches leave the RNG at
+  the same position as each other, and `assign-module`'s override,
+  weighted and no-cover branches all three do. That law is what the
+  namespace exists for, so it is tested at the seam rather than assumed
+  across it.
+
+### A self-inflicted red, and what did NOT catch it
+
+The first run of this gate failed at **48 seconds**, `MAKE_EXIT=2`:
+
+```
+Syntax error macroexpanding clojure.core/ns at (ehrt/sim_engine/assignment.clj:1:1).
+Call to clojure.core/ns did not conform to spec.
+```
+
+A scripted edit to the namespace's own ns DOCSTRING wrote unescaped
+double quotes, closing the string early. No moved text was involved --
+the body re-diffed verbatim after the repair, and the whole defect was
+in prose this session wrote.
+
+**`clojure -M:poly check` returned `OK` over that same tree.** That is
+the THIRD consecutive session to catch `poly check` missing a broken
+file in this brick (arc 4 sweeps 4 and 5 each caught it missing an
+uncompilable docstring), and the first to catch it missing one that
+does not even READ. The standing finding is therefore stronger than
+"`poly check` does not compile": it does not parse either, and the only
+thing that caught a namespace with an unbalanced string was the test
+run itself.
+
+## 5. The tripwire -- predicted, then held against a green suite
+(`7ca549f`)
+
+`hand-owned-asset-freshness-test` went red on `gt-emitters.svg` at
+`b8b9acb`, exactly as section 2h predicted, and `7ca549f` is the green
+successor that bumps `:reviewed-at` to `b8b9acb`. Pushed together, never
+alone (`rulings.md#R-red-pushed-with-green`).
+
+**The prediction had to survive its own gate saying otherwise.** `make
+test` was GREEN over the very tree carrying the repoint, because the
+test reads `git log -1` on the SOURCE and cannot see an uncommitted
+edit. After the commit, `git log -1 -- docs/dev/simulator-architecture.md`
+returns `b8b9acb` against `:reviewed-at "ff26bb6c"`. A green pre-push
+suite is not evidence this row was not going to fire, and a session that
+took the green as a refutation would have pushed a red tip.
+
+**The trigger did not fire in SUBSTANCE, which is new.** This row's
+trigger names "section 4's own equations". The three previous extraction
+fires each landed inside the doc's engine prose -- section 1's brick
+table, section 2's doctrine -- because those name engine forms by
+DEFINING FORM. This one is one line in the ADR-0109 addendum under `## 5.
+Extension point`, at `396`, where section 4 spans `193-372`. Section 4's
+equation block was verified byte-identical by diffing `193-372` as a
+BLOCK, not inferred from the hunk header; the whole file diff since
+`ff26bb6c` is one hunk of one line.
+
+**And one predicted gate did NOT fire.** Section 2j predicted
+`state-derived-test` would need a regeneration in the same commit,
+because `simulator-architecture.md` is a `:sim` reading-set member.
+Measured: the repoint is LINE-NEUTRAL -- `engine.clj` becomes
+`assignment.clj` inside one line -- so the set's actual **1341** does
+not move and `make state-derived` produced no diff at all. The evolve
+extraction's own repoint added lines and reddened that gate; this one
+does not. **The prediction was refuted by its own measurement**, and is
+recorded rather than quietly dropped: a sweep that predicts two fires
+and gets one is more useful to the next session than one that reports
+only the hit.
+
+## 6. Closing arithmetic, census corrections, and what is next
+
+### The partition still closes
+
+Counted with **Clojure's own reader**, not by `grep -c '^('` -- which
+overcounts `evolve.clj` by one, and not by the paren-balance scanner
+used for the spans, which undercounts the same file by one. Two
+independent instruments disagreeing on one file is why the authoritative
+count is the reader's.
+
+| namespace | lines | forms (+ ns) |
+|---|---:|---:|
+| `engine` | 3,469 | 98 |
+| `streams` | 331 | 16 |
+| `state` | 441 | 14 |
+| `encounters` | 243 | 10 |
+| `evolve` | 469 | 32 |
+| `fold` | 155 | 3 |
+| `log-index` | 301 | 10 |
+| `config` | 187 | 5 |
+| `assignment` | 144 | 3 |
+
+98 + 16 + 14 + 10 + 32 + 3 + 10 + 5 + 3 = **191**, which is 181 plus
+the evolve, fold, log-index, config and assignment moves' **ten**
+delegating defs (1 + 1 + 1 + 5 + 2). `engine.clj` went 99 forms to 98
+by losing eight and gaining seven, and 3,571 lines to 3,469.
+
+### Census corrections, one sentence each
+
+* Section 1's spans for both clusters are stale by six extractions:
+  `assignment` is at `2018-2094` and `config` at `2104-2246` at
+  `b177982`, not `3335-3408` and `3417-3560`.
+* Section 1's privacy renderings for these two clusters are **correct,
+  8 for 8** -- the first pair of clusters for which this record has
+  nothing to correct there.
+* Section 3a's edge table is right that `run -> assignment` is 2 edges
+  and `run -> config` is 2, and right that neither cluster appears as a
+  CALLER anywhere: both are code-level leaves, with no outgoing edge to
+  any `engine.clj` form.
+* Section 5 constraint 5's first sentence is a DESCRIPTION of the
+  streams case, not an independent obligation; its prohibition is the
+  obligation. See section 4.
+* Section 5 constraint 2's remedy -- carry the docstring onto the
+  delegating def -- does not reach a citation of a form's BODY comments.
+  `config-keys` is the first mover to have one.
+
+### For the author, before session 8
+
+The prompt asks for anything bearing on whether `run` should extract or
+remain as `engine.clj`'s residue. Three observations, offered as
+evidence rather than as a recommendation:
+
+1. **`decide` is the last cluster with a real choice in it, and `run`
+   may not be a choice at all.** After `decide` moves, `engine.clj`'s
+   residue is `pop-min`, `placeholder-registration`, `select-person`,
+   `prelude`, `person-plan`, `run` -- six forms, of which `prelude`
+   (611 lines) and `run` (594) are the two largest in the file -- plus
+   whatever delegating defs the program has accumulated, which is ten
+   today and will be substantially more after `decide`. The residue is
+   therefore already mostly DEFS, not code.
+2. **`run` is the only cluster that is a caller of everything and a
+   callee of nothing internal.** Census section 3a gives it outgoing
+   edges to seven clusters and no incoming edge at all. Extracting it
+   would leave `engine.clj` as a file of delegating defs and nothing
+   else -- which is a legitimate shape for a facade, but is a different
+   decision from the seven moves so far, every one of which left real
+   code behind.
+3. **Constraint 1 binds `run` specifically and nothing else.**
+   `engine_test.clj:2505` perturbs the partition by `with-redefs` on
+   `ehrt.sim-engine.engine/stream`, and `run`'s four call sites must
+   keep resolving through that var. This session re-derived the full
+   `with-redefs` census: `engine/run`, `engine/stream`,
+   `engine/stream-seed`, and nothing else in the tree. So a `run`
+   extraction would have to keep `run` itself callable through
+   `engine/run` AND keep `stream` unqualified inside the moved body --
+   two constraints that no previous move had to satisfy at once.
+
+### A budget this close nearly consumed, disclosed
+
+`.agents/plans/roadmap.md` is an `:onboarding` reading-set member, and
+the P5 row's growth is metered against that set. The first draft of this
+session's P5 update was **+25 lines against 29 of headroom**, leaving
+**4**. Not over budget, so `rulings.md#R-budget-stop` was not triggered
+and no bump was available or wanted -- but four lines is not headroom, it
+is a trap for session 8, whose cluster (`decide`, 59 forms) is the
+largest in the census and will owe the longest row update of the
+program.
+
+The addition was therefore COMPACTED in this session rather than left
+for the next one to hit: `:onboarding` now reads **1518 of 1530, twelve
+lines of headroom**. The detail that came out of the roadmap is not
+lost -- it is sections 4 and 5 above, which is where a register's
+supporting narrative belongs. Recorded because the measurement only
+exists if someone runs `make state-derived` and reads the table, and a
+session that adds to a long row without doing that will silently spend
+what is left.
+
+### The close gate
+
+`make test` at the close tree (record, prompt archive, compacted P5
+row, regenerated `state-derived`/both `INDEX.md`): **MAKE_EXIT=0**, 24
+min 44 s wall, unsampled host -- the third figure in this session's own
+spread of 16 min 22 s / 22 min 45 s / 24 min 44 s over work of the same
+size, which is why every wall figure here is this run's own line and not
+a timing claim.
+
+**Namespaces 408, tests 4,751, assertions 24,125 -- IDENTICAL to the
+assignment gate**, as they must be: this commit adds no production
+source file, so `io-vocabulary-lint` has nothing new to count.
+
+The four gates this session put at risk were read individually rather
+than inferred from `MAKE_EXIT`:
+
+| gate | result |
+|---|---|
+| `hand-owned-asset-freshness-test` | 28 assertions, 0 failures -- **green again**, the bump commit closing the red-first pair |
+| `state-derived-test` | 23 assertions, 0 failures |
+| `index-completeness-test` | 47 assertions, 0 failures -- both new INDEX rows present |
+| `roadmap-lint-test` | 32 assertions, 0 failures -- the compacted P5 row passes both its guards |
