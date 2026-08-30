@@ -566,4 +566,26 @@ the lessons that generalise.
 
 ### CI at the pushed tip -- the close marker
 
-CI_RESULT_PLACEHOLDER
+`gh run watch 33334936271` reports **completed / success** in 13m27s at
+`ccbea557844869b6eae5b012963e21b1a1df6a8b`, the pushed tip
+(https://github.com/pragsmike/ehr-testing-tools/actions/runs/33334936271).
+That is the close marker under `rulings.md#R-session-verifies-ci-via-gh`,
+which the de-scaffold ruling of 2026-08-25 retired as a TAG condition and
+kept as this. No tag was paid.
+
+It also settles the RED-FIRST PAIR from the outside. `3739084` (the
+sweep) reddened `hand-owned-asset-freshness-test`; `bdbd319` (the move)
+inherited that red, because the tripwire reads `git log -1` on the SOURCE
+and the move does not touch it; `2fb0eee` cleared it. All four commits
+were pushed together, and CI -- which sees committed state and therefore
+CAN see what the local suite could not -- is green over the range
+containing all of them. `bin/post-push-verify cd7302e ccbea55` also
+reports the remote tip matching HEAD and every commit message in range
+pure ASCII.
+
+**`engine.clj`'s EXTRACTION IS COMPLETE.** Ten clusters, ten
+output-identical moves, and a facade that is now nothing but its `ns`,
+43 delegating defs and nine banners. What is left under P5 is
+`emit_hl7.clj` and then the application-path unification -- for which
+this session's result is the precondition, since apply site 1 now lives
+in a namespace of its own beside sites 2 and 3.
