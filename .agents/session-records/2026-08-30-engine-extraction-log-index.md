@@ -552,3 +552,20 @@ fold]` and `[ehrt.sim-model.interface :as sim-model]` -- the two
 outgoing edges step 1 derived by whole-symbol scan, and nothing more.
 No third require was needed at compile time, which is the confirmation
 step 1's derivation was owed.
+
+## 7. Step 5 -- the push and the close marker
+
+Three commits pushed together, `c82436b..876fadf`:
+
+| sha | commit |
+|---|---|
+| `2cca99d` | the pre-move citation sweep (steps 1-2) |
+| `25d926e` | the extraction (step 3) |
+| `876fadf` | record, prompt archive, P5 row (steps 3-5 close-out) |
+
+`bin/post-push-verify`: `origin/main` matches tip, every commit message
+in range pure ASCII. **CI run 33318257671 at `876fadf` -- SUCCESS.** CI
+green at tip is this session's close marker, and no commit in the range
+was RED-FIRST: the hand-owned-asset tripwire did not fire, which section
+2e established in advance by reading all four of its sources rather than
+by watching a gate stay quiet.
