@@ -30,11 +30,73 @@
 [{:asset "docs/manual/assets/gt-emitters.svg"
   :source "docs/dev/simulator-architecture.md"
   :trigger "regenerate by hand if simulator-architecture.md section 4's own equations change"
-  :reviewed-at "76b0e56"
+  :reviewed-at "3739084"
   :verdict :fresh
   :note
-  "Reviewed 2026-08-30 (engine extraction 9 of N, the `decide` cluster --
-   the last and largest of the nine). simulator-architecture.md moved at
+  "Reviewed 2026-08-30 (engine extraction 10 of N, the `run` cluster --
+   the LAST, and the one after which `engine.clj` holds no code of its
+   own). simulator-architecture.md moved at 3739084, the citation sweep,
+   TWO hunks and both LINE-NEUTRAL: line 56 in section 1 and line 154 in
+   section 3. Not one line of section 4.
+
+   THE TRIGGER DID NOT FIRE IN SUBSTANCE. Section 1's `sim-engine` row
+   said `run` was `engine.clj`'s `defn run`; the extraction moved the
+   defining form to `run.clj`, so the row now names `run.clj` and says
+   `engine.clj` keeps a delegating `def` of it -- the same repoint the
+   fourth, fifth and ninth extractions made to the `evolve`, `replay`
+   and `decide` bullets. Section 3's line said the one deliberate
+   impurity was `engine.clj`'s own `ns` form importing
+   `java.util.Random`; that import is load-bearing in `run.clj` now, so
+   the sentence names `run.clj`. Register row L2-17's class for the
+   fifth time: this doc names engine forms by DEFINING FORM, and a
+   defining form is exactly what an extraction relocates.
+
+   Section 4's EQUATION BLOCK -- `walk`, `engine`, `emitH`/`emitF`,
+   `replay`, `check` -- which is what this row's trigger names, is
+   BYTE-IDENTICAL across the diff, verified by extracting section 4 as a
+   BLOCK from both sides and comparing sha256, not inferred from a hunk
+   header: lines `194-373` on BOTH sides (the same span, because both
+   edits are line-neutral), digest
+   111329cbeedcddabdfd8c9c45b7e532826530ab9f191ca43c435b479df0224df
+   either way.
+
+   AND THE MOVE BEHIND IT CHANGES NO OUTPUT. This asset depicts only
+   GT -> emitH/emitF -> ER7*/FHIR*, and an intra-brick namespace split
+   moves no arrow on it. `bin/regression-oracle 3739084 bdbd319`:
+   'IDENTICAL: every root's digest matches', 41 roots,
+   'declared-digest-change: no'. `bin/ground-truth-bracket 3739084
+   bdbd319': 'IDENTICAL: every digested root's :ground-truth
+   matches ... (38 roots)', 3 skipped for carrying no 
+   key (appendicitis, ear-infections, sore-throat), no declaration. Not
+   stale.
+
+   THE FULL-SESSION BRACKET COULD NOT BE RUN, and that is a finding
+   rather than a hole in the evidence. `bin/ground-truth-bracket
+   cd7302e bdbd319` -- spanning the sweep AND the move, the shape the
+   ninth extraction used -- ABORTS on its own soundness check, because
+   this session's citation sweep repointed a comment inside
+   `components/oracle/src/ehrt/oracle/digest.clj`, which is the
+   harness's own source. That check diffs the file whole minus its
+   leading ns docstring and demands `--declared-digest-change` for any
+   other difference, a comment included. A NEW CLASS, worth a roadmap
+   line: `digest.clj` is a live source, so a citation sweep can be
+   forced to edit the very file the bracket refuses to see move.
+   Bracketing the MOVE alone is sound and needs no declaration, and the
+   sweep is output-inert by its own diff -- all 66 of its changed lines
+   are `;;` comments or markdown prose and not one is a Clojure code
+   line.
+
+   PREDICTED, NOT DISCOVERED, for the FIFTH extraction in six, and named
+   in this session's prompt before the sweep was written. The sweep
+   commit (`3739084`) is the red and this commit is the green; the pair
+   is pushed together and never alone
+   (`rulings.md#R-red-pushed-with-green`). `make test` over the sweep's
+   own tree was GREEN at EXIT=0, because the tripwire reads `git log -1`
+   on the SOURCE and cannot see an uncommitted edit -- the ninth
+   extraction's lesson, paid again.
+
+   Prior review, 2026-08-30 (engine extraction 9 of N, the `decide`
+   cluster), kept. simulator-architecture.md moved at
    76b0e56, ONE hunk, three lines replacing two, and it lands in section
    2, not section 4.
 
