@@ -30,10 +30,53 @@
 [{:asset "docs/manual/assets/gt-emitters.svg"
   :source "docs/dev/simulator-architecture.md"
   :trigger "regenerate by hand if simulator-architecture.md section 4's own equations change"
-  :reviewed-at "ff26bb6c"
+  :reviewed-at "b8b9acb"
   :verdict :fresh
   :note
-  "Reviewed 2026-08-30 (engine extraction 5 of N, the `fold` cluster).
+  "Reviewed 2026-08-30 (engine extraction 7 of N, the `config` and
+   `assignment` clusters). simulator-architecture.md moved at b8b9acb,
+   ONE hunk of ONE line, and it lands in section 5, not section 4.
+
+   THE TRIGGER DID NOT FIRE IN SUBSTANCE, and this is the first fire of
+   the four extraction fires for which that is true. The three before it
+   each landed a repoint INSIDE the doc's own engine prose -- section 1's
+   brick table and section 2's doctrine -- because those name engine
+   forms by defining form. This one is in the ADR-0109 ADDENDUM under
+   `## 5. Extension point: downstream-latency realism`, which cites
+   `assign-pathway`/`assign-module` as the worked precedent for
+   `plan-latency`'s fixed-consumption law and attributed that law to
+   `engine.clj` BY FILE. The extraction moved both assigners to
+   `ehrt.sim-engine.assignment`, so the line now names `assignment.clj`.
+   It is the same class as the 2026-08-19 review's own ADR-0142
+   addendum, which was likewise wholly inside section 5.
+
+   Section 4's EQUATION BLOCK -- `walk`, `engine`, `emitH`/`emitF`,
+   `replay`, `check` -- which is what this row's trigger names, is
+   byte-identical across the diff, verified by diffing lines 193-372 as
+   a BLOCK rather than inferred from the hunk header. Section 4 begins
+   at 193 and ends at 372; the one changed line is 396.
+
+   AND THE TWO MOVES BEHIND IT CHANGE NO OUTPUT AT ALL. This asset
+   depicts only GT -> emitH/emitF -> ER7*/FHIR*, and an intra-brick
+   namespace split moves no arrow on it: `bin/regression-oracle` reports
+   IDENTICAL across all 41 roots at BOTH commits (6a93136..bc595a5 for
+   `config`, bc595a5..b8b9acb for `assignment`), and
+   `bin/ground-truth-bracket` reports IDENTICAL across all 38 digested
+   roots spanning both moves in one bracket (6a93136..b8b9acb) -- both
+   with no declaration. Not stale.
+
+   PREDICTED, NOT DISCOVERED, for the THIRD extraction running, and this
+   time the prediction had to survive a green local gate. The sweep read
+   this registry's four sources BEFORE either doc was touched and named
+   this fire in advance (6a93136). `make test` was nevertheless GREEN
+   over the very tree that carries the repoint, because this test reads
+   `git log -1` on the SOURCE and cannot see an uncommitted edit -- so no
+   commit can carry the sha that names itself, b8b9acb is a RED-FIRST
+   commit under `rulings.md#R-red-pushed-with-green`, and this row is its
+   immediate successor, pushed with it and never alone. A green pre-push
+   suite is not evidence this row was not going to fire.
+
+   Prior review, 2026-08-30 (engine extraction 5 of N, the `fold` cluster), kept.
    simulator-architecture.md moved at ff26bb6c, TWO hunks, and both land
    in sections 1 and 2, not section 4. Both name `replay` by DEFINING
    FORM: the brick table's `replay` -> its `defn replay` and section 2's
