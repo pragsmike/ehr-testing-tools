@@ -85,6 +85,7 @@
             [ehrt.sim-engine.encounters :as encounters]
             [ehrt.sim-engine.evolve :as evolve]
             [ehrt.sim-engine.fold :as fold]
+            [ehrt.sim-engine.log-index :as log-index]
             [ehrt.sim-engine.order-profiles :as order-profiles]
             [ehrt.sim-engine.person-fold :as person-fold]
             [ehrt.sim-engine.state :as state]
@@ -321,15 +322,13 @@
   `ehrt.sim-engine.streams/one-stream`, which carries the contract."
   streams/one-stream)
 
-(defn events-for-patient
+(def events-for-patient
   "Every event `patient-id` participates in, in log order -- the
   patient-phrased replacement for what a single :mrn-keyed lookup used
-  to mean before sim/ADR-0010's :participants existed. An event with more
-  than one participant (M2b's bed-swap, merge) appears in every
-  participant's own sequence, not just one."
-  [ground-truth patient-id]
-  (filterv (fn [event] (some #(= patient-id (:patient-id %)) (:participants event)))
-           ground-truth))
+  to mean before sim/ADR-0010's :participants existed. Delegates to
+  `ehrt.sim-engine.log-index/events-for-patient`, which carries the
+  contract."
+  log-index/events-for-patient)
 
 (defmulti decide
   "Decides what happens when patient `patient-id` is due to execute
@@ -1493,42 +1492,6 @@
 ;; --- M2b: churn family (docs/patient-state-model.md's event-validity
 ;; table; docs/event-sourcing.md's shadow-field dissolution) ---------------
 
-(def ^:private reinstatable-event-types
-  "The event classes a cancel decide reinstates state FROM, and therefore
-  the only ones `run`'s `:reinstate-index` records (ADR-0169).
-
-  `:cancel-transfer` restores `:home-ward`/`:location`; `:cancel-discharge`
-  restores those plus `:attending`. `:cancel-admit` is deliberately
-  ABSENT: its own decide reads nothing but the live patient's
-  `:active-mrn`, so it never queried the log for prior state and has
-  nothing to carry. `:transfer-in-error` is absent for the opposite
-  reason -- it emits its transfer and that transfer's cancel in ONE
-  decide, off the live pre-transfer patient -- there is no intervening
-  event for anything to have queried yet, its own comment -- so it too
-  never replayed. Both were checked rather than assumed: the arc's scope
-  named them as candidates."
-  #{:transfer :discharge})
-
-(defn- last-uncancelled-index
-  "Index into `ground-truth` of the most recent `event-type` event
-  naming `patient-id` that is NOT already the target of an earlier
-  `cancel-type` event -- the applicability query the event-validity
-  table's cancel-* row asks ('the event class being cancelled must
-  exist in this patient's log and not already be cancelled'). nil when
-  no such event exists, which decide turns into a structured rejection
-  rather than a throw."
-  [ground-truth patient-id event-type cancel-type]
-  (let [already-cancelled (into #{}
-                                (comp (filter #(= cancel-type (:event %)))
-                                      (map :cancels-event-id))
-                                ground-truth)]
-    (last (keep-indexed (fn [i ev]
-                          (when (and (= event-type (:event ev))
-                                     (some #(= patient-id (:patient-id %)) (:participants ev))
-                                     (not (already-cancelled i)))
-                            i))
-                        ground-truth))))
-
 (def documented-step-rejection-reasons
   "The closed enum every :step-rejected event's :reason must be drawn
   from (sim/ADR-0012's own invariant: 'every rejection's reason is from a
@@ -1567,7 +1530,7 @@
 (defmethod decide :cancel-admit
   [_streams t world patient-id step]
   (let [ground-truth (:ground-truth world)
-        idx (last-uncancelled-index ground-truth patient-id :admission :cancel-admit)]
+        idx (log-index/last-uncancelled-index ground-truth patient-id :admission :cancel-admit)]
     (if (nil? idx)
       (rejected-outcome :illegal-cancel-admit patient-id t step nil)
       (let [patient (get-in world [:patients patient-id])]
@@ -1823,57 +1786,6 @@
                      (citation-fields step))]
      :advance 0}))
 
-(def ^:private cited-opening-event-types
-  "The two event classes whose LAST citation-matching occurrence a
-  terminal step resolves against: a `:medication-end` resolves its
-  `:order-citation` to a `:medication-order`, a `:care-plan-end` its
-  `:care-plan-citation` to a `:care-plan-start`. ADR-0169's carrier
-  records these and nothing else."
-  #{:medication-order :care-plan-start})
-
-(defn- last-cited-index
-  "Index into the log of the LAST `opening-type` event carrying
-  `citation` and naming `patient-id` as a participant -- nil when there
-  is none, and nil when `citation` itself is nil.
-
-  Exactly what ADR-0164's two `keep-indexed` scans computed, and
-  therefore exactly what `:medication-end`'s `:order-event-id` and
-  `:care-plan-end`'s `:start-event-id` still are. ADR-0169 (arc 0)
-  replaces the scan with a lookup: the two were 21.3% and 10.9% of the
-  generate phase at 10^5 events, 32.2% combined, and each walked the
-  WHOLE log once per terminal step. ADR-0164 scoped them by patient --
-  it added the participant predicate INSIDE the same full-length
-  `keep-indexed` -- which made them correct without making them shorter;
-  this is the shortening, and it changes no answer.
-
-  `run` carries `{[opening-type patient-id citation] last-index}`,
-  written as events are appended, so a later occurrence simply
-  overwrites an earlier one and the stored value IS `last`'s answer.
-  Only events with a NON-NIL `:citation` are recorded: a nil citation
-  could never be returned anyway, since both call sites are already
-  guarded by `(when <citation> ...)`.
-
-  FALLS BACK to the scan it replaces when `world` carries no
-  `:citation-index` KEY -- a hand-built world, as most of engine-test
-  uses. Same fallback rule as `reinstated-state`, and for the same
-  reason: on the key, never on a missing entry, so a carrier that
-  `run` built but failed to populate shows up as a changed corpus rather
-  than as a silent replay.
-
-  Proven post hoc against the scan itself by
-  `ehrt.sim.run-test/citation-resolution-matches-the-whole-log-scan` on
-  every gated corpus, seed 424242 (ADR-0163's own run) included."
-  [world ground-truth opening-type patient-id citation]
-  (when citation
-    (if (contains? world :citation-index)
-      (get (:citation-index world) [opening-type patient-id citation])
-      (last (keep-indexed (fn [i ev] (when (and (= opening-type (:event ev))
-                                                (= citation (:citation ev))
-                                                (some #(= patient-id (:patient-id %))
-                                                      (:participants ev)))
-                                       i))
-                          ground-truth)))))
-
 (defn person-entry
   "What `world`'s `:person-index` holds for one person -- the patient a
   returning person resolves to, and what has been minted for them so far
@@ -1909,11 +1821,12 @@
         ;; patients walking the same module cite identically, and an
         ;; unfiltered `last` over the whole log hands this end whichever
         ;; patient's order came LAST. The participant predicate is the
-        ;; one `last-uncancelled-index` (above) already uses for exactly
-        ;; this reason, and the one check.clj's own medication-end
-        ;; invariant tests the resolved target against.
-        order-event-id (last-cited-index world ground-truth :medication-order
-                                         patient-id order-citation)]
+        ;; one `ehrt.sim-engine.log-index/last-uncancelled-index`
+        ;; already uses for exactly this reason, and the one
+        ;; check.clj's own medication-end invariant tests the
+        ;; resolved target against.
+        order-event-id (log-index/last-cited-index world ground-truth :medication-order
+                                                   patient-id order-citation)]
     ;; M6 Task 1: `:order-citation` now rides the event itself, alongside
     ;; the already-resolved `:order-event-id` -- `evolve`'s own fold-time
     ;; medication-orders match needs the CITATION (position-independent),
@@ -1947,8 +1860,8 @@
         patient (get patients patient-id)
         ;; ADR-0164: SAME PATIENT, too -- the twin of the scan
         ;; :medication-end already carries, for the identical reason.
-        start-event-id (last-cited-index world ground-truth :care-plan-start
-                                         patient-id care-plan-citation)]
+        start-event-id (log-index/last-cited-index world ground-truth :care-plan-start
+                                                   patient-id care-plan-citation)]
     {:events [(merge {:event :care-plan-end :t t :active-mrn (:active-mrn patient)
                       :start-event-id start-event-id :care-plan-citation care-plan-citation
                       :participants [{:patient-id patient-id :role :subject}]}
@@ -2017,8 +1930,11 @@
 ;; formality: `ehrt.sim-engine.interface` re-exports `replay` at its
 ;; `:89` (`(def replay engine/replay)`), and census constraint 4 requires
 ;; that file to keep naming `engine/...`, so this def is what keeps the
-;; brick's own public surface resolving. `reinstated-state` below still
-;; calls `replay` unqualified through it too.
+;; brick's own public surface resolving. `reinstated-state` no longer
+;; calls through it: the SIXTH extraction moved that form to
+;; `ehrt.sim-engine.log-index`, whose fallback now names `fold/replay`
+;; directly -- the same function object this def holds, reached one hop
+;; shorter.
 ;;
 ;; `update-beds` was `defn-` and `bed-correction-event-types` was
 ;; `^:private`, so under constraint 5 they become public THERE and get no
@@ -2041,153 +1957,14 @@
   `ehrt.sim-engine.interface` re-exports through THIS var."
   fold/replay)
 
-;; --- M2b cancel-transfer/cancel-discharge: defined here, AFTER `replay`,
-;; because their decide methods query it directly (docs/patient-state-
-;; model.md's shadow-field dissolution: the reinstated prior state is
-;; QUERIED FROM THE LOG at decide-time, never a field the accumulator
-;; carries for this purpose alone).
-
-(defn- bed-reoccupied-by-someone-else?
-  "Whether `location`'s bed is CURRENTLY held by a patient other than
-  `patient-id` -- the reinstatement guard cancel-transfer/cancel-
-  discharge both need: the log-derived prior location was free WHEN it
-  was vacated, but time has passed since, and another patient's own
-  allocation (a later admission, a bed-ready transfer) may have
-  legitimately claimed it in the meantime. Reinstating into an
-  occupied bed would violate no-double-occupancy, so this is checked
-  against the LIVE occupancy board (world, not the log) at decide-time
-  -- the same board :admission/:transfer already consult."
-  [world patient-id location]
-  (when-let [bed (:bed location)]
-    (let [occupant (get (sim-model/occupancy-board (:patients world)) bed)]
-      (and (some? occupant) (not= occupant patient-id)))))
-
-(def ^:private status-a-cancel-target-leaves
-  "The `:status` the event a reinstating cancel targets leaves its
-  SUBJECT in -- the one status a legal cancel of that class can still
-  find on the patient when it finally runs.
-
-  A `:transfer` moves an `:admitted` patient and leaves them
-  `:admitted`; a `:discharge` leaves them `:discharged`, which is
-  precisely the state a `:cancel-discharge` exists to undo. Written as
-  a two-entry table rather than a status test per method because the
-  ASYMMETRY is the whole point of `subject-superseded?` below: the same
-  `:discharged` that makes a cancel-transfer illegal is what makes a
-  cancel-discharge legal, and a guard that missed that would reject
-  every cancel-discharge in the repository."
-  {:cancel-transfer :admitted
-   :cancel-discharge :discharged})
-
-(def ^:private statuses-that-supersede-a-reinstatement
-  "The three statuses that say the subject is no longer a patient the
-  hospital is holding: `:discharged` (they left), `:expired` (they
-  died), `:merged` (their record was absorbed into another's).
-
-  `:new` is deliberately ABSENT. It is what `evolve :cancel-admit`
-  writes, and a cancel-admit is a correction of the record rather than
-  an event in the patient's life -- `ehrt.sim-engine.engine-test/
-  cancel-discharge-restores-class-even-after-a-preceding-cancel-admit-
-  stripped-it` is the M6 Task 2 finding that says so, and it stays
-  legal here. MEASURED, so the exclusion is a decision and not an
-  oversight: the `nobed` 10^5 cell at seed 20260824 carries 2
-  cancel-transfers against a `:new` subject alongside its 61 against a
-  `:discharged` one, and this guard leaves those 2 alone -- named in
-  `.agents/session-records/2026-08-29-ts-5-superseded-cancel.md` as an
-  adjacent case this change deliberately does not reach.
-
-  `:merged` is unreachable through `run`, which ends a merged patient's
-  queue before their next step is ever decided (the `:merged` branch at
-  the top of the run loop). It is named anyway, for a `decide` driven
-  by hand and for the reader who would otherwise have to prove the
-  omission safe."
-  #{:discharged :expired :merged})
-
-(defn- subject-superseded?
-  "Whether the state a cancel of `kind` would reinstate onto `patient`
-  has already been superseded by a LATER event in that patient's own
-  life -- the TS-5 guard (traffic-scale defect 5, 2026-08-29).
-
-  A reinstating cancel restores the state its target event displaced:
-  correct as an undo of THAT event, and read from the log at the
-  target's own index, which predates everything after it. Nothing
-  asked what had happened to the subject SINCE. So a churn
-  `:cancel-transfer` landing after the patient's discharge -- in the
-  same batch, at the same `t`, as the witness below -- put
-  `:location`/`:home-ward` back onto a `:discharged` patient, and
-  nothing ever vacated that bed again.
-
-  ONE MEASUREMENT decides which mechanism this is, and it was taken
-  before this guard was written: the subject's `:status` in `world` at
-  the instant `decide` runs. At the row's own witness (`PID-004302-
-  fa1ab125`, `nobed` 10^5, seed 20260824) it reads `:discharged`, with
-  `:location` already nil -- the discharge IS in the world when the
-  cancel is decided. So this is not a batch-ordering problem that no
-  decide-time test could see; it is a reinstatement applied without
-  asking the subject's current status, and a decide-time test is
-  exactly what catches it.
-
-  `bed-reoccupied-by-someone-else?` cannot stand in for this and never
-  could: at the same witness the board reads NIL for SURGERY-91. The
-  patient is gone, not displaced, so the bed they would be reinstated
-  into is genuinely empty -- which is the whole of why the double-
-  occupancy guard passes a reinstatement no one should make."
-  [patient kind]
-  (let [status (:status patient)]
-    (and (statuses-that-supersede-a-reinstatement status)
-         (not= status (status-a-cancel-target-leaves kind)))))
-
-(defn- reinstated-state
-  "The state patient `patient-id` was in immediately BEFORE the log event
-  at `idx` -- the prior location/home-ward/attending a reinstating cancel
-  restores. Exactly `(:before (nth (replay ground-truth) idx))`, and
-  proven so post hoc, twice: `ehrt.sim.run-test/cancel-decides-reinstate-
-  exactly-what-replay-would-hand-back` recomputes it against `replay`
-  itself on every gated corpus, and `ehrt.sim-engine.engine-test/cancel-
-  reinstatement-survives-the-fold-carried-index` does the same over
-  churn-driven generated runs -- which it must, because only ONE of the
-  four gated corpora carries a reinstating cancel at all.
-
-  ADR-0169 (arc 0), the largest single generator-side cost the 2026-08-24
-  throughput spike measured -- 35.3% of the generate phase at 10^5
-  events, larger than both ADR-0164 citation scans combined. Both cancel
-  decides used to evaluate `(nth (replay ground-truth) idx)` literally:
-  a full `evolve` re-simulation of the ENTIRE log, materialising a vector
-  of N maps carrying `:world-before`/`:world-after`, in order to read ONE
-  element at an index the caller already held, and then discard the rest.
-  Once per cancel event, so O(N) with allocation per cancel and quadratic
-  in churn density.
-
-  The run loop already computes that state: it is the patient's entry in
-  `world` at the instant the event was appended, and `world`'s
-  `:patients` is folded through the SAME `evolve` over the SAME events in
-  the SAME order that `replay` folds. So `run` now records it, for
-  `:transfer` and `:discharge` events only (the two reinstatable classes
-  -- `:cancel-admit` reads no prior state at all, and
-  `:transfer-in-error` decides its own cancel atomically off the live
-  patient, neither of them touching the log), under the log index of the
-  event itself. The read is a map lookup.
-
-  FALLS BACK to the replay it replaces when `world` carries no
-  `:reinstate-index` KEY -- a world built by hand rather than by `run`,
-  which is how most of engine-test drives `decide` directly. The fallback
-  is on the key's presence, never on a missing entry: a world that `run`
-  built and an entry that is nevertheless absent is a DEFECT, and letting
-  it read nil (which changes the emitted event, which the byte-identity
-  gate then fails) is the behaviour that surfaces it. Silently replaying
-  instead would hide it."
-  [world ground-truth patient-id idx]
-  (if (contains? world :reinstate-index)
-    (get (:reinstate-index world) idx)
-    (:before (nth (replay ground-truth) idx))))
-
 (defmethod decide :cancel-transfer
   [_streams t world patient-id step]
   (let [ground-truth (:ground-truth world)
-        idx (last-uncancelled-index ground-truth patient-id :transfer :cancel-transfer)]
+        idx (log-index/last-uncancelled-index ground-truth patient-id :transfer :cancel-transfer)]
     (if (nil? idx)
       (rejected-outcome :illegal-cancel-transfer patient-id t step nil)
       (let [patient (get-in world [:patients patient-id])
-            {:keys [home-ward location]} (reinstated-state world ground-truth patient-id idx)]
+            {:keys [home-ward location]} (log-index/reinstated-state world ground-truth patient-id idx)]
         (cond
           ;; TS-5, and asked BEFORE the bed: whether the subject is
           ;; still in the hospital at all is prior to whether anyone
@@ -2198,11 +1975,11 @@
           ;; and it is the right way round: the reason a log carries
           ;; should name why the step could never have happened, not
           ;; the second thing that would also have stopped it.
-          (subject-superseded? patient :cancel-transfer)
+          (log-index/subject-superseded? patient :cancel-transfer)
           (rejected-outcome :illegal-cancel-transfer-subject-superseded patient-id t step
                             {:status (:status patient)})
 
-          (bed-reoccupied-by-someone-else? world patient-id location)
+          (log-index/bed-reoccupied-by-someone-else? world patient-id location)
           (rejected-outcome :illegal-cancel-transfer-bed-reoccupied patient-id t step {:location location})
 
           :else
@@ -2214,22 +1991,22 @@
 (defmethod decide :cancel-discharge
   [_streams t world patient-id step]
   (let [ground-truth (:ground-truth world)
-        idx (last-uncancelled-index ground-truth patient-id :discharge :cancel-discharge)]
+        idx (log-index/last-uncancelled-index ground-truth patient-id :discharge :cancel-discharge)]
     (if (nil? idx)
       (rejected-outcome :illegal-cancel-discharge patient-id t step nil)
       (let [patient (get-in world [:patients patient-id])
-            {:keys [home-ward location attending]} (reinstated-state world ground-truth patient-id idx)]
+            {:keys [home-ward location attending]} (log-index/reinstated-state world ground-truth patient-id idx)]
         (cond
           ;; TS-5 again, and asymmetric: `:discharged` is the status a
           ;; cancel-discharge EXISTS to find, so only `:expired` and
           ;; `:merged` supersede one. All 55 cancel-discharges at
           ;; `nobed` 10^5 read `:discharged` here and every one of them
           ;; stays legal.
-          (subject-superseded? patient :cancel-discharge)
+          (log-index/subject-superseded? patient :cancel-discharge)
           (rejected-outcome :illegal-cancel-discharge-subject-superseded patient-id t step
                             {:status (:status patient)})
 
-          (bed-reoccupied-by-someone-else? world patient-id location)
+          (log-index/bed-reoccupied-by-someone-else? world patient-id location)
           (rejected-outcome :illegal-cancel-discharge-bed-reoccupied patient-id t step {:location location})
 
           :else
@@ -3697,10 +3474,10 @@
                   (reduce (fn [[w ridx cidx gidx] [offset ev]]
                             (let [idx (+ base-idx offset)
                                   subject (:patient-id (first (:participants ev)))
-                                  ridx' (if (reinstatable-event-types (:event ev))
+                                  ridx' (if (log-index/reinstatable-event-types (:event ev))
                                           (assoc ridx idx (get-in w [:patients subject]))
                                           ridx)
-                                  cidx' (if (and (cited-opening-event-types (:event ev))
+                                  cidx' (if (and (log-index/cited-opening-event-types (:event ev))
                                                  (some? (:citation ev)))
                                           (reduce (fn [ci {:keys [patient-id]}]
                                                     (assoc ci [(:event ev) patient-id (:citation ev)] idx))

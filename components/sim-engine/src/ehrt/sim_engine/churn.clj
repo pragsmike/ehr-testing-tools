@@ -132,8 +132,10 @@
   already left. That is not a defect in this oracle and is not fixable
   here: the same insertion is legal or not depending on runtime state
   this namespace cannot see. It is caught where the state exists, by
-  `engine/subject-superseded?` at decide time, and shows up in the log
-  as an :illegal-cancel-*-subject-superseded rejection -- the same
+  `ehrt.sim-engine.log-index/subject-superseded?` at decide time (a
+  PRIVATE var of `engine.clj` until the sixth engine extraction moved
+  it there), and shows up in the log as an
+  :illegal-cancel-*-subject-superseded rejection -- the same
   division of labour the :cancel-discharge note below already
   describes for the bed-reoccupied guard."
   [state step-type at-end?]
@@ -156,7 +158,7 @@
   decide-time for a reason InjectChurn has no way to predict statically
   -- the bed it would reinstate into may have been legitimately
   reclaimed by someone else's admission by the time it actually runs
-  (ehrt.sim-engine.engine's bed-reoccupied-by-someone-else? guard).
+  (ehrt.sim-engine.log-index's bed-reoccupied-by-someone-else? guard).
   Optimistically assuming success and chaining a further :admitted?-
   requiring insertion (a :transfer-in-error/:bed-swap/:merge) after it
   would produce an ILLEGAL step whenever that rejection actually fires

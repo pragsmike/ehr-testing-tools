@@ -32,8 +32,10 @@
   `interface.clj:89` (`(def replay engine/replay)`), and census
   constraint 4 requires that file to keep naming `engine/...`, so the
   delegating def is what keeps the brick's own public surface
-  resolving. `engine.clj`'s `reinstated-state` also still calls
-  `replay` unqualified through it.
+  resolving. `engine.clj`'s `reinstated-state` called `replay` through
+  it until the SIXTH extraction moved that form to
+  `ehrt.sim-engine.log-index`, whose fallback now names `replay` here
+  directly.
 
   The other two were `^:private` and `defn-`, so under constraint 5
   they become public HERE and get no def THERE. `run`'s one call site
