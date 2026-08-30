@@ -311,3 +311,15 @@ is also `roadmap.md#event-stream-mutation`'s injection point.
   787 lines against a 785 budget, headroom -2. PRE-EXISTING, carried
   forward from the streams session's own disclosure, untouched by
   anything here, and named again rather than left to be rediscovered.
+
+## 8. Close marker
+
+`gh run view 33303199019` -- workflow `test`, head `24ee23a7`,
+completed, conclusion **success**. That is this session's CLOSE MARKER:
+CI green at the pushed tip, which under the de-scaffold ruling of
+2026-08-25 is what marks a landing rather than a tag.
+
+Three commits: `6fb698a` the pre-move sweep, `efe2b26` the extraction,
+`24ee23a` the record and prompt archive. All pushed. No tag, no ADR --
+this is a refactor under an existing roadmap row and an existing
+program ruling, and the de-scaffold ruling gives process work neither.
