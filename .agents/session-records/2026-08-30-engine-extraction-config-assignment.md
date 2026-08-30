@@ -767,3 +767,17 @@ than inferred from `MAKE_EXIT`:
 | `state-derived-test` | 23 assertions, 0 failures |
 | `index-completeness-test` | 47 assertions, 0 failures -- both new INDEX rows present |
 | `roadmap-lint-test` | 32 assertions, 0 failures -- the compacted P5 row passes both its guards |
+
+### CI at the pushed tip -- the close marker
+
+`gh run view 33324437155`: **status=completed, conclusion=success**, at
+`83633c5827f64533445d896a024539ebcf90e266`, the pushed tip
+(https://github.com/pragsmike/ehr-testing-tools/actions/runs/33324437155).
+That is the close marker under `rulings.md#R-session-verifies-ci-via-gh`,
+which the de-scaffold ruling of 2026-08-25 retired as a TAG condition and
+kept as this. No tag was paid.
+
+It also settles the red-first pair from the outside: `b8b9acb` and
+`7ca549f` were pushed together, and CI -- which sees committed state and
+therefore CAN see what the local suite could not -- is green over the
+range containing both.
