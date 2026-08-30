@@ -3,7 +3,7 @@
 
 # Session prompts — index
 
-Generated index of [`.agents/prompts`](.) — 195 files. The convention, what a record contains, and where this sits relative to every other register are in [`README.md`](README.md); annotations that used to ride these rows are in [`../plans/state-history-2026-08.md`](../plans/state-history-2026-08.md), dated.
+Generated index of [`.agents/prompts`](.) — 196 files. The convention, what a record contains, and where this sits relative to every other register are in [`README.md`](README.md); annotations that used to ride these rows are in [`../plans/state-history-2026-08.md`](../plans/state-history-2026-08.md), dated.
 
   * 2026-08-01-agent-ux-capture.md
   * 2026-08-01-migration-session-1.md
@@ -199,4 +199,5 @@ Generated index of [`.agents/prompts`](.) — 195 files. The convention, what a 
   * 2026-08-29-ts-4-consumed-placeholder.md
   * 2026-08-29-ts-5-superseded-cancel.md
   * 2026-08-29-ts-defects-and-blocked-cells.md
+  * 2026-08-30-engine-extraction-encounters.md
   * 2026-08-30-engine-extraction-state.md

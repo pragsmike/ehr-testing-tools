@@ -62,13 +62,23 @@ with them.
   `.agents/plans/engine-extraction-census.md` -- every top-level form of both
   files assigned to exactly one proposed namespace, the cross-seam edges, and
   the apply-path inventory that also serves
-  `roadmap.md#event-stream-mutation`. The FIRST cluster landed:
-  `ehrt.sim-engine.streams`, sixteen forms, `engine.clj` delegating under
-  ruling C1(a), both `bin/regression-oracle` and `bin/ground-truth-bracket`
-  IDENTICAL with no declaration. Nine clusters remain, in the census's own
-  dependency order, and `observation-value-fields` must move down out of
-  `decide` before `evolve` or `fold` can go. Record:
-  `.agents/session-records/2026-08-29-engine-extraction-opener.md`.
+  `roadmap.md#event-stream-mutation`. THREE clusters have landed, each in
+  its own session, in the census's dependency order and each with both
+  `bin/regression-oracle` and `bin/ground-truth-bracket` IDENTICAL with no
+  declaration: `ehrt.sim-engine.streams` (16 forms, 11 delegating defs),
+  `ehrt.sim-engine.state` (14 forms, 13 delegating defs, and the cycle
+  breaker `observation-value-fields` moved down out of `decide` so
+  `evolve` and `fold` are now unblocked), and `ehrt.sim-engine.encounters`
+  (10 forms, ZERO delegating defs -- all ten movers were private, so
+  C1(a)'s obligation did not arise and constraint 5 forbade one).
+  `engine.clj` is 4,234 lines / 141 forms plus `ns`; the partition closes
+  at 181 forms across the four namespaces. SEVEN clusters remain --
+  `config` and `assignment` are the last leaves, then `evolve`, `fold`,
+  `log-index`, `decide`, and `run` as the facade's residue -- followed by
+  the apply-path unification this row's second half names. Records:
+  `.agents/session-records/2026-08-29-engine-extraction-opener.md`,
+  `.agents/session-records/2026-08-30-engine-extraction-state.md`,
+  `.agents/session-records/2026-08-30-engine-extraction-encounters.md`.
 - OPEN **[event-stream-mutation]** PRIORITY 6 -- mutation moves to the
   ground-truth event stream (emitters inherit mutations); ADR-0166's test-side
   event mutations promoted to a shipped operator catalog with `check` as oracle;
