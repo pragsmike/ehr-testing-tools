@@ -58,7 +58,17 @@ with them.
   events through one apply choke point); one program, each commit
   output-identical and bracket-proven; TS-3's A' span-gate paid part; the
   unified path is also event-stream mutation's injection point. Author-ruled
-  2026-08-29.
+  2026-08-29. OPENED 2026-08-29: the census is
+  `.agents/plans/engine-extraction-census.md` -- every top-level form of both
+  files assigned to exactly one proposed namespace, the cross-seam edges, and
+  the apply-path inventory that also serves
+  `roadmap.md#event-stream-mutation`. The FIRST cluster landed:
+  `ehrt.sim-engine.streams`, sixteen forms, `engine.clj` delegating under
+  ruling C1(a), both `bin/regression-oracle` and `bin/ground-truth-bracket`
+  IDENTICAL with no declaration. Nine clusters remain, in the census's own
+  dependency order, and `observation-value-fields` must move down out of
+  `decide` before `evolve` or `fold` can go. Record:
+  `.agents/session-records/2026-08-29-engine-extraction-opener.md`.
 - OPEN **[event-stream-mutation]** PRIORITY 6 -- mutation moves to the
   ground-truth event stream (emitters inherit mutations); ADR-0166's test-side
   event mutations promoted to a shipped operator catalog with `check` as oracle;

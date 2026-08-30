@@ -565,7 +565,21 @@ them for a fourth apply path.
    `defn-`/`^:private` today. They must NOT gain a delegating def in
    `engine.clj` — that would widen the engine's public surface, which
    C1(a) does not ask for and `poly check` would not catch.
-6. **`person-simulator`'s limitations row 10 is a bare token scan** over
+6. **A snippet pinned BY PATH from another brick's doc is invisible to
+   this census, and cost the streams extraction a red.**
+   `components/person-simulator/docs/limitations.md` rows 1 and 10 cite
+   `engine.clj` plus a verbatim docstring phrase, and
+   `ehrt.docs-tooling.person-simulator-charter-test` resolves both
+   against the named file. Row 1's "pinned at 0 for as long as" lives
+   in `newborn-id-tag` and row 10's "arc 2's demographic/life-arc
+   layer. ZERO draw sites" in `stream-family-tag` -- both inside the
+   moved text, both repointed to `streams.clj` by the extraction
+   commit. A call-graph census cannot see this class of edge, so the
+   recipe for every later cluster is: before moving a form, grep the
+   whole repo for a distinctive phrase from its DOCSTRING, not only for
+   its name. `components/patient-simulator/docs/limitations.md` is the
+   sibling register to check the same way.
+7. **`person-simulator`'s limitations row 10 is a bare token scan** over
    that component's own `src` for `sim-engine` names. It sees
    `#{"stream" "newborn-id-tag"}` today
    (`person_simulator/limitations_test.clj:225`). Those names do not
