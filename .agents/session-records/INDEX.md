@@ -3,7 +3,7 @@
 
 # Session records — index
 
-Generated index of [`.agents/session-records`](.) — 211 files. The convention, what a record contains, and where this sits relative to every other register are in [`README.md`](README.md); annotations that used to ride these rows are in [`../plans/state-history-2026-08.md`](../plans/state-history-2026-08.md), dated.
+Generated index of [`.agents/session-records`](.) — 212 files. The convention, what a record contains, and where this sits relative to every other register are in [`README.md`](README.md); annotations that used to ride these rows are in [`../plans/state-history-2026-08.md`](../plans/state-history-2026-08.md), dated.
 
   * 2026-07-28-discipline-parity.md
   * 2026-07-29-development-resumption.md
@@ -208,6 +208,7 @@ Generated index of [`.agents/session-records`](.) — 211 files. The convention,
   * 2026-08-29-ts-5-superseded-cancel.md
   * 2026-08-29-ts-defects-and-blocked-cells.md
   * 2026-08-30-emit-extraction-hl7-time.md
+  * 2026-08-30-emit-extraction-registry.md
   * 2026-08-30-engine-extraction-config-assignment.md
   * 2026-08-30-engine-extraction-decide.md
   * 2026-08-30-engine-extraction-encounters.md
