@@ -503,3 +503,35 @@ authorize it, found none, and did not make it either. **It is now
 blocking**: the eleventh could leave one line for a successor, and this
 session cannot. AUTHOR ACTION: rule C6(a), or the thirteenth session's
 first act is a stop.
+
+## 8. CI at the pushed tip -- the close marker
+
+`gh run watch 33349173448 --exit-status` exits 0; the run is **completed
+/ success** in 13m08s at `fed4da9d3fba54cd613391cdfa8644b97b09da98`, the
+pushed tip
+(https://github.com/pragsmike/ehr-testing-tools/actions/runs/33349173448).
+That is the close marker under `rulings.md#R-session-verifies-ci-via-gh`,
+which the de-scaffold ruling of 2026-08-25 retired as a TAG condition and
+kept as this. No tag was paid.
+
+**A RED-FIRST PAIR EXISTS THIS SESSION -- the first of the emit phase --
+AND IT COST NO RED CI RUN.** `gh run list` shows exactly ONE run for the
+three-commit push, at the tip; GitHub triggers per PUSH, not per commit,
+so the deliberately-red `3d918ce` never got a run of its own. The
+engine phase's five red-first pairs paid the same way and the eleventh
+session had no pair to compare. **The practice is therefore free at the
+CI boundary as long as the pair is pushed together**, which is what
+"RED-FIRST with successor" has always meant and is now measured rather
+than assumed. The red itself was proved locally, by running the charter
+gate alone before and after the move.
+
+`bin/post-push-verify b3a79cf fed4da9` reports the remote tip matching
+HEAD and every commit message in range pure ASCII, and the push's own
+gate (`gitleaks detect` over 1,271 commits, `clojure -M:poly check`)
+was clean.
+
+**Three commits, and the middle one is the whole claim**: the sweep and
+its deliberate red (`3d918ce`), the output-identical move (`f6c6270`),
+and this close (`fed4da9`). The emit phase's second cluster has landed
+with the ORACLE IDENTICAL and no declaration, and six clusters remain
+behind a P5 row that has no budget left for them.
