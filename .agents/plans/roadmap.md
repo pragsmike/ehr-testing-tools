@@ -69,32 +69,20 @@ with them.
   43 delegating defs, 202 forms / eleven namespaces. DETAIL: the nine records below (C6(a)).
   **EMIT PHASE OPENED 2026-08-30** (census 2a): order DERIVED, 3b's sixteen edges reproduce
   EXACTLY, the leaves THREE (`hl7-time`, `registry`, `timelines`), `er7` not among them.
-  SIX landed -- forms/form-lines/defs/widenings: ELEVENTH `hl7-time` 7/47/3/1; TWELFTH
-  `registry` 13/278/10/2 (seven defs `interface.clj` re-exports); THIRTEENTH `timelines`
-  5/151/0/5, no re-export, no test site, no `:require`, ZERO edges even inside the cluster;
-  FOURTEENTH `er7` 19/193/3/11, the FIRST non-leaf, requiring the SIBLING `timelines` (3b's
-  lone `er7`->`timelines` edge); FIFTEENTH `segments` 15/518/3/14, the most FORMS, EIGHT
-  regions, THREE landed siblings, ZERO internal edges so ALL widen and none stays private;
-  SIXTEENTH `messages` 13/578/1/2, the HEAVIEST (578 form-lines, 122 distinct crossings into
-  FIVE landed siblings), THREE regions, the fifteenth's reverse shape -- TEN of twelve private
-  movers STAY private because every caller travelled.
-  All gates IDENTICAL. TWO left, census 2a's order. NEW WITH THE THIRTEENTH: 3b counts DISTINCT
-  (caller, callee) PAIRS, not sites (18 vs 19, then 34 vs 43, 66 vs 70, now 122 vs 137); a sweep
-  finds claims stale BEFORE the move, which constraint 6 has no rule for -- disclose, backlog (3).
-  NEW WITH THE FOURTEENTH: the caller-travels shape ARRIVES, SIX movers at once staying private
-  (`weighted-pick` at scale), and a `#'` var in a C1(a)-fenced test file forces the first
-  `^:private` def -- C7.
-  NEW WITH THE FIFTEENTH: C7 applied TWICE; NO banner travels, all four heading a section
-  the cluster SPLITS; the MOVED TEXT itself needed requalifying (five names that resolved
-  through this file's own defs); TWO requires went dead, a first; and a PRIOR cluster's
-  banner can be FALSIFIED by a later move -- three were, paid in the move commit.
-  NEW WITH THE SIXTEENTH, every item a PRIOR CLASS AT ITS LIMIT rather than a new one:
-  requalification goes 5 sites to SIXTY-FOUR, depth being what drives it; the residue-claim class
-  widens past banners into a SIBLING `ns` DOCSTRING (six claims over four banners plus
-  `segments.clj`); banners TRAVEL again, and they are the exact four the fifteenth left because
-  their builders stayed; constraint 5's prohibition reaches TEN movers; and the `#'` class is
-  EXHAUSTED -- 106 sites re-read whole, none naming a mover, so NO C7 def is owed. The moved
-  prose travelled UNTOUCHED, carrying no `below`, `this file` or `this namespace` -- a first.
+  SIX landed in census-2a order -- `hl7-time`, `registry`, `timelines`, `er7`, `segments`,
+  `messages` -- every gate IDENTICAL, no declaration; TWO left. EMIT-PHASE INSTANCE DETAIL
+  (per-cluster forms/form-lines/defs/widenings, regions, edge and requalification tallies) is in
+  the six emit records below (C9(a), 2026-08-31). THE DOCTRINE IT ADDED, which stands: 3b counts
+  DISTINCT (caller, callee) PAIRS, not sites, so a larger site count agrees with it; a sweep finds
+  claims stale BEFORE the move, which constraint 6 has no rule for -- disclose and backlog; the
+  CALLER-TRAVELS shape, movers staying private because their callers went too; C7, a `#'` var in a
+  C1(a)-fenced test file forcing a `^:private` def, a class now EXHAUSTED with the tree re-read
+  whole; REQUALIFICATION, moved text carrying bare names that resolved only through this file's own
+  delegating defs -- which an implementation may not reach -- and DEPTH driving how many; a require
+  going DEAD when every site using it travels; and the RESIDUE-CLAIM class -- a prior cluster writes
+  its account in TWO places, its banner in the residue AND its own `ns` docstring, and a later move
+  must correct BOTH. A BANNER'S REAL OBJECT IS A SECTION whose ownership changes hands: one an
+  earlier cluster LEFT because it split the section TRAVELS with the cluster that later owns it.
   THE HAND-OWNED-ASSET TRIPWIRE IS A RECIPE, not a lucky catch: read that
   registry's own SOURCES during the pre-move sweep. FIVE of the ten engine
   sessions fired it, each RED-FIRST with a successor bumping `gt-emitters.svg`'s
@@ -121,19 +109,15 @@ with them.
   TWO BACKLOGS FOR THE RULED REPOINT PASS. (1) FENCED CITATIONS: C1(a) forbids touching
   test files; the ninth alone left TWELVE stale `engine.clj`-by-file citations across ten
   test files, one a NAMESPACE claim about a private mover, and the tenth adds one more.
-  The emit phase's first FENCED row is the thirteenth's, `person-simulator/limitations_test.clj:152`;
-  the SIXTEENTH adds THREE more, all alias-qualified prose naming `emit-hl7/siu-message`,
-  a mover that stays private: `siu_test.clj:11`/`:72` and `sim/siu_run_test.clj:106`.
+  The emit phase has added FOUR fenced rows of its own, enumerated in its records below.
   (2) RETIREMENT CANDIDATES: FOURTEEN of the facade's 43 delegating defs now have no named
   caller anywhere -- eleven already so, three made so by the tenth move exactly as the ninth
   priced. The FACADE RULE kept every one: retiring a def is the repoint pass's business.
-  (3) STALE-BEFORE-THE-MOVE, a new class, neither fenced nor its finder's: `emit_hl7.clj:514`
-  (now `segments.clj`'s `pv1-segment`) cites a registry comment that left for `registry.clj:41`
-  with the TWELFTH move (so that session's disposition of `emit_hl7_test.clj:1306` to cluster 5
-  is wrong -- already stale); `encounter-spans` cites `engine/stamp-encounter`, unresolvable
-  since the THIRD engine session; and a FAMILY of un-re-depthed `docs/` citations of files that
-  really live under `components/sim/docs/` -- `operational-models.md` in 26 live files,
-  `patient-state-model.md` in 30, a `research/` path -- `er7.clj` carries one, `segments.clj` five.
+  (3) STALE-BEFORE-THE-MOVE, a new class, neither fenced nor its finder's: a citation can already
+  be false when the move that relocates it arrives, so the mover neither caused nor owes it. FOUR
+  members stand -- a relocated registry comment, `encounter-spans`' unresolvable
+  `engine/stamp-encounter`, a FAMILY of un-re-depthed `docs/` citations of files that really live
+  under `components/sim/docs/` (26 and 30 live files), and `emit_hl7_test.clj:1306`.
   COVERAGE, disclosed: neither bracket reaches a cancel decide and the gated corpora resolve
   no citation, so two engine brackets are blind to six forms each; the suite and live `-M:dev`
   seam checks carry them. ENGINE-PHASE INSTANCE DETAIL for every claim above -- corrected census
