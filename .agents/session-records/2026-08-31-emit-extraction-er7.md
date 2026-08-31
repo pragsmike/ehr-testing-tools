@@ -530,6 +530,16 @@ on its merits, requiring only `parser`, `str` and an intra-component
 sibling. **+4 is the WHOLE delta**, and code-attributable and measured
 delta agree for the third session running.
 
+**The close-out run is assertion-for-assertion identical to the move
+run** -- 24,145 either way, 408 blocks either way, per-namespace diff
+EMPTY -- so this session's doc additions (the record, the prompt
+archive, the P5 rewrite, the two regenerated indexes and
+`state-derived.md`) move no gate's population. That run was taken
+against the FINAL tree: two earlier close-out runs were started and
+stopped on purpose after later verification turned up prose corrections
+to this record, and only the third, over bytes nothing changed
+afterwards, is reported here.
+
 ## 5. Closing arithmetic
 
 ### The partition, cluster 4 of 8
@@ -672,4 +682,30 @@ probably cannot.
 
 ## 8. CI at the pushed tip -- the close marker
 
-PLACEHOLDER-CI
+`gh run watch 33392753142 --exit-status` exits 0; the run is
+**completed / success** at `d0be9cf4d71f7b203022f4697c92e357c566aeea`,
+the pushed tip
+(https://github.com/pragsmike/ehr-testing-tools/actions/runs/33392753142).
+That is the close marker under `rulings.md#R-session-verifies-ci-via-gh`,
+which the de-scaffold ruling of 2026-08-25 retired as a TAG condition
+and kept as this. No tag was paid.
+
+`gh run list` shows exactly ONE run for the two-commit push, at the tip
+-- the one-CI-run-per-push fact the twelfth session measured, confirmed
+for the third session running. This session had no red-first pair to
+spend it on: the sweep owed zero repoints, so there was no deliberate
+red to pair.
+
+`bin/post-push-verify 04b1e9f d0be9cf` reports the remote tip matching
+HEAD and every commit message in range pure ASCII, with the expected
+"reported once, not awaited to conclusion (AR-CI-4)" disclosure at the
+moment it ran. Both pushed messages were diffed against the files that
+produced them: each differs by exactly one trailing blank line, which is
+`git log --format=%B`'s own formatting artifact and not a wrapper
+mangling. The push's own gate (`gitleaks detect` over 1,278 commits,
+`clojure -M:poly check`) was clean.
+
+**Two commits, and the first is the whole claim**: the output-identical
+move (`c7fbcb5`) and this close (`d0be9cf`). The emit phase's fourth
+cluster, the program's fourteenth landing, and the first namespace in
+either file that is not a leaf.
