@@ -62,32 +62,12 @@ with them.
   `.agents/plans/engine-extraction-census.md` -- every top-level form of both
   files assigned to exactly one proposed namespace, the cross-seam edges, and
   the apply-path inventory that also serves `roadmap.md#event-stream-mutation`.
-  **PHASE NOTE, 2026-08-30: `engine.clj`'s EXTRACTION IS COMPLETE.**
-  TEN clusters have landed, each in the census's dependency order and each with
-  both `bin/regression-oracle` and `bin/ground-truth-bracket` IDENTICAL with no
-  declaration: `streams` (16 forms, 11 delegating defs), `state` (14/13, plus
-  the cycle breaker `observation-value-fields` moved down out of `decide`),
-  `encounters` (10/ZERO -- all ten movers private, so C1(a)'s obligation did not
-  arise and constraint 5 forbade one), `evolve` (32/ONE -- the `defmulti`; a
-  `def` of a multimethod shares the one multifn object, verified live, so that
-  single def carries all 27 methods across the seam), `fold` (3/ONE -- `replay`,
-  load-bearing because `interface.clj:89` re-exports through it; the FIRST move
-  to relocate an APPLY SITE, census 4c, whose divergence from `run`'s in-loop
-  fold stays payable at unification), `log-index` (10 forms in FOUR
-  non-contiguous regions; ONE def, the first owed to a test rather than to
-  `interface.clj`; the SECOND apply site, census 4d), then -- in one session --
-  `config` (5/FIVE, the first def owed to `interface.clj` AND to tests
-  independently) and `assignment` (3/TWO), then `decide` (58/SEVEN, the largest:
-  the `defmulti`, its 32 methods and 25 helpers, from TWO regions), and finally
-  `run` (6/TWO -- `pop-min`, `placeholder-registration`, `select-person`,
-  `prelude`, `person-plan`, `run`; the SOLE EVENT PRODUCER and apply site 1,
-  census 4a/4b, moved verbatim). **`engine.clj` is now 741 lines / 43 forms plus
-  `ns`, ALL of them delegating defs: a PURE FACADE with no executable code of
-  its own** (author ruling C4(b), 2026-08-30, which decided the residual
-  question the ninth session put). The partition closes at 202 forms across
-  eleven namespaces: 157 real forms, the facade's 43 delegating defs, and the
-  two-form constraint-1 shim `ehrt.sim-engine.run` had to add. **EMIT PHASE OPENED
-  2026-08-30** (census 2a): order DERIVED, 3b's sixteen edges reproduce EXACTLY, the
+  **PHASE NOTE, 2026-08-30: `engine.clj`'s EXTRACTION IS COMPLETE.** TEN clusters --
+  `streams`, `state`, `encounters`, `evolve`, `fold`, `log-index`, `config`,
+  `assignment`, `decide`, `run` -- landed in census order, each with both gates
+  IDENTICAL and no declaration; `engine.clj` ends a PURE FACADE (C4(b)), 741 lines /
+  43 delegating defs, 202 forms / eleven namespaces. DETAIL: the nine records below (C6(a)).
+  **EMIT PHASE OPENED 2026-08-30** (census 2a): order DERIVED, 3b's sixteen edges reproduce EXACTLY, the
   leaves THREE (`hl7-time`, `registry`, `timelines`), `er7` not among them. ELEVENTH
   `hl7-time` (7 forms / 47 form-lines, 3 defs, ONE widening); TWELFTH `registry` (13
   / 278, TEN defs -- SEVEN of them `interface.clj` re-exports -- TWO widenings, and a
