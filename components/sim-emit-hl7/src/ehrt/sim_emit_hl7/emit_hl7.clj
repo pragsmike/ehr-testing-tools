@@ -22,14 +22,13 @@
   :active-mrn (`sim/ADR-0010`: MRN moved into state; the emitter renders
   whichever MRN was active when the event happened, which until M2b's
   merge exists is always the patient's one and only MRN)."
-  (:require [ehrt.sim-model.interface :as sim-model]
-            [ehrt.sim-emit-hl7.hl7-time :as hl7-time]
+  (:require [ehrt.sim-emit-hl7.hl7-time :as hl7-time]
             [ehrt.sim-emit-hl7.registry :as registry]
-            [ehrt.sim-emit-hl7.timelines :as timelines]
             [ehrt.sim-emit-hl7.er7 :as er7]
             [ehrt.sim-emit-hl7.segments :as segments]
             [ehrt.sim-emit-hl7.messages :as messages]
-            [ehrt.sim-emit-hl7.planners :as planners]))
+            [ehrt.sim-emit-hl7.planners :as planners]
+            [ehrt.sim-emit-hl7.emit :as emit]))
 
 ;; --- moved to ehrt.sim-emit-hl7.hl7-time -----------------------------
 ;;
@@ -55,7 +54,8 @@
 ;; public surface, which C1(a) does not ask for. `transmit-seconds` is
 ;; public in `hl7-time` instead, because eleven forms called it at the
 ;; time of that move. Ten of those left with `messages` in cluster 6;
-;; `emit-wire` alone still names `hl7-time/transmit-seconds`, twice.
+;; `emit-wire` alone still named `hl7-time/transmit-seconds`, twice,
+;; until cluster 8 took it too; no form in this file names it now.
 
 (def default-reference-date hl7-time/default-reference-date)
 (def default-utc-offset hl7-time/default-utc-offset)
@@ -260,48 +260,6 @@
 
 (def event->messages messages/event->messages)
 
-(def ^:private default-providers
-  "A fixed, arbitrary reference-seed provider pool -- purely a fallback
-  default for callers that don't care about exact NPI values (`emit`'s
-  lower arities). A real run threads back its OWN materialized
-  providers (ehrt.sim-engine.engine/run's :providers) instead, so its
-  messages' PV1-7 matches its own ground-truth log's :attending ids."
-  (sim-model/materialize-providers (java.util.Random. 0) sim-model/default-provider-templates))
-
-(defn emit
-  "The stage function: ground-truth log -> vector of ER7 message
-  strings, in log order. Pure function of its arguments alone
-  (determinism law); events outside `message-type-registry` are
-  skipped, not errored -- the theory's laws bind the events this stage
-  claims to handle, not every event type that may ever appear in a
-  log. `utc-offset`/`facility`/`providers` default for standalone
-  convenience; callers rendering a specific run's log should pass back
-  that SAME run's :utc-offset/:facility/:providers (ehrt.sim.run
-  does). `site-profile` (Milestone site-profiles) is the LAST, optional
-  argument: absent (the 5-arg arity), nil, or {} all render identically
-  -- the default-profile identity property (docs/site-profiles.md, this
-  milestone's own determinism anchor) -- since :site-profile reaches no
-  stage but this one's own render call sites, never ground-truth-log or
-  check.clj (ehrt.sim-engine.engine/config-keys has no such key).
-
-  ADR-0109: this function's own output is BYTE-FROZEN -- always calls
-  `event->messages` with offsets {}, so every transmit instant equals
-  its own clinical instant and this function's bytes/order never move,
-  regardless of anything ADR-0109 added elsewhere in this namespace.
-  `emit-wire`, below, is the split-clock sibling that actually shifts
-  MSH-7; this function is the oracle `emit-wire`'s own identity
-  property is checked against."
-  ([ground-truth reference-date]
-   (emit ground-truth reference-date default-utc-offset sim-model/default-facility default-providers))
-  ([ground-truth reference-date utc-offset]
-   (emit ground-truth reference-date utc-offset sim-model/default-facility default-providers))
-  ([ground-truth reference-date utc-offset facility providers]
-   (emit ground-truth reference-date utc-offset facility providers nil))
-  ([ground-truth reference-date utc-offset facility providers site-profile]
-   (let [demographics (timelines/demographics-timeline ground-truth)]
-     (into [] (mapcat (partial event->messages reference-date utc-offset facility providers demographics site-profile {}))
-           ground-truth))))
-
 ;; --- moved to `ehrt.sim-emit-hl7.planners` (extraction cluster 7 of 8) --
 ;;
 ;; ELEVEN forms -- `plan-latency`, `plan-chatter` and its four helpers,
@@ -348,111 +306,78 @@
 ;; 6 predicted by name. Sixty-four sites there, seven here -- depth drives
 ;; the class, but so does how much of a cluster was already qualified.
 ;;
-;; This move leaves NO dead require: `registry`, `timelines` and
-;; `segments` all keep in-file uses, and `planners` is added, so the `ns`
-;; above goes from seven aliases to eight. What it does end is this file's
-;; last piece of work of its own. Everything left below `emit-wire`
-;; delegates, and the three forms that remain -- `default-providers`,
-;; `emit` and `emit-wire` -- are census 2's `facade` cluster exactly.
+;; That move left NO dead require: `registry`, `timelines` and
+;; `segments` all still had in-file uses then, and `planners` was added,
+;; so the `ns` above went from seven aliases to eight. What it ended was
+;; this file's last piece of work of its own apart from the facade
+;; itself: the three forms that outlived it -- `default-providers`,
+;; `emit` and `emit-wire` -- were census 2's `facade` cluster exactly,
+;; and cluster 8 took them too.
 
 (def plan-latency planners/plan-latency)
 (def plan-chatter planners/plan-chatter)
 (def plan-charges planners/plan-charges)
 (def plan-ladders planners/plan-ladders)
 
-(defn emit-wire
-  "GT x reference-date x utc-offset x facility x providers x
-  site-profile x offsets [x emission] -> TimedWire: the SAME messages
-  `emit` would render, split-clock (each builder's own ADR-0109
-  docstring has the per-type detail: MSH-7 shifted by `offsets`, every
-  clinical-time field -- EVN-2 where present -- unshifted), returned
-  SORTED BY TRANSMIT TIME rather than log order -- out-of-order
-  clinical arrival (a lagged admission whose transmit instant lands
-  after a later event's own) falls out of this sort, not out of any
-  special-cased reordering logic. Ties (equal transmit seconds) break
-  on original log position, stable -- the identity property's own
-  mechanism: absent/nil/{} `offsets` makes every transmit second equal
-  its own log-order `:t`, and since ground truth is already
-  `:t`-nondecreasing (`sim-engine`'s own priority-queue invariant), the
-  stable tie-break reproduces `emit`'s exact order, and therefore its
-  exact bytes.
+;; --- moved to `ehrt.sim-emit-hl7.emit` (extraction cluster 8 of 8) ------
+;;
+;; THREE forms -- `default-providers`, `emit` and `emit-wire` -- left this
+;; file for `emit.clj`, from TWO regions: `default-providers` and `emit`
+;; from between the `event->messages` def above and the `planners` banner,
+;; and `emit-wire` from below the planner defs. NO BANNER TRAVELLED,
+;; because neither region carried one.
+;;
+;; Census 2 called this cluster `facade` and expected THIS FILE to keep
+;; it. Author ruling C11(a) moved it instead, so the census word went with
+;; the forms rather than with the file, and the namespace over there is
+;; named for `emit` -- the rule that named `ehrt.sim-engine.run` too.
+;;
+;; WITH THEM GONE THIS FILE IS A PURE FACADE: its `ns`, twenty-six
+;; delegating defs and seven explanatory comment blocks, and no executable
+;; code of its own. That is the shape `engine.clj` reached under ruling
+;; C4(b), in 741 lines against this file's 383, and reaching it here
+;; closes the extraction phase of
+;; `roadmap.md#engine-namespace-extraction-and-apply-unification`.
+;;
+;; THE CALLER TRAVELS, which no cluster before this one did and which
+;; census 2a named in advance as the shape that could only arrive last.
+;; `emit` and `emit-wire` are this file's own CALLERS -- census 3b gives
+;; them four rows, into `messages` (4 edges), `timelines` (3), `hl7-time`
+;; (2) and `segments` (1), and all four reproduce exactly -- so four bare
+;; names that resolved here through the delegating defs are qualified over
+;; there instead: `hl7-time/default-utc-offset` once,
+;; `messages/event->messages` twice, `segments/control-id-for` once.
+;;
+;; NO SHIM WAS NEEDED, and that is the difference from the engine's own
+;; caller-travels move rather than an oversight. `ehrt.sim-engine.run` had
+;; to reach `stream` back through `engine.clj` because a test perturbs
+;; that var by `with-redefs` (census constraint 1), and an implementation
+;; may not require its facade. Nothing here has that shape: all 108 `#'`
+;; sites in the tracked tree were re-read, and no `resolve`, `ns-resolve`,
+;; `requiring-resolve`, `with-redefs`, `alter-var-root`, `intern` or
+;; `find-var` form anywhere names `emit`, `emit-wire` or
+;; `default-providers`.
+;;
+;; TWO delegating defs below, and they are the brick's load-bearing entry
+;; points. `interface.clj` re-exports both as `defn` wrappers that call
+;; them at RUNTIME -- `emit` at three arities, `emit-wire` at two -- so
+;; the chain `ehrt.sim.run` -> `interface.clj` -> the def -> `emit.clj`
+;; must hold at every link. They are owed to the tree besides:
+;; `components/oracle`'s `digest.clj`, the regression oracle's own
+;; instrument, calls `emit-hl7/emit` at its `:228`, and
+;; `emit_hl7_test.clj` names it at sixty-one sites.
+;;
+;; `default-providers` was `^:private` here and stays private over there
+;; with NO def. Both its callers are `emit`'s own lower arities and both
+;; travelled, so census constraint 5, read as a PROHIBITION, has nothing
+;; to widen for.
+;;
+;; This move leaves TWO DEAD REQUIRES behind -- `ehrt.sim-model.interface`
+;; and `ehrt.sim-emit-hl7.timelines`, whose every use in this file was
+;; inside the three movers -- and adds one, so the `ns` above goes from
+;; eight aliases to seven. NOT ONE of the twenty-six defs below has an
+;; in-file caller any more, which is what a pure facade means measured
+;; rather than asserted.
 
-  `offsets` is plain data (`plan-latency`'s own output, or hand-built)
-  -- this function takes no RNG at all, per this namespace's own
-  renders-only doctrine.
-
-  ARC 4 SWEEP 2 adds the optional 8th argument, `emission`:
-  `{:chatter <plan-chatter's own output> :charges <plan-charges's own
-  :lines>}`. Absent, nil, or {} is the byte-identical path -- the
-  seven-argument arity below is exactly that, so no existing caller
-  moves. The sort key is `[transmit-t log-index lane sub]`: `lane` 0 is
-  every message a ground-truth event renders, in `event->messages`' own
-  order (so a `:discharge`'s ADT^A03 still precedes the DFT^P03 that
-  closes the same encounter), `lane` 1 is chatter, and `sub` is the
-  ordinal within each. Chatter carries no offset, so a chatter
-  message's transmit instant is its own `:at` and the latency plan for
-  every non-chatter message is untouched.
-
-  ARC 4 SWEEP 3 (ADR-0175 design (b)) adds `:ladders` to `emission`:
-  `plan-ladders`' own `{:rungs [...] :final #{...}}`. The rungs take
-  LANE 2, and the `:final` set -- LOG INDICES -- decides, per event,
-  whether `event->messages` renders a terminal status. That is the one
-  place this sweep moves an existing message's bytes: a terminal ORU^R01
-  whose order grew a rung gains OBR-25 and OBX-11.
-
-  ARC 4 SWEEP 4 (ADR-0175 ruling B1) adds `:siu` to `emission`, and it
-  is unlike the three above in one way worth naming: it adds no lane.
-  Scheduling's four kinds are GROUND-TRUTH events with registry entries,
-  so an SIU rides LANE 0 at its own event's own log index, exactly where
-  that event's ADT would ride if it had one. What `:siu` switches is
-  whether that lane-0 slot is filled at all. Absent or nil is today
-  byte-for-byte at every corpus, because every one of them renders zero
-  SIU messages without it.
-
-  A LADDER RUNG DOES CARRY AN OFFSET, unlike a chatter restatement, and
-  the difference is not an inconsistency. Chatter has no basis event to
-  take a lag from -- a periodic A08 restates a patient, not an event --
-  while a rung restates one specific message whose own lag is in the
-  plan, so it is looked up under `:basis-control-id` and the rung rides
-  it. The consequence is the ordering law the ladder needs: an ORM rung
-  transmits after its own order and an ORU rung before its own result,
-  under every latency profile, because each pair shares one offset and
-  the rung's instant is strictly inside the interval."
-  ([ground-truth reference-date utc-offset facility providers site-profile offsets]
-   (emit-wire ground-truth reference-date utc-offset facility providers site-profile offsets {}))
-  ([ground-truth reference-date utc-offset facility providers site-profile offsets
-    {:keys [chatter charges ladders siu]}]
-   (let [demographics (timelines/demographics-timeline ground-truth)
-         offsets (or offsets {})
-         chatter (or chatter [])
-         charges (or charges {})
-         ground-truth (vec ground-truth)
-         rungs (:rungs ladders)
-         final-result-indices (or (:final ladders) #{})
-         spans (when (seq chatter) (timelines/encounter-spans ground-truth))
-         base (->> ground-truth
-                   (map-indexed
-                    (fn [i ev]
-                      (let [control-id (control-id-for ev)
-                            transmit-t (hl7-time/transmit-seconds offsets control-id (:t ev))]
-                        (map-indexed
-                         (fn [j message] [transmit-t i 0 j message])
-                         (event->messages reference-date utc-offset facility providers demographics
-                                          site-profile offsets charges
-                                          (when (contains? final-result-indices i) {:stage :final})
-                                          siu ev)))))
-                   (apply concat))
-         restatements (map (fn [ins]
-                             [(:at ins) (:basis ins) 1 (:ordinal ins)
-                              (messages/chatter-message reference-date utc-offset facility providers
-                                               demographics site-profile spans ins)])
-                           chatter)
-         ladder-rungs (map (fn [ins]
-                             [(hl7-time/transmit-seconds offsets (:basis-control-id ins) (:at ins))
-                              (:basis ins) 2 (:seq ins)
-                              (messages/ladder-message reference-date utc-offset facility providers
-                                              demographics site-profile offsets ground-truth ins)])
-                           rungs)]
-     (->> (concat base restatements ladder-rungs)
-          (sort-by (fn [[transmit-t i lane sub _]] [transmit-t i lane sub]))
-          (mapv peek)))))
+(def emit emit/emit)
+(def emit-wire emit/emit-wire)

@@ -4,7 +4,8 @@
   re-statements, `plan-charges`' per-encounter DFT lines, and
   `plan-ladders`' order/result status rungs. Four pure functions that
   read the ground-truth log and return INSTRUCTIONS; `emit-wire`, which
-  stays behind, is what renders them.
+  stayed behind at this move and left in cluster 8 for
+  `ehrt.sim-emit-hl7.emit`, is what renders them.
 
   Extracted VERBATIM from `emit_hl7.clj`, the SEVENTH cluster of that
   file's namespace extraction (`.agents/plans/engine-extraction-
