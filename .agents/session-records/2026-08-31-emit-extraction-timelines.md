@@ -593,3 +593,31 @@ doctrine still carries engine-phase INSTANCE detail (which session found
 which census error, which cluster left `weighted-pick` private), and
 compacting that is re-triage and therefore the author's
 (`rulings.md#R-section-retriage-is-author-judgement`).
+
+## 8. CI at the pushed tip -- the close marker
+
+`gh run watch 33381655852 --exit-status` exits 0; the run is
+**completed / success** at `960638f5783394de2ebaf10f3f878c3371e3144a`,
+the pushed tip
+(https://github.com/pragsmike/ehr-testing-tools/actions/runs/33381655852).
+That is the close marker under `rulings.md#R-session-verifies-ci-via-gh`,
+which the de-scaffold ruling of 2026-08-25 retired as a TAG condition
+and kept as this. No tag was paid.
+
+`gh run list` shows exactly ONE run for the three-commit push, at the
+tip -- the one-CI-run-per-push fact the twelfth session measured,
+confirmed again. This session had no red-first pair to spend it on:
+the sweep owed zero repoints, so there was no deliberate red to pair.
+
+`bin/post-push-verify e3ce663 960638f` reports the remote tip matching
+HEAD and every commit message in range pure ASCII, with the expected
+"no CI run found yet" disclosure at the moment it ran. The push's own
+gate (`gitleaks detect` over 1,275 commits, `clojure -M:poly check`)
+was clean.
+
+**Three commits, and the middle one is the whole claim**: the C6(a)
+compaction that unblocked the row (`e940f24`), the output-identical
+move (`5aa2ac4`), and this close (`960638f`). The emit phase's third
+cluster has landed with the ORACLE IDENTICAL and no declaration, and
+five clusters remain behind a P5 row that now has eight lines of
+budget for them.
