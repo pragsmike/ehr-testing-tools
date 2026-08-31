@@ -84,52 +84,36 @@ with them.
   the cluster SPLITS; the MOVED TEXT itself needed requalifying (five names that resolved
   through this file's own defs); TWO requires went dead, a first; and a PRIOR cluster's
   banner can be FALSIFIED by a later move -- three were, paid in the move commit.
-  FIVE of the ten sessions fire the hand-owned-asset tripwire, for one reason:
-  `docs/dev/simulator-architecture.md` names engine forms by DEFINING FORM, so
-  each is RED-FIRST with a successor bumping `gt-emitters.svg`'s `:reviewed-at`.
-  Reading that registry's sources during the pre-move sweep is the recipe, not a
-  lucky catch: the sixth, ELEVENTH and TWELFTH read them and fired nothing -- that
-  page names ENGINE forms by DEFINING FORM but EMITTER forms as BARE NAMES. A GREEN
-  LOCAL SUITE IS NOT EVIDENCE THE ROW WILL STAY GREEN -- the test reads `git
-  log -1` on the SOURCE and cannot see an uncommitted edit. NEW WITH THE TENTH,
-  a hazard for every later sweep: a sweep can be forced to edit
+  THE HAND-OWNED-ASSET TRIPWIRE IS A RECIPE, not a lucky catch: read that
+  registry's own SOURCES during the pre-move sweep. FIVE of the ten engine
+  sessions fired it, each RED-FIRST with a successor bumping `gt-emitters.svg`'s
+  `:reviewed-at`; the sixth, ELEVENTH and TWELFTH read them and fired nothing --
+  `docs/dev/simulator-architecture.md` names ENGINE forms by DEFINING FORM but
+  EMITTER forms as BARE NAMES. A GREEN LOCAL SUITE IS NOT EVIDENCE THE ROW WILL
+  STAY GREEN -- the test reads `git log -1` on the SOURCE and cannot see an
+  uncommitted edit. NEW WITH THE TENTH: a sweep can be forced to edit
   `components/oracle/src/ehrt/oracle/digest.clj`, the BRACKET'S OWN SOURCE, and
-  the bracket then aborts its soundness check over a comment. Bracket the MOVE
+  the bracket then aborts its soundness check over a comment -- bracket the MOVE
   alone (sound, no declaration) and prove the sweep output-inert from its diff.
   NEW WITH THE ELEVENTH: THE INSTRUMENTS SWAP AT THE EMISSION LAYER -- the bracket
   excludes the `:hl7` half BY CONSTRUCTION, so the ORACLE is load-bearing. NEW WITH
   THE TWELFTH: CENSUS CONSTRAINT 6 FIRED, RED-FIRST -- a charter row pinned a
   FOUR-WORD phrase, under the shingle floor, found only by HAND-READING both registers.
-  THE CENSUS IS CORRECTED BY SESSION: the sixth found section 1's rendering
-  drops `^:private` from a `def` and its cluster line totals disagree with the
-  tree; the ninth found the `decide` list one form stale and its "26 private
-  helpers" wrong twice; the tenth found section 5's CONSTRAINT 1 states a remedy
-  that assumes `run` stays behind ("keep the delegating var and leave the call
-  sites unqualified"), which the tenth move is the case it did not anticipate,
-  and confirmed section 4a's sole-producer claim and 4b's ten-step fold exactly.
-  CONSTRAINT 5 IS READ AS A PROHIBITION, not an instruction to widen: the eighth
-  left `weighted-pick` `defn-`, the ninth EIGHTEEN of nineteen private movers,
-  and the tenth ALL FOUR -- after it nothing stays behind that could call.
-  A FACADE MAY REQUIRE ITS IMPLEMENTATIONS; AN IMPLEMENTATION MAY NOT REQUIRE
-  ITS FACADE. That is why the tenth move qualified fourteen bare names the nine
-  before it could leave alone, and why census constraint 1's `stream` is paid
-  with a lazily-resolved shim in `ehrt.sim-engine.run` rather than a `:require`.
-  Both directions asserted live: a `with-redefs` on `engine/stream` IS seen by
-  `run`, one on `streams/stream` is NOT.
-  TWO BACKLOGS FOR THE RULED REPOINT PASS. (1) FENCED CITATIONS: C1(a) forbids
-  touching test files, and the ninth alone left TWELVE stale `engine.clj`-by-file
-  citations across ten test files, including a NAMESPACE claim about a private
-  mover; the tenth adds `sim/run_test.clj:1588`'s `engine/placeholder-
-  registration`. (2) RETIREMENT CANDIDATES: FOURTEEN of the facade's 43
-  delegating defs now have no named caller anywhere -- `ConditionRecord`,
-  `MedicationOrderRecord`, `CarePlanRecord`, `placeholder-demographics`,
-  `PatientLocation`, `EncounterRecord`, `AppointmentRecord`,
-  `next-encounter-ordinal`, `next-appointment-ordinal`, the three
-  `*-stay-minutes` tables, `Persons`, `Scheduling`. Eleven were already
-  caller-less; the three `*-stay-minutes` were made so by the tenth move, exactly
-  as the ninth session priced. The FACADE RULE kept every one of them: retiring a
-  def is the repoint pass's business, not an extraction's. The emit phase's first
-  FENCED row is the thirteenth's, `person-simulator/limitations_test.clj:152`.
+  THE CENSUS IS CORRECTED BY SESSION -- the sixth, ninth and tenth each corrected it,
+  and the tenth confirmed 4a's sole-producer claim and 4b's ten-step fold exactly.
+  CONSTRAINT 5 IS READ AS A PROHIBITION, not an instruction to widen: a private mover
+  stays `defn-` unless a caller stays behind, and after the tenth nothing could call.
+  A FACADE MAY REQUIRE ITS IMPLEMENTATIONS; AN IMPLEMENTATION MAY NOT REQUIRE ITS
+  FACADE -- why the tenth qualified bare names the nine before it could leave alone,
+  and why census constraint 1's `stream` is paid with a lazily-resolved shim in
+  `ehrt.sim-engine.run` rather than a `:require`; both directions asserted live.
+  TWO BACKLOGS FOR THE RULED REPOINT PASS. (1) FENCED CITATIONS: C1(a) forbids touching
+  test files; the ninth alone left TWELVE stale `engine.clj`-by-file citations across ten
+  test files, one a NAMESPACE claim about a private mover, and the tenth adds one more.
+  The emit phase's first FENCED row is the thirteenth's, `person-simulator/limitations_test.clj:152`.
+  (2) RETIREMENT CANDIDATES: FOURTEEN of the facade's 43 delegating defs now have no named
+  caller anywhere -- eleven already so, three made so by the tenth move exactly as the ninth
+  priced. The FACADE RULE kept every one: retiring a def is the repoint pass's business.
   (3) STALE-BEFORE-THE-MOVE, a new class, neither fenced nor its finder's: `emit_hl7.clj:514`
   (now `segments.clj`'s `pv1-segment`) cites a registry comment that left for `registry.clj:41`
   with the TWELFTH move (so that session's disposition of `emit_hl7_test.clj:1306` to cluster 5
@@ -137,9 +121,11 @@ with them.
   since the THIRD engine session; and a FAMILY of un-re-depthed `docs/` citations of files that
   really live under `components/sim/docs/` -- `operational-models.md` in 26 live files,
   `patient-state-model.md` in 30, a `research/` path -- `er7.clj` carries one, `segments.clj` five.
-  COVERAGE, disclosed: neither bracket reaches a cancel decide and the gated
-  corpora resolve no citation, so the sixth's and ninth's brackets are blind to
-  six forms each; the suite and live `-M:dev` seam checks carry them.
+  COVERAGE, disclosed: neither bracket reaches a cancel decide and the gated corpora resolve
+  no citation, so two engine brackets are blind to six forms each; the suite and live `-M:dev`
+  seam checks carry them. ENGINE-PHASE INSTANCE DETAIL for every claim above -- corrected census
+  sections, widening and `weighted-pick` counts, the `gt-emitters.svg` red-first history, both
+  backlogs' per-form enumerations -- is in the nine engine records below (C8(a), 2026-08-31).
   Records:
   `.agents/session-records/2026-08-29-engine-extraction-opener.md`,
   `.agents/session-records/2026-08-30-engine-extraction-state.md`,
