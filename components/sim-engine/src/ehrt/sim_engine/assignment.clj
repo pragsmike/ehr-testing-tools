@@ -16,7 +16,7 @@
   draws (sim/ADR-0009's own rejected-alternative reasoning). Eight files
   across five bricks cite this pair by name as the worked precedent for
   that law -- `hazards.clj`, `persona.clj`, `order_profiles.clj`,
-  `emit_hl7.clj`, `gmf_interpreter.clj`, `gmf.clj`, `sim/run.clj` and
+  `planners.clj`, `gmf_interpreter.clj`, `gmf.clj`, `sim/run.clj` and
   `docs/dev/simulator-architecture.md` -- and every one of those
   citations names the VARS, which `engine.clj`'s delegating defs keep
   resolving.

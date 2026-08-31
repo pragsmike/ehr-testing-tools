@@ -42,8 +42,8 @@
   The other TWELVE private movers gain no def, because widening
   `emit_hl7.clj`'s own public surface is not what C1(a) asks for; they
   are public here and `defn-` no longer. Thirty-five call sites there
-  named them `segments/...`; cluster 6 took thirty-four, and
-  `plan-charges`' `segments/charge-concept` is the one that remains.
+  named them `segments/...`; cluster 6 took thirty-four and cluster 7
+  took the last, `plan-charges`' `segments/charge-concept`. None remains.
 
   Two sentences of the moved prose stopped being true at the seam and
   are corrected in the move commit rather than a commit later.
