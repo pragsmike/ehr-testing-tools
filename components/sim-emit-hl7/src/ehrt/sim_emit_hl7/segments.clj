@@ -34,14 +34,16 @@
   `pid-segment` as `(#'emit-hl7/msh-segment ...)` and
   `(#'emit-hl7/pid-segment ...)`, var accesses on private vars that no
   move can carry and that C1(a) forbids editing, so both vars stay in
-  `emit_hl7.clj` without widening its public surface by a name -- and
-  their twenty-two remaining call sites there keep resolving through
-  them unqualified.
+  `emit_hl7.clj` without widening its public surface by a name. Their
+  twenty-two call sites there resolved through those defs unqualified
+  until cluster 6 took every one of them; like `tn-field`'s, both defs
+  now stand for that var access and a namespace claim alone.
 
   The other TWELVE private movers gain no def, because widening
   `emit_hl7.clj`'s own public surface is not what C1(a) asks for; they
-  are public here and `defn-` no longer, and their thirty-five call
-  sites there now name them `segments/...`.
+  are public here and `defn-` no longer. Thirty-five call sites there
+  named them `segments/...`; cluster 6 took thirty-four, and
+  `plan-charges`' `segments/charge-concept` is the one that remains.
 
   Two sentences of the moved prose stopped being true at the seam and
   are corrected in the move commit rather than a commit later.

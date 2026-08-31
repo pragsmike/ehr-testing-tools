@@ -400,7 +400,7 @@
 
 (defn- fold-merge
   "A40: PID-3 carries the surviving mrn, MRG-1 the merged-away one
-  (mirroring ehrt.sim-emit-hl7.emit-hl7/merge-message's own docstring).
+  (mirroring ehrt.sim-emit-hl7.messages/merge-message's own docstring).
   The surviving entry absorbs -- bootstrap-or-keep, unchanged otherwise,
   since PV1 rides blank on A40 and :mrns is truth-only (never
   wire-visible). The merged-away entry becomes a tombstone: `:status
