@@ -800,4 +800,48 @@ which is a different decision and not a session's to make.
 
 ## 8. CI at the pushed tip -- the close marker
 
-CI_PLACEHOLDER
+`gh run watch 33439854438 --exit-status` exits 0 on its second
+attempt; the run is **completed / success** at
+`8370eadc62c14a8b1c8ef0d07cf0bf9e39e40d6d`, the pushed tip
+(https://github.com/pragsmike/ehr-testing-tools/actions/runs/33439854438).
+That is the close marker under `rulings.md#R-session-verifies-ci-via-gh`.
+No tag was paid.
+
+**THE FIRST ATTEMPT WENT RED, AND IT WAS NOT THIS SESSION'S.** It is the
+first non-green CI run in the program -- twenty-four consecutive
+successes preceded it -- so it is reported in full rather than
+summarised away.
+
+* **What failed**: `ehrt.corpus-io.mllp-test`,
+  `a-refused-connection-is-an-error-not-a-throw` (`mllp_test.clj:214`
+  and `:215`), 2 failures in 83 assertions. `(kernel/rejected? r)` was
+  false and `(:category r)` was `nil`, because `mllp/open-sink!`
+  SUCCEEDED against a port the test had just closed.
+* **Why it is not this session's**, established rather than asserted:
+  `git diff --name-only 05afc27..8370ead` touches fourteen files and
+  **not one is under `components/corpus-io` or the kernel** -- the whole
+  range is `.agents/`, `sim-emit-hl7`, one `sim-engine` docstring line
+  and one `docs-tooling` test docstring. The same namespace ran GREEN in
+  this session's own final `make test`, in both projects, 14 tests / 83
+  assertions / 0 failures each.
+* **The mechanism**: `ack-server!` binds an EPHEMERAL port, the test
+  stops it, and then asserts that connecting to that port is refused.
+  On a loaded runner that is a race -- the just-freed ephemeral port can
+  still accept between `stop!` and `open-sink!`. The test's own
+  docstring elsewhere in the file explains why ephemeral ports were
+  chosen ("a fixed port in a test suite is a collision waiting for a
+  busy host"); this assertion is the one place where that choice cuts
+  the other way.
+* **What was done**: `gh run rerun 33439854438 --failed` on the SAME
+  tree, which passed. A re-run that changes nothing and goes green is
+  the evidence that the tree was never the cause.
+
+**DISCLOSED AND BACKLOGGED, not fixed.** `corpus-io` is outside this
+session's fences (no engine-side edits, no unrelated bricks), and a
+green-on-rerun flake in a networking test is a design-channel item, not
+a mover's. It wants a roadmap row of its own; this session did not write
+one, because the row that would carry it has four lines of headroom and
+adding one is exactly the bump `rulings.md#R-budget-stop` forbids. Named
+here so the eighteenth session does not rediscover it as fresh, and so
+that the next red in this test is recognised as the second sighting
+rather than the first.
