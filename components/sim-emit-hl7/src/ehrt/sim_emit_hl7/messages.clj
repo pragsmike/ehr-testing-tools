@@ -28,12 +28,14 @@
   sits the more of it there is.
 
   TEN of the twelve private movers STAY PRIVATE, the largest such set
-  in either file. Every caller of `single-subject-message`,
-  `bed-swap-message`, `bed-status-message`, `siu-message`,
-  `merge-message`, `orm-message`, `oru-message`, `observation-message`,
-  `diagnostic-report-message` and `dft-message` travelled with them --
-  `event->messages` calls all ten, `ladder-message` two of them -- so
-  census constraint 5 read as a PROHIBITION leaves every one unwidened.
+  in the EMITTER -- the engine's `decide` cluster left eighteen of
+  nineteen, and is the only larger one. Every caller of
+  `single-subject-message`, `bed-swap-message`, `bed-status-message`,
+  `siu-message`, `merge-message`, `orm-message`, `oru-message`,
+  `observation-message`, `diagnostic-report-message` and `dft-message`
+  travelled with them -- `event->messages` calls all ten and
+  `ladder-message` two of them -- so census constraint 5, read as a
+  PROHIBITION, leaves every one unwidened.
 
   `emit_hl7.clj` remains the namespace every existing requirer resolves
   against (author ruling C1(a)) and keeps ONE delegating def:

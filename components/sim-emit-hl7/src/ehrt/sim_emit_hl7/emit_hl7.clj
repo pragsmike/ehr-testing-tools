@@ -234,12 +234,13 @@
 ;; `#'` sites in the tracked tree were re-read and none names a mover.
 ;;
 ;; TEN of the twelve private movers STAY PRIVATE, the largest such set in
-;; either file. `event->messages` calls all ten and `ladder-message` calls
-;; two of them, so every caller travelled and census constraint 5, read as
-;; a PROHIBITION, leaves them unwidened. The other TWO, `chatter-message`
-;; and `ladder-message`, widen because `emit-wire` stayed behind and calls
-;; both; they gain no def, and their two call sites in `emit-wire` name
-;; them `messages/...`.
+;; the EMITTER -- the engine's `decide` left eighteen of nineteen, and is
+;; the only larger one. `event->messages` calls all ten and
+;; `ladder-message` calls two of them, so every caller travelled and
+;; census constraint 5, read as a PROHIBITION, leaves them unwidened.
+;; The other TWO, `chatter-message` and `ladder-message`, widen because
+;; `emit-wire` stayed behind and calls both; they gain no def, and their
+;; two call sites in `emit-wire` name them `messages/...`.
 ;;
 ;; SIXTY-FOUR bare names had to be requalified in the MOVED text, the
 ;; class cluster 5 opened at five: `hl7-time/hl7-timestamp` (20),

@@ -69,21 +69,32 @@ with them.
   43 delegating defs, 202 forms / eleven namespaces. DETAIL: the nine records below (C6(a)).
   **EMIT PHASE OPENED 2026-08-30** (census 2a): order DERIVED, 3b's sixteen edges reproduce
   EXACTLY, the leaves THREE (`hl7-time`, `registry`, `timelines`), `er7` not among them.
-  FIVE landed -- forms/form-lines/defs/widenings: ELEVENTH `hl7-time` 7/47/3/1; TWELFTH
+  SIX landed -- forms/form-lines/defs/widenings: ELEVENTH `hl7-time` 7/47/3/1; TWELFTH
   `registry` 13/278/10/2 (seven defs `interface.clj` re-exports); THIRTEENTH `timelines`
   5/151/0/5, no re-export, no test site, no `:require`, ZERO edges even inside the cluster;
   FOURTEENTH `er7` 19/193/3/11, the FIRST non-leaf, requiring the SIBLING `timelines` (3b's
-  lone `er7`->`timelines` edge); FIFTEENTH `segments` 15/518/3/14, the LARGEST, EIGHT
-  regions, THREE landed siblings, ZERO internal edges so ALL widen and none stays private.
-  All gates IDENTICAL. THREE left, census 2a's order. NEW WITH THE THIRTEENTH: 3b counts DISTINCT
-  (caller, callee) PAIRS, not sites (18 vs 19, then 34 vs 43, then 66 vs 70); a sweep finds claims
-  stale BEFORE the move, which constraint 6 has no rule for -- disclose, backlog (3). NEW WITH THE
-  FOURTEENTH: the caller-travels shape ARRIVES, SIX movers at once staying private (`weighted-pick`
-  at scale), and a `#'` var in a C1(a)-fenced test file forces the first `^:private` def -- C7.
+  lone `er7`->`timelines` edge); FIFTEENTH `segments` 15/518/3/14, the most FORMS, EIGHT
+  regions, THREE landed siblings, ZERO internal edges so ALL widen and none stays private;
+  SIXTEENTH `messages` 13/578/1/2, the HEAVIEST (578 form-lines, 122 distinct crossings into
+  FIVE landed siblings), THREE regions, the fifteenth's reverse shape -- TEN of twelve private
+  movers STAY private because every caller travelled.
+  All gates IDENTICAL. TWO left, census 2a's order. NEW WITH THE THIRTEENTH: 3b counts DISTINCT
+  (caller, callee) PAIRS, not sites (18 vs 19, then 34 vs 43, 66 vs 70, now 122 vs 137); a sweep
+  finds claims stale BEFORE the move, which constraint 6 has no rule for -- disclose, backlog (3).
+  NEW WITH THE FOURTEENTH: the caller-travels shape ARRIVES, SIX movers at once staying private
+  (`weighted-pick` at scale), and a `#'` var in a C1(a)-fenced test file forces the first
+  `^:private` def -- C7.
   NEW WITH THE FIFTEENTH: C7 applied TWICE; NO banner travels, all four heading a section
   the cluster SPLITS; the MOVED TEXT itself needed requalifying (five names that resolved
   through this file's own defs); TWO requires went dead, a first; and a PRIOR cluster's
   banner can be FALSIFIED by a later move -- three were, paid in the move commit.
+  NEW WITH THE SIXTEENTH, every item a PRIOR CLASS AT ITS LIMIT rather than a new one:
+  requalification goes 5 sites to SIXTY-FOUR, depth being what drives it; the residue-claim class
+  widens past banners into a SIBLING `ns` DOCSTRING (six claims over four banners plus
+  `segments.clj`); banners TRAVEL again, and they are the exact four the fifteenth left because
+  their builders stayed; constraint 5's prohibition reaches TEN movers; and the `#'` class is
+  EXHAUSTED -- 106 sites re-read whole, none naming a mover, so NO C7 def is owed. The moved
+  prose travelled UNTOUCHED, carrying no `below`, `this file` or `this namespace` -- a first.
   THE HAND-OWNED-ASSET TRIPWIRE IS A RECIPE, not a lucky catch: read that
   registry's own SOURCES during the pre-move sweep. FIVE of the ten engine
   sessions fired it, each RED-FIRST with a successor bumping `gt-emitters.svg`'s
@@ -110,7 +121,9 @@ with them.
   TWO BACKLOGS FOR THE RULED REPOINT PASS. (1) FENCED CITATIONS: C1(a) forbids touching
   test files; the ninth alone left TWELVE stale `engine.clj`-by-file citations across ten
   test files, one a NAMESPACE claim about a private mover, and the tenth adds one more.
-  The emit phase's first FENCED row is the thirteenth's, `person-simulator/limitations_test.clj:152`.
+  The emit phase's first FENCED row is the thirteenth's, `person-simulator/limitations_test.clj:152`;
+  the SIXTEENTH adds THREE more, all alias-qualified prose naming `emit-hl7/siu-message`,
+  a mover that stays private: `siu_test.clj:11`/`:72` and `sim/siu_run_test.clj:106`.
   (2) RETIREMENT CANDIDATES: FOURTEEN of the facade's 43 delegating defs now have no named
   caller anywhere -- eleven already so, three made so by the tenth move exactly as the ninth
   priced. The FACADE RULE kept every one: retiring a def is the repoint pass's business.
@@ -136,7 +149,7 @@ with them.
   `.agents/session-records/2026-08-30-engine-extraction-config-assignment.md`,
   `.agents/session-records/2026-08-30-engine-extraction-decide.md`,
   `.agents/session-records/2026-08-30-engine-extraction-run.md`,
-  `.agents/session-records/2026-08-30-emit-extraction-hl7-time.md`, `.agents/session-records/2026-08-30-emit-extraction-registry.md`, `.agents/session-records/2026-08-31-emit-extraction-timelines.md`, `.agents/session-records/2026-08-31-emit-extraction-er7.md`, `.agents/session-records/2026-08-31-emit-extraction-segments.md`.
+  `.agents/session-records/2026-08-30-emit-extraction-hl7-time.md`, `.agents/session-records/2026-08-30-emit-extraction-registry.md`, `.agents/session-records/2026-08-31-emit-extraction-timelines.md`, `.agents/session-records/2026-08-31-emit-extraction-er7.md`, `.agents/session-records/2026-08-31-emit-extraction-segments.md`, `.agents/session-records/2026-08-31-emit-extraction-messages.md`.
 - OPEN **[event-stream-mutation]** PRIORITY 6 -- mutation moves to the
   ground-truth event stream (emitters inherit mutations); ADR-0166's test-side
   event mutations promoted to a shipped operator catalog with `check` as oracle;
