@@ -69,8 +69,9 @@ with them.
   43 delegating defs, 202 forms / eleven namespaces. DETAIL: the nine records below (C6(a)).
   **EMIT PHASE OPENED 2026-08-30** (census 2a): order DERIVED, 3b's sixteen edges reproduce
   EXACTLY, the leaves THREE (`hl7-time`, `registry`, `timelines`), `er7` not among them.
-  SIX landed in census-2a order -- `hl7-time`, `registry`, `timelines`, `er7`, `segments`,
-  `messages` -- every gate IDENTICAL, no declaration; TWO left. EMIT-PHASE INSTANCE DETAIL
+  SEVEN landed in census-2a order -- `hl7-time`, `registry`, `timelines`, `er7`, `segments`,
+  `messages`, `planners` -- every gate IDENTICAL, no declaration; ONE left, `facade`, and whether
+  it moves at all is the author's (C11). EMIT-PHASE INSTANCE DETAIL
   (per-cluster forms/form-lines/defs/widenings, regions, edge and requalification tallies) is in
   the six emit records below (C9(a), 2026-08-31). THE DOCTRINE IT ADDED, which stands: 3b counts
   DISTINCT (caller, callee) PAIRS, not sites, so a larger site count agrees with it; a sweep finds
@@ -83,6 +84,17 @@ with them.
   its account in TWO places, its banner in the residue AND its own `ns` docstring, and a later move
   must correct BOTH. A BANNER'S REAL OBJECT IS A SECTION whose ownership changes hands: one an
   earlier cluster LEFT because it split the section TRAVELS with the cluster that later owns it.
+  NEW WITH THE SEVENTEENTH, every item DOCTRINE rather than instance: a cluster with ZERO
+  INCOMING EDGES tends to be ONE CONTIGUOUS REGION, nothing above it having had reason to
+  interleave; distinct PAIRS can EQUAL raw SITES (13/13, after four divergences), which says
+  every crossing is a single reference; a `:require` can exist for the DELEGATING DEFS ALONE,
+  an edge C1(a) creates rather than one the tree holds; requalification is driven not only by
+  DEPTH but by how much of a cluster was ALREADY qualified (the deepest cluster pays 7 sites
+  against the sixth's 64); constraint 5's prohibition reaches SIX OF SIX, a whole private set;
+  and a PUBLIC mover can leave with NO def when nothing outside its cluster ever called it.
+  C9(a) and C10(b) landed FIRST, each its own commit: this row's emit instance detail became
+  pointers; four of nine live surfaces citing gates `e189418` deleted now name them CONVENTIONS,
+  five remain disclosed, and no gate was restored.
   THE HAND-OWNED-ASSET TRIPWIRE IS A RECIPE, not a lucky catch: read that
   registry's own SOURCES during the pre-move sweep. FIVE of the ten engine
   sessions fired it, each RED-FIRST with a successor bumping `gt-emitters.svg`'s
@@ -117,7 +129,8 @@ with them.
   be false when the move that relocates it arrives, so the mover neither caused nor owes it. FOUR
   members stand -- a relocated registry comment, `encounter-spans`' unresolvable
   `engine/stamp-encounter`, a FAMILY of un-re-depthed `docs/` citations of files that really live
-  under `components/sim/docs/` (26 and 30 live files), and `emit_hl7_test.clj:1306`.
+  under `components/sim/docs/` (26 and 30 live files), and `emit_hl7_test.clj:1306`. The
+  SEVENTEENTH is the first move to RELOCATE a member -- the class reaches MOVED TEXT.
   COVERAGE, disclosed: neither bracket reaches a cancel decide and the gated corpora resolve
   no citation, so two engine brackets are blind to six forms each; the suite and live `-M:dev`
   seam checks carry them. ENGINE-PHASE INSTANCE DETAIL for every claim above -- corrected census
@@ -133,7 +146,7 @@ with them.
   `.agents/session-records/2026-08-30-engine-extraction-config-assignment.md`,
   `.agents/session-records/2026-08-30-engine-extraction-decide.md`,
   `.agents/session-records/2026-08-30-engine-extraction-run.md`,
-  `.agents/session-records/2026-08-30-emit-extraction-hl7-time.md`, `.agents/session-records/2026-08-30-emit-extraction-registry.md`, `.agents/session-records/2026-08-31-emit-extraction-timelines.md`, `.agents/session-records/2026-08-31-emit-extraction-er7.md`, `.agents/session-records/2026-08-31-emit-extraction-segments.md`, `.agents/session-records/2026-08-31-emit-extraction-messages.md`.
+  `.agents/session-records/2026-08-30-emit-extraction-hl7-time.md`, `.agents/session-records/2026-08-30-emit-extraction-registry.md`, `.agents/session-records/2026-08-31-emit-extraction-timelines.md`, `.agents/session-records/2026-08-31-emit-extraction-er7.md`, `.agents/session-records/2026-08-31-emit-extraction-segments.md`, `.agents/session-records/2026-08-31-emit-extraction-messages.md`, `.agents/session-records/2026-08-31-emit-extraction-planners.md`.
 - OPEN **[event-stream-mutation]** PRIORITY 6 -- mutation moves to the
   ground-truth event stream (emitters inherit mutations); ADR-0166's test-side
   event mutations promoted to a shipped operator catalog with `check` as oracle;
