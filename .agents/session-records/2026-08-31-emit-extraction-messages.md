@@ -764,4 +764,27 @@ first act will be a STOP.
 
 ## 8. CI at the pushed tip -- the close marker
 
-GATE-CI-PLACEHOLDER
+`gh run watch 33422475527 --exit-status` exits 0; the run is
+**completed / success** at `3a4c9e4dbad5cc01f8c5243361d62b8db7158547`,
+the pushed tip
+(https://github.com/pragsmike/ehr-testing-tools/actions/runs/33422475527).
+That is the close marker under `rulings.md#R-session-verifies-ci-via-gh`,
+which the de-scaffold ruling of 2026-08-25 retired as a TAG condition and
+kept as this. No tag was paid.
+
+`gh run list` shows exactly ONE run for the THREE-commit push, at the tip
+-- the one-CI-run-per-push fact the twelfth session measured, confirmed
+for the fifth session running, and this is the first time it has been
+confirmed over a three-commit push rather than a two.
+
+`bin/post-push-verify a1380fa 3a4c9e4` reports the remote tip matching
+HEAD and every commit message in range pure ASCII, with the expected
+DISCLOSED line that it reports the CI run once rather than awaiting it
+(AR-CI-4); the awaiting is this section's own `gh run watch`. All three
+pushed messages were additionally diffed against the files that produced
+them: each differs by exactly one trailing blank line, which is
+`git log --format=%B`'s own artifact and not a wrapper mangling.
+
+This session had no red-first pair to spend the run on. The sweep owed
+one repoint and no gate reads the docstring it lives in, so there was no
+deliberate red to pair -- the second session running with none.
