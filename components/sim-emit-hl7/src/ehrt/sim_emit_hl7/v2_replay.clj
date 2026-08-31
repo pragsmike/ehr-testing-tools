@@ -204,7 +204,7 @@
    :phone (tn->persona-phone (seg-field pid-seg 13))})
 
 (defn- parse-payer
-  "IN1 rides admission alone (ehrt.sim-emit-hl7.emit-hl7/in1-segment's own
+  "IN1 rides admission alone (ehrt.sim-emit-hl7.segments/in1-segment's own
   docstring) -- nil on every other message, the wire-side mirror of
   `project-to-wire-visible-fields`'s own admitted-at gate. Whole-message
   scoped (unlike every reader above): IN1 is never repeated in a message
