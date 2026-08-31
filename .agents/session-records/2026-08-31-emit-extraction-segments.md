@@ -738,4 +738,28 @@ enumerations). Compacting that is re-triage and therefore the author's
 channel should rule before the sixteenth session opens**, or that
 session's first act will be a STOP.
 
-CI_PLACEHOLDER
+## 8. CI at the pushed tip -- the close marker
+
+`gh run watch 33408257330 --exit-status` exits 0; the run is
+**completed / success** at `c59829e30256038b4f544d2cee487f5685544f99`,
+the pushed tip
+(https://github.com/pragsmike/ehr-testing-tools/actions/runs/33408257330).
+That is the close marker under `rulings.md#R-session-verifies-ci-via-gh`,
+which the de-scaffold ruling of 2026-08-25 retired as a TAG condition
+and kept as this. No tag was paid.
+
+`gh run list` shows exactly ONE run for the two-commit push, at the tip
+-- the one-CI-run-per-push fact the twelfth session measured, confirmed
+for the fourth session running. This session had no red-first pair to
+spend it on: the sweep owed one repoint and no gate reads the docstring
+it lives in, so there was no deliberate red to pair.
+
+`bin/post-push-verify 386e738 c59829e` reports the remote tip matching
+HEAD and every commit message in range pure ASCII, with the expected
+DISCLOSED line that it reports the CI run once rather than awaiting it
+(AR-CI-4); the awaiting is this section's own `gh run watch`.
+
+CI covers what a green local `make test` cannot: `make docsgen`
+freshness, `verify-nist-lock`, and the generated-doc diff. The
+`state-derived.md` regeneration this session paid is exactly the class
+that gate exists for, and it is green.
