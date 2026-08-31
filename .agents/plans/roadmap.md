@@ -69,17 +69,21 @@ with them.
   43 delegating defs, 202 forms / eleven namespaces. DETAIL: the nine records below (C6(a)).
   **EMIT PHASE OPENED 2026-08-30** (census 2a): order DERIVED, 3b's sixteen edges reproduce
   EXACTLY, the leaves THREE (`hl7-time`, `registry`, `timelines`), `er7` not among them.
-  FOUR landed -- forms/form-lines/defs/widenings: ELEVENTH `hl7-time` 7/47/3/1; TWELFTH
-  `registry` 13/278/10/2, seven defs being `interface.clj` re-exports; THIRTEENTH
-  `timelines` 5/151/0/5, no re-export, no test site, no `:require`, ZERO edges even INSIDE
-  the cluster; FOURTEENTH `er7` 19/193/3/11, the FIRST non-leaf in either file -- it
-  requires the SIBLING `timelines`, 3b's lone `er7`->`timelines` edge, confirmed the only
-  one. All gates IDENTICAL. FOUR left, census 2a's order. NEW WITH THE THIRTEENTH: 3b counts
-  DISTINCT (caller, callee) PAIRS, not sites (18 vs 19 there, 34 vs 43 here); a sweep finds
-  claims stale BEFORE the move, which constraint 6 has no rule for -- disclose, backlog (3).
-  NEW WITH THE FOURTEENTH: the caller-travels shape ARRIVES, SIX movers at once staying
-  private (`weighted-pick`'s reading at scale); and a `#'`-quoted PRIVATE var in a
-  C1(a)-fenced test file forces the program's first `^:private` delegating def.
+  FIVE landed -- forms/form-lines/defs/widenings: ELEVENTH `hl7-time` 7/47/3/1; TWELFTH
+  `registry` 13/278/10/2 (seven defs `interface.clj` re-exports); THIRTEENTH `timelines`
+  5/151/0/5, no re-export, no test site, no `:require`, ZERO edges even inside the cluster;
+  FOURTEENTH `er7` 19/193/3/11, the FIRST non-leaf, requiring the SIBLING `timelines` (3b's
+  lone `er7`->`timelines` edge); FIFTEENTH `segments` 15/518/3/14, the LARGEST, EIGHT
+  regions, THREE landed siblings, ZERO internal edges so ALL widen and none stays private.
+  All gates IDENTICAL. THREE left, census 2a's order. NEW WITH THE THIRTEENTH: 3b counts DISTINCT
+  (caller, callee) PAIRS, not sites (18 vs 19, then 34 vs 43, then 66 vs 70); a sweep finds claims
+  stale BEFORE the move, which constraint 6 has no rule for -- disclose, backlog (3). NEW WITH THE
+  FOURTEENTH: the caller-travels shape ARRIVES, SIX movers at once staying private (`weighted-pick`
+  at scale), and a `#'` var in a C1(a)-fenced test file forces the first `^:private` def -- C7.
+  NEW WITH THE FIFTEENTH: C7 applied TWICE; NO banner travels, all four heading a section
+  the cluster SPLITS; the MOVED TEXT itself needed requalifying (five names that resolved
+  through this file's own defs); TWO requires went dead, a first; and a PRIOR cluster's
+  banner can be FALSIFIED by a later move -- three were, paid in the move commit.
   FIVE of the ten sessions fire the hand-owned-asset tripwire, for one reason:
   `docs/dev/simulator-architecture.md` names engine forms by DEFINING FORM, so
   each is RED-FIRST with a successor bumping `gt-emitters.svg`'s `:reviewed-at`.
@@ -126,13 +130,13 @@ with them.
   as the ninth session priced. The FACADE RULE kept every one of them: retiring a
   def is the repoint pass's business, not an extraction's. The emit phase's first
   FENCED row is the thirteenth's, `person-simulator/limitations_test.clj:152`.
-  (3) STALE-BEFORE-THE-MOVE, a new class, neither fenced nor its finder's:
-  `emit_hl7.clj:514` (now `:418`) cites a registry comment that left for
-  `registry.clj:41` with the TWELFTH move (so that session's disposition of
-  `emit_hl7_test.clj:1306` to cluster 5 is wrong -- already stale); `encounter-spans`
-  cites `engine/stamp-encounter`, unresolvable since the THIRD engine session; and
-  `docs/operational-models.md` is cited un-re-depthed by TWENTY-ONE live files (the real
-  path is `components/sim/docs/`), one of them now `er7.clj`'s `location-field`.
+  (3) STALE-BEFORE-THE-MOVE, a new class, neither fenced nor its finder's: `emit_hl7.clj:514`
+  (now `segments.clj`'s `pv1-segment`) cites a registry comment that left for `registry.clj:41`
+  with the TWELFTH move (so that session's disposition of `emit_hl7_test.clj:1306` to cluster 5
+  is wrong -- already stale); `encounter-spans` cites `engine/stamp-encounter`, unresolvable
+  since the THIRD engine session; and a FAMILY of un-re-depthed `docs/` citations of files that
+  really live under `components/sim/docs/` -- `operational-models.md` in 26 live files,
+  `patient-state-model.md` in 30, a `research/` path -- `er7.clj` carries one, `segments.clj` five.
   COVERAGE, disclosed: neither bracket reaches a cancel decide and the gated
   corpora resolve no citation, so the sixth's and ninth's brackets are blind to
   six forms each; the suite and live `-M:dev` seam checks carry them.
@@ -146,7 +150,7 @@ with them.
   `.agents/session-records/2026-08-30-engine-extraction-config-assignment.md`,
   `.agents/session-records/2026-08-30-engine-extraction-decide.md`,
   `.agents/session-records/2026-08-30-engine-extraction-run.md`,
-  `.agents/session-records/2026-08-30-emit-extraction-hl7-time.md`, `.agents/session-records/2026-08-30-emit-extraction-registry.md`, `.agents/session-records/2026-08-31-emit-extraction-timelines.md`, `.agents/session-records/2026-08-31-emit-extraction-er7.md`.
+  `.agents/session-records/2026-08-30-emit-extraction-hl7-time.md`, `.agents/session-records/2026-08-30-emit-extraction-registry.md`, `.agents/session-records/2026-08-31-emit-extraction-timelines.md`, `.agents/session-records/2026-08-31-emit-extraction-er7.md`, `.agents/session-records/2026-08-31-emit-extraction-segments.md`.
 - OPEN **[event-stream-mutation]** PRIORITY 6 -- mutation moves to the
   ground-truth event stream (emitters inherit mutations); ADR-0166's test-side
   event mutations promoted to a shipped operator catalog with `check` as oracle;
