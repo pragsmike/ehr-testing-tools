@@ -71,7 +71,13 @@ with them.
   leaves THREE (`hl7-time`, `registry`, `timelines`), `er7` not among them. ELEVENTH
   `hl7-time` (7 forms / 47 form-lines, 3 defs, ONE widening); TWELFTH `registry` (13
   / 278, TEN defs -- SEVEN of them `interface.clj` re-exports -- TWO widenings, and a
-  LEAF carrying NO `:require`); both gates IDENTICAL. SIX left, census 2a's order.
+  LEAF carrying NO `:require`); THIRTEENTH `timelines` (5 / 151, ZERO defs and FIVE
+  widenings -- all `defn-`, no re-export, NO test call site, no `:require`, and ZERO
+  edges even INSIDE the cluster, so the caller-travels shape cannot arise). All
+  gates IDENTICAL. FIVE left, census 2a's order. NEW WITH THE THIRTEENTH: 3b counts
+  DISTINCT (caller, callee) PAIRS, not sites (18 vs 19 here); and a sweep finds
+  claims stale BEFORE the move too, which constraint 6 has no rule for -- two found,
+  disclosed and backlogged (3) below.
   FIVE of the ten sessions fire the hand-owned-asset tripwire, for one reason:
   `docs/dev/simulator-architecture.md` names engine forms by DEFINING FORM, so
   each is RED-FIRST with a successor bumping `gt-emitters.svg`'s `:reviewed-at`.
@@ -116,7 +122,13 @@ with them.
   `*-stay-minutes` tables, `Persons`, `Scheduling`. Eleven were already
   caller-less; the three `*-stay-minutes` were made so by the tenth move, exactly
   as the ninth session priced. The FACADE RULE kept every one of them: retiring a
-  def is the repoint pass's business, not an extraction's.
+  def is the repoint pass's business, not an extraction's. The emit phase's first
+  FENCED row is the thirteenth's, `person-simulator/limitations_test.clj:152`.
+  (3) STALE-BEFORE-THE-MOVE, a new class, neither fenced nor its finder's:
+  `emit_hl7.clj:514` cites a registry comment that left for `registry.clj:41` with
+  the TWELFTH move (so that session's disposition of `emit_hl7_test.clj:1306` to
+  cluster 5 is wrong -- already stale), and `encounter-spans` cites
+  `engine/stamp-encounter`, unresolvable since the THIRD engine session.
   COVERAGE, disclosed: neither bracket reaches a cancel decide and the gated
   corpora resolve no citation, so the sixth's and ninth's brackets are blind to
   six forms each; the suite and live `-M:dev` seam checks carry them.
@@ -130,7 +142,7 @@ with them.
   `.agents/session-records/2026-08-30-engine-extraction-config-assignment.md`,
   `.agents/session-records/2026-08-30-engine-extraction-decide.md`,
   `.agents/session-records/2026-08-30-engine-extraction-run.md`,
-  `.agents/session-records/2026-08-30-emit-extraction-hl7-time.md`, `.agents/session-records/2026-08-30-emit-extraction-registry.md`.
+  `.agents/session-records/2026-08-30-emit-extraction-hl7-time.md`, `.agents/session-records/2026-08-30-emit-extraction-registry.md`, `.agents/session-records/2026-08-31-emit-extraction-timelines.md`.
 - OPEN **[event-stream-mutation]** PRIORITY 6 -- mutation moves to the
   ground-truth event stream (emitters inherit mutations); ADR-0166's test-side
   event mutations promoted to a shipped operator catalog with `check` as oracle;
