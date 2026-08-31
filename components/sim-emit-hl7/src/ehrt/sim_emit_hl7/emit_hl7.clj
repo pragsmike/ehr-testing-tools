@@ -27,6 +27,7 @@
             [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim-emit-hl7.hl7-time :as hl7-time]
             [ehrt.sim-emit-hl7.registry :as registry]
+            [ehrt.sim-emit-hl7.timelines :as timelines]
             [ehrt.sim-emit-hl7.site-profile :as site-profile]))
 
 ;; --- moved to ehrt.sim-emit-hl7.hl7-time -----------------------------
@@ -358,103 +359,6 @@
    (parser/create-field [payer-id])
    (parser/create-field [(escape-er7 payer-name)])))
 
-(defn- demographics-timeline
-  "The demographic state this emitter renders from, derived directly
-  from the log's own events (sim/ADR-0012's own precedent: a stage's own
-  state is recoverable by scanning the log, no second input needed).
-  Computed once per `emit` call and threaded down to every segment
-  builder that needs it, so PID enrichment applies uniformly across
-  every message type, not just admission. Read ONLY through
-  `demographics-at`.
-
-  `{patient-id [[t state] ...]}`, t-ascending, one entry per event that
-  MOVED that patient's demographics. `:registered` seeds it; ADR-0173
-  section 2(b)'s two kinds fold onto it.
-
-  THE VALUE IS PERSONA-SHAPED, deliberately, and this is the one design
-  choice here worth stating. `ehrt.sim-engine.engine/Demographics` is the
-  ENGINE's state-at-t shape, and it carries a residence SUM where a
-  Persona carries an `:address`. This namespace may not depend on
-  sim-engine at all (`components/sim-emit-hl7` depends on
-  `components/sim-model` and nothing else, AGENTS.md's own dependency
-  constraint), and -- more to the point -- a site profile's Z-segment
-  templates bind `[:persona ...]` paths against this exact value
-  (`context-for-event`), so changing its SHAPE would silently break
-  every authored site profile in the field. So the fold writes back into
-  a Persona: `:address` is ABSENT, not nil-valued and not sentinel-
-  valued, for a patient who has nowhere to live. `pid-segment` renders
-  an absent address as an empty PID-11, which is ruling E1 on the wire.
-
-  ARC 3A PART 3 IS WHERE THE FOLD ARRIVED. Before it, this function
-  returned `{patient-id persona}` and every `t` answered with the t0
-  sample -- the shape ADR-0172 limitations row 6 was written about. That
-  row is STRUCK by this change, not repaired, and its gate is deleted:
-  a delta folded onto patient state is no longer invisible to a message.
-
-  ARC 3A PART 4 ADDS THE PLACEHOLDER AND ITS FILL. A `:registered`
-  carrying `:identity :placeholder` seeds the window's ALIAS NAME and
-  nothing else -- no DOB, no sex, no phone, no address -- even though
-  the event's own `:persona` says who the patient really is. That gap
-  between what ground truth knows and what the wire may claim is the
-  whole of the identification flow's point (ADR-0173 section 2(d)), and
-  this is the one function that enforces it. The `:identity-fill` then
-  RE-SEEDS from the persona the fill carries, so every message after it
-  renders the identified patient and every message before it renders
-  the John Doe."
-  [ground-truth]
-  (letfn [(hide-address [state residence]
-            (cond-> state
-              (and residence (not= :housed (:status residence))) (dissoc :address)))
-          (seed [ev]
-            (if (= :placeholder (:identity ev))
-              ;; PERSONA-SHAPED, with one field in it. `pid-segment`
-              ;; renders every absent field empty, so this is a PID
-              ;; carrying an MRN and a John Doe name and nothing else.
-              {:name (:alias-name ev)}
-              (when-let [persona (:persona ev)]
-                (hide-address persona (:residence ev)))))
-          (fold [state ev]
-            (case (:event ev)
-              :demographic-update
-              (if (= :identity-fill (:cause ev))
-                (hide-address (:persona ev) (:residence ev))
-                (case (:field ev)
-                  :residence (let [address (:address (:value ev))]
-                               (if address (assoc state :address address) (dissoc state :address)))
-                  :name (assoc state :name (:value ev))
-                  :dob (assoc state :dob (:value ev))
-                  state))
-              :coverage-change (assoc state :payer (:payer ev))
-              state))]
-    (reduce (fn [acc ev]
-              (let [patient-id (:patient-id (first (:participants ev)))]
-                (case (:event ev)
-                  :registered (assoc acc patient-id [[(:t ev) (seed ev)]])
-                  (:demographic-update :coverage-change)
-                  (if-let [timeline (get acc patient-id)]
-                    (assoc acc patient-id
-                           (conj timeline [(:t ev) (fold (second (peek timeline)) ev)]))
-                    acc)
-                  acc)))
-            {}
-            ground-truth)))
-
-(defn- demographics-at
-  "One patient's demographic state AS IT STOOD AT `t` -- the single
-  lookup shape every PID-rendering site in this namespace goes through.
-
-  The LAST entry at or before `t`, which is what makes a message render
-  the demographics the patient had when the event happened rather than
-  the ones they ended the run with. A patient with no `:registered` in
-  this log at all -- a hand-built fixture, a sliced log -- answers nil,
-  and `pid-segment` falls back to its pre-M4 three-field segment."
-  [demographics patient-id t]
-  (when-let [timeline (get demographics patient-id)]
-    (loop [entries timeline state nil]
-      (if-let [[et estate] (first entries)]
-        (if (<= et t) (recur (rest entries) estate) state)
-        state))))
-
 (defn- location-field
   "Renders a location map as ward^^bed^facility (PV1-3/PV1-6's shared
   shape, docs/operational-models.md's transfer/A02 spec: 'PV1-3 renders
@@ -557,7 +461,7 @@
   (bed-swap, merge), the same simplification `ehrt.sim-engine.engine/
   replay`'s own :patient-id convenience view already makes."
   [demographics event]
-  (assoc event :persona (demographics-at demographics
+  (assoc event :persona (timelines/demographics-at demographics
                                          (:patient-id (first (:participants event)))
                                          (:t event))))
 
@@ -635,7 +539,7 @@
           transmit-ts (hl7-timestamp reference-date (hl7-time/transmit-seconds offsets control-id t) utc-offset)
           facility-name (name (:id facility))
           provider (provider-by-id providers attending)
-          persona (demographics-at demographics (:patient-id (first participants)) t)
+          persona (timelines/demographics-at demographics (:patient-id (first participants)) t)
           disposition-state (when (= :discharge event) :discharged-to-home)
           ;; M5b: the only two event types this project ever renders
           ;; :outpatient for -- every other type here is still :inpatient
@@ -680,9 +584,9 @@
       parser/DEFAULT-DELIMITERS
       (msh-segment site-profile type+trigger control-id transmit-ts)
       (evn-segment (:trigger type+trigger) clinical-ts)
-      (pid-segment mrn1 (demographics-at demographics p1 t))
+      (pid-segment mrn1 (timelines/demographics-at demographics p1 t))
       (pv1-segment site-profile :inpatient facility-name to1 from1 (provider-by-id providers att1) nil enc1)
-      (pid-segment mrn2 (demographics-at demographics p2 t))
+      (pid-segment mrn2 (timelines/demographics-at demographics p2 t))
       (pv1-segment site-profile :inpatient facility-name to2 from2 (provider-by-id providers att2) nil enc2)
       (z-segments-for site-profile demographics ev)))))
 
@@ -864,7 +768,7 @@
         control-id (control-id-for ev)
         transmit-ts (hl7-timestamp reference-date (hl7-time/transmit-seconds offsets control-id t) utc-offset)
         facility-name (name (:id facility))
-        persona (demographics-at demographics (:patient-id (first participants)) t)
+        persona (timelines/demographics-at demographics (:patient-id (first participants)) t)
         scheduled-ts (when scheduled-t (hl7-timestamp reference-date scheduled-t utc-offset))]
     (parser/str-message
      (apply parser/create-message
@@ -895,7 +799,7 @@
       parser/DEFAULT-DELIMITERS
       (msh-segment site-profile type+trigger control-id transmit-ts)
       (evn-segment (:trigger type+trigger) clinical-ts)
-      (pid-segment surviving-mrn (demographics-at demographics survivor-id t))
+      (pid-segment surviving-mrn (timelines/demographics-at demographics survivor-id t))
       (pv1-segment site-profile :inpatient facility-name nil nil nil nil (:encounter-id ev))
       (mrg-segment merged-mrn)
       (z-segments-for site-profile demographics ev)))))
@@ -1132,7 +1036,7 @@
       (apply parser/create-message
        parser/DEFAULT-DELIMITERS
        (msh-segment site-profile type+trigger control-id transmit-ts)
-       (pid-segment active-mrn (demographics-at demographics (:patient-id (first participants)) t))
+       (pid-segment active-mrn (timelines/demographics-at demographics (:patient-id (first participants)) t))
        (pv1-segment site-profile :inpatient facility-name location nil provider nil (:encounter-id ev))
        (if stage (orc-segment control-id site-profile stage) (orc-segment control-id))
        (obr-segment 1 concept)
@@ -1195,7 +1099,7 @@
       (apply parser/create-message
        parser/DEFAULT-DELIMITERS
        (msh-segment site-profile type+trigger control-id transmit-ts)
-       (pid-segment active-mrn (demographics-at demographics (:patient-id (first participants)) t))
+       (pid-segment active-mrn (timelines/demographics-at demographics (:patient-id (first participants)) t))
        (pv1-segment site-profile :inpatient facility-name location nil provider nil (:encounter-id ev))
        (orc-segment control-id)
        (if stage
@@ -1290,7 +1194,7 @@
      (apply parser/create-message
       parser/DEFAULT-DELIMITERS
       (msh-segment site-profile type+trigger control-id transmit-ts)
-      (pid-segment active-mrn (demographics-at demographics (:patient-id (first participants)) t))
+      (pid-segment active-mrn (timelines/demographics-at demographics (:patient-id (first participants)) t))
       (pv1-segment site-profile :inpatient facility-name location nil provider nil (:encounter-id ev))
       (observation-obx-segment 1 clinical-ts ev)
       (z-segments-for site-profile demographics ev)))))
@@ -1325,7 +1229,7 @@
      (apply parser/create-message
       parser/DEFAULT-DELIMITERS
       (msh-segment site-profile type+trigger control-id transmit-ts)
-      (pid-segment active-mrn (demographics-at demographics (:patient-id (first participants)) t))
+      (pid-segment active-mrn (timelines/demographics-at demographics (:patient-id (first participants)) t))
       (pv1-segment site-profile :inpatient facility-name location nil provider nil (:encounter-id ev))
       (orc-segment control-id)
       (obr-segment 1 (first codes) clinical-ts)
@@ -1437,7 +1341,7 @@
                                    utc-offset)
         facility-name (name (:id facility))
         provider (provider-by-id providers attending)
-        persona (demographics-at demographics (:patient-id (first participants)) t)
+        persona (timelines/demographics-at demographics (:patient-id (first participants)) t)
         patient-class (if (= :outpatient-visit-end event) :outpatient :inpatient)]
     (parser/str-message
      (apply parser/create-message
@@ -1572,7 +1476,7 @@
   ([ground-truth reference-date utc-offset facility providers]
    (emit ground-truth reference-date utc-offset facility providers nil))
   ([ground-truth reference-date utc-offset facility providers site-profile]
-   (let [demographics (demographics-timeline ground-truth)]
+   (let [demographics (timelines/demographics-timeline ground-truth)]
      (into [] (mapcat (partial event->messages reference-date utc-offset facility providers demographics site-profile {}))
            ground-truth))))
 
@@ -1651,65 +1555,6 @@
   `:rate-per-patient-day` is the whole configuration surface, and a
   tunable period would let two configs express one volume two ways."
   86400)
-
-(defn- encounter-spans
-  "{encounter-id {:t0 :t1 :opener :opener-index}} -- one entry per
-  `:encounter-id` this log carries, each encounter's interval read as
-  [its first stamped event, its last stamped event] and nothing else.
-
-  NO STATE MACHINE, deliberately, and for ADR-0175 section 2(a)'s own
-  reason: `ehrt.sim-engine.engine/stamp-encounter` mints the id at the
-  opener and carries it on every event of that encounter, so grouping
-  BY the stamp cannot disagree with reading it, while a second
-  admission/discharge fold could. Measured consequence, at seed 202:
-  an encounter whose `:discharge` is undone by a `:cancel-discharge`
-  and never re-closed carries the stamp for 1,433 more days, and is
-  genuinely open for all of them -- a fold keyed on `:discharge` would
-  have called it closed and been wrong.
-
-  Empty for every run that did not opt into `:encounters`: nothing
-  mints an id, so nothing groups, so the periodic half below has no
-  census and produces nothing."
-  [ground-truth]
-  (reduce (fn [acc [i ev]]
-            (let [eid (:encounter-id ev)]
-              (if (nil? eid)
-                acc
-                (if-let [span (get acc eid)]
-                  (assoc acc eid (assoc span :t1 (max (long (:t1 span)) (long (:t ev)))))
-                  (assoc acc eid {:t0 (:t ev) :t1 (:t ev) :opener ev :opener-index i})))))
-          {}
-          (map-indexed vector ground-truth)))
-
-(defn- mrn-timeline
-  "{patient-id [[t active-mrn] ...]}, t-ascending, one entry per event
-  that MOVED that patient's active MRN -- `demographics-timeline`'s
-  shape, for the one field a periodic re-statement cannot read off a
-  basis event because it has none. A merge is the only thing that moves
-  an MRN today (3 of them at seed 202), and a restatement rendered
-  after one must carry the survivor's."
-  [ground-truth]
-  (reduce (fn [acc ev]
-            (let [pid (:patient-id (first (:participants ev)))
-                  mrn (:active-mrn ev)]
-              (if (and pid mrn)
-                (let [tl (get acc pid [])]
-                  (if (= mrn (second (peek tl)))
-                    acc
-                    (assoc acc pid (conj tl [(:t ev) mrn]))))
-                acc)))
-          {}
-          ground-truth))
-
-(defn- mrn-at
-  "The active MRN as it stood at `t` -- `demographics-at`'s own lookup
-  shape over `mrn-timeline`'s output."
-  [timeline patient-id t]
-  (when-let [entries (get timeline patient-id)]
-    (loop [entries entries mrn nil]
-      (if-let [[et emrn] (first entries)]
-        (if (<= (long et) (long t)) (recur (rest entries) emrn) mrn)
-        mrn))))
 
 (defn- chatter-trigger
   [kind ev]
@@ -1801,7 +1646,7 @@
                                          :trigger "A08"
                                          :encounter-id encounter-id
                                          :patient-id patient-id
-                                         :active-mrn (mrn-at mrns patient-id at)
+                                         :active-mrn (timelines/mrn-at mrns patient-id at)
                                          :in1? false})))))))))
         acc))))
 
@@ -1856,8 +1701,8 @@
   the same three-way absent/nil/{} agreement `plan-latency` and
   `ehrt.sim-emit-hl7.site-profile` already established."
   [^java.util.Random rng ground-truth chatter]
-  (let [spans (encounter-spans ground-truth)
-        mrns (mrn-timeline ground-truth)
+  (let [spans (timelines/encounter-spans ground-truth)
+        mrns (timelines/mrn-timeline ground-truth)
         event-driven (event-driven-chatter rng ground-truth chatter)
         periodic (periodic-chatter rng spans mrns chatter)]
     (assign-restatement-ordinals (into event-driven periodic))))
@@ -1877,7 +1722,7 @@
   [reference-date utc-offset facility providers demographics site-profile spans
    {:keys [at trigger control-id active-mrn patient-id encounter-id in1?]}]
   (let [ts (hl7-timestamp reference-date at utc-offset)
-        persona (demographics-at demographics patient-id at)
+        persona (timelines/demographics-at demographics patient-id at)
         opener (:opener (get spans encounter-id))
         facility-name (name (:id facility))]
     (parser/str-message
@@ -1925,7 +1770,7 @@
   (if-not (map? charges)
     {:lines {} :skipped {}}
     (let [price-table (or (:price-table charges) {})
-          spans (encounter-spans ground-truth)
+          spans (timelines/encounter-spans ground-truth)
           by-encounter (reduce (fn [acc ev]
                                  (if-let [eid (:encounter-id ev)]
                                    (update acc eid (fnil conj []) ev)
@@ -2184,14 +2029,14 @@
    (emit-wire ground-truth reference-date utc-offset facility providers site-profile offsets {}))
   ([ground-truth reference-date utc-offset facility providers site-profile offsets
     {:keys [chatter charges ladders siu]}]
-   (let [demographics (demographics-timeline ground-truth)
+   (let [demographics (timelines/demographics-timeline ground-truth)
          offsets (or offsets {})
          chatter (or chatter [])
          charges (or charges {})
          ground-truth (vec ground-truth)
          rungs (:rungs ladders)
          final-result-indices (or (:final ladders) #{})
-         spans (when (seq chatter) (encounter-spans ground-truth))
+         spans (when (seq chatter) (timelines/encounter-spans ground-truth))
          base (->> ground-truth
                    (map-indexed
                     (fn [i ev]
