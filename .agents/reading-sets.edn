@@ -1,7 +1,9 @@
 ;; Reading sets: the named path lists a cold session of a given task class reads
 ;; before starting work, plus a `:budget-lines` integer per set.
-;; `ehrt.docs-tooling.reading-set-budget-test` resolves every path (a ghost is
-;; red), sums real line counts, and fails any set over its own budget.
+;; NOTHING ENFORCES THESE NUMBERS: `ehrt.docs-tooling.reading-set-budget-test`,
+;; which resolved every path and failed any set over budget, was DELETED by the
+;; de-scaffold ruling of 2026-08-25 -- as was its 20-comment-line cap on this
+;; header (ADR-0145). Conventions now; `.agents/state-derived.md` measures.
 ;;
 ;; Composition principle (AR-1): prefer omission. A path here is a path every
 ;; future session of that class reads cold, forever.
@@ -12,11 +14,10 @@
 ;; Only a compaction ADR moves a baseline, using the standing formula: that
 ;; ADR's own post-compaction measured actual x 1.15, rounded up to the nearest 5.
 ;;
-;; This header is capped at 20 comment lines (ADR-0145). Everything it replaced
-;; -- the seed note, the migration-session notes, nineteen dated budget
-;; re-derivations 2026-08-05 to 2026-08-17, and the per-set composition
-;; rationale that used to sit inside the map -- is VERBATIM in
-;; `.agents/plans/reading-sets-history.md`. Read that before editing a set.
+;; Everything this header replaced -- the seed note, the migration-session
+;; notes, nineteen dated budget re-derivations 2026-08-05 to 2026-08-17, and the
+;; per-set composition rationale that used to sit inside the map -- is VERBATIM
+;; in `.agents/plans/reading-sets-history.md`. Read that before editing a set.
 
 {:onboarding
  {:paths ["AGENTS.md"

@@ -130,7 +130,7 @@
     (is (= ["alpha" "beta"] (map :slug (sd/parse-rulings-rows fixture))))))
 
 (deftest line-count-is-the-budget-gates-own-measurement-test
-  (testing "one definition: the number this register renders and the number the budget gate enforces are the same measurement"
+  (testing "one definition: the number this register renders and the number the reading-set budget convention is judged by are the same measurement (the budget gate itself was deleted 2026-08-25)"
     (is (= (sd/line-count ".agents/rulings.md")
            (count (str/split-lines (slurp ".agents/rulings.md")))))
     (is (= (sd/total-lines [".agents/rulings.md" ".agents/state.md"])

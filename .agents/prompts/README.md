@@ -15,8 +15,8 @@ convention; it does not list files (ADR-0147).
 ## Filename convention
 
 `YYYY-MM-DD-short-slug.md`, one file per session, the SAME slug as its
-paired session record — `ehrt.docs-tooling.prompt-record-pairing-test`
-fails the build in either direction if the two drift apart.
+paired session record. `ehrt.docs-tooling.prompt-record-pairing-test`
+enforced that both ways until 2026-08-25; it is a convention now.
 
 ## What a prompt archive contains
 

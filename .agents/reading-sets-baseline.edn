@@ -3,10 +3,12 @@
 ;;
 ;; One integer per named set in `.agents/reading-sets.edn`: the highest
 ;; value that set's `:budget-lines` is allowed to take.
-;; `ehrt.docs-tooling.reading-set-budget-test` fails the build on any
+;; `ehrt.docs-tooling.reading-set-budget-test` FAILED the build on any
 ;; budget above its entry here, with the message "compact, or bump by
-;; compaction ADR -- never in a build session". A budget may always
-;; fall below its baseline; compaction is never gated.
+;; compaction ADR -- never in a build session". That gate was deleted by
+;; the de-scaffold ruling of 2026-08-25 and the ratchet is a convention
+;; now. A budget may always fall below its baseline; compaction was
+;; never gated.
 ;;
 ;; Why this file exists. The budget test was a ceiling that moved
 ;; whenever it was hit. Its own file records the history without
@@ -88,8 +90,9 @@
 ;; `.agents/state.md` JOINS `:onboarding` (+118 lines). It was in no set
 ;; at all -- 724 lines that `AGENTS.md` routes a cold session to and the
 ;; `repo-review` skill samples, counted against no budget and gated only
-;; for currency. It is 118 hand-owned lines now, capped and linted
-;; (`ehrt.docs-tooling.state-residue-test`), and its countable half is
+;; for currency. It is 118 hand-owned lines now, capped by a convention
+;; whose lint (`ehrt.docs-tooling.state-residue-test`) has since been
+;; deleted with the rest of the scaffolding, and its countable half is
 ;; generated into `.agents/state-derived.md`, which no set carries
 ;; either. Net for the set: 1,526 -> 1,328.
 
