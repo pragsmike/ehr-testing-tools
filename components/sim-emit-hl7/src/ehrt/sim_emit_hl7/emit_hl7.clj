@@ -28,6 +28,7 @@
             [ehrt.sim-emit-hl7.hl7-time :as hl7-time]
             [ehrt.sim-emit-hl7.registry :as registry]
             [ehrt.sim-emit-hl7.timelines :as timelines]
+            [ehrt.sim-emit-hl7.er7 :as er7]
             [ehrt.sim-emit-hl7.site-profile :as site-profile]))
 
 ;; --- moved to ehrt.sim-emit-hl7.hl7-time -----------------------------
@@ -171,111 +172,52 @@
    (parser/create-field [trigger])
    (parser/create-field [ts])))
 
-;; --- M4 Task 4: ER7 escaping (`sim/F9`) -----------------
-;; org.clojars.cmiles74/clojure-hl7-parser implements NO escape-sequence
-;; handling in either direction, verified directly against its own source:
-;; pr-field/pr-content (the write path) concatenate field content into the
-;; wire string with no encoding step at all; read-text's and read-
-;; subcomponents' escape-handling branches (the read path) are commented-out
-;; dead code, and `delimiter?` doesn't even exempt the escape character from
-;; ending a token early. A literal |^~& character embedded in free text
-;; therefore corrupts the message's own field/component boundaries on parse
-;; unless something upstream escapes it, and even a properly-escaped value
-;; comes back from `get-field-first-value` STILL escaped, never decoded.
-;; escape-er7/unescape-er7 are this repo's own documented workaround:
-;; encode on write (below, at every persona-derived free-text field), decode
-;; on read (a consumer's own job, exactly like this repo's test suite does).
+;; --- moved to `ehrt.sim-emit-hl7.er7` (extraction cluster 4 of 8) --------
+;;
+;; NINETEEN forms -- the ER7 escape table and its encoder, the decode map
+;; and its single-pass decoder, the XPN/XAD/TN/CWE/coded/location/
+;; provider/blank primitive field composers, and the four Z-segment
+;; template renderers -- left this file for `er7.clj`, from six regions:
+;; the M4 Task 4 escaping section here; three field helpers from just
+;; above `mrg-segment`; `blank-fields`; the site-profiles Task 3 section
+;; from just above `single-subject-message`; the three coded-field forms
+;; from the head of the M3 section; and `money` from just above
+;; `ft1-segment`.
+;;
+;; It is the FIRST cluster of this file that is not a leaf, and the first
+;; anywhere in the emitter to require a SIBLING extraction rather than
+;; this file: `context-for-event` calls `timelines/demographics-at`, so
+;; `er7.clj` takes `ehrt.sim-emit-hl7.timelines` with it. That is its one
+;; cross-cluster edge.
+;;
+;; The TWO public movers keep a delegating def below, so `v2_replay.clj`'s
+;; two reader call sites and the four `emit-hl7/escape-er7`/`unescape-er7`
+;; sites in `emit_hl7_test.clj` resolve exactly as before. `interface.clj`
+;; re-exports neither -- the first cluster here whose defs are owed to the
+;; TREE alone rather than to the interface.
+;;
+;; ELEVEN private movers are widenings forced by callers that stayed
+;; behind -- forty-one call sites across eighteen forms below. They are
+;; public in `er7` instead, and forty of those sites now name them
+;; `er7/...`. They gain NO delegating def, because widening this file's
+;; own public surface is not what C1(a) asks for.
+;; SIX more -- `er7-escape-table`, `er7-decode-map`, `context-for-event`,
+;; `render-z-field`, `z-segment-for` and `code-system->hl7-table-0396` --
+;; have no caller outside the cluster at all, every one of their callers
+;; having travelled, so they stay private there: census constraint 5 read
+;; the way `engine.clj`'s `weighted-pick` read it.
+;;
+;; `tn-field` is the exception, and the reason for the third def below.
+;; It is a widening like the other ten, but `v2_replay_test.clj` reaches
+;; it as `(#'emit-hl7/tn-field phone)` -- a var access on a PRIVATE var,
+;; which no move can carry and which C1(a) forbids editing. A `^:private`
+;; delegating def keeps that var here without widening this file's public
+;; surface by a name, and `pid-segment`'s own call site keeps resolving
+;; through it unqualified, exactly as the public movers' sites do.
 
-(def ^:private er7-escape-table
-  "Order matters on ENCODE: the escape character itself is escaped
-  FIRST, or the backslashes this table's own replacements introduce
-  for |^~& would themselves get escaped a second time on a later pass."
-  [[\\ "\\E\\"] [\| "\\F\\"] [\^ "\\S\\"] [\~ "\\R\\"] [\& "\\T\\"]])
-
-(defn escape-er7
-  "Encodes ER7's five reserved delimiter characters per the standard
-  escape-sequence convention. Identity for any string containing none
-  of the five -- the overwhelmingly common case (ordinary names,
-  apostrophes, and hyphens need no escaping at all, ER7 or otherwise).
-  Safe as five sequential single-CHARACTER replacements (unlike decode,
-  below): each pass targets one literal input character never produced
-  by an earlier pass's own replacement text (F/S/R/T/E are never
-  themselves |^~&), so passes cannot collide."
-  [s]
-  (reduce (fn [acc [ch replacement]] (str/replace acc (str ch) replacement))
-          s er7-escape-table))
-
-(def ^:private er7-decode-map
-  {\E \\ \F \| \S \^ \R \~ \T \&})
-
-(defn unescape-er7
-  "Decodes ER7 escape sequences back to literal characters -- the
-  consumer-side half of this namespace's own documented workaround for
-  the parser's read-side gap (see this section's header comment).
-
-  MUST be a single regex pass, not five sequential string replacements
-  the way `escape-er7` is -- a property-test failure caught exactly
-  this during Milestone M4's own authoring: encoding \"|E|\" produces
-  \"\\F\\E\\F\\\" (backslash F backslash E backslash F backslash), and
-  five SEPARATE global replaces are each blind to what the others
-  already consumed, so the first pass (decoding \\E\\ back to a literal
-  backslash) spuriously matches the backslash-E-backslash formed by the
-  BOUNDARY between the two adjacent, unrelated \\F\\ tokens -- decoding
-  it wrong. A single regex scan matches real three-character tokens
-  left to right, consuming each match's characters before continuing,
-  so two adjacent tokens can never accidentally spell a third."
-  [s]
-  (str/replace s #"\\[EFRST]\\" (fn [^String match] (str (er7-decode-map (.charAt match 1))))))
-
-(defn- xpn-field
-  "XPN (Extended Person Name), PID-5: family^given. Free text from
-  ehrt.sim-model.persona -- escaped per ER7 (see this file's Task 4
-  section) before it ever reaches a field, since the library itself
-  never will."
-  [{:keys [family given]}]
-  (parser/create-field [(escape-er7 family) (escape-er7 given)]))
-
-(defn- xad-field
-  "XAD (Extended Address), PID-11: street^other-designation^city^state^zip.
-  Other-designation (apt/suite) is always empty -- resources/demographics'
-  vendored places carry no such field, same simplification the address
-  table's own header notes. Free text escaped per ER7, same reasoning
-  as `xpn-field`."
-  [{:keys [street city state zip]}]
-  (parser/create-field [(escape-er7 street) "" (escape-er7 city) (escape-er7 state) (escape-er7 zip)]))
-
-(defn- tn-field
-  "TN (Telephone Number), PID-13. The persona's own `:phone` is
-  `NNN-NNN-NNNN` (`ehrt.sim-model.persona`'s contract regex,
-  `^\\d{3}-\\d{3}-\\d{4}$`); the WIRE carries `(NNN)NNN-NNNN`.
-
-  ARC 4 SWEEP 1 (`notes/adr/0175-arc-4-emission-add-ons.md` ruling A1,
-  commit 1 of 2). This is a conformance fact, not a formatting
-  preference. HAPI's v2.4 TN primitive rule wants the parenthesised
-  area code, and `PipeParser` enforces primitives DURING the parse
-  rather than after -- so at MSH-12 \"2.4\" the persona's own shape does
-  not produce a warning, it throws, and the message resolves to no
-  structure at all. ADR-0175 section 2(e) measured it: 346 of the probe
-  corpus's 747 messages died exactly here, and with this one field
-  reformatted all 747 resolve into real v2.4 structures. Probed
-  directly against the vendored jar: `(303)292-0567` OK,
-  `(303)292-0567X1234` OK, `\"\"` OK; `492-292-0567`, `3032920567` and
-  `(303) 292-0567` all FAIL.
-
-  GROUND TRUTH DOES NOT MOVE. `persona`'s regex and its three phone
-  draws are untouched, and `bin/ground-truth-bracket` proves that
-  per commit rather than this docstring asserting it. Rendering is
-  where a wire convention belongs -- the same seam PID-11's XAD and
-  PID-7's date already use.
-
-  A phone that does NOT match the contract shape renders VERBATIM
-  rather than being mangled into a guess. Every persona this emitter
-  has ever been handed matches, so this branch moves no existing
-  message; it exists because a silent reformat of an unrecognised
-  value would be a worse failure than passing it through."
-  [phone]
-  (parser/create-field
-   [(str/replace phone #"^(\d{3})-(\d{3})-(\d{4})$" "($1)$2-$3")]))
+(def escape-er7 er7/escape-er7)
+(def unescape-er7 er7/unescape-er7)
+(def ^:private tn-field er7/tn-field)
 
 (defn- pid-segment
   "PID-1/2/3 unconditionally (Set ID, blank, the active MRN); PID-4/6/9/10/12
@@ -309,7 +251,7 @@
      (parser/create-field [])
      (parser/create-field [active-mrn])
      (parser/create-field [])
-     (xpn-field (:name persona))
+     (er7/xpn-field (:name persona))
      (parser/create-field [])
      (if (:dob persona)
        (parser/create-field [(str/replace (:dob persona) "-" "")])
@@ -328,7 +270,7 @@
      ;; site's local convention and belongs in a site profile, which is
      ;; a seam this project already has.
      (if (:address persona)
-       (xad-field (:address persona))
+       (er7/xad-field (:address persona))
        (parser/create-field []))
      (parser/create-field [])
      (if (:phone persona)
@@ -359,27 +301,6 @@
    (parser/create-field [payer-id])
    (parser/create-field [(escape-er7 payer-name)])))
 
-(defn- location-field
-  "Renders a location map as ward^^bed^facility (PV1-3/PV1-6's shared
-  shape, docs/operational-models.md's transfer/A02 spec: 'PV1-3 renders
-  ward^^bed with facility in PV1-3.4'). nil location (no prior, or a
-  v0 event with no location at all) -> an empty field, same as v0's
-  own nil-location handling."
-  [facility-name location]
-  (if-let [ward (:ward location)]
-    (parser/create-field [ward "" (or (:bed location) "") facility-name])
-    (parser/create-field [])))
-
-(defn- provider-field
-  "PV1-7: id^family^given. nil provider -> empty field."
-  [provider]
-  (if provider
-    (parser/create-field [(:id provider) (get-in provider [:name :family]) (get-in provider [:name :given])])
-    (parser/create-field [])))
-
-(defn- provider-by-id
-  [providers id]
-  (first (filter #(= id (:id %)) providers)))
 
 (defn- mrg-segment
   "MRG-1: the prior (merged-away) patient identifier -- A40's own carrier
@@ -389,9 +310,6 @@
   [merged-mrn]
   (parser/create-segment "MRG" (parser/create-field [merged-mrn])))
 
-(defn- blank-fields
-  [n]
-  (repeat n (parser/create-field [])))
 
 (defn- pv1-segment
   "PV1-6 (prior location) is read directly off the CURRENT event's own
@@ -427,87 +345,25 @@
          (parser/create-field ["1"])
          (parser/create-field (site-profile/code-for site-profile :patient-class
                                                       site-profile/standard-patient-class-codes patient-class))
-         (location-field facility-name location)
+         (er7/location-field facility-name location)
          (parser/create-field [])
          (parser/create-field [])
-         (location-field facility-name from)
-         (provider-field provider)
+         (er7/location-field facility-name from)
+         (er7/provider-field provider)
          ;; PV1-8 .. PV1-18, then PV1-19 (visit number), then
          ;; PV1-20 .. PV1-35: 11 + 1 + 16 = the 28 fields that stood
          ;; between PV1-7 and PV1-36 before this sweep.
-         (concat (blank-fields 11)
+         (concat (er7/blank-fields 11)
                  [(if visit-number
                     (parser/create-field [visit-number])
                     (parser/create-field []))]
-                 (blank-fields 16)
+                 (er7/blank-fields 16)
                  [(if disposition-state
                     (parser/create-field (site-profile/code-for site-profile :discharge-disposition
                                                                  site-profile/standard-discharge-disposition-codes
                                                                  disposition-state))
                     (parser/create-field []))])))
 
-;; --- Milestone site-profiles Task 3: Z-segment templates -- THE SEAM -----
-;; A site's fully custom fields (docs/site-profiles.md), bound declaratively
-;; to state/persona/event paths rather than hard-coded engine knowledge of
-;; what any particular site's Z-segment means.
-
-(defn- context-for-event
-  "The per-render lookup context a Z-segment template's `:path` bindings
-  resolve against (get-in): the event map itself (so [:location :ward],
-  [:attending], [:t], etc. all resolve directly, the same paths
-  docs/site-profiles.md's own examples name) plus :persona -- looked up
-  off the SAME `demographics` map `emit` computes once per call, the primary
-  (first) participant's persona for a genuinely multi-participant event
-  (bed-swap, merge), the same simplification `ehrt.sim-engine.engine/
-  replay`'s own :patient-id convenience view already makes."
-  [demographics event]
-  (assoc event :persona (timelines/demographics-at demographics
-                                         (:patient-id (first (:participants event)))
-                                         (:t event))))
-
-(defn- render-z-field
-  "One Z-segment field: `:path` looked up (get-in -- nil-safe through a
-  missing intermediate map, so an unbound path never throws) in
-  `context`, `:literal` as a fixed fallback, an EMPTY field when
-  neither resolves to a value -- Task 3's own never-throw requirement.
-  Escaped per ER7, same as every other free-text-carrying field this
-  namespace renders (persona names, addresses, payer names)."
-  [context {:keys [path literal]}]
-  (let [value (if path (get-in context path) literal)
-        rendered (cond (nil? value) nil (keyword? value) (name value) :else (str value))]
-    (parser/create-field (if rendered [(escape-er7 rendered)] []))))
-
-(defn- z-segment-for
-  [context template]
-  (apply parser/create-segment (:segment template)
-         (mapv (partial render-z-field context) (:fields template))))
-
-(defn- z-segments-for
-  "0+ rendered Z-segments for `event` -- one per `site-profile`'s own
-  :z-segments template whose :trigger set names this event's :event, in
-  the profile's own template order. Rendered AFTER every standard
-  segment at every call site below (Task 3's own ordering requirement,
-  achieved by `concat`-ing this vector onto the end of each message's
-  segment list). No site-profile, or a profile with no :z-segments,
-  renders none -- an empty vector `concat`s as a no-op, so absent-
-  profile output is untouched by this function's existence.
-
-  ADR-0150 (2026-08-18): every call site hands this the WHOLE event.
-  `single-subject-message` used to synthesize a seven-key subset
-  ({:event :t :active-mrn :location :from :attending :participants})
-  while the six other families passed `ev`, so an ADT-family template
-  bound to `:reason`, `:home-ward`, `:disposition`, `:warm-up` or any
-  other key rendered empty -- and silently, `render-z-field` treating
-  an unbound path and an unreachable one identically. The context a
-  template resolves against is now the same map on every family, which
-  is the only shape `docs/site-profiles.md`'s own path examples can be
-  read literally against."
-  [site-profile demographics event]
-  (let [context (context-for-event demographics event)]
-    (into []
-          (comp (filter #(contains? (:trigger %) (:event event)))
-                (map (partial z-segment-for context)))
-          (:z-segments site-profile))))
 
 (defn- single-subject-message
   "Renders one single-participant ground-truth event to an ER7 string,
@@ -538,7 +394,7 @@
           clinical-ts (hl7-timestamp reference-date t utc-offset)
           transmit-ts (hl7-timestamp reference-date (hl7-time/transmit-seconds offsets control-id t) utc-offset)
           facility-name (name (:id facility))
-          provider (provider-by-id providers attending)
+          provider (er7/provider-by-id providers attending)
           persona (timelines/demographics-at demographics (:patient-id (first participants)) t)
           disposition-state (when (= :discharge event) :discharged-to-home)
           ;; M5b: the only two event types this project ever renders
@@ -555,7 +411,7 @@
                      (:encounter-id ev))
         (concat (when (and (= :admission event) (:payer persona))
                   [(in1-segment (:payer persona))])
-                (z-segments-for site-profile demographics ev)))))))
+                (er7/z-segments-for site-profile demographics ev)))))))
 
 (defn- bed-swap-message
   "A17 (swap patients): ONE message per ground-truth event, carrying
@@ -585,10 +441,10 @@
       (msh-segment site-profile type+trigger control-id transmit-ts)
       (evn-segment (:trigger type+trigger) clinical-ts)
       (pid-segment mrn1 (timelines/demographics-at demographics p1 t))
-      (pv1-segment site-profile :inpatient facility-name to1 from1 (provider-by-id providers att1) nil enc1)
+      (pv1-segment site-profile :inpatient facility-name to1 from1 (er7/provider-by-id providers att1) nil enc1)
       (pid-segment mrn2 (timelines/demographics-at demographics p2 t))
-      (pv1-segment site-profile :inpatient facility-name to2 from2 (provider-by-id providers att2) nil enc2)
-      (z-segments-for site-profile demographics ev)))))
+      (pv1-segment site-profile :inpatient facility-name to2 from2 (er7/provider-by-id providers att2) nil enc2)
+      (er7/z-segments-for site-profile demographics ev)))))
 
 (defn- npu-segment
   "NPU (bed status update): NPU-1 the bed's PL -- the SAME datatype and
@@ -598,7 +454,7 @@
   [site-profile facility-name location status]
   (parser/create-segment
    "NPU"
-   (location-field facility-name location)
+   (er7/location-field facility-name location)
    (parser/create-field (site-profile/code-for site-profile :bed-status
                                                site-profile/standard-bed-status-codes status))))
 
@@ -699,15 +555,15 @@
          "SCH"
          (parser/create-field [appointment-id])
          (parser/create-field [appointment-id])
-         (concat (blank-fields 4)                          ; SCH-3 .. SCH-6
+         (concat (er7/blank-fields 4)                          ; SCH-3 .. SCH-6
                  [(if reason
                     (parser/create-field [(escape-er7 reason)])
                     (parser/create-field []))]             ; SCH-7
-                 (blank-fields 3)                          ; SCH-8 .. SCH-10
+                 (er7/blank-fields 3)                          ; SCH-8 .. SCH-10
                  [(if scheduled-ts
                     (parser/create-field ["" "" "" scheduled-ts])
                     (parser/create-field []))]             ; SCH-11 (TQ-4)
-                 (blank-fields 13)                         ; SCH-12 .. SCH-24
+                 (er7/blank-fields 13)                         ; SCH-12 .. SCH-24
                  [(parser/create-field
                    (site-profile/code-for site-profile :appointment-status
                                           site-profile/standard-appointment-status-codes
@@ -778,7 +634,7 @@
       (pid-segment active-mrn persona)
       (concat (when encounter-id
                 [(pv1-segment site-profile :inpatient facility-name nil nil nil nil encounter-id)])
-              (z-segments-for site-profile demographics ev))))))
+              (er7/z-segments-for site-profile demographics ev))))))
 
 (defn- merge-message
   "A40 (merge patient): PID carries the SURVIVING mrn, MRG-1 carries the
@@ -802,43 +658,11 @@
       (pid-segment surviving-mrn (timelines/demographics-at demographics survivor-id t))
       (pv1-segment site-profile :inpatient facility-name nil nil nil nil (:encounter-id ev))
       (mrg-segment merged-mrn)
-      (z-segments-for site-profile demographics ev)))))
+      (er7/z-segments-for site-profile demographics ev)))))
 
 ;; --- M3: ORM^O01 + ORU^R01 (docs/sim-theory.edn's order-profiles
 ;; catalytic, docs/operational-models.md) -----------------------------------
 
-(defn- cwe-field
-  "CWE (Coded With Exceptions): identifier^text^coding-system. \"LN\" is
-  LOINC's own HL7v2 Table 0396 coding-system abbreviation -- the coded-
-  triplet's :system rendered natively (sim/ADR-0002), not translated.
-  Every existing call site (OBR-4/OBX-3) is always a LOINC panel/
-  analyte concept, so this stays hardcoded -- `coded-value-field`,
-  below, is the system-aware sibling a value_code-sourced OBX-5 needs."
-  [{:keys [code display]}]
-  (parser/create-field [code display "LN"]))
-
-;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 P6): a value_code-
-;; sourced observation (Blood_Cultures' own embedded child, Capillary_
-;; Refill) is this project's first field ever to carry a SNOMED CT-coded
-;; VALUE, not just a LOINC-coded concept -- `cwe-field` itself stays
-;; LOINC-hardcoded and untouched.
-(def ^:private code-system->hl7-table-0396
-  "HL7v2 Table 0396 coding-system abbreviations for sim-model/Concept's
-  own :system vocabulary (sim/ADR-0002)."
-  ;; ARC 4 SWEEP 2 (ADR-0175 design (c)): `:local` joins for the ONE
-  ;; charge line no log fact carries a code for -- the per-inpatient-day
-  ;; room-and-board line, whose code this project mints for itself
-  ;; (`room-and-board-code`). "L" is Table 0396's own abbreviation for a
-  ;; local general code. It is additive: no Concept anywhere in this
-  ;; tree carries `:system :local`, so no existing field moves.
-  {:loinc "LN" :snomed "SCT" :rxnorm "RXNORM" :icd10cm "I10" :cvx "CVX" :local "L"})
-
-(defn- coded-value-field
-  "OBX-5 for a value_code-sourced observation: identifier^text^coding-
-  system, the SAME CWE shape `cwe-field` renders for OBR-4/OBX-3, but
-  system-aware."
-  [{:keys [system code display]}]
-  (parser/create-field [code display (get code-system->hl7-table-0396 system (name system))]))
 
 (defn- orc-segment
   "ORC-1: order control -- \"NW\" (new order) is the only value this
@@ -901,14 +725,14 @@
     (parser/create-field [(str set-id)])
     (parser/create-field [])
     (parser/create-field [])
-    (cwe-field concept)))
+    (er7/cwe-field concept)))
   ([set-id concept clinical-ts]
    (parser/create-segment
     "OBR"
     (parser/create-field [(str set-id)])
     (parser/create-field [])
     (parser/create-field [])
-    (cwe-field concept)
+    (er7/cwe-field concept)
     (parser/create-field [])
     (parser/create-field [])
     (parser/create-field [clinical-ts])))
@@ -925,11 +749,11 @@
           (parser/create-field [(str set-id)])
           (parser/create-field [])
           (parser/create-field [])
-          (cwe-field concept)
+          (er7/cwe-field concept)
           (parser/create-field [])
           (parser/create-field [])
           (parser/create-field [clinical-ts])
-          (concat (blank-fields 17)
+          (concat (er7/blank-fields 17)
                   [(parser/create-field
                     (site-profile/code-for site-profile :result-status
                                            site-profile/standard-result-status-codes
@@ -959,7 +783,7 @@
     "OBX"
     (parser/create-field [(str set-id)])
     (parser/create-field ["NM"])
-    (cwe-field concept)
+    (er7/cwe-field concept)
     (parser/create-field [])
     (parser/create-field [(str value)])
     (parser/create-field [unit])
@@ -1031,7 +855,7 @@
                                                       t)
                                     utc-offset)
          facility-name (name (:id facility))
-         provider (provider-by-id providers attending)]
+         provider (er7/provider-by-id providers attending)]
      (parser/str-message
       (apply parser/create-message
        parser/DEFAULT-DELIMITERS
@@ -1040,7 +864,7 @@
        (pv1-segment site-profile :inpatient facility-name location nil provider nil (:encounter-id ev))
        (if stage (orc-segment control-id site-profile stage) (orc-segment control-id))
        (obr-segment 1 concept)
-       (z-segments-for site-profile demographics ev))))))
+       (er7/z-segments-for site-profile demographics ev))))))
 
 (defn- oru-message
   "ORU^R01: result available -- OBR (order context) plus one OBX per
@@ -1092,7 +916,7 @@
                                                       t)
                                     utc-offset)
          facility-name (name (:id facility))
-         provider (provider-by-id providers attending)
+         provider (er7/provider-by-id providers attending)
          obx-segments (map-indexed (fn [i r] (obx-segment (inc i) clinical-ts r site-profile stage))
                                    results)]
      (parser/str-message
@@ -1105,7 +929,7 @@
        (if stage
          (obr-segment 1 concept clinical-ts site-profile stage)
          (obr-segment 1 concept clinical-ts))
-       (concat obx-segments (z-segments-for site-profile demographics ev)))))))
+       (concat obx-segments (er7/z-segments-for site-profile demographics ev)))))))
 
 ;; --- M5b: :observation -> ORU^R01, OBX only (components/patient-simulator/docs/gmf-interpreter.md
 ;; section 1's table) -------------------------------------------------------
@@ -1155,9 +979,9 @@
      (concat
       [(parser/create-field [(str set-id)])
        (parser/create-field [(if value-code "CWE" "NM")])
-       (cwe-field (first codes))
+       (er7/cwe-field (first codes))
        (parser/create-field [])
-       (if value-code (coded-value-field value-code) (parser/create-field (if (some? value) [(str value)] [])))
+       (if value-code (er7/coded-value-field value-code) (parser/create-field (if (some? value) [(str value)] [])))
        (parser/create-field (if unit [unit] []))]
       range-fields
       (repeatedly (- 13 rendered-so-far) #(parser/create-field []))
@@ -1189,7 +1013,7 @@
         clinical-ts (hl7-timestamp reference-date t utc-offset)
         transmit-ts (hl7-timestamp reference-date (hl7-time/transmit-seconds offsets control-id t) utc-offset)
         facility-name (name (:id facility))
-        provider (provider-by-id providers attending)]
+        provider (er7/provider-by-id providers attending)]
     (parser/str-message
      (apply parser/create-message
       parser/DEFAULT-DELIMITERS
@@ -1197,7 +1021,7 @@
       (pid-segment active-mrn (timelines/demographics-at demographics (:patient-id (first participants)) t))
       (pv1-segment site-profile :inpatient facility-name location nil provider nil (:encounter-id ev))
       (observation-obx-segment 1 clinical-ts ev)
-      (z-segments-for site-profile demographics ev)))))
+      (er7/z-segments-for site-profile demographics ev)))))
 
 ;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 P6): ORC+OBR
 ;; present (unlike :observation's own order-less shape) -- a real
@@ -1223,7 +1047,7 @@
         clinical-ts (hl7-timestamp reference-date t utc-offset)
         transmit-ts (hl7-timestamp reference-date (hl7-time/transmit-seconds offsets control-id t) utc-offset)
         facility-name (name (:id facility))
-        provider (provider-by-id providers attending)
+        provider (er7/provider-by-id providers attending)
         obx-segments (map-indexed (fn [i o] (observation-obx-segment (inc i) clinical-ts o)) observations)]
     (parser/str-message
      (apply parser/create-message
@@ -1233,7 +1057,7 @@
       (pv1-segment site-profile :inpatient facility-name location nil provider nil (:encounter-id ev))
       (orc-segment control-id)
       (obr-segment 1 (first codes) clinical-ts)
-      (concat obx-segments (z-segments-for site-profile demographics ev))))))
+      (concat obx-segments (er7/z-segments-for site-profile demographics ev))))))
 
 
 ;; --- ARC 4 SWEEP 2 (ADR-0175 design (c), ruling B1): DFT^P03 charges ------
@@ -1261,14 +1085,6 @@
     :order-placed (:concept ev)
     nil))
 
-(defn- money
-  "A price rendered for the wire. BigDecimal at scale 2, never
-  `String/format`: `%.2f` reads the DEFAULT LOCALE for its decimal
-  separator, so a host configured for de-DE would render `1800,00` and
-  the corpus would stop being a function of its own inputs. Determinism
-  is law here for the same reason it is in the engine."
-  [amount]
-  (.toPlainString (.setScale (bigdec amount) 2 java.math.RoundingMode/HALF_UP)))
 
 (defn- ft1-segment
   "One FT1 charge line. Positions cited from `hapi-structures-v24` 2.6.0
@@ -1296,18 +1112,18 @@
               (parser/create-field [(hl7-timestamp reference-date at utc-offset)])
               (parser/create-field [])
               (parser/create-field ["CG"])
-              (coded-value-field {:system system :code code :display display})
+              (er7/coded-value-field {:system system :code code :display display})
               (parser/create-field [])
               (parser/create-field [])
               (parser/create-field [(str quantity)])
-              (parser/create-field [(money (* quantity amount))])
-              (parser/create-field [(money amount)])]]
+              (parser/create-field [(er7/money (* quantity amount))])
+              (parser/create-field [(er7/money amount)])]]
     (apply parser/create-segment
            "FT1"
            (if procedure?
              ;; FT1-13 .. FT1-24, then FT1-25.
-             (concat base (blank-fields 12)
-                     [(coded-value-field {:system system :code code :display display})])
+             (concat base (er7/blank-fields 12)
+                     [(er7/coded-value-field {:system system :code code :display display})])
              base))))
 
 (defn- dft-message
@@ -1340,7 +1156,7 @@
                                    (hl7-time/transmit-seconds offsets (control-id-for ev) t)
                                    utc-offset)
         facility-name (name (:id facility))
-        provider (provider-by-id providers attending)
+        provider (er7/provider-by-id providers attending)
         persona (timelines/demographics-at demographics (:patient-id (first participants)) t)
         patient-class (if (= :outpatient-visit-end event) :outpatient :inpatient)]
     (parser/str-message
@@ -1736,7 +1552,7 @@
                [(pv1-segment site-profile
                              (if (= :outpatient-visit (:event opener)) :outpatient :inpatient)
                              facility-name (:location opener) nil
-                             (provider-by-id providers (:attending opener))
+                             (er7/provider-by-id providers (:attending opener))
                              nil encounter-id)])
              (when (and in1? (:payer persona))
                [(in1-segment (:payer persona))]))))))
