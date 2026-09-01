@@ -55,20 +55,20 @@ Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entr
 | register | count |
 |---|---|
 | ADR files (`notes/adr/NNNN-*.md`) | 173 |
-| roadmap rows (all sections) | 69 |
+| roadmap rows (all sections) | 71 |
 | rulings rows | 113 |
 | rulings rows superseded | 6 |
-| session records | 217 |
-| archived prompts | 209 |
+| session records | 218 |
+| archived prompts | 210 |
 
 ### Roadmap rows by section
 
 | section | rows | tokens in use |
 |---|---|---|
-| Next | 7 | `OPEN` |
+| Next | 8 | `OPEN` |
 | Externals | 8 | `EXTERNAL` |
 | Deferred | 20 | `DEFERRED` |
-| Done | 34 | `CLOSED` |
+| Done | 35 | `CLOSED` |
 
 ## Reading sets
 
@@ -79,7 +79,7 @@ Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entr
 | :corpus | 7 | 1891 | 2045 | 2045 | 154 |
 | :docs | 5 | 787 | 785 | 785 | -2 |
 | :judge | 8 | 977 | 1000 | 1000 | 23 |
-| :onboarding | 10 | 1526 | 1530 | 1530 | 4 |
+| :onboarding | 10 | 1494 | 1530 | 1530 | 36 |
 | :sim | 6 | 1342 | 1405 | 1405 | 63 |
 
 ## What this page reads

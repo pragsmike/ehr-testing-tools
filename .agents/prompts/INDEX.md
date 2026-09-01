@@ -3,7 +3,7 @@
 
 # Session prompts — index
 
-Generated index of [`.agents/prompts`](.) — 209 files. The convention, what a record contains, and where this sits relative to every other register are in [`README.md`](README.md); annotations that used to ride these rows are in [`../plans/state-history-2026-08.md`](../plans/state-history-2026-08.md), dated.
+Generated index of [`.agents/prompts`](.) — 210 files. The convention, what a record contains, and where this sits relative to every other register are in [`README.md`](README.md); annotations that used to ride these rows are in [`../plans/state-history-2026-08.md`](../plans/state-history-2026-08.md), dated.
 
   * 2026-08-01-agent-ux-capture.md
   * 2026-08-01-migration-session-1.md
@@ -210,6 +210,7 @@ Generated index of [`.agents/prompts`](.) — 209 files. The convention, what a 
   * 2026-08-30-engine-extraction-run.md
   * 2026-08-30-engine-extraction-state.md
   * 2026-08-31-emit-extraction-er7.md
+  * 2026-08-31-emit-extraction-facade.md
   * 2026-08-31-emit-extraction-messages.md
   * 2026-08-31-emit-extraction-planners.md
   * 2026-08-31-emit-extraction-segments.md

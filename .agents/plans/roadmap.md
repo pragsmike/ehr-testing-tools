@@ -51,102 +51,47 @@ with them.
   declared sweep; sweep 5's fan-out must either wait for it or derive from log
   indices.
 - OPEN **[engine-namespace-extraction-and-apply-unification]** PRIORITY 5 --
-  intra-brick extraction of `engine.clj` (4,884 lines at `da21a28`; the ruling's
-  4,705 was true at `1b4e264`, 179 lines earlier the same day) and `emit_hl7.clj`
-  (2,498) into cohesive namespaces behind unchanged interfaces, FOLLOWED by
-  application-path unification (decide-drawn / module-compiled / churn-injected
-  events through one apply choke point); one program, each commit
-  output-identical and bracket-proven; TS-3's A' span-gate paid part; the
-  unified path is also event-stream mutation's injection point. Author-ruled
-  2026-08-29. OPENED 2026-08-29: the census is
-  `.agents/plans/engine-extraction-census.md` -- every top-level form of both
-  files assigned to exactly one proposed namespace, the cross-seam edges, and
-  the apply-path inventory that also serves `roadmap.md#event-stream-mutation`.
-  **PHASE NOTE, 2026-08-30: `engine.clj`'s EXTRACTION IS COMPLETE.** TEN clusters --
-  `streams`, `state`, `encounters`, `evolve`, `fold`, `log-index`, `config`,
-  `assignment`, `decide`, `run` -- landed in census order, each with both gates
-  IDENTICAL and no declaration; `engine.clj` ends a PURE FACADE (C4(b)), 741 lines /
-  43 delegating defs, 202 forms / eleven namespaces. DETAIL: the nine records below (C6(a)).
-  **EMIT PHASE OPENED 2026-08-30** (census 2a): order DERIVED, 3b's sixteen edges reproduce
-  EXACTLY, the leaves THREE (`hl7-time`, `registry`, `timelines`), `er7` not among them.
-  SEVEN landed in census-2a order -- `hl7-time`, `registry`, `timelines`, `er7`, `segments`,
-  `messages`, `planners` -- every gate IDENTICAL, no declaration; ONE left, `facade`, and whether
-  it moves at all is the author's (C11). EMIT-PHASE INSTANCE DETAIL
-  (per-cluster forms/form-lines/defs/widenings, regions, edge and requalification tallies) is in
-  the six emit records below (C9(a), 2026-08-31). THE DOCTRINE IT ADDED, which stands: 3b counts
-  DISTINCT (caller, callee) PAIRS, not sites, so a larger site count agrees with it; a sweep finds
-  claims stale BEFORE the move, which constraint 6 has no rule for -- disclose and backlog; the
-  CALLER-TRAVELS shape, movers staying private because their callers went too; C7, a `#'` var in a
-  C1(a)-fenced test file forcing a `^:private` def, a class now EXHAUSTED with the tree re-read
-  whole; REQUALIFICATION, moved text carrying bare names that resolved only through this file's own
-  delegating defs -- which an implementation may not reach -- and DEPTH driving how many; a require
-  going DEAD when every site using it travels; and the RESIDUE-CLAIM class -- a prior cluster writes
-  its account in TWO places, its banner in the residue AND its own `ns` docstring, and a later move
-  must correct BOTH. A BANNER'S REAL OBJECT IS A SECTION whose ownership changes hands: one an
-  earlier cluster LEFT because it split the section TRAVELS with the cluster that later owns it.
-  NEW WITH THE SEVENTEENTH, every item DOCTRINE rather than instance: a cluster with ZERO
-  INCOMING EDGES tends to be ONE CONTIGUOUS REGION, nothing above it having had reason to
-  interleave; distinct PAIRS can EQUAL raw SITES (13/13, after four divergences), which says
-  every crossing is a single reference; a `:require` can exist for the DELEGATING DEFS ALONE,
-  an edge C1(a) creates rather than one the tree holds; requalification is driven not only by
-  DEPTH but by how much of a cluster was ALREADY qualified (the deepest cluster pays 7 sites
-  against the sixth's 64); constraint 5's prohibition reaches SIX OF SIX, a whole private set;
-  and a PUBLIC mover can leave with NO def when nothing outside its cluster ever called it.
-  C9(a) and C10(b) landed FIRST, each its own commit: this row's emit instance detail became
-  pointers; four of nine live surfaces citing gates `e189418` deleted now name them CONVENTIONS,
-  five remain disclosed, and no gate was restored.
-  THE HAND-OWNED-ASSET TRIPWIRE IS A RECIPE, not a lucky catch: read that
-  registry's own SOURCES during the pre-move sweep. FIVE of the ten engine
-  sessions fired it, each RED-FIRST with a successor bumping `gt-emitters.svg`'s
-  `:reviewed-at`; the sixth, ELEVENTH and TWELFTH read them and fired nothing --
-  `docs/dev/simulator-architecture.md` names ENGINE forms by DEFINING FORM but
-  EMITTER forms as BARE NAMES. A GREEN LOCAL SUITE IS NOT EVIDENCE THE ROW WILL
-  STAY GREEN -- the test reads `git log -1` on the SOURCE and cannot see an
-  uncommitted edit. NEW WITH THE TENTH: a sweep can be forced to edit
-  `components/oracle/src/ehrt/oracle/digest.clj`, the BRACKET'S OWN SOURCE, and
-  the bracket then aborts its soundness check over a comment -- bracket the MOVE
-  alone (sound, no declaration) and prove the sweep output-inert from its diff.
-  NEW WITH THE ELEVENTH: THE INSTRUMENTS SWAP AT THE EMISSION LAYER -- the bracket
-  excludes the `:hl7` half BY CONSTRUCTION, so the ORACLE is load-bearing. NEW WITH
-  THE TWELFTH: CENSUS CONSTRAINT 6 FIRED, RED-FIRST -- a charter row pinned a
-  FOUR-WORD phrase, under the shingle floor, found only by HAND-READING both registers.
-  THE CENSUS IS CORRECTED BY SESSION -- the sixth, ninth and tenth each corrected it,
-  and the tenth confirmed 4a's sole-producer claim and 4b's ten-step fold exactly.
-  CONSTRAINT 5 IS READ AS A PROHIBITION, not an instruction to widen: a private mover
-  stays `defn-` unless a caller stays behind, and after the tenth nothing could call.
-  A FACADE MAY REQUIRE ITS IMPLEMENTATIONS; AN IMPLEMENTATION MAY NOT REQUIRE ITS
-  FACADE -- why the tenth qualified bare names the nine before it could leave alone,
-  and why census constraint 1's `stream` is paid with a lazily-resolved shim in
-  `ehrt.sim-engine.run` rather than a `:require`; both directions asserted live.
-  TWO BACKLOGS FOR THE RULED REPOINT PASS. (1) FENCED CITATIONS: C1(a) forbids touching
-  test files; the ninth alone left TWELVE stale `engine.clj`-by-file citations across ten
-  test files, one a NAMESPACE claim about a private mover, and the tenth adds one more.
-  The emit phase has added FOUR fenced rows of its own, enumerated in its records below.
-  (2) RETIREMENT CANDIDATES: FOURTEEN of the facade's 43 delegating defs now have no named
-  caller anywhere -- eleven already so, three made so by the tenth move exactly as the ninth
-  priced. The FACADE RULE kept every one: retiring a def is the repoint pass's business.
-  (3) STALE-BEFORE-THE-MOVE, a new class, neither fenced nor its finder's: a citation can already
-  be false when the move that relocates it arrives, so the mover neither caused nor owes it. FOUR
-  members stand -- a relocated registry comment, `encounter-spans`' unresolvable
-  `engine/stamp-encounter`, a FAMILY of un-re-depthed `docs/` citations of files that really live
-  under `components/sim/docs/` (26 and 30 live files), and `emit_hl7_test.clj:1306`. The
-  SEVENTEENTH is the first move to RELOCATE a member -- the class reaches MOVED TEXT.
-  COVERAGE, disclosed: neither bracket reaches a cancel decide and the gated corpora resolve
-  no citation, so two engine brackets are blind to six forms each; the suite and live `-M:dev`
-  seam checks carry them. ENGINE-PHASE INSTANCE DETAIL for every claim above -- corrected census
-  sections, widening and `weighted-pick` counts, the `gt-emitters.svg` red-first history, both
-  backlogs' per-form enumerations -- is in the nine engine records below (C8(a), 2026-08-31).
-  Records:
-  `.agents/session-records/2026-08-29-engine-extraction-opener.md`,
-  `.agents/session-records/2026-08-30-engine-extraction-state.md`,
-  `.agents/session-records/2026-08-30-engine-extraction-encounters.md`,
-  `.agents/session-records/2026-08-30-engine-extraction-evolve.md`,
-  `.agents/session-records/2026-08-30-engine-extraction-fold.md`,
-  `.agents/session-records/2026-08-30-engine-extraction-log-index.md`,
-  `.agents/session-records/2026-08-30-engine-extraction-config-assignment.md`,
-  `.agents/session-records/2026-08-30-engine-extraction-decide.md`,
-  `.agents/session-records/2026-08-30-engine-extraction-run.md`,
-  `.agents/session-records/2026-08-30-emit-extraction-hl7-time.md`, `.agents/session-records/2026-08-30-emit-extraction-registry.md`, `.agents/session-records/2026-08-31-emit-extraction-timelines.md`, `.agents/session-records/2026-08-31-emit-extraction-er7.md`, `.agents/session-records/2026-08-31-emit-extraction-segments.md`, `.agents/session-records/2026-08-31-emit-extraction-messages.md`, `.agents/session-records/2026-08-31-emit-extraction-planners.md`.
+  application-path unification: the decide-drawn / module-compiled /
+  churn-injected work that reaches the log through ONE choke point, and the
+  three places an event is APPLIED reconciled behind it. Author-ruled
+  2026-08-29; the census is `.agents/plans/engine-extraction-census.md`, whose
+  section 4 is this arc's inventory and also serves
+  `roadmap.md#event-stream-mutation`, which names the unified path as its
+  injection point. **THE EXTRACTION PHASE OF THIS ROW IS FINISHED AND ITS
+  NARRATIVE HAS MOVED** to `roadmap.md#engine-emit-namespace-extraction` under
+  `## Done`, per this file's own rotation: eighteen landings, both facades,
+  the census's corrections and the doctrine the phase established all live
+  there, in the seventeen session records that entry names.
+  STAGED PLAN, AS RULED 2026-08-31: **stage 1** builds the choke point and
+  states its PROJECTIONS explicitly -- what each apply site would then see,
+  derived from the tree before any edit, so a later delta is checkable against
+  a written prediction rather than against memory; **stage 2** enables it per
+  PAIR of (site, decoration) rather than wholesale, so an output move is
+  attributable to one pair; and at every step a DELTA IS A FINDING, disclosed
+  and rowed, never absorbed into the change that produced it. Census 4a's own
+  correction stands as the arc's opening fact: module-compiled and
+  churn-injected work enters as STEPS, never as events, and every step reaches
+  the log through `run`'s single `decide` call, so unification's subject is
+  the three APPLY sites (4b `run`'s in-loop fold, 4c `replay`, 4d
+  `reinstated-state`'s replay fallback), not three event sources. 4c's
+  divergence is what it costs: `replay` does six fewer things than site 1 and
+  cannot do them, which is why `ehrt.sim-check.check` has no bed index on the
+  replay path.
+  THREE STANDING BACKLOGS the extraction phase handed on, none of them a
+  mover's to pay and each enumerated per member in the records that found it.
+  (1) THE RULED REPOINT PASS (C5), carrying both FENCED CITATIONS -- C1(a)
+  forbids touching test files, and the engine phase left twelve stale
+  `engine.clj`-by-file citations across ten test files plus one, the emit
+  phase four more -- and STALE-BEFORE-THE-MOVE, a citation already false when
+  the move relocating it arrived, four members, one of which the seventeenth
+  session became the first to relocate. (2) C10 RESIDUAL SURFACES: of nine
+  live surfaces citing gates `e189418` deleted, C10(b) renamed four as
+  CONVENTIONS and FIVE REMAIN, two of them in `state_derived.clj`'s own `src`
+  half; no gate was restored. (3) THE RETIREMENT INVENTORY: fourteen of
+  `engine.clj`'s forty-three delegating defs and ALL TWENTY-SIX of
+  `emit_hl7.clj`'s now have no in-file caller, which is what a pure facade
+  means; the facade rule correctly kept every one, and deciding which to
+  retire is the repoint pass's business rather than a mover's.
 - OPEN **[event-stream-mutation]** PRIORITY 6 -- mutation moves to the
   ground-truth event stream (emitters inherit mutations); ADR-0166's test-side
   event mutations promoted to a shipped operator catalog with `check` as oracle;
@@ -205,6 +150,28 @@ with them.
   what it checked. Kept rather than retired because
   `rulings.md#R-unregistered-request-gets-a-row` puts visibility first.
   ADR-0158 (review-4 D7-5); ADR-0175 section 2(f)/2(g) designed both halves.
+- OPEN **[corpus-io-ephemeral-port-flake]** PRIORITY 11 --
+  `ehrt.corpus-io.mllp-test`'s `a-refused-connection-is-an-error-not-a-throw`
+  (`mllp_test.clj:214`/`:215`) is a RACE on a loaded runner, not a defect in
+  the code it tests: `ack-server!` binds an EPHEMERAL port, the test stops it,
+  and then asserts that connecting to that port is refused -- but a just-freed
+  ephemeral port can still accept between `stop!` and `open-sink!`, so
+  `mllp/open-sink!` succeeds, `(kernel/rejected? r)` is false and `(:category
+  r)` is nil. FIRST AND ONLY SIGHTING 2026-08-31, CI run 33439854438 at
+  `8370ead`: 2 failures in 83 assertions, the first non-green CI run of the
+  extraction program after twenty-four consecutive successes, and `gh run
+  rerun --failed` on the SAME tree went green -- which is the evidence that
+  the tree was never the cause. The same namespace ran green in that session's
+  own local `make test` in both projects. The test's own file explains why
+  ephemeral ports were chosen ("a fixed port in a test suite is a collision
+  waiting for a busy host"); this one assertion is where that choice cuts the
+  other way, so the fix is a design question (a port the test can prove is
+  dead, or a refusal assertion that does not depend on one) rather than a
+  one-liner. Rowed here rather than fixed because the finder was fenced out of
+  `corpus-io` and the row that would have carried it had no headroom; named so
+  the next red in this test is recognised as the SECOND sighting.
+  Record: `.agents/session-records/2026-08-31-emit-extraction-planners.md`
+  section 8.
 
 ## Externals (author-only)
 - EXTERNAL **[ci-failure-email]** -- enable GitHub's workflow-failure
@@ -358,6 +325,7 @@ One line a row. `CLOSED` here means "no longer a roadmap row", not "the work
 was done" -- each line says which. The section is named `## Done` because that
 is where `ehrt.docs-tooling.roadmap-lint-test` requires a `CLOSED` row to live.
 
+- CLOSED 2026-08-31 bee0d69 **[engine-emit-namespace-extraction]** -- DONE, and BOTH FILES END PURE FACADES, which is the shape only one of the two was ruled into at the start. EIGHTEEN LANDINGS in seventeen sessions, 2026-08-29 to 2026-08-31, every one census-ordered, every one with `bin/regression-oracle` and `bin/ground-truth-bracket` IDENTICAL and no declaration: `engine.clj` (4,884 lines at `da21a28`, 157 forms) gave up TEN clusters -- `streams`, `state`, `encounters`, `evolve`, `fold`, `log-index`, `config`, `assignment`, `decide`, `run` -- and ends 741 lines / 44 top-level forms under ruling C4(b), the `ns` plus 43 delegating defs and nothing else, its eleven namespaces holding 202 forms in all; `emit_hl7.clj` (2,498 lines, 86 forms) gave up EIGHT -- `hl7-time`, `registry`, `timelines`, `er7`, `segments`, `messages`, `planners`, `emit` -- and ends 383 lines / 27 top-level forms under C11(a), the `ns` plus 26 delegating defs. THE TWO FACADES DIFFER IN ONE VISIBLE WAY and each is its own file's established style: `engine.clj`'s 43 defs span 268 form-lines because every one carries a `Delegates to ...` docstring, while `emit_hl7.clj`'s 26 span exactly 26 -- one line each -- which is safe here because no live surface cites a mover's docstring as authority (census constraint 2 checked and did not fire). NOT ONE of either file's defs has an in-file caller. The emit partition CONSERVES ITS POPULATION TO THE FORM: 7+13+5+19+15+13+11+3 = 86, the census's own count. THE CENSUS IS THE ARTEFACT THAT MADE IT POSSIBLE and it was corrected BY SESSION rather than trusted -- `.agents/plans/engine-extraction-census.md`, re-derived at `517a96d`, its section 2a order DERIVED by a char-level scanner rather than transcribed, its sixteen emit edges reproducing EXACTLY at every cluster that measured them, its three leaves (`hl7-time`, `registry`, `timelines`) correcting the design channel's expected one, and its section 2 line spans stale by design after the first move. THE DOCTRINE THE PHASE ESTABLISHED, which outlives it: C1(a) -- the original namespace stays what every requirer resolves against, so a public mover keeps a delegating def and no test file changes until the ruled repoint pass; CONSTRAINT 5 IS A PROHIBITION, not an instruction to widen -- a private mover stays private unless a caller stayed behind, which reached six of six in `planners` and one of one in `emit`; C7, a `#'` var access in a C1(a)-fenced test forcing a `^:private` def, a class EXHAUSTED with the tree re-read whole three times; REQUALIFICATION, moved text carrying bare names that resolved only through the origin's own delegating defs -- an implementation may not require its facade -- driven by DEPTH and by how much of a cluster was already qualified (64 sites at cluster 6, 7 at cluster 7, 4 at cluster 8); a `:require` can go DEAD when every site using it travels, and can also exist for the DELEGATING DEFS ALONE, an edge C1(a) creates rather than one the tree holds; 3b counts DISTINCT (caller, callee) PAIRS, not sites, so a larger site count agrees with it; A BANNER'S REAL OBJECT IS A SECTION whose ownership changes hands; the RESIDUE-CLAIM class -- a prior cluster writes its account in TWO places, its banner in the residue AND its own `ns` docstring, and a later move must correct BOTH, which fired four times; a cluster with ZERO INCOMING EDGES tends to be ONE CONTIGUOUS REGION; and STALE-BEFORE-THE-MOVE, a citation already false when the move arrives, which is disclosed and backlogged rather than fixed (`rulings.md#R-move-not-improve`). THE CALLER-TRAVELS SHAPE arrived exactly twice and only at the end of each file, which census 2a predicted for the emit half: the engine paid it with a lazily-resolved shim in `ehrt.sim-engine.run`, because census constraint 1 requires `run`'s four `stream` sites to keep resolving to the var a `with-redefs` test perturbs; the emitter paid NOTHING, because no dynamic var-access form anywhere names `emit`, `emit-wire` or `default-providers`. THE INSTRUMENTS SWAP AT THE EMISSION LAYER -- `bin/ground-truth-bracket` excludes the `:hl7` half BY CONSTRUCTION, so the ORACLE is the load-bearing gate for the emit half and the bracket proves only that nothing reached across the component boundary. THE HAND-OWNED-ASSET TRIPWIRE IS A RECIPE, not a lucky catch: read that registry's own SOURCES during the pre-move sweep. Five of the ten engine sessions fired it, each RED-FIRST with a successor bumping `gt-emitters.svg`'s `:reviewed-at`; NO emit session fired it, twice while the sources actually named a mover, and C1(a)'s defs are why. Two hazards found live and recorded so they are not rediscovered: a sweep can be forced to edit `components/oracle/src/ehrt/oracle/digest.clj`, the BRACKET'S OWN SOURCE, whereupon the bracket aborts its soundness check over a comment -- bracket the MOVE alone and prove the sweep output-inert from its diff; and A GREEN LOCAL SUITE IS NOT EVIDENCE THE ROW WILL STAY GREEN, since the doc-currency test reads `git log -1` on the SOURCE and cannot see an uncommitted edit. CENSUS CONSTRAINT 6 FIRED ONCE, RED-FIRST, at the twelfth session: a charter row pinned a FOUR-WORD phrase, under the shingle floor, found only by HAND-READING both registers. COVERAGE, disclosed rather than claimed: neither bracket reaches a cancel decide and the gated corpora resolve no citation, so two engine brackets are blind to six forms each; the suite and live `-M:dev` seam checks carry them. What this phase deliberately did NOT do is the application-path unification the row it came from still names, nor the three backlogs it handed that row -- see `roadmap.md#engine-namespace-extraction-and-apply-unification`. Records, one per session: `.agents/session-records/2026-08-29-engine-extraction-opener.md`, `2026-08-30-engine-extraction-state.md`, `-encounters.md`, `-evolve.md`, `-fold.md`, `-log-index.md`, `-config-assignment.md`, `-decide.md`, `-run.md`, `2026-08-30-emit-extraction-hl7-time.md`, `2026-08-30-emit-extraction-registry.md`, `2026-08-31-emit-extraction-timelines.md`, `2026-08-31-emit-extraction-er7.md`, `2026-08-31-emit-extraction-segments.md`, `2026-08-31-emit-extraction-messages.md`, `2026-08-31-emit-extraction-planners.md`, `2026-08-31-emit-extraction-facade.md`.
 - CLOSED 2026-08-29 06ce007 **[post-partition-narrative-refresh]** -- DONE, and THE ROW'S OWN COUNT WAS THE FIRST THING THE WORK REFUTED. It said "43 tokens over 6 files", counted 2026-08-25; four sweeps re-witnessed part of what it counted and created staleness it could not have known about, so ~72 tokens actually changed and the row UNDERSTATED the work. Everything re-derived against runs regenerated at `2e141f2` -- `corpus generate sim` at seed 20260811 x 100 patients with `config.edn` and `config-latency.edn`, `corpus batch --interval 60`, and `play --board 60 --rate 10000000` over each. Per file, rowed -> actual: ed-tuesday README 19 -> 10, `01-what-this-is.md` 8 -> ~16, `04-time-on-the-wire.md` 4 -> ~25, `05-batch-delivery.md` 10 -> ~18, `00-front.md` 1 -> 2, `supply-batch-straddling-traffic.md` 1 -> 1 (via `use-cases.edn`, which is its docsgen source). THE DEMO README WAS ALMOST ENTIRELY FRESH AND THE MANUAL WAS NOT, and the asymmetry is STRUCTURAL rather than luck: `bin/demo-exerciser-ed-tuesday` re-runs the demo's own commands and asserts against them, and nothing gates a manual excerpt. The README reproduced exactly at HEAD in every structural figure checked -- 1,269 events, 1,554 messages, 147 encounter openers across 111 patients (30 with more than one, max 3), 141 bed turnovers, 35 openers naming an appointment, all four SIU families, the 620-batch listing to the count, both quoted board snapshots byte-for-byte, the ground-truth-invariance digest, the wrapper's own `head -c 100`/`tail -c 45` bytes, and both Hernandez MSH segments with their EVN-2 times. TWO FILES CONTRADICTED THEMSELVES, which is what a PARTIAL re-witness leaves behind: chapter 5 opened on "283 messages across 34 occupied hourly buckets" and closed on ":verified true on all 615" -- neither true of any run at this commit (1,554 across 620) -- and the README's PV1 paragraph said "630 of this run's 631" while a dated note two paragraphs below already said 681. In each case a sweep updated the paragraph it was about and left the arithmetic around it. Measured corrections beyond those: dirty/cleaning board lines 43 -> 44 (15 and 29), first snapshot 4 -> 3 occupied beds (which contradicted a transcript printed further down the same file), census peak 14 -> 12, and a SECOND blank PV1-19 whose cause is the status ladder -- a rung restating a pending lab is rendered by the same builder as the result it restates, so it inherits the same absent encounter. Chapter 4's invariance digest moved `d00bf49c` -> `fe13a7ba` and its event count 383 -> 1,269, both from the four arc-3 opt-in keys `config.edn` took on 2026-08-26/27; its two-clocks cast and its ORU pair were both pre-partition witnesses and are re-derived rather than adjusted. `straddle-timeline.svg`'s tripwire fired an eleventh time and NOT ONE VALUE IT DRAWS MOVED -- `:reviewed-at` bumped in the refresh's own successor commit, predicted rather than discovered. Record: `.agents/session-records/2026-08-29-consumer-contract.md`.
 - CLOSED 2026-08-29 62dd9b3 **[ts-4-placeholder-unresolved]** -- DONE, and the row is RIGHT IN EVERY PARTICULAR IT ASSERTED, which the two rows before it were not. Reproduced at both 10^5 add-on cells at `23901f4`: `PID-007500-e98926c1` registers a placeholder John Doe at t=37017 with `:window-close-t 382617`, is admitted as "Unidentified patient" into ED-98 and discharged at t=80217, and at t=177420 is drawn out of a 666-strong eligible set as the `:merged` participant of an ORDINARY churn `:merge` carrying no `:cause` -- one violation in 129,415 events at `nobed` and in 171,864 at `v2`, same patient, same instants. FOUR THINGS THE TRACE ADDED. (i) What churn destroyed is a FILL: the seeded resolution is `{:branch :fill :survivor-patient-id nil}`, the person having no prior identified patient, so the row's "can never be filled or identification-merged" is right and the thing actually lost is one `:identity-fill`. (ii) "Can never" is MEASURED, not reasoned -- 1,062 resolution steps seeded and 1,061 decided at each cell, the missing one being this patient's, swallowed by the run loop's `:merged` short-circuit, so the second latent defect fires in NEITHER 10^5 log. (iii) IT IS REAL IN THE CODE ALL THE SAME: `identity-fill-outcome` refuses only on the demographics still saying `:placeholder` and `evolve :merge` leaves the demographics untouched, so only that one `if` in `run` stops a fill on a consumed record, and `decide :identification-merge` guards the SURVIVOR's status and never the placeholder's own. (iv) THE SOURCE CARRIES AN ARGUMENT THIS PATIENT REFUTES -- `decide :identification-merge`'s docstring says churn's lottery needs no change because `never-mergeable?` excludes `:new` "and a placeholder patient who registered and was never admitted is exactly `:new`", which holds only for placeholders that are never admitted, and the `:identity-unavailable` hook mints an ARRIVAL that the same hook then ADMITS. LETTERED, and option (A) taken on the channel's recommendation, the trace having confirmed the row: the invariant is now resolved-or-CONSUMED-or-still-open -- cause-blind but NOT merge-blind, a consuming merge must land at or before the due close -- because an erroneous merge eating a John Doe is a real MPI failure shape, the corpus is telling the truth about it, and the engine did nothing wrong. All three riders landed: the docstring names the shape and carries the witness, `no-resolution-after-a-placeholder-is-consumed` is the companion that makes the clause safe (born with three firing mutations), and `placeholder-dispositions` counts six disjoint columns of which `consumed-by-churn` is one, so the tolerated shape is COUNTED. OPTION (B) REJECTED, and its draw analysis CORRECTS THE LETTER'S OWN PREDICTION: it would move no shipped corpus at all -- in all 44 gated and bracketed corpora zero churn merges have an open-window placeholder among their candidates, and not one bracketed root even has both a placeholder and a churn merge -- but it would move the scratch traffic-scale cells at 694 of 747 churn merges (`nobed`) and 697 of 750 (`v2`), since `uniform-choice` is `(.nextInt rng (count candidates))`. It is also censorship: churn routing around placeholders would make the simulator structurally incapable of emitting the shape. `bin/ground-truth-bracket 23901f4 62dd9b3` IDENTICAL over 38 roots, so nothing re-pinned and no sweep spent; `arc0-invariant-catalog` re-pinned 43 -> 44 with the standard disclosure. **BOTH 10^5 ADD-ON CELLS ARE NOW MEASURED AND SELF-CHECK CLEAN** -- `nobed` 129,415 events / 165,946 messages / **msg/event 1.2823** / 232.67 s, `v2` 171,864 / 233,286 / **1.3574** / 270.37 s, with emit and spool running at 10^5 on an add-on corpus for the first time in this programme. The completed `v2` series climbs **1.050 -> 1.217 -> 1.357** msg/event and is still climbing; check is sub-linear at **0.914**, the first honest check exponent on an add-on corpus, confirming TS-6 by measurement; generate stays at **1.624**, unmoved by a check-side fix. The 10^6 cell stays DECLINED on the completed series' own arithmetic (F3): emit's peak heap projects to 14.5 GB against a 3.88 GB ceiling. Record: `.agents/session-records/2026-08-29-ts-4-consumed-placeholder.md`.
 - CLOSED 2026-08-29 c156690 **[ts-3-outpatient-opens-over-an-encounter]** -- DONE, and the row's own MECHANISM CORRECTED IN ITS PARTICULARS by the trace it asked for while its CONCLUSION survives intact. The row said a module-compiled `:admission` was followed by "the module's own LATER compiled `:outpatient-visit`". Neither half is so: `compile-trajectory` short-circuits on `encounter-closed?` after the first horizon-phase `:encounter-end`, so a compiled step list holds AT MOST ONE encounter, and the `:admission` at t=240300 is the first step of the authored `dense_fast` pathway carried by a REPEAT ARRIVAL, correctly routed through `decide :repeat-arrival`. Bronchitis compiles `[:delay 1,676,160 min -> :outpatient-visit -> ... -> :outpatient-visit-end]` and 40,260 + 100,569,600 = 100,609,860 to the second. THE STRUCTURAL FACT THE FIRST DIAGNOSIS COULD NOT SEE FROM THE LOG is that the patient holds TWO CONCURRENT QUEUE ENTRIES -- the module's is parked at t=100,609,860 from t=40,260 by its own compiled delay, and the whole inpatient episode happens on a different entry inside that gap, so "nothing left in the queue to close it" is true of the wrong queue. The conclusion stands and is what was fixed: a compiled encounter opener is attached raw by `decide :registered` and never asks `encounter-openable?`; both wrappers that DO ask ran for this patient and both correctly refused. LETTERED, and the author ruled option (A') -- re-bracket the compiled list so each encounter it carries sits behind ONE `:repeat-arrival` step, opener through closer, putting the EXISTING unchanged guard in charge of the whole span, with everything before the opener (the parking delay) left outside it. BARE OPTION (A), a guard on the opener alone, WAS REFUTED BY ITS OWN DANGLING-STEP ANALYSIS: the tail would still run, its clinical content would be stamped with whatever other encounter was open, and its trailing `:outpatient-visit-end` would close that other encounter -- passing every row in the catalog, so 33,950 red rows would have become zero red rows and a silently false log. Option (B) close-at-reopen was rejected (unaskable predicate, draw-affecting, and it fixes TS-3 by TIMING rather than by law) and option (C) compile-time was struck. `bin/ground-truth-bracket 11765bb c156690` IDENTICAL over 38 roots, so NO declaration and NOTHING re-pinned; `make docsgen` moved no generated file at all and the event contract stays 1.8.0. MEASURED AFTER, and the fix fires ONCE in the whole population: 423 compiled spans at nobed with ZERO refused and the corpus byte-count unchanged at 129,415 events, 424 at v2 with exactly ONE refused. At v2 10^5 `admission-only-when-no-open-encounter` goes 1 -> **0** and `outpatient-patients-occupy-no-bed` 33,950 -> **0**, leaving ONE violation in 171,864 events. BOTH 10^5 cells now stay BLOCKED on the SAME single row, `roadmap.md#ts-4-placeholder-unresolved`, same patient and same instant at each. Record: `.agents/session-records/2026-08-29-ts-3-compiled-opener.md`.
