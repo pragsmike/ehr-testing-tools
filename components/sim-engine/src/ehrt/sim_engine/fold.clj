@@ -315,11 +315,30 @@
 
   THE ONE IT DOES NOT GET is the DECORATION `:warm-up-mark`, the other
   of section 3b's two OUTPUT-MOVING predictions and the one measurement
-  CONFIRMED -- a concern applied on the way IN, which a re-fold of an
-  existing log RECOMPUTES rather than accumulates, and `replay` has
-  nowhere to get the window from. That is the whole of section 4c's
-  'replay cannot do them'. Stage 2 PREPARED it and did not land it;
-  the author disposes."
+  CONFIRMED. **THAT OMISSION IS PERMANENT** -- ruling A2(b), 2026-09-01
+  -- and this is the ONE cell of the arc's thirty-nine that its ruled
+  end state does not claim. It is not an unfinished pair:
+
+  * a log DOES NOT CARRY A WARM-UP WINDOW, and this concern needs one;
+    only a run configuration has it, which is the whole of section 4c's
+    'replay cannot do them';
+  * declaring 0 instead is MEASURABLY LOSSY, not merely inelegant --
+    on a windowed log it flips `:warm-up true` -> `false` at entry 0,
+    2 of 9 entries, first differing byte 425. The log's own marks are
+    authoritative and `replay` is RIGHT not to touch them. (Site 3's
+    twin survives a declared 0 only because it reads a PATIENT STATE
+    and `evolve` never reads `:warm-up` -- a licence this site, which
+    returns the entries themselves, does not have.);
+  * and THREADING the window would be an API change to the most-called
+    function in this arc, at 16 live call sites, so that `replay` could
+    re-derive a value the log already carries -- the vacuous shape
+    relocated rather than removed.
+
+  So this projection ends at TWELVE of thirteen DELIBERATELY, and that
+  count is a statement about what a replay site can honestly do rather
+  than a formality it has yet to complete. Measurements and the full
+  option set: `.agents/session-records/2026-09-01-apply-unification-
+  stage-2.md` section 4d, and census section 3e."
   #{:encounter-stamp :log-ordinal :reinstate-index :citation-index
     :registration-index :patient-bootstrap :patient-state :bed-index
     :log-mirror :log-accumulator :state-history :replay-entries})

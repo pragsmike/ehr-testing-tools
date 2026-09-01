@@ -55,7 +55,14 @@
   OUTPUT-MOVING prediction stage 2's measurement refuted. Whether that
   one STAYS inert is gated by
   `ehrt.sim-engine.apply-restamp-identity-test`, not by this
-  transcription."
+  transcription.
+
+  THE THIRTEENTH IS ABSENT ON PURPOSE AND PERMANENTLY: 2 x
+  `:warm-up-mark`, ruling A2(b), because `replay` has no source for the
+  window and a declared 0 measurably destroys the log's own marks
+  (census section 3e). A later session that 'completes' this column has
+  undone a decision, not finished the arc -- which is why the count
+  below reads 38 of 39 and not 39."
   #{:encounter-stamp :log-ordinal :reinstate-index :citation-index
     :registration-index :patient-bootstrap :patient-state :bed-index
     :log-mirror :log-accumulator :state-history :replay-entries})

@@ -223,8 +223,8 @@ unchanged.
 | — (de-alias, correction C5) | n/a | **LANDED**, output-identical | `c4f6ddd` |
 | 1 × A7 `:patient-bootstrap` | INERT | **CONFIRMED-INERT** | `649403e` |
 | 1 × A13 `:replay-entries` | INERT | **CONFIRMED-INERT** | `e05da9c` |
-| 2 × A1 `:encounter-stamp` | OUTPUT-MOVING | **PREPARED, NOT LANDED** | — |
-| 2 × A2 `:warm-up-mark` | OUTPUT-MOVING | **PREPARED, NOT LANDED** | — |
+| 2 × A1 `:encounter-stamp` | OUTPUT-MOVING | **REFUTED BY MEASUREMENT; LANDED INERT** under ruling A1(b), with a co-landed identity gate | `5b13dec` |
+| 2 × A2 `:warm-up-mark` | OUTPUT-MOVING | **CONFIRMED; OMITTED, AND THE OMISSION IS PERMANENT** under ruling A2(b) — 3e below | —, and never |
 | 2 × A3 `:log-ordinal` | INERT | **CONFIRMED-INERT** | `0d0db6e` |
 | 2 × A4 `:reinstate-index` | INERT | **CONFIRMED-INERT** | `2505a68` |
 | 2 × A5 `:citation-index` | INERT | **CONFIRMED-INERT** | `396e047` |
@@ -233,7 +233,7 @@ unchanged.
 | 2 × A10 `:log-mirror` | INERT | **CONFIRMED-INERT**, with an observation below | `d771829` |
 | 2 × A11 `:log-accumulator` | INERT | **CONFIRMED-INERT** | `15ea306` |
 | 2 × A12 `:state-history` | INERT | **CONFIRMED-INERT** | `b547f8f` |
-| 3 × A1 `:encounter-stamp` | OUTPUT-MOVING | **PREPARED, NOT LANDED** | — |
+| 3 × A1 `:encounter-stamp` | OUTPUT-MOVING | **REFUTED BY MEASUREMENT; LANDED INERT** under ruling A1(b), same mechanism, same gate | `c172684` |
 | 3 × A2 `:warm-up-mark` | INERT | **CONFIRMED-INERT**, at one declared value | `00373db` |
 | 3 × A3 `:log-ordinal` | INERT | **CONFIRMED-INERT** | `f34c423` |
 | 3 × A4 `:reinstate-index` | INERT | **CONFIRMED-INERT** | `1aa5796` |
@@ -246,8 +246,59 @@ unchanged.
 
 End state after stage 2: site 1 at **13 of 13** (full product, the
 ruled end state), site 2 at **11 of 13**, site 3 at **12 of 13**. The
-three cells still omitted are exactly the three this section predicted
+three cells still omitted were exactly the three this section predicted
 OUTPUT-MOVING, all of them DECORATIONS.
+
+**END STATE AFTER THE LANDING SESSION, 2026-09-01, AND IT IS THE ARC'S
+LAST: site 1 at 13 of 13, site 2 at 12 of 13, site 3 at 13 of 13 —
+THIRTY-EIGHT of the thirty-nine cells, and the thirty-ninth is a
+MEASURED PERMANENT OMISSION rather than an unfinished pair.** Ruling
+A1(b) landed both `:encounter-stamp` pairs whose OUTPUT-MOVING
+predictions the measurements refuted, each with the co-landed identity
+gate `ehrt.sim-engine.apply-restamp-identity-test`; ruling A2(b)
+declared 2 × `:warm-up-mark` permanently omitted. TWENTY-ONE of the
+twenty-two pairs are at full product and the twenty-second is a
+statement of fact.
+
+### 3e. 2 × `:warm-up-mark` — THE OMISSION IS PERMANENT
+
+**Ruling A2(b), 2026-09-01: this pair stays omitted, and the omission is
+DECLARED PERMANENT rather than pending.** It is the one cell of the
+thirty-nine that the arc's ruled end state does not claim, and it is not
+a gap in the work — it is what the work found.
+
+**The reason is that `replay` HAS NO SOURCE FOR THE WINDOW.** The
+concern marks each event `:warm-up (< (:t ev) warm-up-seconds)`, and a
+LOG DOES NOT CARRY A WARM-UP WINDOW; only a run configuration does.
+Site 3's twin is inert at a DECLARED 0 only because that site reads a
+patient state and `evolve` never reads `:warm-up` — a licence site 2
+does not have, since site 2 returns the entries themselves.
+
+**AND A DECLARED 0 MEASURABLY DESTROYS INFORMATION**, which is why
+option (d) is rejected on evidence rather than on taste. Driven through
+`ehrt.sim-engine.interface/run` at seed 424242, 3 patients,
+`:warm-up-seconds 150` — 9 events, marks `{true 2, false 7}` — the
+declared 0 moves `:warm-up true` -> `false` at entry 0, on 2 of 9
+entries, first differing byte 425. The log's own marks are
+authoritative; `replay` is RIGHT not to touch them.
+
+**No oracle root can witness it either way**: a grep for `:warm-up true`
+across all 41 baseline outputs returns ZERO, so every gated root already
+reproduces exactly under a declared 0. That is a second, independent
+reason the probe's IDENTICAL verdict was vacuous.
+
+**Threading the window — option (c) — would make the pair the
+identity**, and is declined: it is an API change to the most-called
+function in this arc, paid at 16 live call sites, to make `replay`
+re-derive a value the log already carries. That is the vacuous shape
+relocated, not removed.
+
+**So site 2 ends at 12 of 13, and that column is a STATEMENT rather
+than a formality.** The record's own words for it: this pair is the
+arc's clearest case of "enabled, and the answer is no". Measurements,
+options (a)-(d) and their dispositions:
+`.agents/session-records/2026-09-01-apply-unification-stage-2.md`
+section 4d.
 
 **Two findings the cones did not carry, recorded here because they are
 properties of the concerns rather than of one commit.**
