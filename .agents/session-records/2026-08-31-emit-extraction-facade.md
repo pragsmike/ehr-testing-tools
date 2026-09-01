@@ -817,5 +817,65 @@ both files has landed.
 
 ## 8. CI at the pushed tip -- the close marker
 
-Recorded in this session's own last commit, after the push. See the
-commit that names it.
+`gh run watch 33457088048 --exit-status` exits 0 on its FIRST attempt;
+the run is **completed / success** at
+`9c85f16b7330e30131a1f3d72b576517fca76709`, the pushed tip
+(https://github.com/pragsmike/ehr-testing-tools/actions/runs/33457088048).
+That is the close marker under `rulings.md#R-session-verifies-ci-via-gh`,
+and it is the marker for the whole extraction phase as well as for this
+session. No tag was paid (AUTHOR ACTION, ADR-0003).
+
+`ehrt.corpus-io.mllp-test` ran GREEN, which matters because the
+seventeenth session's red was in exactly that namespace and this session
+rows it. One sighting still, and `roadmap.md#corpus-io-ephemeral-port-flake`
+now exists to catch the second.
+
+Two ANNOTATIONS on the run, neither a failure and neither this
+session's: `actions/checkout@v4`, `actions/setup-java@v4`,
+`actions/setup-python@v5` and `DeLaGuardo/setup-clojure@13.4` target
+Node.js 20 and are being forced onto Node.js 24, and `setup-java@v4` is
+deprecated in favour of `v5`. Standing infrastructure drift in
+`.github/workflows`, unrelated to the tree; named so a later session
+does not read them as new.
+
+### The push, verified
+
+Both messages were written to files and applied with `git commit -F`,
+and both were diffed against their source after the push. **Each diff is
+a single trailing blank line**, which is `git log --format=%B`'s own
+formatting artefact and not a failure, per the build-session skill's own
+rule. Nothing was dropped by the WSL wrapper.
+
+**ONE AMEND, disclosed, on an UNPUSHED commit.** The docs commit was
+amended once before the push, for two reasons stated together rather
+than folded in silently. (1) The record claimed the P5 slug is cited by
+"eight live surfaces", a number reasoned from `roadmap-lint`'s
+include-list rather than measured; measured, it is 41 files, and the
+corrected sentence carries both that figure and the wrapped-grep reason
+a plain search sees only 33. (2) The prompt archive landed `100755`, an
+executable bit picked up from the `/mnt/c` copy path. `chmod 644` fixed
+it. **The class is real and recurring**: eight archives under
+`.agents/prompts/` carry `100755`, six of them from this very program,
+all from the same copy path. Only this session's own file was fixed --
+touching six other sessions' archives is not a mover's business -- but
+the cause is named here so the next session copying a file in through
+`/mnt/c` checks the mode before staging.
+
+**The final `make test` overlapped the amend**, and the overlap is
+immaterial for the reason section 4 already establishes: no gate reads a
+session record's or a prompt archive's CONTENT. The amend changed one
+paragraph of prose in this file and one file mode; the suite's 408
+blocks and 24,161 assertions describe the pushed tree exactly.
+
+## 9. The extraction phase, closed
+
+Eighteen landings. Ten in `engine.clj` over 2026-08-29..30, eight in
+`emit_hl7.clj` over 2026-08-30..31. Both files end pure facades. Every
+one of the eighteen ran `bin/regression-oracle` and
+`bin/ground-truth-bracket` and every one returned IDENTICAL with no
+declaration -- **thirty-six gate runs, thirty-six identical**, which is
+the whole claim the phase was authorised on and the only one that
+mattered.
+
+What is left of P5 is the application-path unification, and it is now
+the whole of the row.
