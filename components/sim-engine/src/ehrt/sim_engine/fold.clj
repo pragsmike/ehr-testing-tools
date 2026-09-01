@@ -315,6 +315,11 @@
     commit had to come first. Its `:warm-up-seconds` parameter has no
     source in a log, so the call site DECLARES 0.
 
+  * `:log-ordinal` -- INERT BY VALUE, exactly as at site 2: the
+    fallback's world is `{:patients {}}`, so `(count (:ground-truth
+    world))` is `(count nil)` = 0, the same number the disabled branch
+    substituted.
+
   THE ONE IT DOES NOT GET is the DECORATION `:encounter-stamp`, the only
   pair of section 3c predicted OUTPUT-MOVING, and by a mechanism that is
   narrower than its site-2 twin but real: `evolve` folds `:encounter-id`
@@ -323,7 +328,8 @@
   is what the two reinstating cancel decides RESTORE, so the delta would
   reach emitted events and the byte-identity gate. Stage 2 PREPARES it
   and does not land it; the author disposes."
-  #{:warm-up-mark :patient-bootstrap :patient-state :replay-entries})
+  #{:warm-up-mark :log-ordinal :patient-bootstrap :patient-state
+    :replay-entries})
 
 (defn apply-events
   "THE APPLY CHOKE POINT. `acc x events x projection -> acc'`.
