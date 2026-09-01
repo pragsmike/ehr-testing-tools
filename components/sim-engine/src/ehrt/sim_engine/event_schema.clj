@@ -392,7 +392,7 @@
 
 (def Location
   "A physical placement: ward, bed, and which rung of the allocation
-  ladder produced it (`docs/operational-models.md`)."
+  ladder produced it (`components/sim/docs/operational-models.md`)."
   [:map {:closed true}
    [:ward :string]
    [:bed :string]

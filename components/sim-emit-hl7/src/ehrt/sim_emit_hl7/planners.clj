@@ -66,7 +66,7 @@
   across 364 form-lines.
 
   DISCLOSED AND NOT FIXED (`rulings.md#R-move-not-improve`):
-  `plan-charges` cites `ehrt.sim-engine.engine/stamp-encounter`, which
+  `plan-charges` cites `ehrt.sim-engine.encounters/stamp-encounter`, which
   has not resolved since the third engine session -- that form lives in
   `ehrt.sim-engine.encounters` and `engine.clj`'s facade does not
   re-export it. The citation was already false when this move relocated
@@ -315,7 +315,7 @@
   KEYED BY (encounter, closer instant), not by encounter alone, because
   an encounter can close TWICE: a `:discharge` undone by a
   `:cancel-discharge` and later re-discharged is ONE encounter closed
-  twice (`ehrt.sim-engine.engine/stamp-encounter`'s own account), and
+  twice (`ehrt.sim-engine.encounters/stamp-encounter`'s own account), and
   each close bills the facts that had happened by then. Keying by
   encounter alone would have billed the first close for bed-days it had
   not yet incurred.

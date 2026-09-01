@@ -322,7 +322,7 @@
   including payer) is populated once, by the `:registered` event every
   patient's step queue is now prepended with (`run`'s own docstring),
   never resampled after (the attribute-pool contract). This RETIRES the
-  standalone `:payer` field docs/operational-models.md described as an
+  standalone `:payer` field components/sim/docs/operational-models.md described as an
   engine-patient-init stand-in: there was no code actually setting it
   (always nil), so retiring it means removing the now-redundant field
   from this schema, not deleting behavior -- payer now lives at

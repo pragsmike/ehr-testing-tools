@@ -9,7 +9,7 @@
   here as an output stage consuming the log -- the log is primary,
   messages are a rendering, and emission is opt-in (:emit \"hl7\").
   Milestone M1: engine/run echoes back the :facility and materialized
-  :providers it actually allocated against (docs/operational-models.md);
+  :providers it actually allocated against (components/sim/docs/operational-models.md);
   both check/check-all (the capacity/surge-ladder invariants) and
   emit-hl7/emit (PV1-3/6/7) are threaded that SAME config, not a fresh
   default that might not even share ward names.

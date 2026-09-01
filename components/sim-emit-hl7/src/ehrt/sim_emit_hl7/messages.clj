@@ -220,7 +220,7 @@
 
   PV1 RIDES ONLY AN OPEN ENCOUNTER, and that is the whole of the
   condition: `:encounter-id` is stamped on any event that happened while
-  an encounter was open (`engine/stamp-encounter`), so a booking made
+  an encounter was open (`ehrt.sim-engine.encounters/stamp-encounter`), so a booking made
   from a hospital bed would carry one and a booking made from home does
   not. When PV1 is rendered it is the CURRENT encounter's, carrying its
   visit number in PV1-19; PV1-3/PV1-6/PV1-7 are blank because an
@@ -235,7 +235,7 @@
   an arrival before that patient has any encounter at all, and a
   follow-up is a step `decide :discharge` PREPENDS, so its own `decide
   :appointment` runs after the discharge it followed has already closed
-  the encounter (`engine/stamp-encounter` reads the world BEFORE the
+  the encounter (`ehrt.sim-engine.encounters/stamp-encounter` reads the world BEFORE the
   batch, and by then there is none open).
 
   THE BRANCH IS KEPT ANYWAY, and it is exercised by a hand-built event
@@ -295,7 +295,7 @@
       (er7/z-segments-for site-profile demographics ev)))))
 
 ;; --- M3: ORM^O01 + ORU^R01 (docs/sim-theory.edn's order-profiles
-;; catalytic, docs/operational-models.md) -----------------------------------
+;; catalytic, components/sim/docs/operational-models.md) -----------------------------------
 
 
 (defn- orm-message

@@ -14,7 +14,7 @@
   v0 catalog is minimal; every new step type added to the engine MUST
   land with its invariants here in the same change.
 
-  Milestone M1 (docs/operational-models.md) adds the facility-aware
+  Milestone M1 (components/sim/docs/operational-models.md) adds the facility-aware
   invariants (no double occupancy, one physical slot per admitted
   patient, capacity, surge-only-when-earlier-rungs-exhausted) plus the
   event-validity rows from docs/patient-state-model.md (admission only
@@ -293,13 +293,13 @@
 
 (defn transfer-from-matches-state
   "A transfer event's declared :from matches the patient's actual
-  location immediately beforehand (docs/operational-models.md)."
+  location immediately beforehand (components/sim/docs/operational-models.md)."
   [ground-truth]
   (for [{:keys [event before patient-id]} (engine/replay ground-truth)
         :when (and (= :transfer (:event event)) (not= (:from event) (:location before)))]
     {:invariant :transfer-from-matches-state :patient-id patient-id :at (:t event)}))
 
-;; --- M1 facility invariants (docs/operational-models.md) ----------------
+;; --- M1 facility invariants (components/sim/docs/operational-models.md) ----------------
 
 ;; --- ADR-0169 (arc 0): the occupancy family, fold-carried --------------
 ;;
@@ -907,7 +907,7 @@
 
 (defn bed-swap-both-admitted-before-swap
   "Both bed-swap participants were :admitted immediately beforehand
-  (docs/operational-models.md's own admitted-when-placed rule, extended
+  (components/sim/docs/operational-models.md's own admitted-when-placed rule, extended
   to the genuinely-two-participant case -- sim/ADR-0010)."
   [ground-truth]
   (for [{:keys [event world-before]} (engine/replay ground-truth)

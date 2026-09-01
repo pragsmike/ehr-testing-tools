@@ -1,5 +1,5 @@
 (ns ehrt.sim-model.config-test
-  "docs/operational-models.md's config schemas, defaults, and the
+  "components/sim/docs/operational-models.md's config schemas, defaults, and the
   synthetic-NPI Luhn math (sim/ADR-0007 decision (a): Luhn-valid, not
   obviously-fake). Written before ehrt.sim-model.config exists
   (sim/ADR-0004 test-first)."
@@ -49,7 +49,7 @@
 
 (deftest default-facility-validates
   (is (config/valid-facility? config/default-facility))
-  (testing "one ED ward and two inpatient wards, per docs/operational-models.md"
+  (testing "one ED ward and two inpatient wards, per components/sim/docs/operational-models.md"
     (is (= 1 (count (filter #(= :ed (:class %)) (:wards config/default-facility)))))
     (is (= 2 (count (filter #(= :inpatient (:class %)) (:wards config/default-facility)))))))
 

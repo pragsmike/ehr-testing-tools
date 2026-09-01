@@ -73,11 +73,11 @@
   (->> (entries dir) (filter #(.isFile ^java.io.File %)) (map #(.getName ^java.io.File %)) sort vec))
 
 (defn line-count
-  "Lines in `path`, by `line-seq`. Public because
-  `ehrt.docs-tooling.reading-set-budget-test` measures a set's actual
-  with this exact function -- one definition, so the number this
-  register renders and the number the budget gate enforces cannot be
-  two different measurements of the same file (R13's own 'one
+  "Lines in `path`, by `line-seq`. Public because a set's actual was
+  measured with this exact function by `reading-set-budget-test`, which
+  `e189418` deleted -- one definition, so the number this register
+  renders and the number that gate enforced could not be two different
+  measurements of the same file (R13's own 'one
   definition each, in the script')."
   [path]
   (with-open [r (io/reader path)]
@@ -170,8 +170,8 @@
 
 (defn parse-rulings-rows
   "Every `- **R-<slug>** -- ...` row as `{:slug :superseded?}`. The row
-  contract is ADR-0145's and gated by
-  `ehrt.docs-tooling.rulings-lint-test`; this only counts."
+  contract is ADR-0145's, a CONVENTION since `e189418` deleted
+  `rulings-lint-test`; this only counts."
   [content]
   (->> (str/split-lines content)
        (keep (fn [l] (when-let [slug (second (re-find #"^- \*\*R-([a-z0-9-]+)\*\*" l))]

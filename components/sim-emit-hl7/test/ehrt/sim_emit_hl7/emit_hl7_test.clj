@@ -40,7 +40,7 @@
   "Renamed from v0 in spirit only (kept the name -- not worth touching
   every call site) -- Milestone M1's :transfer joins the events this
   helper covers, since the derivability law now extends to A02
-  (docs/operational-models.md, .agents/plans/roadmap.md M1)."
+  (components/sim/docs/operational-models.md, .agents/plans/roadmap.md M1)."
   [ground-truth]
   (filterv #(#{:admission :discharge :transfer} (:event %)) ground-truth))
 

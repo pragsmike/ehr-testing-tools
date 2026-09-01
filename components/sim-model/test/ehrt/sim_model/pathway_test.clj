@@ -1,7 +1,7 @@
 (ns ehrt.sim-model.pathway-test
   "Schema validity for the IR step vocabulary as it grows past the v0
   walking skeleton -- M1 adds :transfer and the optional
-  :force-placement authoring escape hatch (docs/operational-models.md)."
+  :force-placement authoring escape hatch (components/sim/docs/operational-models.md)."
   (:require [clojure.test :refer [deftest is testing]]
             [ehrt.sim-model.pathway :as pathway]))
 

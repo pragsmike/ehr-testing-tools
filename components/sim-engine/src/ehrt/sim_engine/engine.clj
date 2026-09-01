@@ -15,7 +15,7 @@
   to decide what happens, but never returns a new state -- this is
   where cross-patient coupling lives (a discharge's decide call may
   also emit a transfer event for a DIFFERENT patient, the bed-ready
-  transfer for a boarding patient, docs/operational-models.md).
+  transfer for a boarding patient, components/sim/docs/operational-models.md).
   `evolve` (patient-state, event) -> patient-state' is pure, total, and
   narrower: no RNG, no knowledge of world or of any patient but the one
   the event names. The ONLY path by which patient state changes is
@@ -76,7 +76,7 @@
   That path simply became plural.
 
   Step vocabulary: v0's :admission/:delay/:discharge, plus Milestone
-  M1's :transfer (docs/operational-models.md's allocation ladder).
+  M1's :transfer (components/sim/docs/operational-models.md's allocation ladder).
   Emission to HL7v2 is a separate namespace consuming the ground-truth
   log -- events here are format-free."
   (:require [ehrt.sim-engine.config :as config]

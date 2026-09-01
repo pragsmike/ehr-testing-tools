@@ -148,7 +148,7 @@
   surge, so a second concurrent admission always boards; one ED ward
   with generous surge (sized comfortably above the property test's
   patient-count ceiling so 'facility exhausted' -- a 5th rung this
-  ladder deliberately doesn't have, docs/operational-models.md -- never
+  ladder deliberately doesn't have, components/sim/docs/operational-models.md -- never
   fires and the property stays about the coupling, not total capacity)."
   {:id :crowded-test
    :wards [{:id :ed :name "ED" :beds 0 :surge-slots 20

@@ -547,7 +547,7 @@
     CURRENT mrn/location, never the administrative intent behind a
     boarding assignment.
   - :location's own :placement -- no PV1 field distinguishes licensed
-    from surge (docs/operational-models.md); only the physical
+    from surge (components/sim/docs/operational-models.md); only the physical
     ward/bed strings are wire-visible.
   - :conditions, :medication-orders -- ehrt.sim-emit-hl7.emit-hl7 renders
     NO segment for either (DG1 is gated on the snomed-icd10-map

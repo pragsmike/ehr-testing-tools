@@ -30,7 +30,7 @@ Site-specific configuration is not a new concept this document invents
 — it has one citizen already shipped, and this layer is where that
 citizen's pattern gets a name and a home for what comes next.
 
-- **`:surge-format`** (`docs/operational-models.md`) is retroactively
+- **`:surge-format`** (`components/sim/docs/operational-models.md`) is retroactively
   named this layer's **first citizen**: a format string
   (`"%s-H%02d"` by default) a config author supplies to control how
   overflow bed slots are named, because real hospitals name hallway

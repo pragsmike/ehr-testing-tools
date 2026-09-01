@@ -168,7 +168,7 @@
 
 (defn location-field
   "Renders a location map as ward^^bed^facility (PV1-3/PV1-6's shared
-  shape, docs/operational-models.md's transfer/A02 spec: 'PV1-3 renders
+  shape, components/sim/docs/operational-models.md's transfer/A02 spec: 'PV1-3 renders
   ward^^bed with facility in PV1-3.4'). nil location (no prior, or a
   v0 event with no location at all) -> an empty field, same as v0's
   own nil-location handling."

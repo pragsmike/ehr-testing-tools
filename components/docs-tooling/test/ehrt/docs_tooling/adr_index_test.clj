@@ -18,8 +18,8 @@
   Three gates over the live tree, plus mechanism-sanity tests on
   synthetic data proving each gate's own extraction actually catches
   what it claims to -- the gate-and-the-proof-the-gate-gates pairing
-  `ehrt.docs-tooling.reading-set-budget-test` and
-  `ehrt.docs-tooling.done-pointer-adr-test` already established here.
+  that `reading-set-budget-test` (deleted by `e189418`) and
+  `ehrt.docs-tooling.done-pointer-adr-test` established here.
 
   - **Parity**: the committed `notes/ADRs.md` is byte-for-byte what
     `ehrt.docs-tooling.docsgen/render-adr-index` renders for the live

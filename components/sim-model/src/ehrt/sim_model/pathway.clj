@@ -16,7 +16,7 @@
   are properties of patient state, not of wire formats (`sim/ADR-0002`).
 
   The v0 step set was deliberately tiny (walking skeleton): :admission,
-  :delay, :discharge. Milestone M1 (docs/operational-models.md) adds
+  :delay, :discharge. Milestone M1 (components/sim/docs/operational-models.md) adds
   :transfer, engine-assigned via the allocation ladder. The full
   Simulated-Hospital-derived vocabulary (bed-swap, *-in-error, cancel-*,
   merge, order, result, ...) lands step by step, each with its engine
@@ -32,7 +32,7 @@
    [:display {:optional true} :string]])
 
 (def ForcePlacement
-  "Authoring escape hatch (docs/operational-models.md): forces a
+  "Authoring escape hatch (components/sim/docs/operational-models.md): forces a
   specific bed, overriding the allocation ladder outright and
   exempting the placement from the surge-only-when-full invariant."
   [:map [:ward :string] [:bed :string]])

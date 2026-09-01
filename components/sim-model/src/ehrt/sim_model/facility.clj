@@ -1,6 +1,6 @@
 (ns ehrt.sim-model.facility
   "The occupancy board and the four-rung allocation ladder
-  (docs/operational-models.md). The board is NEVER an independent
+  (components/sim/docs/operational-models.md). The board is NEVER an independent
   structure the engine writes to -- it is a pure fold over patient
   states (`occupancy-board`), recomputed on demand every time `decide`
   needs it (`sim/ADR-0008`'s own pattern, applied to beds: one authoritative
@@ -29,7 +29,7 @@
   (str/upper-case (name (:id ward))))
 
 (defn licensed-bed-ids
-  "Derived, never enumerated (docs/operational-models.md): ward tag +
+  "Derived, never enumerated (components/sim/docs/operational-models.md): ward tag +
   2-digit index, e.g. a ward :id :renal with :beds 3 derives
   [\"RENAL-01\" \"RENAL-02\" \"RENAL-03\"]."
   [ward]
@@ -37,7 +37,7 @@
 
 (defn surge-slot-ids
   "Derived using the ward's own :surge-format -- surge naming is site-
-  idiosyncratic config, not code (docs/operational-models.md)."
+  idiosyncratic config, not code (components/sim/docs/operational-models.md)."
   [ward]
   (mapv #(format (:surge-format ward) (ward-tag ward) %) (range 1 (inc (:surge-slots ward)))))
 
@@ -158,7 +158,7 @@
         (:wards facility)))
 
 (defn allocate
-  "The four-rung allocation ladder (docs/operational-models.md), seeded
+  "The four-rung allocation ladder (components/sim/docs/operational-models.md), seeded
   within each rung. `force-placement` (optional `{:ward :bed}`)
   overrides the ladder outright and draws no RNG. Returns
   {:home-ward :location {:ward :bed :placement} :forced}, or, when

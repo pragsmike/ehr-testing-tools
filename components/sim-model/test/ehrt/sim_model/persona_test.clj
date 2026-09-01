@@ -1,7 +1,7 @@
 (ns ehrt.sim-model.persona-test
   "Persona (docs/sim-theory.edn's `:persona` stage, Milestone M4):
   seeded/pure sampling, the fixed-RNG-consumption law, and the
-  age-linked payer co-landing invariant (docs/operational-models.md --
+  age-linked payer co-landing invariant (components/sim/docs/operational-models.md --
   Medicare dominant at 65+, only checkable once age is a real field)."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.test.check.clojure-test :refer [defspec]]
@@ -64,7 +64,7 @@
         (= 13 @calls)))))
 
 (deftest sixty-five-plus-personas-are-mostly-medicare
-  (testing "docs/operational-models.md's age-linkage co-landing
+  (testing "components/sim/docs/operational-models.md's age-linkage co-landing
             invariant: Medicare dominance at 65+, checkable now that
             age is a real sampled field"
     (let [payers (for [seed (range 300)]

@@ -3,12 +3,12 @@
   sampling of a patient's demographic identity plus payer -- name, DOB
   (age from a configured distribution), sex, address, a US-format
   phone number, an obviously-synthetic SSN-shaped identifier, and a
-  payer drawn from the `:payers` pool with docs/operational-models.md's
+  payer drawn from the `:payers` pool with components/sim/docs/operational-models.md's
   age-linkage (Medicare dominant 65+).
 
   This is the real `payer-pool` catalytic wire `docs/sim-theory.edn`'s
   `:persona` comment always named as a forward reference -- it RETIRES
-  the engine-patient-init payer stand-in docs/operational-models.md
+  the engine-patient-init payer stand-in components/sim/docs/operational-models.md
   itself named ('until Persona exists, this model runs at engine
   patient-init time, as a stand-in that Persona subsumes rather than
   replaces'): payer sampling now happens HERE, once, at patient
@@ -66,7 +66,7 @@
   pool of full address rows, [{:street :city :state :zip :weight} ...]."
   (edn/read-string (slurp (io/resource "sim-model/demographics/places.edn"))))
 
-;; --- Payer pool (docs/operational-models.md's payers model; this
+;; --- Payer pool (components/sim/docs/operational-models.md's payers model; this
 ;; namespace is its real binding, per sim/ADR-0007 decision 4) -----------------
 
 (def Payer
@@ -79,7 +79,7 @@
   "The weighted pool sampled for patients younger than 65 -- Medicare
   present but minor (disability/ESRD-eligible non-elderly enrollees are
   real but a small minority), commercial dominant, per
-  docs/operational-models.md's 'general shape of US payer-mix data'."
+  components/sim/docs/operational-models.md's 'general shape of US payer-mix data'."
   [{:id "commercial-ppo" :name "Commercial PPO" :type :commercial :weight 45.0}
    {:id "commercial-hmo" :name "Commercial HMO" :type :commercial :weight 20.0}
    {:id "medicaid" :name "Medicaid" :type :medicaid :weight 22.0}
@@ -88,7 +88,7 @@
 
 (def sixty-five-plus-payers
   "The weighted pool sampled for patients 65+ -- Medicare dominant
-  (eligibility itself starts at 65, docs/operational-models.md), the
+  (eligibility itself starts at 65, components/sim/docs/operational-models.md), the
   age-linkage this namespace's own co-landing invariant checks."
   [{:id "medicare-65" :name "Medicare" :type :medicare :weight 70.0}
    {:id "medicare-advantage" :name "Medicare Advantage" :type :medicare :weight 15.0}
@@ -118,7 +118,7 @@
    ;; caller supplies is this project's own scenario-authored content,
    ;; the same "declared, not validated against a closed set" treatment
    ;; `:payer`'s own :type enum is the one exception to, and only because
-   ;; that enum backs real payer-mix modeling, docs/operational-models.md).
+   ;; that enum backs real payer-mix modeling, components/sim/docs/operational-models.md).
    [:race {:optional true} :string]
    [:socioeconomic-category {:optional true} :string]
    ;; GMF coverage Wave LC (2026-08-03, ADR-0038 AR-3): optional,

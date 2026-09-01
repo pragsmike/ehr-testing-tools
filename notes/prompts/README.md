@@ -11,7 +11,7 @@ session; that's named, fenced, future work.
 file here except this README follows the dated pattern
 `YYYY-MM-DD-<slug>.md` — not restated as a per-file list (there are 28
 of them; a list would break this file's own one-screen budget). The
-exact frozen set is pinned, per-push, by
-`ehrt.docs-tooling.notes-prompts-frozen-test`; `ehrt.docs-tooling.index-completeness-test`
-enforces the naming convention itself rather than a literal list for
-this one directory.
+exact frozen set was pinned per-push by `notes-prompts-frozen-test`
+until `e189418` deleted it, and is a CONVENTION now;
+`ehrt.docs-tooling.index-completeness-test` still enforces the naming
+convention itself rather than a literal list for this one directory.

@@ -1,6 +1,6 @@
 (ns ehrt.sim-model.config
   "Config schemas and shipped defaults for the operational resource
-  models (docs/operational-models.md): facility (beds -- exclusive),
+  models (components/sim/docs/operational-models.md): facility (beds -- exclusive),
   providers (shared). Payers land with Persona (M4); not here.
 
   Also: the synthetic-NPI Luhn math. `sim/ADR-0007` decision (a): provider
@@ -77,7 +77,7 @@
 (defn explain-facility [facility] (m/explain Facility facility))
 
 (def default-facility
-  "Small on purpose (docs/operational-models.md): one ED ward and two
+  "Small on purpose (components/sim/docs/operational-models.md): one ED ward and two
   inpatient wards, enough to exercise transfers and surge without
   asking a config author to model a whole hospital first."
   {:id :general-hospital
@@ -120,7 +120,7 @@
 (defn valid-provider? [provider] (m/validate Provider provider))
 
 (def default-provider-templates
-  "A small pool, each ward-eligible per docs/operational-models.md's
+  "A small pool, each ward-eligible per components/sim/docs/operational-models.md's
   'ward-eligible providers' rule; Dr. Reyes is deliberately eligible
   everywhere so the default config always has an attending for any
   ward, including the ED wards used only for boarding/surge."

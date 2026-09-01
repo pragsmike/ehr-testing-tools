@@ -20,7 +20,7 @@ What IS carried from Synthea, honestly: the SCHEMA SHAPE these tables
 use (given names bucketed by sex and birth decade, a flat weighted
 surname pool, sampled geography rows) mirrors the general design of
 Synthea's own demographic sampling approach, as already described in
-docs/operational-models.md's payers-model section and
+components/sim/docs/operational-models.md's payers-model section and
 docs/third-party-sources.md's Synthea entry -- mining for *design*, not
 data, the same distinction ADR-0002 already draws for Google Simulated
 Hospital. A future session WITH a Synthea checkout available can

@@ -252,8 +252,8 @@ adr-index:
 # preamble is eleven dated blocks each saying the sections below it are
 # stale. Derivable facts regenerate here instead, so they cannot go
 # stale and cannot be hand-written wrong; what is left in state.md is
-# judgement, and it is capped and linted
-# (ehrt.docs-tooling.state-residue-test).
+# judgement, and it is capped by convention -- `state-residue-test`
+# linted it until `e189418` deleted that gate.
 # `pipeline` is a DECLARED prerequisite, not merely a left-to-right
 # neighbour on the `docsgen:` line (ADR-0155, register L3-4).
 # docs/dev/pipeline.md is itself generated AND is a line-counted input

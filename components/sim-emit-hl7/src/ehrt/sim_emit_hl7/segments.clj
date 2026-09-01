@@ -194,7 +194,7 @@
 
 (defn in1-segment
   "IN1 (insurance): IN1-1 set id, IN1-3/IN1-4 the sampled payer pool
-  entry's id/name (docs/operational-models.md's payers model, Milestone
+  entry's id/name (components/sim/docs/operational-models.md's payers model, Milestone
   M4 -- SimHospital issue #3's own request, docs/research/SimHospital-
   Synthea-limitations-considered.md §5.3). Rides ONLY the admission
   message (single-subject-message's own call site) -- the real HL7v2
@@ -441,7 +441,7 @@
                                            stage))]))))
 
 (defn obx-segment
-  "One analyte per OBX (docs/operational-models.md's own spec for this
+  "One analyte per OBX (components/sim/docs/operational-models.md's own spec for this
   milestone): OBX-2 \"NM\" (numeric) -- every analyte in this
   catalytic's starter set is a numeric lab value, no other value types
   needed yet. OBX-7 renders the reference range as \"low-high\"; OBX-8

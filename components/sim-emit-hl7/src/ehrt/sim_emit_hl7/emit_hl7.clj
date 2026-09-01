@@ -2,7 +2,7 @@
   "EmitHL7 (docs/sim-theory.edn): pure log -> ER7 messages, the thin
   vertical slice from ground-truth-log to hl7v2-stream. v0 scope was
   ADT^A01 (admission) and ADT^A03 (discharge) only; Milestone M1
-  (docs/operational-models.md) adds ADT^A02 (transfer, including bed-
+  (components/sim/docs/operational-models.md) adds ADT^A02 (transfer, including bed-
   ready) alongside its step type, per the roadmap's own co-landing
   extension of that rule to this registry. MSH/EVN/PID/PV1 populated
   minimally -- on org.clojars.cmiles74/clojure-hl7-parser's own data

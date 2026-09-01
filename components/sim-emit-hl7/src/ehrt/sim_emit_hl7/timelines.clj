@@ -134,7 +134,7 @@
   [its first stamped event, its last stamped event] and nothing else.
 
   NO STATE MACHINE, deliberately, and for ADR-0175 section 2(a)'s own
-  reason: `ehrt.sim-engine.engine/stamp-encounter` mints the id at the
+  reason: `ehrt.sim-engine.encounters/stamp-encounter` mints the id at the
   opener and carries it on every event of that encounter, so grouping
   BY the stamp cannot disagree with reading it, while a second
   admission/discharge fold could. Measured consequence, at seed 202:

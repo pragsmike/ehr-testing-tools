@@ -19,7 +19,7 @@
   :naming :surge-format is the one documented exception to 'binds at
   emit time only'. Surge bed ids are baked into ground truth at DECIDE
   time (ehrt.sim-model.facility/surge-slot-ids, a decision that
-  pre-dates this namespace -- docs/operational-models.md) -- so unlike
+  pre-dates this namespace -- components/sim/docs/operational-models.md) -- so unlike
   the other three components, a site profile's naming override
   (`apply-naming`, below) is a FACILITY-CONFIG TRANSFORM a caller
   applies to `:facility` BEFORE ehrt.sim-engine.run/run, not

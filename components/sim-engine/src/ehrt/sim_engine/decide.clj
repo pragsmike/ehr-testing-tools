@@ -1079,7 +1079,7 @@
   `patient-id`'s discharge has vacated `vacated-location`.
 
   Normally the just-vacated bed itself: that specific bed becoming ready
-  IS the coupling (docs/operational-models.md's own \"patient B's
+  IS the coupling (components/sim/docs/operational-models.md's own \"patient B's
   discharge event is what makes patient A's boarding-to-transfer event
   schedulable\"). But the coupling names the bed WITHIN its rung -- it
   never licenses a rung the allocation ladder would not have reached.

@@ -200,7 +200,7 @@
 
 (deftest an-encounter-closed-twice-bills-each-close-for-what-had-happened-by-then
   (testing "ADR-0175 section 2(c) says `one DFT per encounter close`,
-            and `ehrt.sim-engine.engine/stamp-encounter` says a
+            and `ehrt.sim-engine.encounters/stamp-encounter` says a
             reinstated stay is ONE encounter closed twice. Keying the
             plan by encounter ALONE would have billed the first close
             for bed-days it had not yet incurred; the key is
