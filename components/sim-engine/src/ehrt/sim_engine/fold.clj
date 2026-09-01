@@ -264,6 +264,14 @@
     correction C3: `ehrt.sim-check.check` deliberately does NOT call
     `update-beds`, on vacuous-gate grounds, so no consumer waits.
 
+  * `:log-mirror` -- a pure duplicate: replay is HANDED the log, and
+    this accumulates a second copy of it into a world it does not
+    return. ONE OBSERVATION THE CENSUS DID NOT MAKE: `(into
+    (:ground-truth world) events)` over a world carrying no
+    `:ground-truth` is `(into nil events)`, which builds a REVERSED
+    list, not a vector in log order. Unread, so inert -- but a consumer
+    must seed the world with `:ground-truth []` before reading it.
+
   THE TWO IT DOES NOT GET are the DECORATIONS `:encounter-stamp` and
   `:warm-up-mark`, the only two of section 3b predicted OUTPUT-MOVING --
   the concerns applied on the way IN, which a re-fold of an existing log
@@ -271,7 +279,8 @@
   'replay cannot do them'. Stage 2 PREPARES them and does not land them;
   the author disposes."
   #{:log-ordinal :reinstate-index :citation-index :registration-index
-    :patient-bootstrap :patient-state :bed-index :replay-entries})
+    :patient-bootstrap :patient-state :bed-index :log-mirror
+    :replay-entries})
 
 (def reinstated-projection
   "Census site 3 -- `ehrt.sim-engine.log-index/reinstated-state`'s
