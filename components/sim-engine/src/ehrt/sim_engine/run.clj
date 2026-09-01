@@ -1328,22 +1328,29 @@
                   ;; (census site 2) and `reinstated-state`'s fallback
                   ;; (site 3) reach the same one.
                   ;;
-                  ;; STAGE 2 ENABLED `:patient-bootstrap` here (census
-                  ;; section 3a, predicted INERT and confirmed: `prelude`
-                  ;; seeds every patient before the loop, so the branch
-                  ;; never fires). `:replay-entries` stays omitted for
-                  ;; now, and the choke point's
+                  ;; STAGE 2 ENABLED BOTH of this site's omitted pairs
+                  ;; (census section 3a, both predicted INERT):
+                  ;; `:patient-bootstrap`, whose branch never fires
+                  ;; because `prelude` seeds every patient before the
+                  ;; loop, and `:replay-entries`, which accumulates into
+                  ;; the `:entries` transient below that this call site
+                  ;; never realises. Site 1 is at FULL PRODUCT, the ruled
+                  ;; end state. The choke point's
                   ;; order of operations is the one that stood here --
                   ;; decorate off the pre-batch world, take the log
                   ;; ordinal off it, one per-event reduce, then the
                   ;; per-batch post-pass off the post-reduce world.
                   ;; `:log` is the TRANSIENT log accumulator, in and out
                   ;; as a transient; `final-result` is still the only
-                  ;; thing that persists it.
+                  ;; thing that persists it. `:entries` is the same shape
+                  ;; and is DELIBERATELY not destructured: site 1 holds
+                  ;; `:replay-entries` at full product, and nothing here
+                  ;; reads what it accumulates.
                   {world'' :world ground-truth' :log state-history' :state-history}
                   (fold/apply-events {:world world
                                       :log ground-truth
                                       :state-history state-history
+                                      :entries (transient [])
                                       :warm-up-seconds warm-up-seconds}
                                      events
                                      fold/run-loop-projection)

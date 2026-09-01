@@ -200,9 +200,11 @@
     :state-history :replay-entries})
 
 (def run-loop-projection
-  "Census site 1 -- `ehrt.sim-engine.run`'s in-loop fold. TWELVE of the
-  thirteen since stage 2 enabled 1 x `:patient-bootstrap`, the first of
-  the census's section 3a pairs and predicted INERT.
+  "Census site 1 -- `ehrt.sim-engine.run`'s in-loop fold. THE FULL
+  THIRTEEN, and the first of the three sites to reach the ruled end
+  state. Stage 2 enabled its two omitted pairs in census order,
+  `:patient-bootstrap` then `:replay-entries`, both section 3a and both
+  predicted INERT.
 
   WHY IT IS INERT, and it is a property of `run` rather than of the
   concern: nothing reaches this fold unregistered. `prelude` seeds every
@@ -212,8 +214,15 @@
   unchanged. IF IT EVER FIRES, that is worth more than the pair -- it
   means an unregistered participant reached the log.
 
-  Still omitted: `:replay-entries`, section 3a's other pair."
-  (disj full-algebra :replay-entries))
+  `:replay-entries` is inert here for a different reason -- not that its
+  branch never fires, but that nothing READS what it accumulates.
+  `final-result` merges `:ground-truth`, `:state-history`, `:facility`
+  and `:providers` and nothing else, and no caller of
+  `ehrt.sim-engine.interface/run` asks for more, so the entries land in
+  a transient the call site never realises. It costs allocation -- one
+  map per event carrying two whole patient-map snapshots -- and moves no
+  byte."
+  full-algebra)
 
 (def replay-projection
   "Census site 2 -- `replay` below. Three of the thirteen. The ten it

@@ -38,12 +38,15 @@
 
 (def ^:private census-site-1
   "Section 2, column `site 1 -- run fold`: eleven PRESENT cells at stage
-  1, TWELVE since stage 2 enabled 1 x `:patient-bootstrap` (section 3a,
-  predicted INERT)."
+  1, ALL THIRTEEN since stage 2 enabled both of section 3a's pairs,
+  `:patient-bootstrap` and `:replay-entries`. Site 1 is at the ruled end
+  state -- full product -- and this set is `full-algebra` written out
+  rather than aliased, for the same reason every other column here is a
+  transcription."
   #{:encounter-stamp :warm-up-mark :log-ordinal :reinstate-index
     :citation-index :registration-index :patient-bootstrap
     :patient-state :bed-index :log-mirror :log-accumulator
-    :state-history})
+    :state-history :replay-entries})
 
 (def ^:private census-site-2
   "Section 2, column `site 2 -- replay`: three PRESENT cells."
@@ -62,7 +65,7 @@
 
   (testing "each site's projection is its own matrix column"
     (is (= census-site-1 fold/run-loop-projection)
-        "site 1 -- run's in-loop fold, twelve of thirteen")
+        "site 1 -- run's in-loop fold, all thirteen -- full product")
     (is (= census-site-2 fold/replay-projection)
         "site 2 -- replay, three of thirteen")
     (is (= census-site-3 fold/reinstated-projection)
@@ -82,12 +85,12 @@
             twin at site 3, which is what one-pair-per-commit forbids"
     (is (not (identical? fold/replay-projection fold/reinstated-projection))))
 
-  (testing "the matrix's own arithmetic: 18 present cells of 39, and the
-            21 omitted ones are what stage 2 enables pair by pair"
-    (is (= 18 (+ (count fold/run-loop-projection)
+  (testing "the matrix's own arithmetic: 19 present cells of 39, and the
+            20 omitted ones are what stage 2 enables pair by pair"
+    (is (= 19 (+ (count fold/run-loop-projection)
                  (count fold/replay-projection)
                  (count fold/reinstated-projection))))
-    (is (= 21 (- (* 3 (count fold/full-algebra))
+    (is (= 20 (- (* 3 (count fold/full-algebra))
                  (+ (count fold/run-loop-projection)
                     (count fold/replay-projection)
                     (count fold/reinstated-projection)))))))
