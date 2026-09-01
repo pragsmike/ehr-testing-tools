@@ -260,3 +260,6 @@ writing. Two smaller carries: the `:mutation` RNG family tag is still
 unreserved (section 5), and `:expected-findings` is not yet checked
 against `check`'s own vocabulary at registration (section 3(d)), which
 needs a ruling on widening `ehrt.sim-check.interface`.
+
+**CI: green at `87bce30`** — run 33553136845, the `test` workflow on
+`main`, 12m04s, conclusion success. The close marker for this session.
