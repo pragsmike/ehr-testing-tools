@@ -333,6 +333,12 @@
 
   * `:registration-index` -- not read at this site, same reason.
 
+  * `:bed-index` -- inert twice over: `reinstated-state` returns a
+    patient state and a bed index is not in one, AND the guard `(:beds
+    w-next)` is never truthy from this site's empty world. The
+    reinstatement's own bed question is asked separately, against the
+    LIVE board -- `bed-reoccupied-by-someone-else?` below says so.
+
   THE ONE IT DOES NOT GET is the DECORATION `:encounter-stamp`, the only
   pair of section 3c predicted OUTPUT-MOVING, and by a mechanism that is
   narrower than its site-2 twin but real: `evolve` folds `:encounter-id`
@@ -342,7 +348,7 @@
   reach emitted events and the byte-identity gate. Stage 2 PREPARES it
   and does not land it; the author disposes."
   #{:warm-up-mark :log-ordinal :reinstate-index :citation-index
-    :registration-index :patient-bootstrap :patient-state
+    :registration-index :patient-bootstrap :patient-state :bed-index
     :replay-entries})
 
 (defn apply-events
