@@ -75,8 +75,36 @@ with them.
   the three APPLY sites (4b `run`'s in-loop fold, 4c `replay`, 4d
   `reinstated-state`'s replay fallback), not three event sources. 4c's
   divergence is what it costs: `replay` does six fewer things than site 1 and
-  cannot do them, which is why `ehrt.sim-check.check` has no bed index on the
-  replay path.
+  cannot do them. This row used to add "which is why `ehrt.sim-check.check`
+  has no bed index on the replay path" and THAT WAS NEVER TRUE (census
+  correction C3): `check.clj`'s own comment says the opposite -- its bed fold
+  is DELIBERATELY not `update-beds`, on vacuous-gate grounds -- and said so at
+  `517a96d` too. No consumer waits on that pair.
+  STAGE 1 IS IN THE TREE, 2026-09-01: `434e939` the census, `7ab7cdb` the
+  choke point. `fold/apply-events` is the ONE fold all three sites run, each
+  passing the stack it already ran as a declared subset of `fold/full-algebra`,
+  gated by the co-landed `ehrt.sim-engine.apply-projection-test` (which
+  transcribes the matrix, never reads it). Oracle IDENTICAL over 41 roots,
+  bracket IDENTICAL over 38, no declaration; site 3 driven live down BOTH
+  branches -- the coverage caveat stands, neither bracket reaches a cancel
+  decide. Census: `.agents/plans/apply-unification-census.md`, re-derived at
+  `3e65ff9`, SIX corrections to section 4, of which C2 (`:state-history`
+  appends the POST-BATCH state) is the one an output-identical refactor turns
+  on. Home is `fold.clj` as the channel expected, at a cost it did not have:
+  two apply-site policy sets moved down out of `log_index.clj` (delegating
+  defs, C1(a)) or `fold` naming them closes a require cycle.
+  STAGE 2's PAIR CHECKLIST -- 22 omitted (site x accumulator) pairs, ONE
+  COMMIT EACH, cone prediction alongside, consuming paths in census section 3;
+  a delta against a prediction is a FINDING. NONE IS TAKEN. OUTPUT-MOVING, 3,
+  all DECORATIONS (recomputed by a re-fold, not accumulated): 2xA1
+  `:encounter-stamp`, 2xA2 `:warm-up-mark`, 3xA1 `:encounter-stamp`. INERT,
+  19 -- site 1: A7 `:patient-bootstrap`, A13 `:replay-entries`; site 2: A3
+  `:log-ordinal`, A4 `:reinstate-index`, A5 `:citation-index`, A6
+  `:registration-index`, A9 `:bed-index`, A10 `:log-mirror`, A11
+  `:log-accumulator`, A12 `:state-history`; site 3: those eight plus A2. Two
+  are worth taking for reasons other than a delta: 2xA4 gives site 3's read a
+  first-class source (4d's own cheapest-deletion) and 3xA4 buys the
+  O(N)-per-cancel ADR-0169 measures at 35.3% of generate.
   THE THREE STANDING BACKLOGS ARE CLEARED, by the ruled repoint pass of
   2026-08-31 (C12(b), which lifted C1(a)'s test-file fence for that session
   and resumed it at its close). Manifest first, at
