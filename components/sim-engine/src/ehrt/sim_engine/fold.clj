@@ -272,6 +272,12 @@
     list, not a vector in log order. Unread, so inert -- but a consumer
     must seed the world with `:ground-truth []` before reading it.
 
+  * `:log-accumulator` -- the same duplicate in TRANSIENT form, and
+    the one pair at this site that needs a SLOT: the concern is
+    `(reduce conj! (:log acc) events)` and `conj!` on nil throws, so
+    `replay`'s acc now carries `:log (transient [])`. Never persisted,
+    never read.
+
   THE TWO IT DOES NOT GET are the DECORATIONS `:encounter-stamp` and
   `:warm-up-mark`, the only two of section 3b predicted OUTPUT-MOVING --
   the concerns applied on the way IN, which a re-fold of an existing log
@@ -280,7 +286,7 @@
   the author disposes."
   #{:log-ordinal :reinstate-index :citation-index :registration-index
     :patient-bootstrap :patient-state :bed-index :log-mirror
-    :replay-entries})
+    :log-accumulator :replay-entries})
 
 (def reinstated-projection
   "Census site 3 -- `ehrt.sim-engine.log-index/reinstated-state`'s
@@ -479,6 +485,13 @@
   loop is the same fold under the choke point's own guards."
   [ground-truth]
   (persistent!
-   (:entries (apply-events {:world {:patients {}} :entries (transient [])}
+   (:entries (apply-events {:world {:patients {}}
+                            :entries (transient [])
+                            ;; `:log-accumulator`'s slot, since stage 2
+                            ;; enabled that pair at this site. Never
+                            ;; persisted and never read -- `conj!` on
+                            ;; nil would throw, which is the whole of
+                            ;; why the slot exists.
+                            :log (transient [])}
                            ground-truth
                            replay-projection))))
