@@ -348,6 +348,10 @@
     so the call site carries `:log (transient [])`. Never persisted,
     never read.
 
+  * `:state-history` -- duplicates, in a narrower shape, what
+    `:replay-entries` already returns, and this site reads ONE element
+    of that. Builds from a nil seed; no slot.
+
   THE ONE IT DOES NOT GET is the DECORATION `:encounter-stamp`, the only
   pair of section 3c predicted OUTPUT-MOVING, and by a mechanism that is
   narrower than its site-2 twin but real: `evolve` folds `:encounter-id`
@@ -358,7 +362,7 @@
   and does not land it; the author disposes."
   #{:warm-up-mark :log-ordinal :reinstate-index :citation-index
     :registration-index :patient-bootstrap :patient-state :bed-index
-    :log-mirror :log-accumulator :replay-entries})
+    :log-mirror :log-accumulator :state-history :replay-entries})
 
 (defn apply-events
   "THE APPLY CHOKE POINT. `acc x events x projection -> acc'`.
