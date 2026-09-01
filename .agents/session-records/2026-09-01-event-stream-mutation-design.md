@@ -191,3 +191,25 @@ session's diff did (a docs-only diff cannot move suite time).
 `readme-presence-test`, `index-completeness-test` — 28 tests / 729
 assertions, 0 failures, 0 errors. `adr-index-test` at commit 1 — 10
 tests / 16 assertions, green.
+
+**Push** — one push, `f402868..58a376a`, three commits. `gitleaks`
+clean over 1,336 commits (40.47 MB scanned) and the pre-push hook `OK`.
+
+**Post-push message verification** — `bin/post-push-verify f402868
+58a376a`, all three checks: remote tip matches HEAD, every commit
+message in range pure ASCII, CI reported once and not awaited (AR-CI-4).
+Each of the three messages was additionally diffed against the file that
+produced it; the only delta on each is the single trailing blank line
+`git log --format=%B` adds. Nothing the WSL wrapper dropped.
+
+**CI** — run `33535896562` at `58a376a`, `completed / success`, 13m02s,
+not retried. Every step green, including **`generated-doc freshness
+(regen + diff)`** — the one this session had most reason to watch,
+having regenerated `notes/ADRs.md`, `.agents/state-derived.md` and both
+INDEXes. That is the close marker under
+`rulings.md#R-session-verifies-ci-via-gh`.
+
+**What is now owed, and by whom.** Nine rulings, on ADR-0176's Q1
+through Q9. `roadmap.md#event-stream-mutation` stays OPEN and its
+"design ADR first" clause is now met; no implementation session should
+start before Q1 is ruled, because Q1 decides where the code goes.
