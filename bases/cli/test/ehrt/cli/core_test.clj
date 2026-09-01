@@ -1377,7 +1377,11 @@
                                 :locator-path "entry[0].resource.gender" :out-dir (temp-dir*)})]
     (is (= :unknown-operator (:category r)) "category survives the payload extension")
     (is (contains? (set (:valid-options (:payload r))) :remove-required-element))
-    (is (= 10 (count (:valid-options (:payload r)))))
+    ;; Eleven since 2026-09-01 (ADR-0176): the ten file-level operators
+    ;; plus the first :format :event one. `ehrt corpus mutate` lists the
+    ;; whole registry here on purpose -- the hint sends the reader to
+    ;; `ehrt corpus operators`, which is also the whole registry.
+    (is (= 11 (count (:valid-options (:payload r)))))
     (is (= "run: ehrt corpus operators" (:hint (:payload r))))))
 
 (deftest mutate-command-defaults-operator-version-to-1-test
@@ -1921,15 +1925,27 @@
 ;; corpus.operators' registry -- no filesystem, no subprocess, no
 ;; options required. ----
 
-(deftest operators-command-lists-all-ten-registered-operators-test
+(deftest operators-command-lists-all-eleven-registered-operators-test
+  ;; Ten file-level operators, plus the first :format :event one
+  ;; (2026-09-01, ADR-0176 -- the spine of the event-mutation catalog).
+  ;; One registry, three formats: Q2(a) ruled the event catalog joins
+  ;; this registry rather than forking a second one, so this verb keeps
+  ;; being the single place a consumer looks.
   (let [r (cli/operators-command {})]
     (is (result/ok? r))
-    (is (= 10 (count (:operators (:payload r)))))
+    (is (= 11 (count (:operators (:payload r)))))
     (is (= #{:remove-required-element :duplicate-element :invalid-code-value
              :malformed-date :wrong-type-value :blank-required-field
              :corrupt-encoding-characters :malformed-datetime-value
-             :truncate-segment-fields :corrupt-segment-name}
+             :truncate-segment-fields :corrupt-segment-name
+             :phantom-placeholder-event-id}
            (set (map :id (:operators (:payload r))))))))
+
+(deftest operators-command-filters-to-the-event-format-test
+  (let [r (cli/operators-command {:format "event"})]
+    (is (result/ok? r))
+    (is (= 1 (count (:operators (:payload r)))))
+    (is (every? #(= :event (:format %)) (:operators (:payload r))))))
 
 (deftest operators-command-filters-by-format-test
   (let [r (cli/operators-command {:format "v2"})]
@@ -1966,7 +1982,7 @@
   (with-redefs [io/file (fn [& _] (throw (ex-info "no filesystem access expected" {})))]
     (let [r (cli/operators-command {})]
       (is (result/ok? r))
-      (is (= 10 (count (:operators (:payload r))))))))
+      (is (= 11 (count (:operators (:payload r))))))))
 
 ;; ---- gate-command / gate-v2-command (`ehrt gate v2`): builds a
 ;; format-agnostic gate report over a file or directory; exit-code

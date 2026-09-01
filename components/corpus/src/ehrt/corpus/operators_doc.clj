@@ -71,7 +71,7 @@
   not named here falls back to its own keyword name, so adding a third
   format to the registry produces a slightly plainer heading rather
   than a crash."
-  {:fhir "FHIR" :v2 "HL7 v2"})
+  {:fhir "FHIR" :v2 "HL7 v2" :event "Event log"})
 
 (defn format-heading
   [format]
@@ -92,8 +92,23 @@
   [{:keys [id]}]
   (str "### `" id "`\n"))
 
+(defn- expected-findings-line
+  "Event operators only (ADR-0176 section 2(i)). The finding set is the
+  event analogue of `:contract`/`:target`, and it is a different KIND
+  of claim: a target sentence is prose about a third-party
+  specification, checkable only by reading it, while a finding set
+  names invariants in this repository's OWN closed vocabulary, so the
+  gate can assert observed = declared exactly. Rendered so a consumer
+  reading this page knows what to expect `ehrt sim check` to say, not
+  merely that something will be wrong."
+  [{:keys [expected-findings]}]
+  (when (seq expected-findings)
+    (str "- **Expected findings:** "
+         (str/join ", " (map #(str "`" % "`") (sort expected-findings)))
+         " — what `ehrt sim check` reports on the mutant, exactly and nothing else.\n")))
+
 (defn- operator-detail
-  [{:keys [id version doc locator-required? contract] :as entry}]
+  [{:keys [version doc locator-required? contract] :as entry}]
   (str (operator-anchor-heading entry)
        "\n" doc "\n\n"
        "- **Version:** `" version "` — pass as `--operator-version " version "`.\n"
@@ -101,7 +116,8 @@
                            "required — see [locators.md](locators.md) for the grammar this format accepts."
                            "not required.")
        "\n"
-       "- **Contract:** `" (:type contract) "` — " (:target contract) "\n"))
+       "- **Contract:** `" (:type contract) "` — " (:target contract) "\n"
+       (expected-findings-line entry)))
 
 (defn- operators-format-section
   "One `## <Format> operators` section, given the run of entries
@@ -130,19 +146,27 @@
                "Edit the registry (or this file's renderer, components/corpus/src/ehrt/corpus/operators_doc.clj) and regenerate instead.")
        "\n# Mutation operators\n\n"
        pre-release-notice "\n\n"
-       "This is the catalog `ehrt corpus mutate` applies: every registered defect operator, "
-       "what it does to a file, and which base-spec constraint the result violates. "
+       "This is the defect-operator catalog: every registered operator, what it does to its "
+       "input, and which constraint the result violates. "
        "The same catalog is readable at the shell — `ehrt corpus operators`, or "
        "`ehrt corpus operators --format v2` for one format — and as EDN or JSON from that verb's output.\n\n"
-       "Each operator is applied by id: `--operator-id <id> --operator-version <version>`, "
-       "at one `--locator-path`, to every matching file under `PATH` (positional, or `--path`). "
+       "**Two layers, two verbs.** FHIR and HL7 v2 operators are FILE operators: `ehrt corpus mutate` "
+       "applies them by id — `--operator-id <id> --operator-version <version>` — at one `--locator-path`, "
+       "to every matching file under `PATH` (positional, or `--path`). They are lowering-layer faults: "
+       "a blanked field, a truncated segment, a malformed date — defects that come into existence only "
+       "when a record is written out as bytes. Event-log operators are different: they mutate the "
+       "ground-truth EVENT LOG itself, before any of it is rendered, so every emitter downstream "
+       "inherits one mutated truth. `ehrt sim mutate` applies them, by id and seed, as a filter — "
+       "`ehrt sim run --format ground-truth | ehrt sim mutate --operator-id <id> --seed <n> | ehrt sim check`. "
        "See [cli.md](cli.md#ehrt-corpus-mutate) for the full flag list and "
        "[use-cases.md](use-cases.md) for which task calls for which operator.\n\n"
        "Two descriptions appear per operator, and they answer different questions. "
-       "**What it does** is the edit — what changed in the file. "
-       "**Contract** is the conformance claim — which constraint in the base specification "
-       "the edited file now violates, which is what makes the operator useful as a test "
-       "of whether a gate catches it.\n\n"
+       "**What it does** is the edit — what changed in the input. "
+       "**Contract** is the conformance claim — which constraint the edited input now violates, "
+       "which is what makes the operator useful as a test of whether a gate catches it. "
+       "Event-log operators carry a third: **Expected findings**, the invariants `ehrt sim check` "
+       "reports on the mutant — exactly that set and nothing else, which is a machine-checked claim "
+       "rather than a prose one, because the vocabulary is this repository's own.\n\n"
        (str/join "\n" (map operators-format-section (partition-by :format entries)))
        "\n## What this catalog does not tell you\n\n"
        "Whether a gate actually *convicts* a given mutant is a measured property, not a "
@@ -152,7 +176,12 @@
        "Those dropped candidates and the measured blind spots behind them are in "
        "[judge-calibration.md](judge-calibration.md), which is where to look when a gate "
        "result surprises you. They are not registry data, so they never appear in "
-       "`ehrt corpus operators` output either.\n"))
+       "`ehrt corpus operators` output either.\n\n"
+       "Event-log operators are the exception, and deliberately so. Their oracle is "
+       "`ehrt sim check`, whose catalog this repository owns — so an event operator that "
+       "nothing in that catalog convicts is evidence of a hole in the catalog, not a fact about "
+       "a third-party validator. Such a candidate is refused registration outright and recorded "
+       "as a catalog gap, rather than shipped with an empty claim.\n"))
 
 ;; ---- impure shell (I/O) ----
 

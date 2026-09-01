@@ -116,8 +116,30 @@
   ;; run order -- filtering to entries carrying :doc is the SAME
   ;; distinguishing signal that suite already relies on, not a new
   ;; convention invented here.
+  ;;
+  ;; SCOPED TO FILE-LEVEL OPERATORS (2026-09-01, ADR-0176). This gate's
+  ;; premise is that an operator's conviction is witnessed by a JUDGE --
+  ;; a third-party validator reading bytes off disk. Event-log
+  ;; operators (:format :event) have no judge and cannot acquire one:
+  ;; their substrate is the in-memory ground-truth log, never a file,
+  ;; and their oracle is `ehrt sim check`, whose catalog this
+  ;; repository owns. They are NOT unwitnessed. Their conviction is
+  ;; proved harder than this registry proves anything -- by the closed
+  ;; oracle loop in ehrt.corpus.event-mutate-test, which asserts the
+  ;; observed finding set EQUALS the declared one over a real generated
+  ;; log, where a pairing row asserts only that SOME expected class
+  ;; appears among the observed ones. Excluding them here is therefore
+  ;; a statement about which instrument witnesses which layer, not a
+  ;; coverage exemption; registering an event operator with no
+  ;; convicting finding is refused outright at `corpus.operators/
+  ;; register!` and recorded as a catalog gap, which is the event
+  ;; layer's own version of this gate and is strictly earlier.
   (let [rows (judge/load-pairing-registry)
-        operator-ids (->> (corpus/operator-entries) (filter :doc) (map :id) distinct)
+        operator-ids (->> (corpus/operator-entries)
+                          (filter :doc)
+                          (remove #(= :event (:format %)))
+                          (map :id)
+                          distinct)
         coverage (judge/pairing-coverage rows operator-ids)
         uncovered (into (sorted-set) (keep (fn [[id judges]] (when (empty? judges) id))) coverage)]
     (is (empty? uncovered)

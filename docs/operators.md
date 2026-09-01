@@ -5,11 +5,26 @@
 
 **Pre-release.** Nothing in this repo has had a first release yet; the interfaces below may still move. See [`README.md`](../README.md#maturity) for the per-capability maturity table.
 
-This is the catalog `ehrt corpus mutate` applies: every registered defect operator, what it does to a file, and which base-spec constraint the result violates. The same catalog is readable at the shell — `ehrt corpus operators`, or `ehrt corpus operators --format v2` for one format — and as EDN or JSON from that verb's output.
+This is the defect-operator catalog: every registered operator, what it does to its input, and which constraint the result violates. The same catalog is readable at the shell — `ehrt corpus operators`, or `ehrt corpus operators --format v2` for one format — and as EDN or JSON from that verb's output.
 
-Each operator is applied by id: `--operator-id <id> --operator-version <version>`, at one `--locator-path`, to every matching file under `PATH` (positional, or `--path`). See [cli.md](cli.md#ehrt-corpus-mutate) for the full flag list and [use-cases.md](use-cases.md) for which task calls for which operator.
+**Two layers, two verbs.** FHIR and HL7 v2 operators are FILE operators: `ehrt corpus mutate` applies them by id — `--operator-id <id> --operator-version <version>` — at one `--locator-path`, to every matching file under `PATH` (positional, or `--path`). They are lowering-layer faults: a blanked field, a truncated segment, a malformed date — defects that come into existence only when a record is written out as bytes. Event-log operators are different: they mutate the ground-truth EVENT LOG itself, before any of it is rendered, so every emitter downstream inherits one mutated truth. `ehrt sim mutate` applies them, by id and seed, as a filter — `ehrt sim run --format ground-truth | ehrt sim mutate --operator-id <id> --seed <n> | ehrt sim check`. See [cli.md](cli.md#ehrt-corpus-mutate) for the full flag list and [use-cases.md](use-cases.md) for which task calls for which operator.
 
-Two descriptions appear per operator, and they answer different questions. **What it does** is the edit — what changed in the file. **Contract** is the conformance claim — which constraint in the base specification the edited file now violates, which is what makes the operator useful as a test of whether a gate catches it.
+Two descriptions appear per operator, and they answer different questions. **What it does** is the edit — what changed in the input. **Contract** is the conformance claim — which constraint the edited input now violates, which is what makes the operator useful as a test of whether a gate catches it. Event-log operators carry a third: **Expected findings**, the invariants `ehrt sim check` reports on the mutant — exactly that set and nothing else, which is a machine-checked claim rather than a prose one, because the vocabulary is this repository's own.
+
+## Event log operators
+
+| Operator | Locator | What it does |
+|---|---|---|
+| [`:phantom-placeholder-event-id`](#phantom-placeholder-event-id) | — | Repoints one identity-fill's :placeholder-event-id at a log index that does not exist, leaving every other field and every other event exactly as it was. |
+
+### `:phantom-placeholder-event-id`
+
+Repoints one identity-fill's :placeholder-event-id at a log index that does not exist, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — repoints a `:demographic-update`'s `:placeholder-event-id` at an index past the end of the log, violating this engine's own referential law that an identity fill cites a real `:registered` event in the same log, for the same patient, carrying `:identity :placeholder`, at or before the fill's own `:t` (the invariant `ehrt.sim-check.check/identity-fill-references-its-placeholder-registration` states)
+- **Expected findings:** `:identity-fill-references-its-placeholder-registration` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
 
 ## FHIR operators
 
@@ -114,3 +129,5 @@ Cuts the segment short at the locator's field, dropping that field and every fie
 ## What this catalog does not tell you
 
 Whether a gate actually *convicts* a given mutant is a measured property, not a property of the operator. Every entry above was verified to convict at its format's current judge tier before being registered — and several plausible defects were probed, found not to convict, and dropped rather than shipped unconvictable. Those dropped candidates and the measured blind spots behind them are in [judge-calibration.md](judge-calibration.md), which is where to look when a gate result surprises you. They are not registry data, so they never appear in `ehrt corpus operators` output either.
+
+Event-log operators are the exception, and deliberately so. Their oracle is `ehrt sim check`, whose catalog this repository owns — so an event operator that nothing in that catalog convicts is evidence of a hole in the catalog, not a fact about a third-party validator. Such a candidate is refused registration outright and recorded as a catalog gap, rather than shipped with an empty claim.

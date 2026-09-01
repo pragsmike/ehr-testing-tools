@@ -76,18 +76,104 @@
    ;; invented speculatively by this session (D12's own text) -- no seed
    ;; catalog entry below declares one yet.
    [:default-locator {:optional true} [:string {:min 1}]]
+   ;; The three event-operator slots (ADR-0176 section 2(i), ruled
+   ;; 2026-09-01). Optional HERE so the ten file-level entries above
+   ;; stay valid unchanged; REQUIRED, and required together, by
+   ;; `EventOperator` below for :format :event.
+   [:expected-findings {:optional true} [:set :keyword]]
+   [:seed-consuming? {:optional true} :boolean]
+   [:candidate-sites {:optional true} [:fn fn?]]
    [:fn [:fn fn?]]])
+
+(def EventOperator
+  "The extra shape :format :event carries, on top of `Operator`.
+
+  :expected-findings is the event analogue of :contract/:target, and
+  the difference is the point: a target sentence is prose about a
+  third-party specification, while a finding set names invariants in
+  `ehrt.sim-check.check`'s OWN closed vocabulary, so the closed oracle
+  loop can assert observed = declared (Q5(a), set EQUALITY).
+
+  :seed-consuming? true and :locator-required? false are asserted as
+  literals rather than merely typed: an event operator selects its own
+  site by ONE draw over the candidate sites the log offers (Q3(a)/
+  Q4(a)), so an entry asking to be handed a locator instead is not a
+  differently-configured event operator -- it is a mis-declared one."
+  [:map
+   [:format [:= :event]]
+   [:expected-findings [:set :keyword]]
+   [:seed-consuming? [:= true]]
+   [:locator-required? [:= false]]
+   [:candidate-sites [:fn fn?]]])
 
 (defonce ^:private registry (atom {}))
 
+;; ---- catalog gaps (ADR-0176 Q6(a), ruled 2026-09-01) --------------
+;;
+;; A candidate operator this repository's own catalog cannot convict is
+;; REFUSED registration and recorded here, rather than shipped
+;; unconvictable or dropped silently. That is the v2 seed catalog's own
+;; precedent (this namespace's docstring: three plausible v2 defects
+;; were probed, found to produce :pass, and "recorded as dropped, not
+;; shipped unconvictable") with the one difference that matters --
+;; HAPI is a third party this repository cannot extend, while `check`'s
+;; catalog is its OWN. An unconvictable EVENT operator is therefore
+;; evidence of a hole in `check`, not a property of the operator, and
+;; ADR-0166's error ledger (a referential invariant left unmirrored
+;; onto its structural twin for three weeks) is the standing proof
+;; such holes sit unnoticed. Executable rather than prose, so the
+;; knowledge cannot rot out of a comment.
+
+(defonce ^:private gaps (atom []))
+
+(defn catalog-gaps
+  "Every candidate refused registration for want of a finding this
+  repository's own invariant catalog can convict, in refusal order."
+  []
+  @gaps)
+
+(defn reset-catalog-gaps!
+  ([] (reset-catalog-gaps! []))
+  ([snapshot] (reset! gaps (vec snapshot))))
+
+(defn- record-gap!
+  [entry reason]
+  (swap! gaps conj {:id (:id entry)
+                    :version (:version entry)
+                    :format (:format entry)
+                    :reason reason
+                    :contract (:contract entry)}))
+
 (defn register!
   "Registers an operator entry, keyed by [id version]. Returns
-  kernel/ok {:id :version} or kernel/rejected :invalid-operator."
+  kernel/ok {:id :version}, or:
+    - kernel/rejected :invalid-operator, if the entry fails `Operator`
+      or (for :format :event) `EventOperator`
+    - kernel/rejected :unconvictable-operator, if an event operator
+      declares no finding this repository's own catalog can convict --
+      the entry is NOT registered and IS recorded as a catalog gap
+      (`catalog-gaps`, ADR-0176 Q6(a))
+
+  The three checks run in that order deliberately: a mis-declared
+  entry is a shape error and says nothing about the catalog, so it must
+  not be recorded as evidence of a hole in `check`."
   [entry]
-  (if (m/validate Operator entry)
+  (cond
+    (not (m/validate Operator entry))
+    (kernel/rejected :invalid-operator {:entry entry})
+
+    (and (= :event (:format entry)) (not (m/validate EventOperator entry)))
+    (kernel/rejected :invalid-operator {:entry entry})
+
+    (and (= :event (:format entry)) (empty? (:expected-findings entry)))
+    (do (record-gap! entry :no-declared-finding)
+        (kernel/rejected :unconvictable-operator
+                         {:id (:id entry) :version (:version entry)
+                          :reason :no-declared-finding}))
+
+    :else
     (do (swap! registry assoc [(:id entry) (:version entry)] entry)
-        (kernel/ok (select-keys entry [:id :version])))
-    (kernel/rejected :invalid-operator {:entry entry})))
+        (kernel/ok (select-keys entry [:id :version])))))
 
 (defn lookup
   [id version]
@@ -275,3 +361,85 @@
              :target "corrupts the last character of the segment name at the locator, violating HL7 v2's requirement that a message begin with a recognized MSH segment (verified only against MSH -- corrupting a non-header segment's own name, e.g. PID, was probed and found NOT to convict at this tier: HAPI's defaultValidation context tolerates an unrecognized segment identifier elsewhere in the message)"}
   :locator-required? true
   :fn v2-corrupt-segment-name})
+
+;; ---- event seed catalog (ADR-0176, ruled 2026-09-01) --------------
+;;
+;; The THIRD format, and the first one whose substrate is not a file.
+;; An event operator is a pure function over a ground-truth event log
+;; -- the vector `ehrt sim run --format ground-truth` prints and `ehrt
+;; sim check` reads -- and it carries a NAMED DEFECT CLASS: the set of
+;; `check` invariants it is built to trip. Where the ten file-level
+;; entries above are LOWERING-LAYER faults (a blanked MSH-9, a
+;; truncated segment: defects that come into existence only when a log
+;; is lowered to bytes), these are CONTENT faults in the log itself.
+;; The two catalogs are two layers, not competitors.
+;;
+;; Each entry declares two functions rather than one:
+;;   :candidate-sites  (events) -> vector of log indices this operator
+;;                     can convict at. The population-closure surface:
+;;                     an empty vector is a REJECTION at application
+;;                     time, never a silent no-op
+;;                     (rulings.md#R-empty-population-is-red).
+;;   :fn               (events site) -> events'. One site, already
+;;                     drawn by `corpus.mutate` (Q3(a): exactly one
+;;                     site per application, chosen by one draw).
+;;
+;; THIS SESSION LANDS ONE, deliberately. ADR-0176 Q8(a)'s v1 catalog is
+;; the DERIVED referential family (four log-index reference fields x
+;; five defect shapes, minus the cells the schema forbids) plus three
+;; structural operators; this is the SPINE session, which proves the
+;; whole contract end to end on one operator so the breadth session has
+;; a contract to fill in rather than a design to discover. The
+;; derivation itself -- and the gate that turns red when a fifth
+;; reference field arrives without an operator for it, which is
+;; ADR-0166's error ledger applied one layer up -- is that session's.
+
+(defn- identity-fill-sites
+  "Every `:demographic-update` with `:cause :identity-fill` whose
+  `:placeholder-event-id` is an in-range log index.
+
+  Purely structural, and that is what keeps it honest: it duplicates
+  none of `check`'s own excusing logic, because
+  `identity-fill-references-its-placeholder-registration` HAS none --
+  unlike its `:medication-end` and `:care-plan-end` cousins, it carries
+  no pre-horizon-fact escape hatch, so a resolving reference made
+  dangling convicts unconditionally. That is precisely why this field
+  is the spine's operator and one of those two is not."
+  [events]
+  (let [v (vec events)
+        n (count v)]
+    (vec (keep-indexed
+          (fn [i e]
+            (when (and (= :demographic-update (:event e))
+                       (= :identity-fill (:cause e))
+                       (int? (:placeholder-event-id e))
+                       (< -1 (:placeholder-event-id e) n))
+              i))
+          v))))
+
+(defn- phantom-placeholder-event-id
+  "Repoints the site's `:placeholder-event-id` at `(count events)` --
+  one past the last index, so it resolves nowhere. `(count events)` and
+  not a drawn value: Q3(a) spends the operator's ONE draw on the site,
+  and a second draw here would buy nothing a fixed out-of-range index
+  does not already give."
+  [events site]
+  (let [v (vec events)]
+    (assoc-in v [site :placeholder-event-id] (count v))))
+
+(register!
+ {:id :phantom-placeholder-event-id :version "1" :format :event
+  :doc "Repoints one identity-fill's :placeholder-event-id at a log index that does not exist, leaving every other field and every other event exactly as it was."
+  :contract {:type :violates
+             ;; No ADR-NNNN token in this sentence: it is rendered
+             ;; verbatim into docs/operators.md, which is
+             ;; consumer-facing prose, and the link-footnote gate
+             ;; (ehrt.docs-tooling.link-footnote-gate-test) rejects a
+             ;; visible internal register token there. The provenance
+             ;; lives in this catalog's own comments instead.
+             :target "repoints a `:demographic-update`'s `:placeholder-event-id` at an index past the end of the log, violating this engine's own referential law that an identity fill cites a real `:registered` event in the same log, for the same patient, carrying `:identity :placeholder`, at or before the fill's own `:t` (the invariant `ehrt.sim-check.check/identity-fill-references-its-placeholder-registration` states)"}
+  :locator-required? false
+  :seed-consuming? true
+  :expected-findings #{:identity-fill-references-its-placeholder-registration}
+  :candidate-sites identity-fill-sites
+  :fn phantom-placeholder-event-id})

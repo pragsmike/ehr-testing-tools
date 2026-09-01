@@ -15,15 +15,44 @@
 (def sha256-pattern
   [:re #"^[0-9a-f]{64}$"])
 
+(def OperatorRef
+  [:map [:id :keyword] [:version :string]])
+
+(def Transformation
+  "Two shapes, dispatched on the presence of :seed, and BOTH strict --
+  not one loosened map with everything optional.
+
+  The file shape (:fhir/:v2 operators, ADR-0004) records the LOCATOR it
+  was handed. The event shape (:format :event, ADR-0176 section 2(iii),
+  ruled 2026-09-01) records instead the operator's own :seed and the
+  :site that one draw selected, plus the :expected-findings the
+  operator declared -- so a mutant is reproducible from (parent-run
+  identity, operator, seed) and nothing else, and so the defect class a
+  consumer was handed is legible from the lineage record alone, without
+  a registry lookup.
+
+  Keeping the two separate rather than making :locator optional is
+  deliberate: a file lineage record carrying no locator is malformed,
+  and one loosened map with both keys optional would quietly stop
+  saying so."
+  [:multi {:dispatch (fn [t] (if (contains? t :seed) :event :file))}
+   [:file [:map
+           [:operator OperatorRef]
+           [:locator :map]
+           [:contract :map]]]
+   [:event [:map
+            [:operator OperatorRef]
+            [:seed :int]
+            [:site :int]
+            [:contract :map]
+            [:expected-findings [:set :keyword]]]]])
+
 (def LineageRecord
   [:map
    [:id sha256-pattern]
    [:parent sha256-pattern]
    [:stage :keyword]
-   [:transformation [:map
-                      [:operator [:map [:id :keyword] [:version :string]]]
-                      [:locator :map]
-                      [:contract :map]]]
+   [:transformation Transformation]
    [:produced sha256-pattern]])
 
 (defn valid?
