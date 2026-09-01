@@ -299,8 +299,19 @@
   (if (contains? world :reinstate-index)
     (get (:reinstate-index world) idx)
     (:before (nth (persistent!
-                   (:entries (fold/apply-events {:world {:patients {}}
-                                                 :entries (transient [])}
-                                                ground-truth
-                                                fold/reinstated-projection)))
+                   (:entries (fold/apply-events
+                              {:world {:patients {}}
+                               :entries (transient [])
+                               ;; `:warm-up-mark`'s parameter, since stage 2
+                               ;; enabled that pair here. A LOG HAS NO SOURCE
+                               ;; FOR ONE -- which is why the same pair at
+                               ;; site 2 is predicted OUTPUT-MOVING -- so 0 is
+                               ;; DECLARED, the census's own named default. It
+                               ;; marks every event in this local copy of the
+                               ;; batch `:warm-up false`, and that is inert
+                               ;; only because `evolve` never reads `:warm-up`
+                               ;; and this site reads a PATIENT STATE.
+                               :warm-up-seconds 0}
+                              ground-truth
+                              fold/reinstated-projection)))
                   idx))))

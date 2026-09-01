@@ -297,24 +297,33 @@
 
 (def reinstated-projection
   "Census site 3 -- `ehrt.sim-engine.log-index/reinstated-state`'s
-  replay fallback. THE SAME THREE CONCERNS as site 2 at this commit, and
-  inherited rather than chosen -- but a LITERAL now, not the alias stage
-  1 wrote.
+  replay fallback. THREE of the thirteen at stage 1, inherited from site
+  2 rather than chosen, and a LITERAL rather than the alias stage 1
+  wrote since stage 2's de-alias commit (census correction C5, which
+  asked for exactly that commit).
 
-  THIS IS THE STAGE-2 COMMIT CENSUS CORRECTION C5 SAID WOULD SAY SO, and
-  it is FORCED rather than chosen. The alias made sites 2 and 3 one
-  object, so no (site x accumulator) pair at either could be enabled
-  without silently enabling its twin at the other -- and the ruled
-  granularity is ONE PAIR PER COMMIT. It cannot be worked around by
-  ordering, because the two columns must genuinely DIVERGE: 3 x
-  `:warm-up-mark` is predicted INERT (census 3c -- `:warm-up` is a key on
-  the EVENT, `evolve` never reads it, so it cannot reach the patient
-  state site 3 reads) while its site-2 twin 2 x `:warm-up-mark` is
-  predicted OUTPUT-MOVING and does not land at all.
+  SITE 3'S READ IS ONE ELEMENT OF ONE KEY -- `(:before (nth entries
+  idx))`, a PATIENT STATE and not an event -- which narrows every cone
+  below relative to its site-2 twin. Stage 2 enables its nine INERT
+  pairs one commit each in census order:
 
-  NOTHING IS ENABLED HERE: the set's VALUE is unchanged, only its
-  identity, which is why this commit is output-identical."
-  #{:patient-bootstrap :patient-state :replay-entries})
+  * `:warm-up-mark` -- INERT because `:warm-up` is a key on the EVENT
+    and `evolve` never reads it (no `warm-up` occurrence in
+    `evolve.clj`), so it cannot reach the patient state this site
+    reads. THE ONLY PAIR OF THE NINE WHERE THE SITE-2 TWIN IS
+    OUTPUT-MOVING and this one is not -- the whole reason the de-alias
+    commit had to come first. Its `:warm-up-seconds` parameter has no
+    source in a log, so the call site DECLARES 0.
+
+  THE ONE IT DOES NOT GET is the DECORATION `:encounter-stamp`, the only
+  pair of section 3c predicted OUTPUT-MOVING, and by a mechanism that is
+  narrower than its site-2 twin but real: `evolve` folds `:encounter-id`
+  into conditions, observations, medication orders and care plans, so a
+  re-stamped log gives a different `:before` at `idx` -- and that value
+  is what the two reinstating cancel decides RESTORE, so the delta would
+  reach emitted events and the byte-identity gate. Stage 2 PREPARES it
+  and does not land it; the author disposes."
+  #{:warm-up-mark :patient-bootstrap :patient-state :replay-entries})
 
 (defn apply-events
   "THE APPLY CHOKE POINT. `acc x events x projection -> acc'`.
