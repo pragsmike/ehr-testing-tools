@@ -15,15 +15,125 @@ Two descriptions appear per operator, and they answer different questions. **Wha
 
 | Operator | Locator | What it does |
 |---|---|---|
-| [`:phantom-placeholder-event-id`](#phantom-placeholder-event-id) | — | Repoints one identity-fill's :placeholder-event-id at a log index that does not exist, leaving every other field and every other event exactly as it was. |
+| [`:clock-skew`](#clock-skew) | — | Moves one event's clock behind its own predecessor's, so that patient's log runs backwards across one step. No other field and no other event changes. |
+| [`:cross-patient-order-event-id`](#cross-patient-order-event-id) | — | Repoints one result's `:order-event-id` at a real event of the right kind belonging to a DIFFERENT patient, leaving every other field and every other event exactly as it was. |
+| [`:cross-patient-placeholder-event-id`](#cross-patient-placeholder-event-id) | — | Repoints one identity fill's `:placeholder-event-id` at a real event of the right kind belonging to a DIFFERENT patient, leaving every other field and every other event exactly as it was. |
+| [`:drop-registration`](#drop-registration) | — | Removes one patient's `:registered` event, leaving the rest of their log in place, and renumbers every log-index reference that pointed past it so no other defect class rides along. |
+| [`:inverted-span-order-event-id`](#inverted-span-order-event-id) | — | Repoints one result's `:order-event-id` backwards in time, so it happens BEFORE the event it cites, leaving every other field and every other event exactly as it was. |
+| [`:inverted-span-placeholder-event-id`](#inverted-span-placeholder-event-id) | — | Repoints one identity fill's `:placeholder-event-id` backwards in time, so it happens BEFORE the event it cites, leaving every other field and every other event exactly as it was. |
+| [`:null-placeholder-event-id`](#null-placeholder-event-id) | — | Repoints one identity fill's `:placeholder-event-id` to nil, citing nothing at all, leaving every other field and every other event exactly as it was. |
+| [`:orphan-participant`](#orphan-participant) | — | Reattributes one clinical event to a patient the run never registered, leaving every other field and every other event exactly as it was. |
+| [`:phantom-order-event-id`](#phantom-order-event-id) | — | Repoints one result's `:order-event-id` at a log index that does not exist, leaving every other field and every other event exactly as it was. |
+| [`:phantom-placeholder-event-id`](#phantom-placeholder-event-id) | — | Repoints one identity fill's `:placeholder-event-id` at a log index that does not exist, leaving every other field and every other event exactly as it was. |
+| [`:wrong-kind-order-event-id`](#wrong-kind-order-event-id) | — | Repoints one result's `:order-event-id` at a real event of the WRONG kind, leaving every other field and every other event exactly as it was. |
+| [`:wrong-kind-placeholder-event-id`](#wrong-kind-placeholder-event-id) | — | Repoints one identity fill's `:placeholder-event-id` at a real event of the WRONG kind, leaving every other field and every other event exactly as it was. |
 
-### `:phantom-placeholder-event-id`
+### `:clock-skew`
 
-Repoints one identity-fill's :placeholder-event-id at a log index that does not exist, leaving every other field and every other event exactly as it was.
+Moves one event's clock behind its own predecessor's, so that patient's log runs backwards across one step. No other field and no other event changes.
 
 - **Version:** `1` — pass as `--operator-version 1`.
 - **Locator:** not required.
-- **Contract:** `:violates` — repoints a `:demographic-update`'s `:placeholder-event-id` at an index past the end of the log, violating this engine's own referential law that an identity fill cites a real `:registered` event in the same log, for the same patient, carrying `:identity :placeholder`, at or before the fill's own `:t` (the invariant `ehrt.sim-check.check/identity-fill-references-its-placeholder-registration` states)
+- **Contract:** `:violates` — sets one event's `:t` earlier than the `:t` of the event that precedes it in the same patient's log, violating this engine's own guarantee that log order is emission order and emission order is time order, so within a patient event times never decrease (the invariant `ehrt.sim-check.check/timestamps-monotone` states)
+- **Expected findings:** `:timestamps-monotone` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
+### `:cross-patient-order-event-id`
+
+Repoints one result's `:order-event-id` at a real event of the right kind belonging to a DIFFERENT patient, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — points one result's `:order-event-id` at an event of the right kind belonging to a different patient, violating this engine's own referential law that a result cites a real `:order-placed` event in the same log, for the same patient, at or before the result's own `:t` (the invariant `ehrt.sim-check.check/result-references-existing-order-and-follows-it-in-time` states)
+- **Expected findings:** `:result-references-existing-order-and-follows-it-in-time` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
+### `:cross-patient-placeholder-event-id`
+
+Repoints one identity fill's `:placeholder-event-id` at a real event of the right kind belonging to a DIFFERENT patient, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — points one identity fill's `:placeholder-event-id` at an event of the right kind belonging to a different patient, violating this engine's own referential law that an identity fill cites a real `:registered` event in the same log, for the same patient, carrying `:identity :placeholder`, at or before the fill's own `:t` (the invariant `ehrt.sim-check.check/identity-fill-references-its-placeholder-registration` states)
+- **Expected findings:** `:identity-fill-references-its-placeholder-registration` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
+### `:drop-registration`
+
+Removes one patient's `:registered` event, leaving the rest of their log in place, and renumbers every log-index reference that pointed past it so no other defect class rides along.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — removes the `:registered` event that opens one patient's record while leaving the rest of that patient's events in place, violating this engine's own laws that every patient id named anywhere in a log belongs to a patient that log registered, and that a patient's first event is their registration (the invariants `ehrt.sim-check.check/participant-ids-exist-in-run` and `ehrt.sim-check.check/registered-is-every-patients-first-event` state)
+- **Expected findings:** `:participant-ids-exist-in-run`, `:registered-is-every-patients-first-event` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
+### `:inverted-span-order-event-id`
+
+Repoints one result's `:order-event-id` backwards in time, so it happens BEFORE the event it cites, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — points one result's `:order-event-id` before its own referent in time, violating this engine's own referential law that a result cites a real `:order-placed` event in the same log, for the same patient, at or before the result's own `:t` (the invariant `ehrt.sim-check.check/result-references-existing-order-and-follows-it-in-time` states)
+- **Expected findings:** `:result-references-existing-order-and-follows-it-in-time`, `:timestamps-monotone` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
+### `:inverted-span-placeholder-event-id`
+
+Repoints one identity fill's `:placeholder-event-id` backwards in time, so it happens BEFORE the event it cites, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — points one identity fill's `:placeholder-event-id` before its own referent in time, violating this engine's own referential law that an identity fill cites a real `:registered` event in the same log, for the same patient, carrying `:identity :placeholder`, at or before the fill's own `:t` (the invariant `ehrt.sim-check.check/identity-fill-references-its-placeholder-registration` states)
+- **Expected findings:** `:identity-fill-references-its-placeholder-registration`, `:timestamps-monotone` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
+### `:null-placeholder-event-id`
+
+Repoints one identity fill's `:placeholder-event-id` to nil, citing nothing at all, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — points one identity fill's `:placeholder-event-id` to nil, so it cites nothing at all, violating this engine's own referential law that an identity fill cites a real `:registered` event in the same log, for the same patient, carrying `:identity :placeholder`, at or before the fill's own `:t` (the invariant `ehrt.sim-check.check/identity-fill-references-its-placeholder-registration` states)
+- **Expected findings:** `:identity-fill-references-its-placeholder-registration` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
+### `:orphan-participant`
+
+Reattributes one clinical event to a patient the run never registered, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — renames the patient on one clinical event to an id the run never registered, so that content is attributed to an unknown patient, sits in no encounter, and is not preceded by an admission or a registration -- violating four of this engine's own laws at once: that clinical content happens only while a patient is admitted, that every encounter is opened and closed or still open, that every patient id named in a log belongs to a patient that log registered, and that a patient's first event is their registration
+- **Expected findings:** `:clinical-content-only-when-admitted`, `:every-encounter-is-opened-and-closed-or-still-open`, `:participant-ids-exist-in-run`, `:registered-is-every-patients-first-event` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
+### `:phantom-order-event-id`
+
+Repoints one result's `:order-event-id` at a log index that does not exist, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — points one result's `:order-event-id` past the end of the log, where nothing is, violating this engine's own referential law that a result cites a real `:order-placed` event in the same log, for the same patient, at or before the result's own `:t` (the invariant `ehrt.sim-check.check/result-references-existing-order-and-follows-it-in-time` states)
+- **Expected findings:** `:result-references-existing-order-and-follows-it-in-time` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
+### `:phantom-placeholder-event-id`
+
+Repoints one identity fill's `:placeholder-event-id` at a log index that does not exist, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — points one identity fill's `:placeholder-event-id` past the end of the log, where nothing is, violating this engine's own referential law that an identity fill cites a real `:registered` event in the same log, for the same patient, carrying `:identity :placeholder`, at or before the fill's own `:t` (the invariant `ehrt.sim-check.check/identity-fill-references-its-placeholder-registration` states)
+- **Expected findings:** `:identity-fill-references-its-placeholder-registration` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
+### `:wrong-kind-order-event-id`
+
+Repoints one result's `:order-event-id` at a real event of the WRONG kind, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — points one result's `:order-event-id` at an event that is not of the kind the reference promises, violating this engine's own referential law that a result cites a real `:order-placed` event in the same log, for the same patient, at or before the result's own `:t` (the invariant `ehrt.sim-check.check/result-references-existing-order-and-follows-it-in-time` states)
+- **Expected findings:** `:result-references-existing-order-and-follows-it-in-time` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
+### `:wrong-kind-placeholder-event-id`
+
+Repoints one identity fill's `:placeholder-event-id` at a real event of the WRONG kind, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — points one identity fill's `:placeholder-event-id` at an event that is not of the kind the reference promises, violating this engine's own referential law that an identity fill cites a real `:registered` event in the same log, for the same patient, carrying `:identity :placeholder`, at or before the fill's own `:t` (the invariant `ehrt.sim-check.check/identity-fill-references-its-placeholder-registration` states)
 - **Expected findings:** `:identity-fill-references-its-placeholder-registration` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
 
 ## FHIR operators

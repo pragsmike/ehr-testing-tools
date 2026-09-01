@@ -2495,14 +2495,38 @@
   reason: a filter's stdout must be exactly the content a downstream
   consumer decodes. The lineage record (parent hash, operator, seed,
   site, contract, expected findings) rides the :payload, reachable
-  programmatically; surfacing it at the shell without corrupting the
-  pipe is a named want, not shipped here."
-  [{:keys [operator-id operator-version seed] :or {operator-version "1"}}]
+  programmatically.
+
+  :lineage NAMES A SIDECAR PATH for that record, and it exists because
+  the pipe cannot carry it. The spine session shipped this verb with
+  the lineage reachable only in-process and disclosed the gap: a
+  consumer who pipes a mutant onward had no shell-level provenance for
+  it, because stdout is the mutant and nothing else may ride there.
+  Writing the envelope BESIDE the pipe rather than into it is what
+  keeps both promises at once. The file is canonical EDN, written
+  through the same `write-report!` every other `--report`-shaped flag
+  uses, so a missing intermediate directory is created rather than
+  discovered as a stack trace.
+
+  ABSENT, IT CHANGES NOTHING. No flag means no file, no payload key,
+  and byte-identical stdout -- the same absent-means-unchanged promise
+  the operator-less pass-through makes. :lineage WITHOUT :operator-id
+  is a rejection rather than an empty file: a pass-through has no
+  provenance to record, and writing one that says so would be a
+  provenance record for a mutation that never happened."
+  [{:keys [operator-id operator-version seed] lineage-path :lineage
+    :or {operator-version "1"}}]
   (let [in (read-ground-truth-stdin)]
     (if-not (result/ok? in)
       in
       (let [log (:log (:payload in))]
         (cond
+          (and lineage-path (nil? operator-id))
+          (result/error :missing-required-opt
+                        {:opt :operator-id
+                         :hint (str "--lineage records the provenance of one injected defect; "
+                                    "a pass-through has none to record")})
+
           (nil? operator-id)
           (vary-meta (result/ok {:events (count log) :mutated false})
                      assoc :bare-text (pr-str log))
@@ -2531,15 +2555,23 @@
               (let [r (mutate/mutate log operator seed)]
                 (if-not (result/ok? r)
                   r
-                  (let [{:keys [mutant lineage]} (:payload r)]
-                    (vary-meta (result/ok {:events (count log)
-                                           :mutated true
-                                           :operator {:id (:id operator) :version (:version operator)}
-                                           :seed seed
-                                           :site (:site (:transformation lineage))
-                                           :expected-findings (:expected-findings operator)
-                                           :lineage lineage})
-                               assoc :bare-text (pr-str mutant))))))))))))
+                  (let [{:keys [mutant lineage]} (:payload r)
+                        ;; nil on success, a categorized result/error on
+                        ;; any residual IO failure -- an unwritable
+                        ;; sidecar path is an operational failure, not a
+                        ;; reason to hand back a mutant whose provenance
+                        ;; silently went nowhere.
+                        write-error (when lineage-path (write-report! lineage-path lineage))]
+                    (or write-error
+                        (vary-meta (result/ok (cond-> {:events (count log)
+                                                       :mutated true
+                                                       :operator {:id (:id operator) :version (:version operator)}
+                                                       :seed seed
+                                                       :site (:site (:transformation lineage))
+                                                       :expected-findings (:expected-findings operator)
+                                                       :lineage lineage}
+                                                lineage-path (assoc :lineage-path lineage-path)))
+                                   assoc :bare-text (pr-str mutant)))))))))))))
 
 (defn sim-identifiers-command
   "`ehrt sim identifiers`: mounts ehrt.sim.interface/identifiers-command

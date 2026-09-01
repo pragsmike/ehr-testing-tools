@@ -263,6 +263,7 @@ Injects ONE event-level defect into a ground-truth EDN vector read from stdin an
 | `--operator-id` | — | which defect to inject -- an event-log operator's id, listed by `ehrt corpus operators --format event` with the exact finding each one is built to trip. Omitted: the log passes through unchanged, byte for byte |
 | `--operator-version` | `1` | operator version |
 | `--seed` | — | the OPERATOR's own seed (integer), required once --operator-id is given -- it selects which one of the log's eligible sites gets the defect, so re-running with the same seed reproduces the same mutant and a different seed injects somewhere else. Independent of the run's own --seed, so this works on any log, including one whose run seed you don't have |
+| `--lineage` | — | path to write this mutation's provenance to, as an EDN sidecar: the parent log's hash, the operator and seed, the site it landed on, and the exact finding set the defect is built to trip. Stdout is the mutant and nothing else, so provenance rides beside the pipe rather than in it. Omitted: no file is written and stdout is unchanged |
 
 ### `ehrt sim identifiers`
 

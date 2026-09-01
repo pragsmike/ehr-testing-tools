@@ -577,8 +577,8 @@ Mutation injects incorrect content — the world was right, and the
 *record* is wrong. Message loss and duplication sit on the boundary and
 are a named, unresolved taxonomy question.
 
-**The event-level catalog exists now, and it is one operator deep.**
-`ehrt sim mutate` is a filter, so the loop is something you can type:
+**The event-level catalog is twelve operators deep.** `ehrt sim mutate`
+is a filter, so the loop is something you can type:
 
 ```bash
 ehrt sim run --format ground-truth --seed 5 --patients 60 --config demos/scenarios/clinic-decade/config.edn \
@@ -601,16 +601,42 @@ any log, including one whose run seed you don't have. Re-running with
 the same seed reproduces the same mutant; a different seed injects
 somewhere else. For many faults, apply it many times with many seeds.
 
-What is *not* there yet: the catalog is one operator, deliberately —
-the spine, built to prove the whole contract end to end. The full
-family (one operator per reference field per defect shape, plus
-structural operators for dropped events, clock skew and orphan
-participants) is the next session's work. Until then, mutating the
-vector yourself between `--format ground-truth` and your own consumer
-is still supported, and `ehrt sim check` is still the oracle that tells
-you what you broke.
+Some operators declare more than one finding, and that is the contract
+working rather than leaking. Moving a citing event behind the event it
+cites really does break two laws at once — the reference now points
+forward in time, and the patient's clock now runs backwards — so
+`inverted-span-placeholder-event-id` declares both and the checker must
+report both, exactly. What the contract forbids is a *surprise*: a set
+observed that is not the set declared, in either direction.
 
-**And three whole fault layers are missing, not just this one.**
+`--lineage PATH` writes that application's provenance to an EDN sidecar
+— the parent log's hash, the operator and seed, the site it landed on,
+and the finding set it declares:
+
+```bash
+ehrt sim run --format ground-truth --seed 5 --patients 60 --config demos/scenarios/clinic-decade/config.edn \
+  | ehrt sim mutate --operator-id clock-skew --seed 424242 --lineage out/skew.lineage.edn \
+  | ehrt sim check
+```
+
+Stdout is the mutant and nothing else may ride there, so provenance
+goes *beside* the pipe rather than in it. Without the flag no file is
+written and stdout is byte-identical, so adding it to an existing
+pipeline changes only what you get, never what you had.
+
+**What is *not* there yet.** Three of the five reference columns in the
+log have no operators, and the reason is not that they are hard: no
+corpus this repository currently generates carries a single site for
+them. Nothing here emits a cancellation, a medication end, or a care
+plan end, so an operator for `:cancels-event-id`, for `:medication-end`'s
+`:order-event-id`, or for `:start-event-id` could be written and could
+never be shown to work. They are recorded as gaps, each naming the
+invariant that would convict it, rather than shipped unwitnessable.
+Mutating the vector yourself between `--format ground-truth` and your
+own consumer remains supported for anything the catalog does not reach,
+and `ehrt sim check` is still the oracle that tells you what you broke.
+
+**And three whole fault layers are missing, not just those.**
 [`future-features.md`](future-features.md) is the menu — wrong bytes
 inside a message, wrong sequence with the messages intact, wrong framing
 — with the design stance on each and the layer boundary that makes them

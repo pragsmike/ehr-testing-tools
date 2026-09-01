@@ -778,7 +778,23 @@
     (let [r (cli/sim-mutate-command {:operator-id "no-such-operator" :seed 1})]
       (is (result/rejected? r))
       (is (= :unknown-operator (:category r)))
-      (is (= [:phantom-placeholder-event-id] (:valid-options (:payload r)))
+      ;; All twelve event operators, sorted -- and NONE of the ten
+      ;; file-level ones. The list grew with the catalog (2026-09-01
+      ;; breadth session); what is under test is the FILTER, which is
+      ;; why the whole list is spelled out rather than counted.
+      (is (= [:clock-skew
+              :cross-patient-order-event-id
+              :cross-patient-placeholder-event-id
+              :drop-registration
+              :inverted-span-order-event-id
+              :inverted-span-placeholder-event-id
+              :null-placeholder-event-id
+              :orphan-participant
+              :phantom-order-event-id
+              :phantom-placeholder-event-id
+              :wrong-kind-order-event-id
+              :wrong-kind-placeholder-event-id]
+             (:valid-options (:payload r)))
           "the file-level operators are a different verb's catalog, so listing them here would misdirect")
       (is (= "run: ehrt corpus operators --format event" (:hint (:payload r)))))))
 
@@ -844,6 +860,61 @@
     (is (= 0 @exited))
     (is (= 1 (count @printed)))
     (is (vector? (clojure.edn/read-string (first @printed))))))
+
+
+;; ---- --lineage PATH (2026-09-01, ruling Q12(a)): the sidecar that
+;; closes the spine's own disclosed gap. Stdout is the mutant and
+;; nothing else may ride there, so provenance goes BESIDE the pipe. ----
+
+(deftest sim-mutate-lineage-writes-a-sidecar-without-touching-stdout-test
+  (let [path (str (temp-dir*) "/nested/dir/one.lineage.edn")
+        bare-with (with-in-str (pr-str mutable-log)
+                    (let [r (cli/sim-mutate-command
+                             {:operator-id "phantom-placeholder-event-id" :seed 7
+                              :lineage path})]
+                      (is (result/ok? r))
+                      (is (= path (:lineage-path (:payload r))))
+                      (:bare-text (meta r))))
+        bare-without (with-in-str (pr-str mutable-log)
+                       (:bare-text (meta (cli/sim-mutate-command
+                                          {:operator-id "phantom-placeholder-event-id"
+                                           :seed 7}))))]
+    (testing "the flag changes the sidecar, never the pipe"
+      (is (= bare-without bare-with)
+          "byte-identical stdout with and without --lineage"))
+    (testing "the sidecar is canonical EDN carrying the whole envelope"
+      (is (.exists (java.io.File. path))
+          "the path's missing parent directories are created, not reported as a crash")
+      (let [lineage (clojure.edn/read-string (slurp path))
+            t (:transformation lineage)]
+        (is (= :mutate (:stage lineage)))
+        (is (string? (:parent lineage)))
+        (is (string? (:produced lineage)))
+        (is (= {:id :phantom-placeholder-event-id :version "1"} (:operator t)))
+        (is (= 7 (:seed t)))
+        (is (= 1 (:site t)))
+        (is (= #{:identity-fill-references-its-placeholder-registration}
+               (:expected-findings t)))))))
+
+(deftest sim-mutate-lineage-without-an-operator-is-a-rejection-not-an-empty-file-test
+  ;; A pass-through has no provenance to record, and a file saying so
+  ;; would be a provenance record for a mutation that never happened.
+  (let [path (str (temp-dir*) "/should-not-exist.edn")]
+    (with-in-str (pr-str mutable-log)
+      (let [r (cli/sim-mutate-command {:lineage path})]
+        (is (not (result/ok? r)))
+        (is (= :missing-required-opt (:category r)))
+        (is (= :operator-id (:opt (:payload r))))))
+    (is (not (.exists (java.io.File. path)))
+        "a rejected invocation writes nothing")))
+
+(deftest sim-mutate-without-lineage-writes-no-file-and-carries-no-path-test
+  ;; Absent means absent: no file, no payload key, byte-identical
+  ;; stdout -- the same promise the operator-less pass-through makes.
+  (with-in-str (pr-str mutable-log)
+    (let [r (cli/sim-mutate-command {:operator-id "phantom-placeholder-event-id" :seed 7})]
+      (is (result/ok? r))
+      (is (not (contains? (:payload r) :lineage-path))))))
 
 (deftest sim-identifiers-command-returns-the-complete-inventory-test
   (let [r (cli/sim-identifiers-command {:seed 1 :patients 1})]
@@ -1509,11 +1580,12 @@
                                 :locator-path "entry[0].resource.gender" :out-dir (temp-dir*)})]
     (is (= :unknown-operator (:category r)) "category survives the payload extension")
     (is (contains? (set (:valid-options (:payload r))) :remove-required-element))
-    ;; Eleven since 2026-09-01 (ADR-0176): the ten file-level operators
-    ;; plus the first :format :event one. `ehrt corpus mutate` lists the
-    ;; whole registry here on purpose -- the hint sends the reader to
-    ;; `ehrt corpus operators`, which is also the whole registry.
-    (is (= 11 (count (:valid-options (:payload r)))))
+    ;; Twenty-two since 2026-09-01 (ADR-0176 and its breadth session):
+    ;; the ten file-level operators plus twelve :format :event ones.
+    ;; `ehrt corpus mutate` lists the whole registry here on purpose --
+    ;; the hint sends the reader to `ehrt corpus operators`, which is
+    ;; also the whole registry.
+    (is (= 22 (count (:valid-options (:payload r)))))
     (is (= "run: ehrt corpus operators" (:hint (:payload r))))))
 
 (deftest mutate-command-defaults-operator-version-to-1-test
@@ -2057,26 +2129,37 @@
 ;; corpus.operators' registry -- no filesystem, no subprocess, no
 ;; options required. ----
 
-(deftest operators-command-lists-all-eleven-registered-operators-test
-  ;; Ten file-level operators, plus the first :format :event one
-  ;; (2026-09-01, ADR-0176 -- the spine of the event-mutation catalog).
-  ;; One registry, three formats: Q2(a) ruled the event catalog joins
-  ;; this registry rather than forking a second one, so this verb keeps
-  ;; being the single place a consumer looks.
+(deftest operators-command-lists-every-registered-operator-test
+  ;; Ten file-level operators, plus the twelve :format :event ones
+  ;; (2026-09-01, ADR-0176 -- the event-mutation catalog, spine then
+  ;; breadth). One registry, three formats: Q2(a) ruled the event
+  ;; catalog joins this registry rather than forking a second one, so
+  ;; this verb keeps being the single place a consumer looks.
+  ;;
+  ;; Spelled out rather than counted, deliberately: this assertion is
+  ;; the one place a consumer-visible catalog CHANGE has to be stated
+  ;; by name, so adding an operator without meaning to shows up here as
+  ;; a name and not as an off-by-one.
   (let [r (cli/operators-command {})]
     (is (result/ok? r))
-    (is (= 11 (count (:operators (:payload r)))))
+    (is (= 22 (count (:operators (:payload r)))))
     (is (= #{:remove-required-element :duplicate-element :invalid-code-value
              :malformed-date :wrong-type-value :blank-required-field
              :corrupt-encoding-characters :malformed-datetime-value
              :truncate-segment-fields :corrupt-segment-name
-             :phantom-placeholder-event-id}
+             :phantom-placeholder-event-id :null-placeholder-event-id
+             :cross-patient-placeholder-event-id
+             :wrong-kind-placeholder-event-id
+             :inverted-span-placeholder-event-id
+             :phantom-order-event-id :cross-patient-order-event-id
+             :wrong-kind-order-event-id :inverted-span-order-event-id
+             :clock-skew :drop-registration :orphan-participant}
            (set (map :id (:operators (:payload r))))))))
 
 (deftest operators-command-filters-to-the-event-format-test
   (let [r (cli/operators-command {:format "event"})]
     (is (result/ok? r))
-    (is (= 1 (count (:operators (:payload r)))))
+    (is (= 12 (count (:operators (:payload r)))))
     (is (every? #(= :event (:format %)) (:operators (:payload r))))))
 
 (deftest operators-command-filters-by-format-test
@@ -2114,7 +2197,7 @@
   (with-redefs [io/file (fn [& _] (throw (ex-info "no filesystem access expected" {})))]
     (let [r (cli/operators-command {})]
       (is (result/ok? r))
-      (is (= 11 (count (:operators (:payload r))))))))
+      (is (= 22 (count (:operators (:payload r))))))))
 
 ;; ---- gate-command / gate-v2-command (`ehrt gate v2`): builds a
 ;; format-agnostic gate report over a file or directory; exit-code
