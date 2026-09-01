@@ -49,10 +49,10 @@
     :state-history :replay-entries})
 
 (def ^:private census-site-2
-  "Section 2, column `site 2 -- replay`: five PRESENT cells -- three
+  "Section 2, column `site 2 -- replay`: six PRESENT cells -- three
   at stage 1, plus the INERT pairs stage 2 enabled in census order."
-  #{:log-ordinal :reinstate-index :patient-bootstrap :patient-state
-    :replay-entries})
+  #{:log-ordinal :reinstate-index :citation-index :patient-bootstrap
+    :patient-state :replay-entries})
 
 (def ^:private census-site-3
   "Section 2, column `site 3 -- reinstated-state`: three PRESENT cells,
@@ -69,7 +69,7 @@
     (is (= census-site-1 fold/run-loop-projection)
         "site 1 -- run's in-loop fold, all thirteen -- full product")
     (is (= census-site-2 fold/replay-projection)
-        "site 2 -- replay, five of thirteen")
+        "site 2 -- replay, six of thirteen")
     (is (= census-site-3 fold/reinstated-projection)
         "site 3 -- reinstated-state's fallback, three of thirteen"))
 
@@ -87,12 +87,12 @@
             twin at site 3, which is what one-pair-per-commit forbids"
     (is (not (identical? fold/replay-projection fold/reinstated-projection))))
 
-  (testing "the matrix's own arithmetic: 21 present cells of 39, and the
-            18 omitted ones are what stage 2 enables pair by pair"
-    (is (= 21 (+ (count fold/run-loop-projection)
+  (testing "the matrix's own arithmetic: 22 present cells of 39, and the
+            17 omitted ones are what stage 2 enables pair by pair"
+    (is (= 22 (+ (count fold/run-loop-projection)
                  (count fold/replay-projection)
                  (count fold/reinstated-projection))))
-    (is (= 18 (- (* 3 (count fold/full-algebra))
+    (is (= 17 (- (* 3 (count fold/full-algebra))
                  (+ (count fold/run-loop-projection)
                     (count fold/replay-projection)
                     (count fold/reinstated-projection)))))))

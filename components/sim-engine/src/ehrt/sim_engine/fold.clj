@@ -246,14 +246,20 @@
     `nth` now has a first-class source here -- census 4d's own cheapest
     deletion, which stage 2 does not take.
 
+  * `:citation-index` -- same shape: accumulates, nothing reads it.
+    `log-index/last-cited-index` consults a `:citation-index` when the
+    world carries one and falls back to a whole-log scan otherwise, but
+    it is handed `run`'s world and never a replay-built one, so even
+    that path does not reach this.
+
   THE TWO IT DOES NOT GET are the DECORATIONS `:encounter-stamp` and
   `:warm-up-mark`, the only two of section 3b predicted OUTPUT-MOVING --
   the concerns applied on the way IN, which a re-fold of an existing log
   RECOMPUTES rather than accumulates. That is the whole of section 4c's
   'replay cannot do them'. Stage 2 PREPARES them and does not land them;
   the author disposes."
-  #{:log-ordinal :reinstate-index :patient-bootstrap :patient-state
-    :replay-entries})
+  #{:log-ordinal :reinstate-index :citation-index :patient-bootstrap
+    :patient-state :replay-entries})
 
 (def reinstated-projection
   "Census site 3 -- `ehrt.sim-engine.log-index/reinstated-state`'s
