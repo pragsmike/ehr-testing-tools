@@ -390,3 +390,11 @@ independently prove that no consumer exists.
 * **Post-push message verification** — all 21 code/docs commits diffed against
   the message files that produced them, every one clean. Nothing the WSL
   wrapper dropped.
+* **CI** — green at every pushed span and at the records commit:
+  `33502347881` `e05da9c`, `33502395587` `b547f8f`, `33502428757`
+  `3abfa44` (and `33506586679`, that sha's Integration run),
+  `33507351093` `4dd19c8` — all `completed / success`, none retried.
+  `generated-doc freshness (regen + diff)` passed, which is the step this
+  session had most reason to watch given the census, roadmap and
+  state-derived edits. That is the close marker under
+  `rulings.md#R-session-verifies-ci-via-gh`.
