@@ -238,3 +238,4 @@ append-only, never-reassigned rule stands.
 - **ADR-0173** — arc 3a: the engine folds the person stream (the demographic half) — [`0173-arc-3a-engine-folds-the-person-stream.md`](adr/0173-arc-3a-engine-folds-the-person-stream.md) — Accepted
 - **ADR-0174** — arc 3b: the encounter horizon, scheduling state, and the bed-status cycle — [`0174-arc-3b-encounter-horizon-scheduling-and-bed-status.md`](adr/0174-arc-3b-encounter-horizon-scheduling-and-bed-status.md) — Accepted
 - **ADR-0175** — arc 4: emission add-ons (chatter, status ladders, charges, fan-out, transport) — [`0175-arc-4-emission-add-ons.md`](adr/0175-arc-4-emission-add-ons.md) — Accepted
+- **ADR-0176** — event-stream mutation: the operator catalog, the injection contract, and the closed oracle loop — [`0176-event-stream-mutation.md`](adr/0176-event-stream-mutation.md) — Proposed
