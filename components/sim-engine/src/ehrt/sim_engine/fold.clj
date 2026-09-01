@@ -16,10 +16,16 @@
   `full-algebra`:
 
   * site 1, `ehrt.sim-engine.run`'s in-loop fold -- `run-loop-projection`,
-    eleven of thirteen;
-  * site 2, `replay` below -- `replay-projection`, three of thirteen;
+    THIRTEEN of thirteen, the ruled end state;
+  * site 2, `replay` below -- `replay-projection`, twelve of thirteen;
   * site 3, `ehrt.sim-engine.log-index/reinstated-state`'s fallback --
-    `reinstated-projection`, site 2's by value.
+    `reinstated-projection`, twelve of thirteen and its OWN literal
+    since stage 2's de-alias commit, not site 2's by value.
+
+  THOSE THREE COUNTS WERE STALE FROM STAGE 2 AND ARE CORRECTED HERE
+  rather than left standing: they read 11/3/by-value, which was the
+  stage-1 tree, while stage 2 had already enabled nineteen pairs and
+  de-aliased site 3. Disclosed in this session's record, not absorbed.
 
   STAGE 1 CHANGED NO BEHAVIOUR, by construction rather than by
   assertion: the choke point's order of operations is site 1's,
@@ -225,11 +231,33 @@
   full-algebra)
 
 (def replay-projection
-  "Census site 2 -- `replay` below. THREE of the thirteen at stage 1.
-  Stage 2 enables its eight INERT pairs one commit each in census order,
-  and each bullet below names why that pair moved no output -- the cone
-  the census's section 3b predicted, as the commit that took it found
-  it:
+  "Census site 2 -- `replay` below. THREE of the thirteen at stage 1,
+  TWELVE since ruling A1(b) added the decoration `:encounter-stamp` to
+  the eight INERT pairs stage 2 enabled one commit each in census order.
+  Each bullet below names why that pair moved no output -- the cone the
+  census's section 3b predicted, as the commit that took it found it,
+  except the first, whose cone predicted a MOVE and was refuted by
+  measurement:
+
+  * `:encounter-stamp` -- THE PAIR THE CENSUS PREDICTED OUTPUT-MOVING
+    HERE, and the prediction is REFUTED BY MEASUREMENT: the re-stamp is
+    the IDENTITY on all three of the oracle's encounter-carrying roots
+    -- `encounter-horizon` 170 events, `chatter-charges` 477,
+    `scheduling` 487 -- with no divergent entry on any of them
+    (`.agents/session-records/2026-09-01-apply-unification-stage-2.md`
+    section 4b, which measured it directly because the oracle cannot
+    see this site at all). TWO INDEPENDENT MECHANISMS make it so and
+    either alone would carry it: `encounters/stamp-encounter` guards on
+    `contains?` -- 'a key that is there is there', its own docstring --
+    so an event stamped inbound at site 1 is left alone; AND the
+    decoration reads the world as it stands BEFORE the batch, which
+    here is `{:patients {}}`, since `replay` hands the whole log to
+    `apply-events` as ONE batch, so an event carrying no id finds no
+    patient and is stamped with nothing. BOTH ARE THINGS A LATER
+    SESSION COULD CHANGE without knowing this pair rests on them,
+    which is why ruling A1(b) co-landed
+    `ehrt.sim-engine.apply-restamp-identity-test` with this line rather
+    than trusting a measurement to stay true.
 
   * `:log-ordinal` -- INERT BY VALUE, not merely unread. `base-idx` is
     `(count (:ground-truth world))` and replay's world is `{:patients
@@ -285,15 +313,16 @@
     map, and no consumer asks for a separate `{patient-id -> [state
     ...]}`.
 
-  THE TWO IT DOES NOT GET are the DECORATIONS `:encounter-stamp` and
-  `:warm-up-mark`, the only two of section 3b predicted OUTPUT-MOVING --
-  the concerns applied on the way IN, which a re-fold of an existing log
-  RECOMPUTES rather than accumulates. That is the whole of section 4c's
-  'replay cannot do them'. Stage 2 PREPARES them and does not land them;
+  THE ONE IT DOES NOT GET is the DECORATION `:warm-up-mark`, the other
+  of section 3b's two OUTPUT-MOVING predictions and the one measurement
+  CONFIRMED -- a concern applied on the way IN, which a re-fold of an
+  existing log RECOMPUTES rather than accumulates, and `replay` has
+  nowhere to get the window from. That is the whole of section 4c's
+  'replay cannot do them'. Stage 2 PREPARED it and did not land it;
   the author disposes."
-  #{:log-ordinal :reinstate-index :citation-index :registration-index
-    :patient-bootstrap :patient-state :bed-index :log-mirror
-    :log-accumulator :state-history :replay-entries})
+  #{:encounter-stamp :log-ordinal :reinstate-index :citation-index
+    :registration-index :patient-bootstrap :patient-state :bed-index
+    :log-mirror :log-accumulator :state-history :replay-entries})
 
 (def reinstated-projection
   "Census site 3 -- `ehrt.sim-engine.log-index/reinstated-state`'s

@@ -49,11 +49,16 @@
     :state-history :replay-entries})
 
 (def ^:private census-site-2
-  "Section 2, column `site 2 -- replay`: eleven PRESENT cells -- three
-  at stage 1, plus the INERT pairs stage 2 enabled in census order."
-  #{:log-ordinal :reinstate-index :citation-index :registration-index
-    :patient-bootstrap :patient-state :bed-index :log-mirror
-    :log-accumulator :state-history :replay-entries})
+  "Section 2, column `site 2 -- replay`: TWELVE PRESENT cells -- three
+  at stage 1, the eight INERT pairs stage 2 enabled in census order, and
+  the DECORATION `:encounter-stamp` under ruling A1(b), whose
+  OUTPUT-MOVING prediction stage 2's measurement refuted. Whether that
+  one STAYS inert is gated by
+  `ehrt.sim-engine.apply-restamp-identity-test`, not by this
+  transcription."
+  #{:encounter-stamp :log-ordinal :reinstate-index :citation-index
+    :registration-index :patient-bootstrap :patient-state :bed-index
+    :log-mirror :log-accumulator :state-history :replay-entries})
 
 (def ^:private census-site-3
   "Section 2, column `site 3 -- reinstated-state`: twelve PRESENT
@@ -73,7 +78,7 @@
     (is (= census-site-1 fold/run-loop-projection)
         "site 1 -- run's in-loop fold, all thirteen -- full product")
     (is (= census-site-2 fold/replay-projection)
-        "site 2 -- replay, eleven of thirteen")
+        "site 2 -- replay, twelve of thirteen")
     (is (= census-site-3 fold/reinstated-projection)
         "site 3 -- reinstated-state's fallback, twelve of thirteen"))
 
@@ -91,12 +96,13 @@
             twin at site 3, which is what one-pair-per-commit forbids"
     (is (not (identical? fold/replay-projection fold/reinstated-projection))))
 
-  (testing "the matrix's own arithmetic: 36 present cells of 39, and the
-            3 omitted ones are what stage 2 enables pair by pair"
-    (is (= 36 (+ (count fold/run-loop-projection)
+  (testing "the matrix's own arithmetic: 37 present cells of 39, and the
+            2 omitted ones are what remains of stage 2's three
+            OUTPUT-MOVING predictions"
+    (is (= 37 (+ (count fold/run-loop-projection)
                  (count fold/replay-projection)
                  (count fold/reinstated-projection))))
-    (is (= 3 (- (* 3 (count fold/full-algebra))
+    (is (= 2 (- (* 3 (count fold/full-algebra))
                  (+ (count fold/run-loop-projection)
                     (count fold/replay-projection)
                     (count fold/reinstated-projection)))))))
