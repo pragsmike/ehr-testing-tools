@@ -10,7 +10,7 @@
   `materialize-providers` is the one place a run turns the static,
   id-less `default-provider-templates` into a real provider pool by
   drawing NPIs; called once per run, before the main event loop
-  (ehrt.sim-engine.engine/run), so provider identity is as deterministic
+  (ehrt.sim-engine.run/run), so provider identity is as deterministic
   as everything else in the theory."
   (:require [malli.core :as m]))
 
@@ -209,10 +209,10 @@
    [:to-minutes number?]])
 
 (def LatencyProfile
-  "Keyed by event-type keyword (ehrt.sim-emit-hl7.emit-hl7/message-type-
+  "Keyed by event-type keyword (ehrt.sim-emit-hl7.registry/message-type-
   registry's own vocabulary -- :admission, :discharge, :transfer, etc.);
   an event type absent from the map draws no latency at all (see
-  ehrt.sim-emit-hl7.emit-hl7/plan-latency's own draw-and-discard law)."
+  ehrt.sim-emit-hl7.planners/plan-latency's own draw-and-discard law)."
   [:map-of :keyword LatencyRange])
 
 (defn valid-latency-profile? [profile] (m/validate LatencyProfile profile))
@@ -222,7 +222,7 @@
 ;; config surface -------------------------------------------------------
 ;; A ChatterProfile is per-event-type restatement RATES plus one
 ;; periodic rule. It is EMISSION config, never engine config: nothing
-;; here reaches `ehrt.sim-engine.engine/config-keys`, and a chatter
+;; here reaches `ehrt.sim-engine.config/config-keys`, and a chatter
 ;; message restates demographic state the log already carries rather
 ;; than minting any fact of its own (`rulings.md#R-skeleton-or-
 ;; emission`). `:chatter` absent from a run's `:config` is the
@@ -232,7 +232,7 @@
   "The three event-driven keys are RATES in [0,1] -- the probability
   that a given event of that kind produces its restatement -- and an
   absent key means that kind produces none (see
-  `ehrt.sim-emit-hl7.emit-hl7/plan-chatter`'s own draw-and-discard law:
+  `ehrt.sim-emit-hl7.planners/plan-chatter`'s own draw-and-discard law:
   the draw still happens, so turning one rule off never shifts
   another's).
 
@@ -260,7 +260,7 @@
 ;; A ChargesProfile is EMISSION CONFIG and nothing else. The engine
 ;; never reads it, no invariant reads it, and a code the table does not
 ;; price produces a COUNTED SKIP rather than a read-back into the log
-;; for something else to bill (`ehrt.sim-emit-hl7.emit-hl7/plan-charges`).
+;; for something else to bill (`ehrt.sim-emit-hl7.planners/plan-charges`).
 ;; Invented money is not a clinical fact -- ADR-0175 section 2(c)'s own
 ;; rejected option (1).
 
@@ -268,7 +268,7 @@
   "`:price-table` maps a CODE STRING to its price. The codes are the
   ones the log already carries -- an `:order-placed`'s `:concept` code,
   a `:procedure`'s first `:codes` entry -- plus the one reserved key
-  `ehrt.sim-emit-hl7.emit-hl7/room-and-board-code` for the per-inpatient-
+  `ehrt.sim-emit-hl7.registry/room-and-board-code` for the per-inpatient-
   day line, which is the one charge no log fact carries a code for.
 
   There is NO DEFAULT PRICE, deliberately: an unpriced code is a
@@ -291,8 +291,8 @@
 ;; `:order-event-id`, so both ends of that interval are in the log and a
 ;; rung at a fixed fraction of it is a PURE FUNCTION OF THE LOG
 ;; (`rulings.md#R-skeleton-or-emission`). No invariant reads a rung, no
-;; key here reaches `ehrt.sim-engine.engine/config-keys`, and
-;; `ehrt.sim-emit-hl7.emit-hl7/plan-ladders` takes NO RNG AT ALL --
+;; key here reaches `ehrt.sim-engine.config/config-keys`, and
+;; `ehrt.sim-emit-hl7.planners/plan-ladders` takes NO RNG AT ALL --
 ;; there is no draw to consume and therefore no fixed-consumption law to
 ;; obey. ADR-0175 section 2(b)'s rejected option (2) is why the
 ;; fractions are not sampled: a sampled rung costs a second RNG consumer
@@ -329,7 +329,7 @@
 ;; config key) is what creates them, and it draws. `:siu` creates
 ;; nothing: it decides whether four events the log already holds are
 ;; RENDERED. Pure emission (`rulings.md#R-skeleton-or-emission`), no
-;; RNG, no `ehrt.sim-engine.engine/config-keys` membership, and a run
+;; RNG, no `ehrt.sim-engine.config/config-keys` membership, and a run
 ;; with `:siu` on and `:scheduling` off emits nothing at all, because
 ;; there is nothing to render.
 
@@ -371,7 +371,7 @@
 ;; A filter over an already-rendered stream. It creates no content,
 ;; reads no state and draws nothing -- the purest emission key in arc 4
 ;; (`rulings.md#R-skeleton-or-emission`). No member of
-;; `ehrt.sim-engine.engine/config-keys`, no RNG, no ground truth.
+;; `ehrt.sim-engine.config/config-keys`, no RNG, no ground truth.
 ;; `ehrt.sim-emit-hl7.fan-out` carries the SUBSEQUENCE LAW this schema
 ;; only shapes the declaration of.
 

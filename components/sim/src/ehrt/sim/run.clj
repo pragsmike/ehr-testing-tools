@@ -55,7 +55,7 @@
   STRINGS (resolving to `resources/modules/<name>.json` -- test code may
   point at other fixture paths via a lower-level API, per this
   function's own callers, but `run-command`'s own surface only ever
-  resolves the real vendored directory); `ehrt.sim-engine.engine/run`'s OWN
+  resolves the real vendored directory); `ehrt.sim-engine.run/run`'s OWN
   `:modules` key wants already-loaded, CLOSURE-shaped entries instead
   (ADR-0033 AR-2 -- `patient-simulator/load-closure`'s own `:ok` payload,
   `{:root :modules :tables}`, engine.clj does no file I/O of its own,
@@ -93,7 +93,7 @@
 
 ;; --- arc 3a part 3: `:persons`, config-facing -> engine-facing ------------
 ;;
-;; ADR-0173 section 2(a). `ehrt.sim-engine.engine/run` does not require
+;; ADR-0173 section 2(a). `ehrt.sim-engine.run/run` does not require
 ;; the person component and CANNOT: that component depends on
 ;; sim-engine's stream-partition surface, and the reverse edge would be
 ;; a cycle `clojure -M:poly check` refuses (ADR-0172 limitations row
@@ -170,7 +170,7 @@
 (defn engine-persons
   "`:persons`, translated: the authored `{:count :years :identification
   :unhoused}` map becomes the `{:population :personas :alive :events}`
-  value `ehrt.sim-engine.engine/run` takes.
+  value `ehrt.sim-engine.run/run` takes.
 
   TWO CALLS TO `persons`, AND THE REASON IS AN ORDERING ONE. ADR-0173
   ruling C1 gives the person process the COMPILED trajectory's death
@@ -225,7 +225,7 @@
 ;; up as :self-check-failed -- a config-reachable outcome wearing the
 ;; "bug in us" category. The module's own compiled trajectory is
 ;; PREPENDED ahead of whatever pathway already queued
-;; (ehrt.sim-engine.engine/run's own :registered decide method), so the
+;; (ehrt.sim-engine.run/run's own :registered decide method), so the
 ;; pathway's own encounter-opening step finds an already-non-:new
 ;; patient -- illegal under this project's single-encounter-horizon
 ;; scope (sim/ADR-0007 point 3). The combination stays illegal; this makes
@@ -267,7 +267,7 @@
 (defn- ordinal-guaranteed-module?
   "Whether ordinal `i` is CERTAIN to receive SOME module. An explicit
   `:patient-ordinal` entry decides outright; otherwise
-  `ehrt.sim-engine.engine/assign-module` always resolves a NON-EMPTY
+  `ehrt.sim-engine.assignment/assign-module` always resolves a NON-EMPTY
   pool to some pool member for any ordinal no explicit entry covers --
   there is no 'opt out' of a present pool -- so a non-empty pool alone
   is already certain, independent of which module the RNG eventually
@@ -437,7 +437,7 @@
   explicit ehrt.sim-engine.churn/ChurnProfile map, merged OVER
   churn/default-churn-profile so a caller only needs to name the rates
   they want to change) activates InjectChurn between IR and execution
-  (ehrt.sim-engine.engine/run's own :churn-profile wiring). Neither
+  (ehrt.sim-engine.run/run's own :churn-profile wiring). Neither
   key present -- the default -- means no :churn-profile reaches
   engine/run at all, the opt-in path Task 0's pinned-fixture
   expectation depends on.
@@ -448,7 +448,7 @@
   caller wants the full map rather than the bare `--churn` toggle) --
   read once, merged UNDER the rest of opts (explicit flag-driven keys
   win on any overlap; the file supplies what flags can't express) --
-  see `merge-config-file`. Every key in `ehrt.sim-engine.engine/config-
+  see `merge-config-file`. Every key in `ehrt.sim-engine.config/config-
   keys` reaches `engine/run` unconditionally, whether it arrived via a
   flag or via `:config` -- that completeness is this function's own
   plumbing-completeness test's whole point (M3's `:pathways` shipped
@@ -540,12 +540,12 @@
 
   ADR-0042 AR-3: `:history` (optional boolean) rides `:config` the same
   passthrough way -- forwarded verbatim, no translation, no flag of its
-  own (`ehrt.sim-engine.engine/run`'s own docstring has the mechanism this
+  own (`ehrt.sim-engine.run/run`'s own docstring has the mechanism this
   gates).
 
   `opts`'s second, injectable arity follows the SAME -fn convention
   `ehrt.sim-cli.core/dispatch-action` already uses (`:engine-run-fn`,
-  defaulting to the real `ehrt.sim-engine.engine/run`) -- the seam the
+  defaulting to the real `ehrt.sim-engine.run/run`) -- the seam the
   plumbing-completeness test uses to capture exactly what reaches the
   engine without running a real simulation against sentinel data."
   ([opts] (run-command opts {}))

@@ -29,7 +29,7 @@
             [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
             [ehrt.patient-simulator.interface :as patient-simulator]
-            [ehrt.sim-engine.engine :as engine]
+            [ehrt.sim-engine.run :as run]
             [ehrt.sim-check.check :as check]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]))
 
@@ -51,7 +51,7 @@
                          :modules [seeded-closure]
                          :module-assignment [{:module-id "veteran-substance-abuse-treatment" :weight 1}]
                          :module-horizon-days 36500}
-            {:keys [ground-truth facility providers]} (engine/run run-config)
+            {:keys [ground-truth facility providers]} (run/run run-config)
             kinds (into #{} (map :event) ground-truth)]
         (is (some #{:outpatient-visit :outpatient-visit-end} kinds)
             (str "expected real compiled clinical content across 300 patients, got " kinds))

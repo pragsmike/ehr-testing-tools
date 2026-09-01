@@ -27,9 +27,10 @@
   commit provable rather than believed."
   (:require [clojure.test :refer [deftest is testing]]
             [ehrt.sim-model.interface :as sim-model]
-            [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]
+            [ehrt.sim-emit-hl7.messages :as messages]
             [ehrt.sim-check.check :as check]
-            [ehrt.sim-engine.engine :as engine]))
+            [ehrt.sim-engine.run :as run]
+            [ehrt.sim-engine.streams :as streams]))
 
 (def ^:private seed 4242)
 
@@ -63,15 +64,15 @@
 (defn- of-kind [gt k] (filterv #(= k (:event %)) gt))
 (defn- for-bed [gt bed] (filterv #(= bed (:bed %)) (of-kind gt :bed-status-change)))
 
-(def ^:private off (engine/run (base)))
-(def ^:private on (engine/run (base :bed-cycle true)))
+(def ^:private off (run/run (base)))
+(def ^:private on (run/run (base :bed-cycle true)))
 
 ;; --- the opt-in law -------------------------------------------------------
 
 (deftest absent-bed-cycle-is-the-log-this-engine-always-produced
   (testing "the opt-in law: ABSENT -- not false, not nil -- and every
             byte is the one that was there before this sweep"
-    (is (= (:ground-truth off) (:ground-truth (engine/run (base))))
+    (is (= (:ground-truth off) (:ground-truth (run/run (base))))
         "the no-opt-in path is deterministic")
     (is (empty? (of-kind (:ground-truth off) :bed-status-change))
         "no bed event is minted without the opt-in")
@@ -116,7 +117,7 @@
           "board and index are and-ed, so a disagreement can never widen the candidate set"))))
 
 (deftest allocate-passes-over-a-dirty-bed
-  (let [rng (engine/stream 1 :world 0)
+  (let [rng (streams/stream 1 :world 0)
         beds (assoc (sim-model/initial-beds facility) "RENAL-01" {:status :dirty})
         alloc (sim-model/allocate rng facility {} beds "Renal" nil)]
     (is (= :surge (get-in alloc [:location :placement]))
@@ -142,7 +143,7 @@
 
 (deftest every-bed-event-renders-one-adt-a20-of-msh-evn-npu
   (let [bed-events (of-kind (:ground-truth on) :bed-status-change)
-        msgs (mapcat #(emit-hl7/event->messages "2024-01-01" "+00:00" (:facility on) (:providers on) {} nil {} %)
+        msgs (mapcat #(messages/event->messages "2024-01-01" "+00:00" (:facility on) (:providers on) {} nil {} %)
                      bed-events)]
     (is (= (count bed-events) (count msgs)) "one message per bed event")
     (doseq [m msgs]
@@ -187,8 +188,8 @@
                     :pathway {:name "stay" :steps [{:type :admission :location "Renal"}
                                                    {:type :delay :from 45 :to 45}
                                                    {:type :discharge}]}}
-          off-gt (:ground-truth (engine/run boarding))
-          on-gt (:ground-truth (engine/run (assoc boarding :bed-cycle true)))
+          off-gt (:ground-truth (run/run boarding))
+          on-gt (:ground-truth (run/run (assoc boarding :bed-cycle true)))
           zero-second (fn [gt]
                         (count (for [[a b] (partition 2 1 gt)
                                      :when (and (= :discharge (:event a))

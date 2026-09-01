@@ -11,7 +11,7 @@
             [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
             [ehrt.patient-simulator.gmf :as gmf]
-            [ehrt.sim-engine.engine :as engine]
+            [ehrt.sim-engine.run :as run]
             [ehrt.sim-check.check :as check]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]))
 
@@ -29,7 +29,7 @@
   (testing "load-clean sanity -- single-file closure, no submodules"
     (is (result/ok? loaded-closure)))
   (testing "real compiled clinical content lands across 300 patients"
-    (let [{:keys [ground-truth] :as result} (engine/run run-config)
+    (let [{:keys [ground-truth] :as result} (run/run run-config)
           kinds (into #{} (map :event) ground-truth)]
       (is (some #{:condition-onset :outpatient-visit :outpatient-visit-end :procedure :device} kinds)
           (str "expected real compiled clinical content across 300 patients, got " kinds))

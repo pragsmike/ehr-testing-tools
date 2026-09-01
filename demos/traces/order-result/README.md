@@ -66,7 +66,7 @@ OBX|5|NM|777-3^Platelets [#/volume] in Blood by Automated count^LN||418.0|K/uL|1
 format in `messages.txt` uses `\r`, HL7v2's actual segment delimiter.)
 PID is enriched with the same patient's Persona-sampled demographics as
 every other message type — order/result messages are not a special
-case (`ehrt.sim-emit-hl7.emit-hl7/pid-segment` applies uniformly). Note
+case (`ehrt.sim-emit-hl7.segments/pid-segment` applies uniformly). Note
 OBX-8 `L` (abnormal-low) on the hemoglobin result, `N` on the other
 four — computed truth from
 `ehrt.sim-engine.order-profiles/abnormal-flag`, never a re-derivation

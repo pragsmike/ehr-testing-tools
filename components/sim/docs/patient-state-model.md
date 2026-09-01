@@ -1,7 +1,7 @@
 # Patient state model
 
 This document specifies the patient lifecycle state machine: the shape
-of the accumulator `ehrt.sim-engine.engine/evolve` folds the
+of the accumulator `ehrt.sim-engine.evolve/evolve` folds the
 ground-truth log into (sim/ADR-0008), the states and transitions that
 accumulator moves through, and the event-validity table that will
 double as `check.clj`'s invariant skeleton now and `InjectChurn`'s
@@ -96,7 +96,7 @@ gaps and one design lesson:
 - **`VisitID`** per encounter (PV1-19) — **LANDED 2026-08-26**, arc 3b
   sweep 1 (`notes/adr/0174-*.md` section 2(a), rulings A1/B1/C1). It is
   `:encounter-id`, minted at every opener by
-  `ehrt.sim-engine.engine/encounter-id-for` off every RNG stream,
+  `ehrt.sim-engine.streams/encounter-id-for` off every RNG stream,
   carried on every event of that encounter, rendered in PV1-19 and as
   the FHIR `Encounter.id`'s second half. It IS part of the schema
   below (`:encounter`/`:encounters`), behind the run-config opt-in
@@ -154,7 +154,7 @@ than each growing their own shadow state.
 
 ## The accumulator
 
-`ehrt.sim-engine.engine/PatientState` (malli), the type
+`ehrt.sim-engine.state/PatientState` (malli), the type
 `evolve`'s fold produces and `decide` reads:
 
 | Field | Type | Notes |
@@ -185,7 +185,7 @@ and it moved into the table above as `:encounter`/`:encounters`
 still binds: `:encounters` holds each closed encounter's own placement
 snapshot, never the events that happened during it.
 
-**Landed.** `ehrt.sim-engine.engine/PatientState` carries every field
+**Landed.** `ehrt.sim-engine.state/PatientState` carries every field
 in the table above, including `:location`'s `{:ward :bed :placement}`
 map shape — the allocation ladder (`ehrt.sim.facility/allocate`)
 populates it for real as of Milestone M1. One field this table didn't
@@ -201,7 +201,7 @@ once at admission and never rewritten, exactly like `:status` or
 
 **Landed, M2a.** sim/ADR-0010's identity split (`:patient-id`/`:mrns`/
 `:active-mrn`, above) and sim/ADR-0011's time model are both implemented,
-not just designed: `ehrt.sim-engine.engine/run`'s work queue and
+not just designed: `ehrt.sim-engine.run/run`'s work queue and
 `world :patients` map are keyed by `:patient-id`; every ground-truth
 event carries a `:participants` vector (`[{:patient-id ... :role
 :subject}]` for every event type today — the degenerate single-
@@ -329,7 +329,7 @@ way — by their own log position — which is also what
 for those types (a single MRN no longer uniquely identifies a
 message, since both carry two).
 
-`ehrt.sim-engine.engine/decide` methods that need this (the cancel
+`ehrt.sim-engine.decide/decide` methods that need this (the cancel
 family, `:transfer-in-error`) read it off `world`'s new `:ground-truth`
 key — a persistent mirror of the log-so-far threaded through `world`
 specifically so `decide` can query it directly (`nth`/`filter`/

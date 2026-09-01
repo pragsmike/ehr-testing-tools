@@ -14,8 +14,18 @@
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [ehrt.sim-model.interface :as sim-model]
-            [ehrt.sim-engine.engine :as engine]
-            [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]
+            [ehrt.sim-engine.config :as config]
+            [ehrt.sim-engine.decide :as decide]
+            [ehrt.sim-engine.evolve :as evolve]
+            [ehrt.sim-engine.run :as run]
+            [ehrt.sim-engine.state :as state]
+            [ehrt.sim-engine.streams :as streams]
+            [ehrt.sim-emit-hl7.emit :as emit]
+            [ehrt.sim-emit-hl7.er7 :as er7]
+            [ehrt.sim-emit-hl7.hl7-time :as hl7-time]
+            [ehrt.sim-emit-hl7.messages :as messages]
+            [ehrt.sim-emit-hl7.registry :as registry]
+            [ehrt.sim-emit-hl7.segments :as segments]
             [ehrt.sim-emit-hl7.site-profile :as site-profile]
             [com.nervestaple.hl7-parser.parser :as parser]
             [com.nervestaple.hl7-parser.message :as message])
@@ -39,8 +49,8 @@
   map back to its unique log event -- the derivability law's own
   vocabulary. mrn here is the event's rendered :active-mrn (sim/ADR-0010)."
   [{:keys [event active-mrn t]}]
-  (let [{:keys [type trigger]} (emit-hl7/message-type-registry event)]
-    [active-mrn (str type "^" trigger) (emit-hl7/hl7-timestamp ref-date t utc-offset)]))
+  (let [{:keys [type trigger]} (registry/message-type-registry event)]
+    [active-mrn (str type "^" trigger) (hl7-time/hl7-timestamp ref-date t utc-offset)]))
 
 (defn- message-key
   [parsed]
@@ -51,9 +61,9 @@
 (defspec bidirectional-derivability 100
   (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 15)]
-    (let [{:keys [ground-truth]} (engine/run {:seed seed :patients patients})
+    (let [{:keys [ground-truth]} (run/run {:seed seed :patients patients})
           events (admission-discharge-events ground-truth)
-          messages (emit-hl7/emit ground-truth ref-date utc-offset)
+          messages (emit/emit ground-truth ref-date utc-offset)
           expected-keys (mapv event-key events)
           actual-keys (mapv (comp message-key parser/parse) messages)]
       (and (= (count events) (count messages))
@@ -63,20 +73,20 @@
 (defspec determinism-is-a-pure-function-of-the-log 100
   (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 15)]
-    (let [{:keys [ground-truth]} (engine/run {:seed seed :patients patients})]
-      (= (emit-hl7/emit ground-truth ref-date utc-offset)
-         (emit-hl7/emit ground-truth ref-date utc-offset)))))
+    (let [{:keys [ground-truth]} (run/run {:seed seed :patients patients})]
+      (= (emit/emit ground-truth ref-date utc-offset)
+         (emit/emit ground-truth ref-date utc-offset)))))
 
 (deftest round-trip-through-independent-parser
-  (let [{:keys [ground-truth]} (engine/run {:seed 42 :patients 2})
+  (let [{:keys [ground-truth]} (run/run {:seed 42 :patients 2})
         events (admission-discharge-events ground-truth)
-        messages (emit-hl7/emit ground-truth ref-date utc-offset)]
+        messages (emit/emit ground-truth ref-date utc-offset)]
     (testing "every emitted message parses back, MRN and message-type intact"
       (is (= 4 (count messages)))
       (doseq [[event msg] (map vector events messages)
               :let [parsed (parser/parse msg)]]
         (is (= (:active-mrn event) (message/get-field-first-value parsed "PID" 3)))
-        (is (= (let [{:keys [type trigger]} (emit-hl7/message-type-registry (:event event))]
+        (is (= (let [{:keys [type trigger]} (registry/message-type-registry (:event event))]
                  (str type "^" trigger))
                (message/get-field-first-value parsed "MSH" 9)))))))
 
@@ -94,14 +104,14 @@
   (first (filter #(re-find #"\^A02" %) messages)))
 
 (deftest message-type-registry-has-a02
-  (is (= {:type "ADT" :trigger "A02"} (emit-hl7/message-type-registry :transfer))))
+  (is (= {:type "ADT" :trigger "A02"} (registry/message-type-registry :transfer))))
 
 (deftest transfer-emits-a02-with-pv1-3-6-7
   (let [{:keys [ground-truth facility providers]}
-        (engine/run {:seed 1 :patients 3 :facility crowded-facility})
+        (run/run {:seed 1 :patients 3 :facility crowded-facility})
         transfer-event (first (filter #(= :transfer (:event %)) ground-truth))
         _ (assert transfer-event "expected this seed/facility to produce a bed-ready transfer")
-        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        messages (emit/emit ground-truth ref-date utc-offset facility providers)
         a02 (find-a02 messages)
         parsed (parser/parse a02)
         provider (first (filter #(= (:id %) (:attending transfer-event)) providers))]
@@ -120,19 +130,19 @@
              (message/get-field-first-value parsed "PV1" 7))))))
 
 (deftest admission-pv1-6-is-empty-no-prior-location
-  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
+  (let [{:keys [ground-truth facility providers]} (run/run {:seed 42 :patients 1})
         admission (first ground-truth)
-        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        messages (emit/emit ground-truth ref-date utc-offset facility providers)
         parsed (parser/parse (first messages))]
     (is (= "" (or (message/get-field-first-value parsed "PV1" 6) "")))))
 
 (deftest timestamp-anchoring-concrete
   (testing "a known offset renders the expected absolute timestamp, suffixed
             with the HL7-style (colon-free) zone offset"
-    (is (= "20240101013000+0000" (emit-hl7/hl7-timestamp "2024-01-01" 5400 "+00:00")))
-    (is (= "20240102000000+0000" (emit-hl7/hl7-timestamp "2024-01-01" 86400 "+00:00")))
+    (is (= "20240101013000+0000" (hl7-time/hl7-timestamp "2024-01-01" 5400 "+00:00")))
+    (is (= "20240102000000+0000" (hl7-time/hl7-timestamp "2024-01-01" 86400 "+00:00")))
     (testing "a non-UTC fixed offset renders its own suffix, arithmetic unaffected (no timezone database, sim/ADR-0011)"
-      (is (= "20240101013000-0500" (emit-hl7/hl7-timestamp "2024-01-01" 5400 "-05:00"))))))
+      (is (= "20240101013000-0500" (hl7-time/hl7-timestamp "2024-01-01" 5400 "-05:00"))))))
 
 ;; --- M2b: churn family message types --------------------------------------
 
@@ -155,14 +165,14 @@
   [world events]
   (-> (reduce (fn [w ev]
                 (reduce (fn [w2 {:keys [patient-id]}]
-                          (update-in w2 [:patients patient-id] engine/evolve ev))
+                          (update-in w2 [:patients patient-id] evolve/evolve ev))
                         w (:participants ev)))
               world events)
       (update :ground-truth into events)))
 
 (defn- admit
   [world t patient-id location]
-  (let [{:keys [events]} (engine/decide (engine/one-stream (Random. 1)) t world patient-id
+  (let [{:keys [events]} (decide/decide (streams/one-stream (Random. 1)) t world patient-id
                                         {:type :admission :location location})]
     (fold-events world events)))
 
@@ -178,7 +188,7 @@
 (deftest message-type-registry-has-the-bed-cycles-a20
   (testing "arc 3b sweep 2 (ADR-0174 ruling C): the message family's own
             first cost -- a registry entry, co-landed with the kind"
-    (is (= {:type "ADT" :trigger "A20"} (emit-hl7/message-type-registry :bed-status-change)))))
+    (is (= {:type "ADT" :trigger "A20"} (registry/message-type-registry :bed-status-change)))))
 
 (deftest a20-control-ids-are-derivable-and-unique-per-bed-and-leg
   (testing "the message family's own second and third costs: a
@@ -188,15 +198,15 @@
             two legs of ONE bed's cycle must not collide even at the
             same instant, which is why the status is in the key"
     (let [{:keys [ground-truth facility providers]}
-          (engine/run {:seed 4242 :patients 6 :arrival-gap 60 :bed-cycle true
+          (run/run {:seed 4242 :patients 6 :arrival-gap 60 :bed-cycle true
                        :pathway {:name "ad" :steps [{:type :admission :location "Renal"}
                                                     {:type :delay :from 30 :to 30}
                                                     {:type :discharge}]}})
           bed-events (filterv #(= :bed-status-change (:event %)) ground-truth)
-          messages (mapcat #(emit-hl7/event->messages ref-date utc-offset facility providers {} nil {} %)
+          messages (mapcat #(messages/event->messages ref-date utc-offset facility providers {} nil {} %)
                            bed-events)
           expected (mapv (fn [ev] [(:bed ev) "ADT^A20"
-                                   (emit-hl7/hl7-timestamp ref-date (:t ev) utc-offset)])
+                                   (hl7-time/hl7-timestamp ref-date (:t ev) utc-offset)])
                          bed-events)
           actual (mapv (fn [m]
                          (let [p (parser/parse m)]
@@ -204,7 +214,7 @@
                             (message/get-field-first-value p "MSH" 9)
                             (message/get-field-first-value p "MSH" 7)]))
                        messages)
-          control-ids (mapv #(emit-hl7/control-id-for %) bed-events)]
+          control-ids (mapv #(segments/control-id-for %) bed-events)]
       (is (pos? (count bed-events)) "the fixture actually produced bed events")
       (is (= (count bed-events) (count messages)))
       (is (= expected actual) "every message maps back to its own bed event")
@@ -212,18 +222,18 @@
           "and every control id is unique"))))
 
 (deftest message-type-registry-has-the-churn-family
-  (is (= {:type "ADT" :trigger "A11"} (emit-hl7/message-type-registry :cancel-admit)))
-  (is (= {:type "ADT" :trigger "A12"} (emit-hl7/message-type-registry :cancel-transfer)))
-  (is (= {:type "ADT" :trigger "A13"} (emit-hl7/message-type-registry :cancel-discharge)))
-  (is (= {:type "ADT" :trigger "A17"} (emit-hl7/message-type-registry :bed-swap)))
-  (is (= {:type "ADT" :trigger "A40"} (emit-hl7/message-type-registry :merge))))
+  (is (= {:type "ADT" :trigger "A11"} (registry/message-type-registry :cancel-admit)))
+  (is (= {:type "ADT" :trigger "A12"} (registry/message-type-registry :cancel-transfer)))
+  (is (= {:type "ADT" :trigger "A13"} (registry/message-type-registry :cancel-discharge)))
+  (is (= {:type "ADT" :trigger "A17"} (registry/message-type-registry :bed-swap)))
+  (is (= {:type "ADT" :trigger "A40"} (registry/message-type-registry :merge))))
 
 (deftest cancel-admit-round-trips-as-a11
-  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+  (let [world0 (world-of {"P1" (state/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
-        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :cancel-admit})
+        {:keys [events]} (decide/decide (streams/one-stream (Random. 1)) 10 world1 "P1" {:type :cancel-admit})
         world2 (fold-events world1 events)
-        messages (emit-hl7/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)
+        messages (emit/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)
         a11 (last messages)
         parsed (parser/parse a11)]
     (is (= 2 (count messages)))
@@ -231,14 +241,14 @@
     (is (= "ADT^A11" (message/get-field-first-value parsed "MSH" 9)))))
 
 (deftest cancel-transfer-round-trips-as-a12-and-reinstates-location
-  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+  (let [world0 (world-of {"P1" (state/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
         pre-location (get-in world1 [:patients "P1" :location])
-        {t-events :events} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :transfer :location "ED"})
+        {t-events :events} (decide/decide (streams/one-stream (Random. 1)) 10 world1 "P1" {:type :transfer :location "ED"})
         world2 (fold-events world1 t-events)
-        {c-events :events} (engine/decide (engine/one-stream (Random. 1)) 20 world2 "P1" {:type :cancel-transfer})
+        {c-events :events} (decide/decide (streams/one-stream (Random. 1)) 20 world2 "P1" {:type :cancel-transfer})
         world3 (fold-events world2 c-events)
-        messages (emit-hl7/emit (:ground-truth world3) ref-date utc-offset churn-facility churn-providers)
+        messages (emit/emit (:ground-truth world3) ref-date utc-offset churn-facility churn-providers)
         a12 (last messages)
         parsed (parser/parse a12)]
     (is (= 3 (count messages)))
@@ -248,36 +258,36 @@
              (message/get-field-first-value parsed "PV1" 3))))))
 
 (deftest cancel-discharge-round-trips-as-a13
-  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+  (let [world0 (world-of {"P1" (state/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
-        {d-events :events} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :discharge})
+        {d-events :events} (decide/decide (streams/one-stream (Random. 1)) 10 world1 "P1" {:type :discharge})
         world2 (fold-events world1 d-events)
-        {c-events :events} (engine/decide (engine/one-stream (Random. 1)) 20 world2 "P1" {:type :cancel-discharge})
+        {c-events :events} (decide/decide (streams/one-stream (Random. 1)) 20 world2 "P1" {:type :cancel-discharge})
         world3 (fold-events world2 c-events)
-        messages (emit-hl7/emit (:ground-truth world3) ref-date utc-offset churn-facility churn-providers)
+        messages (emit/emit (:ground-truth world3) ref-date utc-offset churn-facility churn-providers)
         a13 (last messages)
         parsed (parser/parse a13)]
     (is (= 3 (count messages)))
     (is (= "ADT^A13" (message/get-field-first-value parsed "MSH" 9)))))
 
 (deftest transfer-in-error-emits-two-messages-a02-then-a12-in-error
-  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+  (let [world0 (world-of {"P1" (state/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
-        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1"
+        {:keys [events]} (decide/decide (streams/one-stream (Random. 1)) 10 world1 "P1"
                                         {:type :transfer-in-error :location "ED"})
         world2 (fold-events world1 events)
-        messages (emit-hl7/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)]
+        messages (emit/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)]
     (is (= 3 (count messages)))
     (is (= "ADT^A02" (message/get-field-first-value (parser/parse (second messages)) "MSH" 9)))
     (is (= "ADT^A12" (message/get-field-first-value (parser/parse (last messages)) "MSH" 9)))))
 
 (deftest bed-swap-emits-one-a17-message-carrying-both-patients
-  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")
-                          "P2" (engine/initial-patient "P2" "MRN000002")})
+  (let [world0 (world-of {"P1" (state/initial-patient "P1" "MRN000001")
+                          "P2" (state/initial-patient "P2" "MRN000002")})
         world1 (-> world0 (admit 0 "P1" "Renal") (admit 5 "P2" "Renal"))
-        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :bed-swap})
+        {:keys [events]} (decide/decide (streams/one-stream (Random. 1)) 10 world1 "P1" {:type :bed-swap})
         world2 (fold-events world1 events)
-        messages (emit-hl7/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)
+        messages (emit/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)
         a17 (last messages)
         parsed (parser/parse a17)]
     (testing "ONE message for the two-participant event -- event id (log position), not mrn alone, is what derivability keys on"
@@ -293,12 +303,12 @@
                                           (get-in world1 [:patients "P2" :location :bed]) "^churn-test")))))))
 
 (deftest merge-emits-one-a40-message-with-mrg-and-pid
-  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")
-                          "P2" (engine/initial-patient "P2" "MRN000002")})
+  (let [world0 (world-of {"P1" (state/initial-patient "P1" "MRN000001")
+                          "P2" (state/initial-patient "P2" "MRN000002")})
         world1 (-> world0 (admit 0 "P1" "Renal") (admit 5 "P2" "Renal"))
-        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :merge :with "P2"})
+        {:keys [events]} (decide/decide (streams/one-stream (Random. 1)) 10 world1 "P1" {:type :merge :with "P2"})
         world2 (fold-events world1 events)
-        messages (emit-hl7/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)
+        messages (emit/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)
         a40 (last messages)
         parsed (parser/parse a40)]
     (is (= 3 (count messages)))
@@ -308,30 +318,30 @@
       (is (= "MRN000002" (message/get-field-first-value parsed "MRG" 1))))))
 
 (deftest churn-family-emission-is-deterministic
-  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")
-                          "P2" (engine/initial-patient "P2" "MRN000002")})
+  (let [world0 (world-of {"P1" (state/initial-patient "P1" "MRN000001")
+                          "P2" (state/initial-patient "P2" "MRN000002")})
         world1 (-> world0 (admit 0 "P1" "Renal") (admit 5 "P2" "Renal"))
-        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :bed-swap})
+        {:keys [events]} (decide/decide (streams/one-stream (Random. 1)) 10 world1 "P1" {:type :bed-swap})
         world2 (fold-events world1 events)]
-    (is (= (emit-hl7/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)
-           (emit-hl7/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)))))
+    (is (= (emit/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)
+           (emit/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)))))
 
 ;; --- sim/ADR-0012: :step-rejected renders NO message, by design ---------------
 
 (deftest step-rejected-has-no-message-type-registry-entry
-  (is (nil? (emit-hl7/message-type-registry :step-rejected))))
+  (is (nil? (registry/message-type-registry :step-rejected))))
 
 (deftest step-rejected-event-renders-no-message
   (testing "truth about the run, never wire traffic (sim/ADR-0012): a
             :step-rejected event produces the SAME empty vector any
             unregistered event type does"
-    (let [world0 {:patients {"P1" (engine/initial-patient "P1" "MRN000001")}
+    (let [world0 {:patients {"P1" (state/initial-patient "P1" "MRN000001")}
                   :facility churn-facility :providers churn-providers :ground-truth []}
           world1 (admit world0 0 "P1" "Renal")
-          {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :cancel-transfer})
+          {:keys [events]} (decide/decide (streams/one-stream (Random. 1)) 10 world1 "P1" {:type :cancel-transfer})
           rejected-event (first events)]
       (is (= :step-rejected (:event rejected-event)))
-      (is (= [] (emit-hl7/event->messages ref-date utc-offset churn-facility churn-providers rejected-event))))))
+      (is (= [] (messages/event->messages ref-date utc-offset churn-facility churn-providers rejected-event))))))
 
 ;; --- M5b: :outpatient-visit -> A04; :outpatient-visit-end -> no message ---
 
@@ -341,18 +351,18 @@
                               {:type :outpatient-visit-end}]})
 
 (deftest message-type-registry-has-a04
-  (is (= {:type "ADT" :trigger "A04"} (emit-hl7/message-type-registry :outpatient-visit))))
+  (is (= {:type "ADT" :trigger "A04"} (registry/message-type-registry :outpatient-visit))))
 
 (deftest outpatient-visit-end-has-no-message-type-registry-entry
   (testing "item 7: a real ground-truth event, deliberately no wire message
             -- the same sim/ADR-0012 :step-rejected precedent"
-    (is (nil? (emit-hl7/message-type-registry :outpatient-visit-end)))))
+    (is (nil? (registry/message-type-registry :outpatient-visit-end)))))
 
 (deftest outpatient-visit-emits-a04-with-pv1-2-o-and-empty-pv1-3
   (let [{:keys [ground-truth facility providers]}
-        (engine/run {:seed 1 :patients 1 :pathways [{:pathway outpatient-pathway :weight 1}]})
+        (run/run {:seed 1 :patients 1 :pathways [{:pathway outpatient-pathway :weight 1}]})
         visit-event (first (filter #(= :outpatient-visit (:event %)) ground-truth))
-        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        messages (emit/emit ground-truth ref-date utc-offset facility providers)
         a04 (first (filter #(re-find #"\^A04" %) messages))
         parsed (parser/parse a04)]
     (is (some? a04))
@@ -365,14 +375,14 @@
 
 (deftest outpatient-visit-end-event-renders-no-message
   (let [{:keys [ground-truth facility providers]}
-        (engine/run {:seed 1 :patients 1 :pathways [{:pathway outpatient-pathway :weight 1}]})
+        (run/run {:seed 1 :patients 1 :pathways [{:pathway outpatient-pathway :weight 1}]})
         end-event (first (filter #(= :outpatient-visit-end (:event %)) ground-truth))]
     (is (some? end-event))
-    (is (= [] (emit-hl7/event->messages ref-date utc-offset facility providers end-event)))))
+    (is (= [] (messages/event->messages ref-date utc-offset facility providers end-event)))))
 
 (deftest other-message-types-still-render-pv1-2-i-unaffected-by-outpatient
-  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
-        admission-msg (first (emit-hl7/emit ground-truth ref-date utc-offset facility providers))]
+  (let [{:keys [ground-truth facility providers]} (run/run {:seed 42 :patients 1})
+        admission-msg (first (emit/emit ground-truth ref-date utc-offset facility providers))]
     (is (= "I" (message/get-field-first-value (parser/parse admission-msg) "PV1" 2)))))
 
 ;; --- M5b: :observation -> ORU^R01 (OBX only, no ORC/OBR -- unsolicited,
@@ -384,16 +394,16 @@
 (def ^:private a-concept {:system :snomed :code "8310-5" :display "Body temperature"})
 
 (deftest message-type-registry-has-observation-but-not-procedure-or-medication
-  (is (= {:type "ORU" :trigger "R01"} (emit-hl7/message-type-registry :observation)))
-  (is (nil? (emit-hl7/message-type-registry :procedure)))
-  (is (nil? (emit-hl7/message-type-registry :medication-order)))
-  (is (nil? (emit-hl7/message-type-registry :medication-end))))
+  (is (= {:type "ORU" :trigger "R01"} (registry/message-type-registry :observation)))
+  (is (nil? (registry/message-type-registry :procedure)))
+  (is (nil? (registry/message-type-registry :medication-order)))
+  (is (nil? (registry/message-type-registry :medication-end))))
 
 (deftest observation-emits-oru-with-one-obx-and-no-orc-or-obr
   (let [pathway {:name "vitals" :steps [{:type :admission :location "Renal"}
                                         {:type :observation :codes [a-concept] :value 38.2 :unit "Cel"}]}
-        {:keys [ground-truth facility providers]} (engine/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
-        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        {:keys [ground-truth facility providers]} (run/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
+        messages (emit/emit ground-truth ref-date utc-offset facility providers)
         oru (first (filter #(re-find #"\^R01" %) messages))
         parsed (parser/parse oru)
         obx-line (first (filter #(str/starts-with? % "OBX") (str/split oru #"\r")))]
@@ -439,8 +449,8 @@
 (deftest observation-with-value-code-emits-cwe-obx2-and-a-system-aware-obx5
   (let [pathway {:name "finding" :steps [{:type :admission :location "Renal"}
                                          {:type :observation :codes [a-concept] :value-code a-value-code}]}
-        {:keys [ground-truth facility providers]} (engine/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
-        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        {:keys [ground-truth facility providers]} (run/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
+        messages (emit/emit ground-truth ref-date utc-offset facility providers)
         oru (first (filter #(re-find #"\^R01" %) messages))
         parsed (parser/parse oru)]
     (is (= "CWE" (message/get-field-first-value parsed "OBX" 2)))
@@ -450,8 +460,8 @@
   (let [pathway {:name "vitals" :steps [{:type :admission :location "Renal"}
                                         {:type :observation :codes [a-concept] :value 98.0 :unit "%"
                                          :reference-range {:low 95 :high 100} :interpretation :normal}]}
-        {:keys [ground-truth facility providers]} (engine/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
-        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        {:keys [ground-truth facility providers]} (run/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
+        messages (emit/emit ground-truth ref-date utc-offset facility providers)
         oru (first (filter #(re-find #"\^R01" %) messages))
         parsed (parser/parse oru)]
     (is (= "95-100" (message/get-field-first-value parsed "OBX" 7)))
@@ -461,14 +471,14 @@
 (def ^:private an-analyte-concept {:system :loinc :code "88262-1" :display "Gram positive blood culture panel"})
 
 (deftest message-type-registry-has-diagnostic-report
-  (is (= {:type "ORU" :trigger "R01"} (emit-hl7/message-type-registry :diagnostic-report))))
+  (is (= {:type "ORU" :trigger "R01"} (registry/message-type-registry :diagnostic-report))))
 
 (deftest diagnostic-report-emits-oru-with-orc-and-obr-and-one-obx-per-child
   (let [pathway {:name "panel" :steps [{:type :admission :location "Renal"}
                                        {:type :diagnostic-report :codes [a-report-concept]
                                         :observations [{:codes [an-analyte-concept] :value-code a-value-code}]}]}
-        {:keys [ground-truth facility providers]} (engine/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
-        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        {:keys [ground-truth facility providers]} (run/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
+        messages (emit/emit ground-truth ref-date utc-offset facility providers)
         oru (first (filter #(re-find #"\^R01" %) messages))
         parsed (parser/parse oru)]
     (is (some? oru))
@@ -490,8 +500,8 @@
                                           :value 92.0 :unit "mm[Hg]"}
                                          {:codes [{:system :loinc :code "8462-4" :display "Diastolic Blood Pressure"}]
                                           :value 64.0 :unit "mm[Hg]"}]}]}
-        {:keys [ground-truth facility providers]} (engine/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
-        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        {:keys [ground-truth facility providers]} (run/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
+        messages (emit/emit ground-truth ref-date utc-offset facility providers)
         oru (first (filter #(re-find #"\^R01" %) messages))
         parsed (parser/parse oru)
         obx-segments (message/get-segments parsed "OBX")]
@@ -509,8 +519,8 @@
             never a crash"
     (let [pathway {:name "panel" :steps [{:type :admission :location "Renal"}
                                          {:type :diagnostic-report :observations [{:codes [an-analyte-concept] :value 1.0}]}]}
-          {:keys [ground-truth facility providers]} (engine/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
-          messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+          {:keys [ground-truth facility providers]} (run/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
+          messages (emit/emit ground-truth ref-date utc-offset facility providers)
           oru (first (filter #(re-find #"\^R01" %) messages))
           parsed (parser/parse oru)]
       (is (= "^^LN" (message/get-field-first-value parsed "OBR" 4))))))
@@ -520,9 +530,9 @@
                                           {:type :procedure :codes [a-concept]}
                                           {:type :medication-order :codes [a-concept]}
                                           {:type :medication-end}]}
-        {:keys [ground-truth facility providers]} (engine/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})]
+        {:keys [ground-truth facility providers]} (run/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})]
     (doseq [event (filter #(#{:procedure :medication-order :medication-end} (:event %)) ground-truth)]
-      (is (= [] (emit-hl7/event->messages ref-date utc-offset facility providers event))
+      (is (= [] (messages/event->messages ref-date utc-offset facility providers event))
           (str (:event event) " should render no message")))))
 
 ;; GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R3/G3): the SAME
@@ -532,16 +542,16 @@
 ;; not an absence").
 
 (deftest message-type-registry-has-no-care-plan-entries
-  (is (nil? (emit-hl7/message-type-registry :care-plan-start)))
-  (is (nil? (emit-hl7/message-type-registry :care-plan-end))))
+  (is (nil? (registry/message-type-registry :care-plan-start)))
+  (is (nil? (registry/message-type-registry :care-plan-end))))
 
 (deftest care-plan-events-render-no-message
   (let [pathway {:name "post-op" :steps [{:type :admission :location "Renal"}
                                          {:type :care-plan-start :codes [a-concept]}
                                          {:type :care-plan-end}]}
-        {:keys [ground-truth facility providers]} (engine/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})]
+        {:keys [ground-truth facility providers]} (run/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})]
     (doseq [event (filter #(#{:care-plan-start :care-plan-end} (:event %)) ground-truth)]
-      (is (= [] (emit-hl7/event->messages ref-date utc-offset facility providers event))
+      (is (= [] (messages/event->messages ref-date utc-offset facility providers event))
           (str (:event event) " should render no message")))))
 
 ;; --- M3: ORM^O01 + ORU^R01 --------------------------------------------
@@ -553,11 +563,11 @@
 
 (defn- run-with-order
   [seed]
-  (engine/run {:seed seed :patients 1 :pathways [{:pathway cbc-order-pathway :weight 1}]}))
+  (run/run {:seed seed :patients 1 :pathways [{:pathway cbc-order-pathway :weight 1}]}))
 
 (deftest message-type-registry-has-orm-and-oru
-  (is (= {:type "ORM" :trigger "O01"} (emit-hl7/message-type-registry :order-placed)))
-  (is (= {:type "ORU" :trigger "R01"} (emit-hl7/message-type-registry :result-available))))
+  (is (= {:type "ORM" :trigger "O01"} (registry/message-type-registry :order-placed)))
+  (is (= {:type "ORU" :trigger "R01"} (registry/message-type-registry :result-available))))
 
 (defn- find-message
   [messages trigger]
@@ -566,7 +576,7 @@
 (deftest order-placed-emits-orm-with-orc-and-obr
   (let [{:keys [ground-truth facility providers]} (run-with-order 1)
         order-event (first (filter #(= :order-placed (:event %)) ground-truth))
-        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        messages (emit/emit ground-truth ref-date utc-offset facility providers)
         orm (find-message messages "O01")
         parsed (parser/parse orm)]
     (testing "ORC-1: new order"
@@ -583,7 +593,7 @@
 (deftest result-available-emits-oru-with-one-obx-per-analyte-in-profile-order
   (let [{:keys [ground-truth facility providers]} (run-with-order 1)
         result-event (first (filter #(= :result-available (:event %)) ground-truth))
-        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        messages (emit/emit ground-truth ref-date utc-offset facility providers)
         oru (find-message messages "R01")
         parsed (parser/parse oru)
         obx-segments (message/get-segments parsed "OBX")]
@@ -604,14 +614,14 @@
 
 (deftest order-and-result-round-trip-deterministically
   (let [{:keys [ground-truth facility providers]} (run-with-order 1)]
-    (is (= (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
-           (emit-hl7/emit ground-truth ref-date utc-offset facility providers)))))
+    (is (= (emit/emit ground-truth ref-date utc-offset facility providers)
+           (emit/emit ground-truth ref-date utc-offset facility providers)))))
 
 (defspec order-and-result-messages-derive-bijectively-from-the-log 50
   (prop/for-all [seed (gen/large-integer* {:min 0})]
     (let [{:keys [ground-truth facility providers]} (run-with-order seed)
           order-result-events (filterv #(#{:order-placed :result-available} (:event %)) ground-truth)
-          messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+          messages (emit/emit ground-truth ref-date utc-offset facility providers)
           order-result-messages (filter #(or (re-find #"\^O01" %) (re-find #"\^R01" %)) messages)]
       (= 2 (count order-result-events) (count order-result-messages)))))
 
@@ -624,11 +634,11 @@
                  ground-truth)))
 
 (deftest admission-pid-carries-demographic-fields
-  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
+  (let [{:keys [ground-truth facility providers]} (run/run {:seed 42 :patients 1})
         admission (first (filter #(= :admission (:event %)) ground-truth))
         patient-id (:patient-id (first (:participants admission)))
         {:keys [persona]} (find-registered ground-truth patient-id)
-        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        messages (emit/emit ground-truth ref-date utc-offset facility providers)
         parsed (parser/parse (first messages))]
     (testing "PID-5: XPN family^given"
       (is (= (str (get-in persona [:name :family]) "^" (get-in persona [:name :given]))
@@ -685,9 +695,9 @@
                    (parser/str-message
                     (parser/create-message
                      parser/DEFAULT-DELIMITERS
-                     (#'emit-hl7/msh-segment nil {:type "ADT" :trigger "A01"}
+                     (#'segments/msh-segment nil {:type "ADT" :trigger "A01"}
                       "CTRL-1" "20240101000000+0000")
-                     (#'emit-hl7/pid-segment "MRN000001" p))))
+                     (#'segments/pid-segment "MRN000001" p))))
                   "PID" 13))]
     (testing "a persona phone is reformatted, digit for digit"
       (is (= "(303)292-0567" (render persona))))
@@ -695,11 +705,11 @@
       (is (= "" (render (dissoc persona :phone)))))))
 
 (deftest admission-carries-in1-with-the-sampled-payer
-  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
+  (let [{:keys [ground-truth facility providers]} (run/run {:seed 42 :patients 1})
         admission (first (filter #(= :admission (:event %)) ground-truth))
         patient-id (:patient-id (first (:participants admission)))
         {:keys [persona]} (find-registered ground-truth patient-id)
-        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        messages (emit/emit ground-truth ref-date utc-offset facility providers)
         parsed (parser/parse (first messages))]
     (testing "IN1-1: set id"
       (is (= "1" (message/get-field-first-value parsed "IN1" 1))))
@@ -708,11 +718,11 @@
       (is (= (get-in persona [:payer :name]) (message/get-field-first-value parsed "IN1" 4))))))
 
 (deftest non-admission-messages-carry-enriched-pid-but-no-in1
-  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 5})
+  (let [{:keys [ground-truth facility providers]} (run/run {:seed 42 :patients 5})
         discharge (first (filter #(= :discharge (:event %)) ground-truth))
         patient-id (:patient-id (first (:participants discharge)))
         {:keys [persona]} (find-registered ground-truth patient-id)
-        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        messages (emit/emit ground-truth ref-date utc-offset facility providers)
         discharge-msg (first (filter #(re-find #"\^A03" %) messages))
         parsed (parser/parse discharge-msg)]
     (testing "PID is enriched the same way on every message type, not admission-only"
@@ -724,11 +734,11 @@
 (deftest hand-built-worlds-without-a-registered-event-fall-back-to-legacy-pid
   (testing "old test worlds that never processed a :registered step (e.g. churn-scenarios-style
             hand-driven decide/evolve) still emit the pre-M4 3-field PID -- no persona, no crash"
-    (let [world0 {:patients {"P1" (engine/initial-patient "P1" "MRN000001")}
+    (let [world0 {:patients {"P1" (state/initial-patient "P1" "MRN000001")}
                   :facility sim-model/default-facility :providers sim-model/default-provider-templates
                   :ground-truth []}
-          {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 0 world0 "P1" {:type :admission :location "Renal"})
-          messages (emit-hl7/emit events ref-date utc-offset sim-model/default-facility sim-model/default-provider-templates)
+          {:keys [events]} (decide/decide (streams/one-stream (Random. 1)) 0 world0 "P1" {:type :admission :location "Renal"})
+          messages (emit/emit events ref-date utc-offset sim-model/default-facility sim-model/default-provider-templates)
           parsed (parser/parse (first messages))]
       (is (= "MRN000001" (message/get-field-first-value parsed "PID" 3)))
       (is (= "" (message/get-field-first-value parsed "PID" 5)))
@@ -756,15 +766,15 @@
   the message back, and returns the raw PID-5 family name substring (before
   the ^ component separator)."
   [persona]
-  (let [world0 {:patients {"P1" (assoc (engine/initial-patient "P1" "MRN000001") :persona persona)}
+  (let [world0 {:patients {"P1" (assoc (state/initial-patient "P1" "MRN000001") :persona persona)}
                 :facility sim-model/default-facility :providers sim-model/default-provider-templates
                 :ground-truth []}
         registered-event {:event :registered :t 0 :active-mrn "MRN000001" :persona persona
                           :participants [{:patient-id "P1" :role :subject}]}
-        world1 (update-in world0 [:patients "P1"] engine/evolve registered-event)
-        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 0 world1 "P1" {:type :admission :location "Renal"})
+        world1 (update-in world0 [:patients "P1"] evolve/evolve registered-event)
+        {:keys [events]} (decide/decide (streams/one-stream (Random. 1)) 0 world1 "P1" {:type :admission :location "Renal"})
         ground-truth (into [registered-event] events)
-        messages (emit-hl7/emit ground-truth ref-date utc-offset sim-model/default-facility sim-model/default-provider-templates)
+        messages (emit/emit ground-truth ref-date utc-offset sim-model/default-facility sim-model/default-provider-templates)
         parsed (parser/parse (first messages))
         pid5 (message/get-field-first-value parsed "PID" 5)]
     (first (str/split pid5 #"\^"))))
@@ -784,16 +794,16 @@
     (let [raw (pid5-round-trip (persona-with-family-name "Sm|th"))]
       (is (not= "Sm|th" raw) "the library does not decode escape sequences -- this is the finding")
       (is (= "Sm\\F\\th" raw) "our own encoder escaped the embedded delimiter, per standard ER7")
-      (is (= "Sm|th" (emit-hl7/unescape-er7 raw)) "our own decoder recovers the original exactly"))))
+      (is (= "Sm|th" (er7/unescape-er7 raw)) "our own decoder recovers the original exactly"))))
 
 (deftest escape-er7-is-identity-for-strings-with-no-delimiter-characters
   (doseq [s ["O'Brien" "Smith-Jones" "D'Angelo" "Anderson-Lee" "Plain Name"]]
-    (is (= s (emit-hl7/escape-er7 s)))))
+    (is (= s (er7/escape-er7 s)))))
 
 (deftest escape-then-unescape-round-trips-every-reserved-character
   (doseq [ch [\| \^ \~ \& \\]]
     (let [s (str "a" ch "b")]
-      (is (= s (emit-hl7/unescape-er7 (emit-hl7/escape-er7 s)))))))
+      (is (= s (er7/unescape-er7 (er7/escape-er7 s)))))))
 
 (defspec every-generated-persona-name-round-trips-through-unescape-er7 200
   (testing "the general property: ANY family name -- letters, apostrophes,
@@ -806,11 +816,11 @@
                                             1 12))]
       (let [family-name (apply str family-name)
             raw (pid5-round-trip (persona-with-family-name family-name))]
-        (= family-name (emit-hl7/unescape-er7 raw))))))
+        (= family-name (er7/unescape-er7 raw))))))
 
 (defspec timestamp-anchoring-property 100
   (prop/for-all [seconds (gen/choose 0 6000000)]
-    (let [ts (emit-hl7/hl7-timestamp ref-date seconds utc-offset)
+    (let [ts (hl7-time/hl7-timestamp ref-date seconds utc-offset)
           local-part (subs ts 0 14)
           offset-part (subs ts 14)
           parsed (LocalDateTime/parse local-part (DateTimeFormatter/ofPattern "yyyyMMddHHmmss"))
@@ -828,10 +838,10 @@
 (defspec default-profile-is-the-absent-profile 100
   (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 8)]
-    (let [{:keys [ground-truth facility providers]} (engine/run {:seed seed :patients patients})
-          five-arg (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
-          nil-profile (emit-hl7/emit ground-truth ref-date utc-offset facility providers nil)
-          empty-profile (emit-hl7/emit ground-truth ref-date utc-offset facility providers {})]
+    (let [{:keys [ground-truth facility providers]} (run/run {:seed seed :patients patients})
+          five-arg (emit/emit ground-truth ref-date utc-offset facility providers)
+          nil-profile (emit/emit ground-truth ref-date utc-offset facility providers nil)
+          empty-profile (emit/emit ground-truth ref-date utc-offset facility providers {})]
       (= five-arg nil-profile empty-profile))))
 
 ;; --- Milestone site-profiles, Task 2: MSH dialect + code-table overrides -
@@ -848,8 +858,8 @@
                  :discharge-disposition {:discharged-to-home {:code "HOME" :coding-system "99ALDRIC"}}}})
 
 (deftest msh-dialect-renders-the-profiles-version-and-app-facility-fields
-  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
-        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers aldric-profile)
+  (let [{:keys [ground-truth facility providers]} (run/run {:seed 42 :patients 1})
+        messages (emit/emit ground-truth ref-date utc-offset facility providers aldric-profile)
         parsed (parser/parse (first messages))]
     (testing "MSH-12: version id"
       (is (= "2.5.1" (message/get-field-first-value parsed "MSH" 12))))
@@ -863,10 +873,10 @@
       (is (= "T" (message/get-field-first-value parsed "MSH" 11))))))
 
 (deftest msh-11-processing-id-defaults-to-P-and-accepts-T-or-D
-  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
+  (let [{:keys [ground-truth facility providers]} (run/run {:seed 42 :patients 1})
         parsed-for (fn [processing-id]
                      (parser/parse
-                      (first (emit-hl7/emit ground-truth ref-date utc-offset facility providers
+                      (first (emit/emit ground-truth ref-date utc-offset facility providers
                                             (when processing-id {:msh {:processing-id processing-id}})))))]
     (is (= "P" (message/get-field-first-value (parsed-for nil) "MSH" 11)) "no profile: today's default")
     (is (= "P" (message/get-field-first-value (parsed-for "P") "MSH" 11)))
@@ -879,10 +889,10 @@
   until then, and this assertion is the pin that made the flip visible
   rather than silent -- it is re-pinned, once, and the escape hatch is
   pinned beside it so the two move together or not at all."
-  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
+  (let [{:keys [ground-truth facility providers]} (run/run {:seed 42 :patients 1})
         msh (fn [profile n]
               (message/get-field-first-value
-               (parser/parse (first (emit-hl7/emit ground-truth ref-date utc-offset
+               (parser/parse (first (emit/emit ground-truth ref-date utc-offset
                                                    facility providers profile)))
                "MSH" n))]
     (testing "the DEFAULT profile declares 2.4"
@@ -901,20 +911,20 @@
       (is (= "SIM" (msh nil 4))))))
 
 (deftest pv1-2-patient-class-renders-through-the-profiles-code-table
-  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
-        default-parsed (parser/parse (first (emit-hl7/emit ground-truth ref-date utc-offset facility providers)))
-        aldric-parsed (parser/parse (first (emit-hl7/emit ground-truth ref-date utc-offset facility providers aldric-profile)))]
+  (let [{:keys [ground-truth facility providers]} (run/run {:seed 42 :patients 1})
+        default-parsed (parser/parse (first (emit/emit ground-truth ref-date utc-offset facility providers)))
+        aldric-parsed (parser/parse (first (emit/emit ground-truth ref-date utc-offset facility providers aldric-profile)))]
     (testing "no profile: today's hard-coded \"I\""
       (is (= "I" (message/get-field-first-value default-parsed "PV1" 2))))
     (testing "overridden: site code + coding-system suffix"
       (is (= "IN^99ALDRIC" (message/get-field-first-value aldric-parsed "PV1" 2))))))
 
 (deftest pv1-36-discharge-disposition-renders-only-on-discharge-through-the-profiles-code-table
-  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
-        admission-msg (first (emit-hl7/emit ground-truth ref-date utc-offset facility providers))
-        discharge-msg (first (filter #(re-find #"\^A03" %) (emit-hl7/emit ground-truth ref-date utc-offset facility providers)))
+  (let [{:keys [ground-truth facility providers]} (run/run {:seed 42 :patients 1})
+        admission-msg (first (emit/emit ground-truth ref-date utc-offset facility providers))
+        discharge-msg (first (filter #(re-find #"\^A03" %) (emit/emit ground-truth ref-date utc-offset facility providers)))
         aldric-discharge-msg (first (filter #(re-find #"\^A03" %)
-                                            (emit-hl7/emit ground-truth ref-date utc-offset facility providers aldric-profile)))]
+                                            (emit/emit ground-truth ref-date utc-offset facility providers aldric-profile)))]
     (testing "non-discharge messages carry no disposition"
       (is (= "" (or (message/get-field-first-value (parser/parse admission-msg) "PV1" 36) ""))))
     (testing "discharge, no profile: today's standard default"
@@ -935,11 +945,11 @@
                                 {:literal "ALDRIC-PAYER-V1"}]}]))
 
 (deftest z-segment-renders-after-standard-segments-on-its-trigger-event
-  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
+  (let [{:keys [ground-truth facility providers]} (run/run {:seed 42 :patients 1})
         admission (first (filter #(= :admission (:event %)) ground-truth))
         patient-id (:patient-id (first (:participants admission)))
         {:keys [persona]} (find-registered ground-truth patient-id)
-        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers zpi-profile)
+        messages (emit/emit ground-truth ref-date utc-offset facility providers zpi-profile)
         parsed (parser/parse (first messages))]
     (testing "standard segments still present, in order, ahead of the Z-segment
               (IN1 too -- this is an admission message)"
@@ -953,14 +963,14 @@
       (is (= "ALDRIC-PAYER-V1" (message/get-field-first-value parsed "ZPI" 4))))))
 
 (deftest z-segment-only-renders-on-its-declared-trigger
-  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
-        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers zpi-profile)
+  (let [{:keys [ground-truth facility providers]} (run/run {:seed 42 :patients 1})
+        messages (emit/emit ground-truth ref-date utc-offset facility providers zpi-profile)
         discharge-msg (first (filter #(re-find #"\^A03" %) messages))]
     (is (empty? (message/get-segments (parser/parse discharge-msg) "ZPI")))))
 
 (deftest no-site-profile-renders-no-z-segments
-  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
-        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)]
+  (let [{:keys [ground-truth facility providers]} (run/run {:seed 42 :patients 1})
+        messages (emit/emit ground-truth ref-date utc-offset facility providers)]
     (is (every? #(empty? (message/get-segments (parser/parse %) "ZPI")) messages))))
 
 ;; --- Milestone site-profiles, Task 4: the invariance property ------------
@@ -1026,16 +1036,16 @@
 (deftest site-profile-never-reaches-the-engine
   (testing "the invariance property's OWN strong half, stated structurally
             (docs/site-profiles.md): :site-profile is not a member of
-            ehrt.sim-engine.engine/config-keys, so it is structurally
+            ehrt.sim-engine.config/config-keys, so it is structurally
             incapable of perturbing ground-truth -- not merely untested"
-    (is (not (contains? (set engine/config-keys) :site-profile)))))
+    (is (not (contains? (set config/config-keys) :site-profile)))))
 
 (defspec invariance-messages-agree-after-masking-dialect-surfaces 100
   (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 6)]
-    (let [{:keys [ground-truth facility providers]} (engine/run {:seed seed :patients patients})
-          default-messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers nil)
-          gaudy-messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers gaudy-profile)]
+    (let [{:keys [ground-truth facility providers]} (run/run {:seed seed :patients patients})
+          default-messages (emit/emit ground-truth ref-date utc-offset facility providers nil)
+          gaudy-messages (emit/emit ground-truth ref-date utc-offset facility providers gaudy-profile)]
       (and (= (count default-messages) (count gaudy-messages))
            (= (map mask-dialect-surfaces default-messages)
               (map mask-dialect-surfaces gaudy-messages))))))
@@ -1045,8 +1055,8 @@
             messages bearing unknown Z-segments -- asserted directly,
             not merely assumed; a failure here would be a documented
             parser finding (notes/facts-register.md), not a silent gap"
-    (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
-          messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers zpi-profile)
+    (let [{:keys [ground-truth facility providers]} (run/run {:seed 42 :patients 1})
+          messages (emit/emit ground-truth ref-date utc-offset facility providers zpi-profile)
           zpi-msg (first messages)]
       (is (some? (parser/parse zpi-msg)))
       (is (= 1 (count (message/get-segments (parser/parse zpi-msg) "ZPI")))))))
@@ -1059,10 +1069,10 @@
 (defspec control-id-for-matches-every-rendered-messages-own-msh-10 100
   (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 6)]
-    (let [{:keys [ground-truth facility providers]} (engine/run {:seed seed :patients patients})
-          messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+    (let [{:keys [ground-truth facility providers]} (run/run {:seed seed :patients patients})
+          messages (emit/emit ground-truth ref-date utc-offset facility providers)
           rendered-control-ids (into #{} (map #(message/get-field-first-value (parser/parse %) "MSH" 10)) messages)
-          derived-control-ids (into #{} (keep emit-hl7/control-id-for) ground-truth)]
+          derived-control-ids (into #{} (keep segments/control-id-for) ground-truth)]
       (= rendered-control-ids derived-control-ids))))
 
 ;; --- ADR-0150 S-Z: the ADT family sees the WHOLE event ---------------------
@@ -1088,7 +1098,7 @@
 
 (deftest z-segments-see-the-whole-event-on-the-adt-family-too
   (let [{:keys [ground-truth facility providers]} (run-with-order 1)
-        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers whole-event-profile)
+        messages (emit/emit ground-truth ref-date utc-offset facility providers whole-event-profile)
         adt (parser/parse (find-message messages "A01"))
         orm (parser/parse (find-message messages "O01"))
         admission (first (filter #(= :admission (:event %)) ground-truth))]
@@ -1109,7 +1119,7 @@
   (let [{:keys [ground-truth facility providers]} (run-with-order 1)
         result (first (filter #(= :result-available (:event %)) ground-truth))
         first-entry (first (:results result))
-        oru (find-message (emit-hl7/emit ground-truth ref-date utc-offset facility providers) "R01")
+        oru (find-message (emit/emit ground-truth ref-date utc-offset facility providers) "R01")
         parsed (parser/parse oru)]
     (is (some? first-entry) "a population gate asserts its population is non-empty")
     (testing "the log entry carries :unit, not :units"
@@ -1163,7 +1173,7 @@
   (str street "^^" city "^" state "^" zip))
 
 (deftest demographics-at-answers-state-at-t-test
-  (let [msgs (emit-hl7/emit (folded-log) ref-date utc-offset)]
+  (let [msgs (emit/emit (folded-log) ref-date utc-offset)]
     (testing "the fold produced the two messages it should have (A01, then A02)"
       (is (= 2 (count msgs)) "a :demographic-update rendered a message of its own"))
     (let [[admit transfer] msgs]
@@ -1179,8 +1189,8 @@
   ;; carried in ground truth. No sentinel -- HL7 v2 offers no code for it
   ;; and every literal is one site's local convention, which belongs in a
   ;; site profile.
-  (let [housed (emit-hl7/emit (folded-log) ref-date utc-offset)
-        unhoused (emit-hl7/emit (folded-log :residence {:status :unhoused
+  (let [housed (emit/emit (folded-log) ref-date utc-offset)
+        unhoused (emit/emit (folded-log :residence {:status :unhoused
                                                         :last-known-address folded-addr})
                                 ref-date utc-offset)]
     (testing "the housed control renders a street"
@@ -1216,7 +1226,7 @@
               :home-ward "Renal" :from loc
               :location {:ward "Renal" :bed "RENAL-02" :placement :licensed}
               :participants subject :warm-up false}]
-        msgs (emit-hl7/emit log ref-date utc-offset)
+        msgs (emit/emit log ref-date utc-offset)
         [admit transfer] msgs]
     (is (= 2 (count msgs)))
     (testing "PID-5 follows the correction"
@@ -1267,7 +1277,7 @@
              :participants subject :warm-up false}))))
 
 (deftest a-placeholder-registration-renders-a-john-doe-pid-test
-  (let [[admit] (emit-hl7/emit (placeholder-log :fill? false) ref-date utc-offset)
+  (let [[admit] (emit/emit (placeholder-log :fill? false) ref-date utc-offset)
         pid (first (filter #(str/starts-with? % "PID") (str/split admit #"\r")))]
     (testing "PID-5 is the window's alias, never the person's real name"
       (is (= "Doe^Unknown" (message/get-field-first-value (parser/parse admit) "PID" 5)))
@@ -1283,7 +1293,7 @@
       (is (not (str/includes? admit "IN1"))))))
 
 (deftest the-identity-fill-makes-later-messages-render-the-real-patient-test
-  (let [msgs (emit-hl7/emit (placeholder-log) ref-date utc-offset)
+  (let [msgs (emit/emit (placeholder-log) ref-date utc-offset)
         [admit transfer] msgs]
     (is (= 2 (count msgs)) "the fill rendered a message of its own")
     (testing "before the fill, the John Doe"
@@ -1303,7 +1313,7 @@
 ;; The encounter's ONE wire face. Before this sweep PV1-19 was empty on
 ;; every message this project had ever produced -- one of the 28 blanks
 ;; `pv1-segment` laid down between PV1-7 and PV1-36 -- which is
-;; `emit_hl7.clj`'s own registry comment's definition of a failure mode:
+;; `registry.clj`'s own comment's definition of a failure mode:
 ;; traffic invisible to every consumer.
 
 (defn- pv1-19-of [message] (or (message/get-field-first-value (parser/parse message) "PV1" 19) ""))
@@ -1323,8 +1333,8 @@
 (deftest pv1-19-is-empty-without-the-encounters-opt-in
   (testing "the blank count moved 28 -> 27 and the BYTE count did not:
             nil renders the same empty field that stood here before"
-    (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 3})
-          messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)]
+    (let [{:keys [ground-truth facility providers]} (run/run {:seed 42 :patients 3})
+          messages (emit/emit ground-truth ref-date utc-offset facility providers)]
       (is (seq messages))
       (is (every? #(= "" (pv1-19-of %)) messages))
       (is (every? #(= 36 (pv1-field-count %)) messages)
@@ -1332,8 +1342,8 @@
 
 (deftest pv1-19-renders-the-encounter-id-when-the-run-opted-in
   (let [{:keys [ground-truth facility providers]}
-        (engine/run {:seed 42 :patients 3 :encounters true})
-        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        (run/run {:seed 42 :patients 3 :encounters true})
+        messages (emit/emit ground-truth ref-date utc-offset facility providers)
         by-message (mapv (juxt #(message/get-field-first-value (parser/parse %) "MSH" 9) pv1-19-of)
                          messages)]
     (is (seq messages))
@@ -1342,7 +1352,7 @@
           (str "a PV1 rendered no visit number: " (pr-str by-message))))
     (testing "and it is the SAME id the ground-truth event carries -- the
               cross-emitter id sub-law, one level down"
-      (is (= (mapv :encounter-id (filterv #(emit-hl7/message-type-registry (:event %)) ground-truth))
+      (is (= (mapv :encounter-id (filterv #(registry/message-type-registry (:event %)) ground-truth))
              (mapv second by-message))))
     (is (every? #(= 36 (pv1-field-count %)) messages))))
 
@@ -1350,15 +1360,15 @@
   (testing "a `:bed-swap` names TWO encounters and carries neither at top
             level, so each PV1-19 comes from that patient's own `:swap`
             entry -- the same place its PV1-3 comes from"
-    (let [world0 (assoc (world-of {"P1" (engine/initial-patient "P1" "MRN000001")
-                                   "P2" (engine/initial-patient "P2" "MRN000002")})
+    (let [world0 (assoc (world-of {"P1" (state/initial-patient "P1" "MRN000001")
+                                   "P2" (state/initial-patient "P2" "MRN000002")})
                         :encounter-minting {:seed 7 :ordinals {"P1" 0 "P2" 1}})
           world1 (-> world0 (admit 0 "P1" "Renal") (admit 5 "P2" "Renal"))
-          {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :bed-swap})
+          {:keys [events]} (decide/decide (streams/one-stream (Random. 1)) 10 world1 "P1" {:type :bed-swap})
           world2 (fold-events world1 events)
-          messages (emit-hl7/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)
+          messages (emit/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)
           parsed (parser/parse (last messages))
           pv1-19s [(nth-field-value parsed "PV1" 19 0) (nth-field-value parsed "PV1" 19 1)]]
       (is (= "ADT^A17" (message/get-field-first-value parsed "MSH" 9)))
-      (is (= [(engine/encounter-id-for 7 0 0) (engine/encounter-id-for 7 1 0)] pv1-19s)
+      (is (= [(streams/encounter-id-for 7 0 0) (streams/encounter-id-for 7 1 0)] pv1-19s)
           "two patients, two visit numbers, neither borrowed from the other"))))

@@ -131,7 +131,7 @@ two site profiles over one seed produce the same ground truth in two
 accents — is the dialect-invariance law now stated directly on
 `EmitHL7`'s own equation entry (`sim-theory.edn`), property-tested
 alongside the structural guarantee that `site-profile` never reaches
-`Execute` at all (not a member of `ehrt.sim-engine.engine/config-keys`).
+`Execute` at all (not a member of `ehrt.sim-engine.config/config-keys`).
 `:naming :surge-format`'s migration to the profile is the one
 documented exception bound at config-construction time rather than
 emit time (`ehrt.sim-emit-hl7.site-profile/apply-naming`, a facility-
@@ -192,7 +192,7 @@ Unlike M2a/M3 above (additions under an ALREADY-`:built` Execute),
 Persona genuinely flips from `:planned` to `:built` this milestone --
 a new stage, not an addition to one already landed. Its equation
 (`sim-config -> persona`) is satisfied by an engine-internal
-`:registered` event `ehrt.sim-engine.engine/run` prepends to every
+`:registered` event `ehrt.sim-engine.run/run` prepends to every
 patient's step queue (never authorable IR, the same treatment
 `:result-followup` already gets) -- persona is folded into Execute's
 own step-queue mechanism because a patient's persona is needed at the
@@ -348,7 +348,7 @@ development: a degenerate but structurally legal churn sequence
 (cancel-admit against an already-discharged patient's original
 admission, followed by cancel-discharge) left ground truth's own
 `:class` absent while the wire always asserts `:inpatient` for that
-message family regardless — `ehrt.sim-engine.engine/evolve`'s own
+message family regardless — `ehrt.sim-engine.evolve/evolve`'s own
 `:cancel-discharge` method now restores `:class` as part of its
 reinstatement, closing the gap in ground truth rather than loosening
 the projection to hide it.
@@ -362,7 +362,7 @@ that could drift from another emitter's choice for the same event.
 PROPERTY-TESTED alongside the law above:
 `ehrt.sim-emit-fhir.emit-fhir-test/fhir-patient-id-and-active-mrn-resolve-to-the-same-hl7-identity`
 (150 trials, green 2026-07-27) — FHIR `Patient.id` is the same
-`patient-id` `ehrt.sim-engine.engine/patient-id-for` assigns, and
+`patient-id` `ehrt.sim-engine.streams/patient-id-for` assigns, and
 `Patient.identifier`'s MRN matches PID-3 on that same patient's own
 HL7 messages, over random runs.
 

@@ -59,9 +59,9 @@
             [clojure.test :refer [deftest is testing]]
             [ehrt.judge-v2-hapi.v2 :as hapi]
             [ehrt.patient-simulator.interface :as patient-simulator]
-            [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]
+            [ehrt.sim-emit-hl7.emit :as emit]
             [ehrt.sim-engine.churn :as churn]
-            [ehrt.sim-engine.engine :as engine]))
+            [ehrt.sim-engine.run :as run]))
 
 (def ^:private ref-date "2024-01-01")
 (def ^:private utc-offset "+00:00")
@@ -78,8 +78,8 @@
   "`nil` means the DEFAULT profile -- which is the whole claim of commit
   2, so the corpus-wide test passes nil rather than forcing a version."
   [site-profile]
-  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 3})]
-    (emit-hl7/emit ground-truth ref-date utc-offset facility providers site-profile)))
+  (let [{:keys [ground-truth facility providers]} (run/run {:seed 42 :patients 3})]
+    (emit/emit ground-truth ref-date utc-offset facility providers site-profile)))
 
 (defn- resolved-structure
   "The class HAPI resolves `er7` to, through the judge's own context.
@@ -127,7 +127,7 @@
   (let [module (:payload (patient-simulator/load-module
                           "sinusitis" (slurp (io/resource "sim/modules/sinusitis.json"))))
         {:keys [ground-truth facility providers]}
-        (engine/run (assoc corpus-config
+        (run/run (assoc corpus-config
                            :pathways [{:pathway {:name "cbc"
                                                  :steps [{:type :admission :location "Renal"}
                                                          {:type :order :profile :cbc}
@@ -140,7 +140,7 @@
                            :modules [(patient-simulator/singleton-closure module)]
                            :module-assignment [{:module-id "sinusitis" :weight 1}]
                            :module-horizon-days 3650))]
-    (emit-hl7/emit ground-truth ref-date utc-offset facility providers nil)))
+    (emit/emit ground-truth ref-date utc-offset facility providers nil)))
 
 (deftest an-a01-under-the-default-profile-resolves-to-a-real-v2-4-structure-test
   (let [a01 (first (filter #(str/includes? (msh-9-of %) "A01") (messages-at nil)))

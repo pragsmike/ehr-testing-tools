@@ -9,7 +9,7 @@
   convention (AR-VB2-2's own 'deviate per module only if content
   demands it, disclosed' clause): `Not_Atopic`'s own low onset odds
   (2.9%) land the eligible fraction in `Delay_Until_Early_Mid_Childhood`
-  (2-6 years old); since `engine.clj` anchors `registration-t` at a
+  (2-6 years old); since `decide.clj` anchors `registration-t` at a
   FIXED calendar instant (`sim-model/reference-today-epoch-day`), not
   DOB (the batch-1 `dementia` docstring's own finding), that childhood
   onset lands POST-registration (real-time, message-rendering horizon
@@ -31,7 +31,7 @@
             [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
             [ehrt.patient-simulator.gmf :as gmf]
-            [ehrt.sim-engine.engine :as engine]
+            [ehrt.sim-engine.run :as run]
             [ehrt.sim-check.check :as check]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]))
 
@@ -57,7 +57,7 @@
     (is (result/ok? loaded-closure)))
   (testing "real compiled clinical content lands across 3000 patients (this closure's own low-incidence,
             fixed-registration-instant interaction, disclosed above)"
-    (let [{:keys [ground-truth] :as result} (engine/run run-config)
+    (let [{:keys [ground-truth] :as result} (run/run run-config)
           registered (filter #(= :registered (:event %)) ground-truth)
           kinds (into #{} (map :event) ground-truth)]
       (is (some :pre-horizon-facts registered)

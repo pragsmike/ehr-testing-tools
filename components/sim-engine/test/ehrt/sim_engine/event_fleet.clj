@@ -28,7 +28,8 @@
   family is authored as explicit IR steps rather than hunted for, and
   the clinical family comes from one GMF fixture module that walks the
   whole state vocabulary in a single encounter."
-  (:require [ehrt.sim-engine.engine :as engine]
+  (:require [ehrt.sim-engine.run :as run]
+            [ehrt.sim-engine.streams :as streams]
             [ehrt.patient-simulator.interface :as patient-simulator]
             [ehrt.sim-model.interface :as sim-model]
             [clojure.pprint]))
@@ -110,7 +111,7 @@
 
 (defn clinical-run
   []
-  (engine/run {:seed 11 :patients 2 :arrival-gap 0
+  (run/run {:seed 11 :patients 2 :arrival-gap 0
                :pathway {:name "module-only" :steps []}
                ;; Newborns, so the walk's own clock starts near the run's
                ;; registration instant -- see the fixture's lead-in note.
@@ -122,7 +123,7 @@
 (defn operational-run
   "The order/result pair plus the plain admit-transfer-discharge arc."
   []
-  (engine/run {:seed 12 :patients 2 :arrival-gap 0
+  (run/run {:seed 12 :patients 2 :arrival-gap 0
                :facility crowded-facility
                :pathways [{:patient-ordinal 0
                            :pathway {:name "worked-up"
@@ -142,8 +143,8 @@
   legal log, not a bug."
   []
   (let [seed 13
-        p1 (engine/patient-id-for seed 1)]
-    (engine/run {:seed seed :patients 4 :arrival-gap 0
+        p1 (streams/patient-id-for seed 1)]
+    (run/run {:seed seed :patients 4 :arrival-gap 0
                  :facility crowded-facility
                  :pathways [{:patient-ordinal 0
                              :pathway {:name "cancels"
@@ -169,7 +170,7 @@
   4,997, and 0 in anything the docs teach, so it gets its own fixture
   rather than being left to chance."
   []
-  (engine/run {:seed 14 :patients 1 :arrival-gap 0
+  (run/run {:seed 14 :patients 1 :arrival-gap 0
                :facility crowded-facility
                :pathways [{:patient-ordinal 0
                            :pathway {:name "expires"
@@ -186,7 +187,7 @@
   (let [ids [["fixture-person-a" 1] ["fixture-person-b" 2]]]
     {:population (vec (for [[person-id id-tag] ids] {:person-id person-id :id-tag id-tag}))
      :personas (into {} (for [[person-id id-tag] ids]
-                          [person-id (sim-model/persona (engine/stream 15 :person id-tag) {})]))
+                          [person-id (sim-model/persona (streams/stream 15 :person id-tag) {})]))
      :alive {}}))
 
 (def person-events
@@ -242,7 +243,7 @@
   two-person pool, so one person is selected twice and the repeat
   resolves to the patient the first arrival already minted."
   []
-  (engine/run {:seed 15 :patients 3 :arrival-gap 0
+  (run/run {:seed 15 :patients 3 :arrival-gap 0
                :pathway {:name "brief" :steps [{:type :admission :location "Renal"}
                                                {:type :discharge}]}
                :facility crowded-facility
@@ -259,7 +260,7 @@
   covering -- the same reason `person-events` above is authored rather
   than walked."
   {:population [{:person-id "fixture-person-c" :id-tag 3}]
-   :personas {"fixture-person-c" (sim-model/persona (engine/stream 15 :person 3) {})}
+   :personas {"fixture-person-c" (sim-model/persona (streams/stream 15 :person 3) {})}
    :alive {}})
 
 (def identification-events
@@ -300,7 +301,7 @@
     :participants ["fixture-person-c" "fixture-person-c/b0"]}
    {:event :person-registered :person-id "fixture-person-c/b0" :t 20000
     :event-id "fixture-person-c/b0#0"
-    :persona (sim-model/persona (engine/stream 15 :person 4) {:age-min 0 :age-max 0})
+    :persona (sim-model/persona (streams/stream 15 :person 4) {:age-min 0 :age-max 0})
     :delivery-event-id "fixture-person-c#4"
     :participants ["fixture-person-c/b0" "fixture-person-c"]}])
 
@@ -311,7 +312,7 @@
   whose registration carries the mother-baby link and whose birth
   admission carries the hook's own provenance stamp."
   []
-  (engine/run {:seed 15 :patients 4 :arrival-gap 100
+  (run/run {:seed 15 :patients 4 :arrival-gap 100
                :pathway {:name "empty" :steps []}
                :facility crowded-facility
                :persons (assoc identification-pool :events identification-events)}))
@@ -328,7 +329,7 @@
   example keeps the one it had, and `:bed-status-change` -- which no
   other member can produce -- gets its own from here."
   []
-  (engine/run {:seed 13 :patients 3 :arrival-gap 0
+  (run/run {:seed 13 :patients 3 :arrival-gap 0
                :facility crowded-facility
                :bed-cycle true
                :pathway {:name "admit-discharge"
@@ -356,7 +357,7 @@
   own stated reason: `examples` takes the FIRST event of each kind in
   fleet order, so every kind that already had an example keeps it."
   []
-  (engine/run {:seed 7 :patients 8 :arrival-gap 0
+  (run/run {:seed 7 :patients 8 :arrival-gap 0
                :facility crowded-facility
                :encounters true
                :scheduling {:scheduled-fraction 0.9

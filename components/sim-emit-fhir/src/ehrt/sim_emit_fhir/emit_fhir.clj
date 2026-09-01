@@ -6,7 +6,7 @@
 
   Laws:
   1. Snapshot-at-instant: `snapshot-at` is a pure function of REPLAY
-     RECORDS (ehrt.sim-engine.engine/replay's own output -- the fold,
+     RECORDS (ehrt.sim-engine.fold/replay's own output -- the fold,
      sim/ADR-0008) at a queried instant `t`. No access to the log beyond
      the fold: everything downstream of `snapshot-at` (the resource
      builders, `patient-bundle`) reads ONLY the folded PatientState map
@@ -24,7 +24,7 @@
   3. Cross-emitter id sub-law (the GLOBAL emitter-coherence law, docs/
      sim-theory.md): every resource id/reference here derives from the
      SAME identifiers ehrt.sim-emit-hl7.emit-hl7 renders -- Patient.id is
-     the patient-id ehrt.sim-engine.engine/patient-id-for assigns
+     the patient-id ehrt.sim-engine.streams/patient-id-for assigns
      (never a fresh UUID), Patient.identifier carries the active-mrn
      ehrt.sim-emit-hl7.emit-hl7 renders as PID-3, and every other
      resource's own id is a deterministic, patient-id-scoped ordinal
@@ -36,7 +36,7 @@
      exactly Patient/Encounter/Condition/Observation/MedicationRequest/
      Coverage, each populated ONLY from fields ehrt.sim-engine.engine's
      own fold already carries (this namespace's own header comment on
-     ehrt.sim-engine.engine/PatientState records what had to LAND in
+     ehrt.sim-engine.state/PatientState records what had to LAND in
      the fold for this reason). Procedure is deliberately absent --
      ground truth carries :procedure events, but nothing in this
      resource set needs them, and inventing a seventh resource type
@@ -64,7 +64,7 @@
 
 (defn snapshot-at
   "{patient-id -> PatientState} as it stood at simulated instant `t`,
-  given `replay-records` (ehrt.sim-engine.engine/replay's own output).
+  given `replay-records` (ehrt.sim-engine.fold/replay's own output).
   Pure: the last record whose own event occurred at or before `t`
   supplies its `:world-after`; no applicable record (t before this
   run's first event, or an empty run) -> {}."
@@ -98,7 +98,7 @@
 (def ^:private iso-formatter java.time.format.DateTimeFormatter/ISO_LOCAL_DATE_TIME)
 
 (defn- iso-timestamp
-  "The same pinned-clock arithmetic ehrt.sim-emit-hl7.emit-hl7/hl7-timestamp
+  "The same pinned-clock arithmetic ehrt.sim-emit-hl7.hl7-time/hl7-timestamp
   uses (reference-date + seconds, suffixed with the pinned utc-offset) --
   rendered in ISO-8601 (FHIR's own dateTime shape) instead of HL7's
   colon-free zone convention. Kept independent of emit-hl7's own
@@ -306,7 +306,7 @@
   start) or `:end` (this run's own last event time) -- the CLI's own
   `sim run --emit fhir [--at ...]` convenience. `run-id` (this run's
   own seed) is stamped onto every resource, per law 5. Calls
-  ehrt.sim-engine.engine/replay exactly once (the fold); every bundle
+  ehrt.sim-engine.fold/replay exactly once (the fold); every bundle
   is a pure projection of that single call's own output, per
   `snapshot-at`'s law."
   [ground-truth reference-date utc-offset run-id t]

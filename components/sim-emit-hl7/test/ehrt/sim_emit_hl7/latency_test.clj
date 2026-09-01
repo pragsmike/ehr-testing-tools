@@ -1,6 +1,6 @@
 (ns ehrt.sim-emit-hl7.latency-test
   "ADR-0109: the second clock. `plan-latency`'s own fixed-RNG-consumption
-  law (the RNG-path law's own worked precedent, `ehrt.sim-engine.engine/
+  law (the RNG-path law's own worked precedent, `ehrt.sim-engine.assignment/
   assign-pathway`/`assign-module`, extended here); `emit-wire`'s own
   split-clock rendering (MSH-7 transmit time, EVN-2 clinical time --
   ADR-0109's own field audit) and transmit-time ordering; and the
@@ -20,8 +20,11 @@
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [ehrt.sim-engine.churn :as churn]
-            [ehrt.sim-engine.engine :as engine]
-            [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]
+            [ehrt.sim-engine.run :as run]
+            [ehrt.sim-emit-hl7.emit :as emit]
+            [ehrt.sim-emit-hl7.hl7-time :as hl7-time]
+            [ehrt.sim-emit-hl7.planners :as planners]
+            [ehrt.sim-emit-hl7.segments :as segments]
             [com.nervestaple.hl7-parser.parser :as parser]
             [com.nervestaple.hl7-parser.message :as message])
   (:import [java.util Random]))
@@ -39,21 +42,21 @@
                  use-churn gen/boolean]
     (let [config (cond-> {:seed seed :patients patients}
                    use-churn (assoc :churn-profile churn/sample-profile))
-          {:keys [ground-truth facility providers]} (engine/run config)
-          plain (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
-          wire-nil-offsets (emit-hl7/emit-wire ground-truth ref-date utc-offset facility providers nil nil)
-          wire-empty-offsets (emit-hl7/emit-wire ground-truth ref-date utc-offset facility providers nil {})]
+          {:keys [ground-truth facility providers]} (run/run config)
+          plain (emit/emit ground-truth ref-date utc-offset facility providers)
+          wire-nil-offsets (emit/emit-wire ground-truth ref-date utc-offset facility providers nil nil)
+          wire-empty-offsets (emit/emit-wire ground-truth ref-date utc-offset facility providers nil {})]
       (= plain wire-nil-offsets wire-empty-offsets))))
 
 (defspec plan-latency-with-an-absent-profile-draws-and-discards-and-returns-empty 50
   (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 8)
                  rng-seed gen/large-integer]
-    (let [{:keys [ground-truth]} (engine/run {:seed seed :patients patients :churn-profile churn/sample-profile})]
-      (= {} (emit-hl7/plan-latency (Random. ^long rng-seed) ground-truth nil)))))
+    (let [{:keys [ground-truth]} (run/run {:seed seed :patients patients :churn-profile churn/sample-profile})]
+      (= {} (planners/plan-latency (Random. ^long rng-seed) ground-truth nil)))))
 
 ;; --- Fixed RNG consumption: the RNG-path law's own worked precedent
-;; (assign-pathway/assign-module, engine.clj) extended to plan-latency ---
+;; (assign-pathway/assign-module, assignment.clj) extended to plan-latency ---
 
 (deftest plan-latency-adding-a-covered-event-type-never-shifts-another-types-own-offset
   (testing "ALWAYS one draw per ground-truth event, regardless of
@@ -61,12 +64,12 @@
             not change any :admission offset already drawn under the
             narrower profile -- proven with churn on, so the log carries
             a real mix of event types, not merely the two under test"
-    (let [{:keys [ground-truth]} (engine/run {:seed 7 :patients 6 :churn-profile churn/sample-profile})
+    (let [{:keys [ground-truth]} (run/run {:seed 7 :patients 6 :churn-profile churn/sample-profile})
           admission-only {:admission {:from-minutes 5 :to-minutes 45}}
           admission-and-discharge {:admission {:from-minutes 5 :to-minutes 45}
                                    :discharge {:from-minutes 1 :to-minutes 10}}
-          offsets-narrow (emit-hl7/plan-latency (Random. 123) ground-truth admission-only)
-          offsets-wide (emit-hl7/plan-latency (Random. 123) ground-truth admission-and-discharge)]
+          offsets-narrow (planners/plan-latency (Random. 123) ground-truth admission-only)
+          offsets-wide (planners/plan-latency (Random. 123) ground-truth admission-and-discharge)]
       (is (seq offsets-narrow) "non-vacuity: at least one :admission event exists")
       (is (> (count offsets-wide) (count offsets-narrow))
           "non-vacuity: covering :discharge actually added entries, proving the wider profile was live")
@@ -77,10 +80,10 @@
 (deftest plan-latency-samples-uniformly-within-the-declared-minutes-range-converted-to-seconds
   (testing "offset-seconds falls within [from-minutes*60, to-minutes*60]
             for every covered event, over many distinct RNG seeds"
-    (let [{:keys [ground-truth]} (engine/run {:seed 3 :patients 4})
+    (let [{:keys [ground-truth]} (run/run {:seed 3 :patients 4})
           profile {:admission {:from-minutes 10 :to-minutes 20}}]
       (doseq [rng-seed (range 30)]
-        (let [offsets (emit-hl7/plan-latency (Random. rng-seed) ground-truth profile)]
+        (let [offsets (planners/plan-latency (Random. rng-seed) ground-truth profile)]
           (is (seq offsets))
           (doseq [[_ offset] offsets]
             (is (<= 600 offset 1200))))))))
@@ -94,20 +97,20 @@
             exactly as the audit says: MSH-7 (message/transmit time)
             shifts by the offset, EVN-2 (event/clinical time) does not
             move at all"
-    (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
+    (let [{:keys [ground-truth facility providers]} (run/run {:seed 42 :patients 1})
           admission (first (filter #(= :admission (:event %)) ground-truth))
-          control-id (emit-hl7/control-id-for admission)
+          control-id (segments/control-id-for admission)
           offset-seconds 3600
           offsets {control-id offset-seconds}
-          plain-messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
-          wire-messages (emit-hl7/emit-wire ground-truth ref-date utc-offset facility providers nil offsets)
+          plain-messages (emit/emit ground-truth ref-date utc-offset facility providers)
+          wire-messages (emit/emit-wire ground-truth ref-date utc-offset facility providers nil offsets)
           plain-parsed (parser/parse (first (filter #(re-find #"\^A01" %) plain-messages)))
           wire-parsed (parser/parse (first (filter #(re-find #"\^A01" %) wire-messages)))]
       (testing "EVN-2 unchanged (clinical time)"
         (is (= (message/get-field-first-value plain-parsed "EVN" 2)
                (message/get-field-first-value wire-parsed "EVN" 2))))
       (testing "MSH-7 shifted by exactly the offset"
-        (is (= (emit-hl7/hl7-timestamp ref-date (+ (:t admission) offset-seconds) utc-offset)
+        (is (= (hl7-time/hl7-timestamp ref-date (+ (:t admission) offset-seconds) utc-offset)
                (message/get-field-first-value wire-parsed "MSH" 7)))
         (is (not= (message/get-field-first-value plain-parsed "MSH" 7)
                   (message/get-field-first-value wire-parsed "MSH" 7)))))))
@@ -130,15 +133,15 @@
                                              {:type :order :profile :cbc}
                                              {:type :discharge}]}
           {:keys [ground-truth facility providers]}
-          (engine/run {:seed 7 :patients 1 :pathways [{:pathway pathway :weight 1}]})
+          (run/run {:seed 7 :patients 1 :pathways [{:pathway pathway :weight 1}]})
           order-placed (first (filter #(= :order-placed (:event %)) ground-truth))
-          control-id (emit-hl7/control-id-for order-placed)
+          control-id (segments/control-id-for order-placed)
           offsets {control-id 900}
-          plain-messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
-          wire-messages (emit-hl7/emit-wire ground-truth ref-date utc-offset facility providers nil offsets)
+          plain-messages (emit/emit ground-truth ref-date utc-offset facility providers)
+          wire-messages (emit/emit-wire ground-truth ref-date utc-offset facility providers nil offsets)
           plain-orm (first (filter #(re-find #"\^O01" %) plain-messages))
           wire-orm (first (filter #(re-find #"\^O01" %) wire-messages))]
-      (is (= (emit-hl7/hl7-timestamp ref-date (+ (:t order-placed) 900) utc-offset)
+      (is (= (hl7-time/hl7-timestamp ref-date (+ (:t order-placed) 900) utc-offset)
              (message/get-field-first-value (parser/parse wire-orm) "MSH" 7)))
       (is (not= (message/get-field-first-value (parser/parse plain-orm) "MSH" 7)
                 (message/get-field-first-value (parser/parse wire-orm) "MSH" 7))))))
@@ -158,12 +161,12 @@
                            {:type :delay :from 30 :to 30}
                            {:type :discharge}]}
           {:keys [ground-truth facility providers]}
-          (engine/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
+          (run/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
           admission (first (filter #(= :admission (:event %)) ground-truth))
-          control-id (emit-hl7/control-id-for admission)
+          control-id (segments/control-id-for admission)
           offsets {control-id (* 999 3600)}
-          plain-messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
-          wire-messages (emit-hl7/emit-wire ground-truth ref-date utc-offset facility providers nil offsets)]
+          plain-messages (emit/emit ground-truth ref-date utc-offset facility providers)
+          wire-messages (emit/emit-wire ground-truth ref-date utc-offset facility providers nil offsets)]
       (testing "log order: admission first"
         (is (re-find #"\^A01" (first plain-messages))))
       (testing "wire order: admission no longer first -- its own huge

@@ -5,7 +5,7 @@
   terms: **the draw count of a person over N years is a function of N
   alone.** Not of what happened to them -- not of whether they moved,
   married, gave birth or died in year one. This is the same law
-  `ehrt.sim-engine.engine/assign-pathway`, `ehrt.sim-engine.churn/
+  `ehrt.sim-engine.assignment/assign-pathway`, `ehrt.sim-engine.churn/
   roll-gap` and `ehrt.sim-model.persona/persona`'s own 13-draw
   contract already state, and it is what a reshuffle-free arc 3 will
   need: a rate that changes, or a branch that is added, must not shift
@@ -14,7 +14,7 @@
   The counting instrument redefines `ehrt.sim-engine.interface/stream`
   -- the same mechanism the engine's own stream-locality test uses,
   and the reason `stream` is deliberately left unhinted in
-  `engine.clj`. Nothing under `components/sim-engine` is changed by
+  `streams.clj`. Nothing under `components/sim-engine` is changed by
   it."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.set :as set]

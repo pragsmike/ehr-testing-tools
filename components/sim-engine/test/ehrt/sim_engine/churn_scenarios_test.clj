@@ -6,7 +6,7 @@
   bed-swap between a licensed and a surge occupant.
 
   M3-adjacent (roadmap.md's per-patient pathway assignment): migrated to
-  run end-to-end through `ehrt.sim-engine.engine/run`'s :pathways option
+  run end-to-end through `ehrt.sim-engine.run/run`'s :pathways option
   -- each scenario is now an explicit {:patient-ordinal :pathway}
   assignment per participant, exercising the REAL event loop (arrivals,
   the work queue, decide/evolve folding) rather than hand-driving
@@ -29,7 +29,8 @@
   regression, per the roadmap's own migration note -- not everything
   needs to move to engine/run, just this scripted fleet."
   (:require [clojure.test :refer [deftest is testing]]
-            [ehrt.sim-engine.engine :as engine]
+            [ehrt.sim-engine.run :as run]
+            [ehrt.sim-engine.streams :as streams]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]
             [com.nervestaple.hl7-parser.parser :as parser]
             [com.nervestaple.hl7-parser.message :as message]))
@@ -53,7 +54,7 @@
 
 (defn- clinical-events
   "M4: strips :registered events -- every patient's now-automatic first
-  event (Persona, engine.clj's own docstring) -- before asserting an
+  event (Persona, decide.clj's own docstring) -- before asserting an
   EXACT ground-truth sequence, so these scenarios keep asserting the
   churn-relevant shape they were written for rather than every
   positional index shifting by one per patient. :registered never
@@ -77,7 +78,7 @@
   InjectChurn needed) and arrivals collapsed to t=0 (see namespace
   docstring)."
   [seed pathways-by-ordinal]
-  (engine/run {:seed seed
+  (run/run {:seed seed
                :patients (count pathways-by-ordinal)
                :arrival-gap 0
                :facility one-bed-one-surge-facility
@@ -98,7 +99,7 @@
   ;; in ED surge (rung 4: home-ward Renal, physically ED). P3 is then
   ;; merged into P1 while still boarding.
   (let [seed 100
-        p3-id (engine/patient-id-for seed 2)
+        p3-id (streams/patient-id-for seed 2)
         {:keys [ground-truth]} (run-scenario
                                  seed
                                  [{:name "p1" :steps [{:type :admission :location "Renal"}
@@ -115,7 +116,7 @@
     (testing "exact ground-truth event sequence"
       (is (= [:admission :admission :admission :merge] (mapv :event (clinical-events ground-truth)))))
     (testing "the merge names P3 as :merged, P1 as :survivor"
-      (is (= #{[:survivor (engine/patient-id-for seed 0)] [:merged p3-id]}
+      (is (= #{[:survivor (streams/patient-id-for seed 0)] [:merged p3-id]}
              (set (map (juxt :role :patient-id) (:participants survivor))))))
     (testing "exact rendered message sequence: A01 A01 A01 A40"
       (is (= ["A01" "A01" "A01" "A40"]
@@ -155,7 +156,7 @@
 
 (deftest bed-swap-between-licensed-and-surge-occupant
   (let [seed 100
-        p2-id (engine/patient-id-for seed 1)
+        p2-id (streams/patient-id-for seed 1)
         {:keys [ground-truth]} (run-scenario
                                  seed
                                  [{:name "p1" :steps [{:type :admission :location "Renal"}
@@ -168,7 +169,7 @@
     (testing "exact ground-truth event sequence"
       (is (= [:admission :admission :bed-swap] (mapv :event (clinical-events ground-truth)))))
     (testing "placements are exchanged"
-      (is (= (:location p2-admit) (get-in bed-swap [:swap (engine/patient-id-for seed 0) :to])))
+      (is (= (:location p2-admit) (get-in bed-swap [:swap (streams/patient-id-for seed 0) :to])))
       (is (= (:location p1-admit) (get-in bed-swap [:swap p2-id :to]))))
     (testing "exact rendered message sequence: A01 A01 A17"
       (is (= ["A01" "A01" "A17"]

@@ -165,7 +165,7 @@ originally a named gap this document's own determinism table below
 flagged as open) is checked the same way, from the other direction:
 `ehrt.sim-emit-fhir.emit-fhir-test/fhir-patient-id-and-active-mrn-resolve-to-the-same-hl7-identity`
 asserts that a FHIR `Patient.id` is the same `patient-id`
-`ehrt.sim-engine.engine/patient-id-for` assigns, and `Patient.identifier`
+`ehrt.sim-engine.streams/patient-id-for` assigns, and `Patient.identifier`
 carries the same active MRN that patient's own HL7 messages render as
 PID-3 — over 150 random runs, not merely by construction of one
 hand-picked demo.

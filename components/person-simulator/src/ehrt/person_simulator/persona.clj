@@ -9,7 +9,7 @@
   weights supplied).
 
   The newborn path draws FOUR, from the newborn's own `:person` stream
-  keyed by `ehrt.sim-engine.engine/newborn-id-tag`. Ruling A1 states
+  keyed by `ehrt.sim-engine.streams/newborn-id-tag`. Ruling A1 states
   the reason in one line -- *a newborn is not a sampled adult*:
   surname, address and phone come from the household, `:dob` from the
   delivery instant, `:payer` from the parent's current coverage, and

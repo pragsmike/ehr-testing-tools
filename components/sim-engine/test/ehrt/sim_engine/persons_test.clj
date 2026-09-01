@@ -21,7 +21,11 @@
   (:require [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
             [ehrt.patient-simulator.interface :as patient-simulator]
-            [ehrt.sim-engine.engine :as engine]
+            [ehrt.sim-engine.config :as config]
+            [ehrt.sim-engine.evolve :as evolve]
+            [ehrt.sim-engine.run :as run]
+            [ehrt.sim-engine.state :as state]
+            [ehrt.sim-engine.streams :as streams]
             [ehrt.sim-model.interface :as sim-model]))
 
 ;; --- the fixture population ----------------------------------------------
@@ -35,7 +39,7 @@
   "The t0 Persona of person `id-tag`, drawn the way `ehrt.sim.run` draws
   it: off the `:person` family, one stream per id-tag."
   [id-tag]
-  (sim-model/persona (engine/stream seed :person id-tag) {}))
+  (sim-model/persona (streams/stream seed :person id-tag) {}))
 
 (def ^:private pool
   {:population [{:person-id "p-a" :id-tag 1} {:person-id "p-b" :id-tag 2}]
@@ -78,7 +82,7 @@
 
 (defn- base [n] {:seed seed :patients n :arrival-gap 0 :pathway brief-pathway :facility facility})
 
-(defn- run-with-persons [n] (engine/run (assoc (base n) :persons persons)))
+(defn- run-with-persons [n] (run/run (assoc (base n) :persons persons)))
 
 (defn- of-kind [ground-truth kind] (filterv #(= kind (:event %)) ground-truth))
 
@@ -87,7 +91,7 @@
 (deftest persons-is-a-config-key-run-command-must-forward-test
   (testing "`:persons` joins `config-keys` in the same change that teaches
             `run` to read it -- that def's own docstring's law"
-    (is (contains? (set engine/config-keys) :persons))))
+    (is (contains? (set config/config-keys) :persons))))
 
 (deftest run-accepts-a-persons-payload-and-rejects-a-malformed-one-test
   (testing "a well-formed payload runs"
@@ -106,14 +110,14 @@
                          ["the AUTHORED config shape, not the engine one"
                           {:count 4 :years 10}]]]
       (testing label
-        (let [r (engine/run (assoc (base 2) :persons bad))]
+        (let [r (run/run (assoc (base 2) :persons bad))]
           (is (result/error? r) (str label " was accepted"))
           (is (= :invalid-persons (:category r)) label))))))
 
 ;; --- 2(a): ruling A1, selection -------------------------------------------
 
 (deftest each-arrival-binds-a-living-person-by-one-world-draw-test
-  (let [plan (engine/person-plan (assoc (base 8) :persons persons))
+  (let [plan (run/person-plan (assoc (base 8) :persons persons))
         bindings (:bindings plan)]
     (testing "every arrival ordinal got a binding, and they are real persons"
       (is (= 8 (count bindings)))
@@ -131,7 +135,7 @@
   ;; arrival instant is dead at it. Every arrival here is at t=0
   ;; (`:arrival-gap 0`), so a death at 0 excludes and a death at 1 does
   ;; not, and both directions are asserted.
-  (let [with-death (fn [t] (engine/person-plan
+  (let [with-death (fn [t] (run/person-plan
                             (assoc (base 8) :persons (assoc persons :alive {"p-b" t}))))
         dead (with-death 0)
         still-alive (with-death 1)]
@@ -152,8 +156,8 @@
   ;; so the run's LATER `:world` draws (bed allocation) move -- which is
   ;; the only observable a fixed-consumption claim can have.
   (let [empty-pool {:population [] :personas {} :alive {} :events []}
-        with-empty (engine/run (assoc (base 6) :persons empty-pool))
-        without (engine/run (base 6))]
+        with-empty (run/run (assoc (base 6) :persons empty-pool))
+        without (run/run (base 6))]
     (testing "both runs produced the same events for the same patients"
       (is (pos? (count (:ground-truth without))))
       (is (= (map :event (:ground-truth without)) (map :event (:ground-truth with-empty)))))
@@ -164,7 +168,7 @@
            not fixed, and a pool going empty would silently reshuffle nothing"))))
 
 (deftest a-second-arrival-of-the-same-person-resolves-to-the-same-patient-test
-  (let [plan (engine/person-plan (assoc (base 8) :persons persons))
+  (let [plan (run/person-plan (assoc (base 8) :persons persons))
         index (:person-index plan)
         r (run-with-persons 8)
         registered (of-kind (:ground-truth r) :registered)
@@ -270,7 +274,7 @@
                 :address (:address pa) :prior-address (:address pa)}
                {:event :residence-move :person-id "p-a" :t 7200 :event-id "p-a#1"
                 :address addr-b :prior-address (:address pa)}]
-        gt (:ground-truth (engine/run (assoc (base 4) :persons
+        gt (:ground-truth (run/run (assoc (base 4) :persons
                                              (assoc pool :events no-op
                                                     :population [{:person-id "p-a" :id-tag 1}]
                                                     :personas {"p-a" pa}))))
@@ -287,7 +291,7 @@
         lying [{:event :residence-move :person-id "p-a" :t 3600 :event-id "p-a#0"
                 :address addr-b
                 :prior-address {:street "nowhere" :city "nowhere" :state "ZZ" :zip "00000"}}]
-        gt (:ground-truth (engine/run (assoc (base 4) :persons
+        gt (:ground-truth (run/run (assoc (base 4) :persons
                                              (assoc pool :events lying
                                                     :population [{:person-id "p-a" :id-tag 1}]
                                                     :personas {"p-a" pa}))))
@@ -300,28 +304,28 @@
 
 (deftest evolve-writes-one-demographics-field-and-is-total-test
   (let [pa (get-in pool [:personas "p-a"])
-        seeded (engine/evolve (engine/initial-patient "PID-x" "MRN1")
+        seeded (evolve/evolve (state/initial-patient "PID-x" "MRN1")
                               {:event :registered :t 0 :persona pa})]
     (testing "seeded from the Persona"
       (is (= {:status :housed :address (:address pa)} (:residence (:demographics seeded)))))
     (testing "a residence delta writes exactly `:residence`"
-      (let [after (engine/evolve seeded {:event :demographic-update :t 1 :field :residence
+      (let [after (evolve/evolve seeded {:event :demographic-update :t 1 :field :residence
                                          :value {:status :unhoused}})]
         (is (= {:status :unhoused} (:residence (:demographics after))))
         (is (= (dissoc (:demographics seeded) :residence) (dissoc (:demographics after) :residence)))
         (is (= pa (:persona after)) "the t0 Persona was mutated")))
     (testing "a coverage change writes exactly `:payer`"
       (let [payer {:id "x" :name "X" :type :commercial}
-            after (engine/evolve seeded {:event :coverage-change :t 1 :payer payer})]
+            after (evolve/evolve seeded {:event :coverage-change :t 1 :payer payer})]
         (is (= payer (:payer (:demographics after))))
         (is (= (dissoc (:demographics seeded) :payer) (dissoc (:demographics after) :payer)))))
     (testing "and both are total over a patient that never registered -- a
               one-field demographic state would claim every OTHER field is
               unknown, which is worse than none"
-      (let [bare (engine/initial-patient "PID-y" "MRN2")]
-        (is (= bare (engine/evolve bare {:event :demographic-update :t 1
+      (let [bare (state/initial-patient "PID-y" "MRN2")]
+        (is (= bare (evolve/evolve bare {:event :demographic-update :t 1
                                          :field :residence :value {:status :unhoused}})))
-        (is (= bare (engine/evolve bare {:event :coverage-change :t 1 :payer {}})))))))
+        (is (= bare (evolve/evolve bare {:event :coverage-change :t 1 :payer {}})))))))
 
 ;; --- ruling C1: the compiled death, keyed by person -----------------------
 
@@ -354,8 +358,8 @@
   `:persons` present the Persona comes from the PERSON and
   `:persona-config` no longer reaches it."
   {:population (:population pool)
-   :personas {"p-a" (sim-model/persona (engine/stream seed :person 1) {:age-min 0 :age-max 0})
-              "p-b" (sim-model/persona (engine/stream seed :person 2) {:age-min 0 :age-max 0})}
+   :personas {"p-a" (sim-model/persona (streams/stream seed :person 1) {:age-min 0 :age-max 0})
+              "p-b" (sim-model/persona (streams/stream seed :person 2) {:age-min 0 :age-max 0})}
    :alive {}
    :events events})
 
@@ -371,7 +375,7 @@
                    :modules [(patient-simulator/singleton-closure death-module)]
                    :module-assignment [{:module-id "persons-death-mod" :weight 1}]
                    :module-horizon-days 1200)
-        plan (engine/person-plan (assoc cfg :persons newborn-pool))
+        plan (run/person-plan (assoc cfg :persons newborn-pool))
         deaths (:deaths plan)]
     (testing "the plan bound arrivals at all (R-empty-population-is-red)"
       (is (pos? (count (remove nil? (:bindings plan))))))
@@ -384,7 +388,7 @@
               what makes the alive-filter's conservatism safe"
       (is (every? #(<= 0 %) (vals deaths))))
     (testing "and with no `:persons` at all the plan binds nobody and keys nothing"
-      (let [bare (engine/person-plan cfg)]
+      (let [bare (run/person-plan cfg)]
         (is (every? nil? (:bindings bare)))
         (is (empty? (:person-index bare)))
         (is (empty? (:deaths bare)))))))
@@ -407,7 +411,7 @@
   moves them and the placements go red instead of quietly missing."
   [0 4620 8160 9900])
 
-(defn- p4-persona [id-tag] (sim-model/persona (engine/stream p4-seed :person id-tag) {}))
+(defn- p4-persona [id-tag] (sim-model/persona (streams/stream p4-seed :person id-tag) {}))
 
 (def ^:private p4-pool
   "ONE person, so every arrival binds to them and no `:world` draw
@@ -429,7 +433,7 @@
             :class :inpatient}]})
 
 (def ^:private p4-newborn-persona
-  (sim-model/persona (engine/stream p4-seed :person 4) {:age-min 0 :age-max 0}))
+  (sim-model/persona (streams/stream p4-seed :person 4) {:age-min 0 :age-max 0}))
 
 (defn- p4-window
   [n open-t until-t]
@@ -455,7 +459,7 @@
   every patient stays clinically idle and a hook has somewhere to land."
   ([events] (p4-run events {}))
   ([events extra]
-   (engine/run (merge {:seed p4-seed :patients 4 :arrival-gap 100
+   (run/run (merge {:seed p4-seed :patients 4 :arrival-gap 100
                        :pathway {:name "empty" :steps []}
                        :facility p4-facility
                        :persons (assoc p4-pool :events (vec events))}
@@ -477,11 +481,11 @@
   ;; R-empty-population-is-red's cousin: every placement below is a
   ;; number chosen against these instants, so this is the one assertion
   ;; that makes the rest of the file non-vacuous rather than lucky.
-  (let [plan (engine/person-plan {:seed p4-seed :patients 4 :arrival-gap 100})]
+  (let [plan (run/person-plan {:seed p4-seed :patients 4 :arrival-gap 100})]
     (is (= 4 (count (:bindings plan))))
     (is (= p4-arrivals
            (mapv :t (filter #(= :registered (:event %))
-                            (:ground-truth (engine/run {:seed p4-seed :patients 4 :arrival-gap 100
+                            (:ground-truth (run/run {:seed p4-seed :patients 4 :arrival-gap 100
                                                         :pathway {:name "empty" :steps []}
                                                         :facility p4-facility})))))
         "this fixture's pinned arrival instants moved -- every window placement below
@@ -500,7 +504,7 @@
     (let [ev (first ph)
           pid (:patient-id (first (:participants ev)))]
       (testing "it is an ADDITIONAL patient, at ordinal (+ patients k)"
-        (is (= (engine/patient-id-for p4-seed 4) pid)
+        (is (= (streams/patient-id-for p4-seed 4) pid)
             "the placeholder was not minted at ordinal (+ patients 0)")
         (is (= "MRN000005" (:active-mrn ev))
             "the MRN is not a function of the same ordinal"))
@@ -543,7 +547,7 @@
     (is (= 1 (count coincident))
         "arrival 1 (t 4620) is inside the window (1000, 6000) and did not register
          as a placeholder")
-    (is (= (engine/patient-id-for p4-seed 1)
+    (is (= (streams/patient-id-for p4-seed 1)
            (:patient-id (first (:participants (first coincident)))))
         "a coincident placeholder minted a NEW id space instead of using its own ordinal")
     (testing "and the identified arrival before it still minted the person's real patient"
@@ -576,7 +580,7 @@
                                    (p4-resolution 1 :merge "q-a#0" 200000)]))
         ph (first (placeholder-registrations gt))
         placeholder-id (:patient-id (first (:participants ph)))
-        survivor-id (engine/patient-id-for p4-seed 0)
+        survivor-id (streams/patient-id-for p4-seed 0)
         m (first (identification-merges gt))]
     (is (some? m) "the window resolved `:merge` and nothing was minted")
     (testing "the SURVIVOR is the person's prior patient and the MERGED is the placeholder"
@@ -657,11 +661,11 @@
         newborn (first (filter :mother-patient-id gt))]
     (is (some? newborn) "no newborn registered")
     (testing "ordinal (+ patients k), so id and MRN stay functions of an ordinal"
-      (is (= (engine/patient-id-for p4-seed 4)
+      (is (= (streams/patient-id-for p4-seed 4)
              (:patient-id (first (:participants newborn)))))
       (is (= "MRN000005" (:active-mrn newborn))))
     (testing "the mother-baby link names the parent's own patient"
-      (is (= (engine/patient-id-for p4-seed 0) (:mother-patient-id newborn)))
+      (is (= (streams/patient-id-for p4-seed 0) (:mother-patient-id newborn)))
       (is (some? (first (filter #(and (= :registered (:event %))
                                       (= (:mother-patient-id newborn)
                                          (:patient-id (first (:participants %)))))
@@ -679,7 +683,7 @@
 
 (deftest a-delivery-admits-the-parent-when-they-are-clinically-idle-test
   (let [gt (:ground-truth (p4-run p4-delivery))
-        parent-id (engine/patient-id-for p4-seed 0)
+        parent-id (streams/patient-id-for p4-seed 0)
         parent (filterv #(= parent-id (:patient-id (first (:participants %)))) gt)]
     (is (= [:registered :admission :discharge] (mapv :event parent)))
     (is (= "Delivery" (:reason (second parent))))
@@ -692,7 +696,7 @@
                                                :steps [{:type :admission :location "Renal"}
                                                        {:type :delay :from 600 :to 600}
                                                        {:type :discharge}]}}))
-          parent-id (engine/patient-id-for p4-seed 0)
+          parent-id (streams/patient-id-for p4-seed 0)
           parent (filterv #(= parent-id (:patient-id (first (:participants %)))) gt)]
       (is (= [:registered :admission :discharge] (mapv :event parent))
           "the parent got a second encounter, which no log may carry")
@@ -706,7 +710,7 @@
 (deftest an-occupational-injury-presents-at-the-ed-test
   (let [gt (:ground-truth (p4-run [{:event :occupational-injury :person-id "q-a" :t 30000
                                     :event-id "q-a#9" :injury-class :laceration}]))
-        pid (engine/patient-id-for p4-seed 0)
+        pid (streams/patient-id-for p4-seed 0)
         own (filterv #(= pid (:patient-id (first (:participants %)))) gt)]
     (is (= [:registered :admission :discharge] (mapv :event own)))
     (is (= "Occupational injury: laceration" (:reason (second own))))
@@ -722,7 +726,7 @@
                           ;; q-b is alive but never selectable: every arrival is
                           ;; at or after t 0 and this death fires at 0.
                           :alive {"q-b" 0})
-        gt (:ground-truth (engine/run
+        gt (:ground-truth (run/run
                            {:seed p4-seed :patients 4 :arrival-gap 100
                             :pathway {:name "empty" :steps []}
                             :facility p4-facility
@@ -737,7 +741,7 @@
                           :population [{:person-id "q-a" :id-tag 1} {:person-id "q-b" :id-tag 2}]
                           :personas {"q-a" (p4-persona 1) "q-b" (p4-persona 2)}
                           :alive {"q-b" 20000})
-        gt (:ground-truth (engine/run
+        gt (:ground-truth (run/run
                            {:seed p4-seed :patients 1 :arrival-gap 100
                             :pathway {:name "empty" :steps []}
                             :facility p4-facility
@@ -746,7 +750,7 @@
                                               :event-id "q-b#0" :injury-class :fracture}])}))
         minted (first (hook-admissions gt))]
     (is (some? minted) "an unbound person's injury minted no patient at all")
-    (is (= (engine/patient-id-for p4-seed 1)
+    (is (= (streams/patient-id-for p4-seed 1)
            (:patient-id (first (:participants minted))))
         "the minted patient did not take ordinal (+ patients 0)")
     (is (= "Occupational injury: fracture" (:reason minted)))))
@@ -805,11 +809,11 @@
       (is (= 1 (count (filter #(= :admission (:event %)) gt))))
       (is (= 1 (count (filter #(= :discharge (:event %)) gt)))))
     (testing "the fold index resolves the person to that one patient"
-      (let [index (:person-index (engine/person-plan
+      (let [index (:person-index (run/person-plan
                                   {:seed p4-seed :patients 4 :arrival-gap 100
                                    :persons (assoc p4-pool :events [])}))]
         (is (= 1 (count index)))
-        (is (= (engine/patient-id-for p4-seed 0) (:patient-id (get index "q-a"))))
+        (is (= (streams/patient-id-for p4-seed 0) (:patient-id (get index "q-a"))))
         (is (= 0 (:first-ordinal (get index "q-a"))))))))
 
 ;; --- the two population-scale defects, gated as units --------------------
@@ -867,7 +871,7 @@
                                               {:patient-ordinal 1 :pathway {:name "empty" :steps []}}
                                               {:patient-ordinal 2 :pathway {:name "empty" :steps []}}
                                               {:patient-ordinal 3 :pathway {:name "empty" :steps []}}]}))
-        survivor-id (engine/patient-id-for p4-seed 0)]
+        survivor-id (streams/patient-id-for p4-seed 0)]
     (testing "the survivor really did expire before the window closed"
       (let [death (first (filter #(and (= :discharge (:event %)) (= :expired (:disposition %))) gt))]
         (is (some? death) "the fixture's expiring pathway produced no expired discharge")

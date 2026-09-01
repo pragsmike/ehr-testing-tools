@@ -15,7 +15,7 @@
   Fixed consumption is a law here, not an aspiration: every hazard
   draws its per-interval variate whether or not the event fires, and
   every branch draws whether or not it is taken -- the same law
-  `ehrt.sim-engine.engine/assign-pathway`, `ehrt.sim-engine.churn/
+  `ehrt.sim-engine.assignment/assign-pathway`, `ehrt.sim-engine.churn/
   roll-gap` and `ehrt.sim-model.persona/persona`'s own 13-draw
   contract already state."
   (:require [ehrt.person-simulator.clock :as clock]))

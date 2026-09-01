@@ -23,7 +23,8 @@
   (:require [clojure.test :refer [deftest is testing]]
             [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim-check.check :as check]
-            [ehrt.sim-engine.engine :as engine]))
+            [ehrt.sim-engine.run :as run]
+            [ehrt.sim-engine.streams :as streams]))
 
 (def ^:private seed 15)
 
@@ -38,7 +39,7 @@
   "ONE person, so every one of the four arrivals binds to them and three
   of the four are REPEATS -- the population this sweep exists for."
   {:population [{:person-id "q-a" :id-tag 1}]
-   :personas {"q-a" (sim-model/persona (engine/stream seed :person 1) {})}
+   :personas {"q-a" (sim-model/persona (streams/stream seed :person 1) {})}
    :alive {}
    :events []})
 
@@ -65,16 +66,16 @@
             spelled out here rather than trusted -- a change to it is a
             change to every visit number every consumer has persisted"
     (is (= (format "ENC-%06d-%02d-%08x" 7 2
-                   (bit-and (engine/mix64 (engine/mix64 seed 7) 2) 0xffffffff))
-           (engine/encounter-id-for seed 7 2))))
+                   (bit-and (streams/mix64 (streams/mix64 seed 7) 2) 0xffffffff))
+           (streams/encounter-id-for seed 7 2))))
   (testing "distinct across every axis, and stable"
-    (is (= (engine/encounter-id-for seed 7 2) (engine/encounter-id-for seed 7 2)))
-    (is (not= (engine/encounter-id-for seed 7 2) (engine/encounter-id-for seed 7 3)))
-    (is (not= (engine/encounter-id-for seed 7 2) (engine/encounter-id-for seed 8 2)))
-    (is (not= (engine/encounter-id-for seed 7 2) (engine/encounter-id-for (inc seed) 7 2))))
+    (is (= (streams/encounter-id-for seed 7 2) (streams/encounter-id-for seed 7 2)))
+    (is (not= (streams/encounter-id-for seed 7 2) (streams/encounter-id-for seed 7 3)))
+    (is (not= (streams/encounter-id-for seed 7 2) (streams/encounter-id-for seed 8 2)))
+    (is (not= (streams/encounter-id-for seed 7 2) (streams/encounter-id-for (inc seed) 7 2))))
   (testing "the prefix is its own id space -- never confusable with a
             patient-id or an MRN"
-    (is (re-matches #"ENC-\d{6}-\d{2}-[0-9a-f]{8}" (engine/encounter-id-for seed 7 2)))))
+    (is (re-matches #"ENC-\d{6}-\d{2}-[0-9a-f]{8}" (streams/encounter-id-for seed 7 2)))))
 
 (deftest minting-draws-nothing
   (testing "ruling B1's whole reason: identity generation adds no draw
@@ -82,8 +83,8 @@
             `:encounters` on produces the SAME events at the SAME
             instants when no second encounter is available to open"
     (let [cfg {:seed 42 :patients 6}
-          dark (:ground-truth (engine/run cfg))
-          on (:ground-truth (engine/run (assoc cfg :encounters true)))]
+          dark (:ground-truth (run/run cfg))
+          on (:ground-truth (run/run (assoc cfg :encounters true)))]
       (is (= (count dark) (count on)))
       (is (= (pr-str dark) (pr-str (mapv #(dissoc % :encounter-id) on)))
           "with no repeat arrival to open a second encounter, the stamp is
@@ -95,7 +96,7 @@
   (testing "ADR-0174's opt-in law, the same one `:persons` and
             `:churn-profile` already establish: ABSENT means today, not
             `false`, not nil"
-    (let [r (engine/run (base brief-pathway []))
+    (let [r (run/run (base brief-pathway []))
           gt (:ground-truth r)]
       (is (not-any? #(contains? % :encounter-id) gt)
           "no `:encounter-id` is minted anywhere without the opt-in")
@@ -108,8 +109,8 @@
             -- which is what keeps `admission-only-when-no-open-
             encounter` a real predicate on a corpus generated before
             this sweep existed, rather than a vacuously-true one"
-    (let [r (engine/run (base brief-pathway []))
-          pid (engine/patient-id-for seed 0)
+    (let [r (run/run (base brief-pathway []))
+          pid (streams/patient-id-for seed 0)
           final (last (get (:state-history r) pid))]
       (is (nil? (:encounter final)) "closed by the discharge")
       (is (= 1 (count (:encounters final))))
@@ -119,8 +120,8 @@
 ;; --- the fold: two fields added, seven left exactly where they were ------
 
 (deftest the-open-encounter-is-a-thin-record-and-the-projection-stays-put
-  (let [r (engine/run (assoc (base brief-pathway []) :encounters true))
-        pid (engine/patient-id-for seed 0)
+  (let [r (run/run (assoc (base brief-pathway []) :encounters true))
+        pid (streams/patient-id-for seed 0)
         history (get (:state-history r) pid)
         admitted (first (filter #(= :admitted (:status %)) history))]
     (testing "the OPEN record carries id, ordinal and the opener's instant"
@@ -149,12 +150,12 @@
   (testing "ADR-0174 section 2(a) item 4: the `:expired` arm is
             untouched, because the body stays in the bed -- which is
             exactly what `expired-patient-retains-location` asserts"
-    (let [r (engine/run (assoc (base {:name "dies"
+    (let [r (run/run (assoc (base {:name "dies"
                                       :steps [{:type :admission :location "Renal"}
                                               {:type :discharge :disposition :expired}]}
                                      [])
                                :encounters true))
-          pid (engine/patient-id-for seed 0)
+          pid (streams/patient-id-for seed 0)
           final (last (get (:state-history r) pid))]
       (is (= :expired (:status final)))
       (is (some? (:encounter final)) "still open")
@@ -168,16 +169,16 @@
             `repeat-arrivals-resolve-and-queue-nothing-without-the-
             encounters-opt-in-test` still gates
             on the absent path"
-    (let [gt (:ground-truth (engine/run (assoc (base brief-pathway []) :encounters true)))]
+    (let [gt (:ground-truth (run/run (assoc (base brief-pathway []) :encounters true)))]
       (is (pos? (count (of-kind gt :admission))))
       (is (= 3 (count (of-kind gt :admission)))
           "arrivals at 0, 4620 and 8160 each open one; the fourth is the
            guard's own case, below")
       (is (= 3 (count (of-kind gt :discharge))))
       (is (= 3 (count (ids gt))) "three encounters, three distinct ids")
-      (is (= [(engine/encounter-id-for seed 0 0)
-              (engine/encounter-id-for seed 0 1)
-              (engine/encounter-id-for seed 0 2)]
+      (is (= [(streams/encounter-id-for seed 0 0)
+              (streams/encounter-id-for seed 0 1)
+              (streams/encounter-id-for seed 0 2)]
              (ids gt))
           "and the ordinals count that patient's own encounters, in order")
       (is (= :ok (:status (check/check-all gt facility)))))))
@@ -189,7 +190,7 @@
             not just its admission, because a delay and a discharge
             queued behind an admission that did not happen would close
             the wrong encounter"
-    (let [gt (:ground-truth (engine/run (assoc (base brief-pathway []) :encounters true)))]
+    (let [gt (:ground-truth (run/run (assoc (base brief-pathway []) :encounters true)))]
       (is (= 3 (count (of-kind gt :admission))) "four arrivals, three encounters")
       (is (= 3 (count (of-kind gt :discharge)))
           "and no orphan discharge -- the whole arrival is prepended or none of it is"))))
@@ -199,7 +200,7 @@
             ENCOUNTER design rather than a duplicate-patient one.
             `registered-is-every-patients-first-event` is UNCHANGED and
             is asserted here to still hold"
-    (let [gt (:ground-truth (engine/run (assoc (base brief-pathway []) :encounters true)))]
+    (let [gt (:ground-truth (run/run (assoc (base brief-pathway []) :encounters true)))]
       (is (= 1 (count (of-kind gt :registered))) "one person, one patient, one registration")
       (is (empty? (check/registered-is-every-patients-first-event gt)))
       (is (= 1 (count (distinct (map (comp :patient-id first :participants) gt))))
@@ -217,11 +218,11 @@
                     {:event :occupational-injury :person-id "q-a" :t 200000
                      :event-id "q-a#2" :injury-class :burn}]
           cfg (base {:name "empty" :steps []} injuries)
-          dark (:ground-truth (engine/run cfg))
-          on (:ground-truth (engine/run (assoc cfg :encounters true)))]
+          dark (:ground-truth (run/run cfg))
+          on (:ground-truth (run/run (assoc cfg :encounters true)))]
       (is (= 1 (count (of-kind dark :admission))) "the second hook hit the wall")
       (is (= 2 (count (of-kind on :admission))))
-      (is (= [(engine/encounter-id-for seed 0 0) (engine/encounter-id-for seed 0 1)]
+      (is (= [(streams/encounter-id-for seed 0 0) (streams/encounter-id-for seed 0 1)]
              (ids on))
           "and BOTH openers mint -- a hook-driven encounter is an encounter")
       (is (= 1 (count (of-kind on :registered))))
@@ -230,7 +231,7 @@
 ;; --- the stamp -----------------------------------------------------------
 
 (deftest every-event-of-an-encounter-carries-its-id-and-nothing-else-does
-  (let [gt (:ground-truth (engine/run (assoc (base brief-pathway []) :encounters true)))
+  (let [gt (:ground-truth (run/run (assoc (base brief-pathway []) :encounters true)))
         by-kind (group-by :event gt)]
     (testing "an opener mints, a closer carries the encounter it closes"
       (is (every? :encounter-id (:admission by-kind)))
@@ -257,5 +258,5 @@
                                   :event-id "q-a#1" :injury-class :strain}
                                  {:event :occupational-injury :person-id "q-a" :t 200000
                                   :event-id "q-a#2" :injury-class :burn}])]]]
-      (let [r (check/check-all (:ground-truth (engine/run (assoc cfg :encounters true))) facility)]
+      (let [r (check/check-all (:ground-truth (run/run (assoc cfg :encounters true))) facility)]
         (is (= :ok (:status r)) (str label ": " (pr-str (:violations (:payload r)))))))))

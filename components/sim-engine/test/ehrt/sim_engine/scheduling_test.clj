@@ -27,7 +27,9 @@
   commit provable rather than believed."
   (:require [clojure.test :refer [deftest is testing]]
             [ehrt.sim-check.check :as check]
-            [ehrt.sim-engine.engine :as engine]))
+            [ehrt.sim-engine.config :as config]
+            [ehrt.sim-engine.run :as run]
+            [ehrt.sim-engine.streams :as streams]))
 
 (def ^:private seed 4242)
 
@@ -61,7 +63,7 @@
           :pathway admit-discharge :encounters true}
          extra))
 
-(defn- gt [opts] (:ground-truth (engine/run opts)))
+(defn- gt [opts] (:ground-truth (run/run opts)))
 
 (defn- of-kind [log k] (filterv #(= k (:event %)) log))
 
@@ -92,15 +94,15 @@
 (deftest appointment-id-is-a-pure-function-of-seed-ordinal-and-ordinal
   (testing "`appointment-id-for` is deterministic, distinct per argument,
             and carries a fourth prefix that no other id space uses"
-    (is (= (engine/appointment-id-for 1 2 3) (engine/appointment-id-for 1 2 3)))
-    (is (not= (engine/appointment-id-for 1 2 3) (engine/appointment-id-for 2 2 3)))
-    (is (not= (engine/appointment-id-for 1 2 3) (engine/appointment-id-for 1 3 3)))
-    (is (not= (engine/appointment-id-for 1 2 3) (engine/appointment-id-for 1 2 4)))
-    (is (.startsWith ^String (engine/appointment-id-for 1 2 3) "APT-"))
+    (is (= (streams/appointment-id-for 1 2 3) (streams/appointment-id-for 1 2 3)))
+    (is (not= (streams/appointment-id-for 1 2 3) (streams/appointment-id-for 2 2 3)))
+    (is (not= (streams/appointment-id-for 1 2 3) (streams/appointment-id-for 1 3 3)))
+    (is (not= (streams/appointment-id-for 1 2 3) (streams/appointment-id-for 1 2 4)))
+    (is (.startsWith ^String (streams/appointment-id-for 1 2 3) "APT-"))
     (testing "and is NOT the encounter id for the same two ordinals -- the
               two spaces are minted from one mix and must not collide"
-      (is (not= (subs (engine/appointment-id-for 7 2 3) 4)
-                (subs (engine/encounter-id-for 7 2 3) 4))))))
+      (is (not= (subs (streams/appointment-id-for 7 2 3) 4)
+                (subs (streams/encounter-id-for 7 2 3) 4))))))
 
 (deftest appointment-ordinals-are-never-reused
   (testing "a terminal appointment stays in `:appointments`, so its
@@ -158,7 +160,7 @@
 ;; --- THE STATE HALF ------------------------------------------------------
 
 (deftest one-open-appointment-record-per-patient
-  (let [r (engine/run (base :patients 60 :scheduling scheduling))
+  (let [r (run/run (base :patients 60 :scheduling scheduling))
         states (vals (:state-history r))]
     (is (pos? (count states)))
     (testing "every fold produces at most ONE open appointment at a time"
@@ -174,7 +176,7 @@
 (deftest a-kept-appointment-is-closed-by-the-encounter-not-by-an-event
   (testing "\"kept\" is not an event -- it IS the encounter happening --
             so the opener's own fold is what writes the terminal"
-    (let [r (engine/run (base :patients 60 :scheduling scheduling))
+    (let [r (run/run (base :patients 60 :scheduling scheduling))
           finals (map last (vals (:state-history r)))
           kept (filter #(= :kept (:outcome %)) (mapcat :appointments finals))]
       (is (pos? (count kept)))
@@ -430,7 +432,7 @@
       (is (empty? (check/registered-is-every-patients-first-event log))))))
 
 (deftest a-scheduled-run-self-checks-clean
-  (let [r (engine/run (base :patients 60 :bed-cycle true :scheduling scheduling))
+  (let [r (run/run (base :patients 60 :bed-cycle true :scheduling scheduling))
         checked (check/check-all (:ground-truth r) facility 0)]
     (is (= :ok (:status checked))
         (str "self-check must be green: " (pr-str (:payload checked))))))
@@ -440,13 +442,13 @@
 (deftest malformed-scheduling-is-a-result-not-a-throw
   (testing "the same guard-clause-at-entry shape :invalid-persons and
             :invalid-seed already have"
-    (let [bad (engine/run (base :scheduling {:scheduled-fraction 0.5}))]
+    (let [bad (run/run (base :scheduling {:scheduled-fraction 0.5}))]
       (is (= :error (:status bad)))
       (is (= :invalid-scheduling (:category bad))))))
 
 (deftest outcome-rates-summing-past-one-are-refused
   (testing "the three rates are BANDS of one uniform, so a config summing
             past 1 would silently starve the last band rather than fail"
-    (is (not (engine/valid-scheduling?
+    (is (not (config/valid-scheduling?
               (assoc scheduling :no-show-rate 0.5 :reschedule-rate 0.4 :cancel-rate 0.3))))
-    (is (engine/valid-scheduling? scheduling))))
+    (is (config/valid-scheduling? scheduling))))

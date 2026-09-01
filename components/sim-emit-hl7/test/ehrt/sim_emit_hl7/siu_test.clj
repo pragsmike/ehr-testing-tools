@@ -25,7 +25,9 @@
   property: absent `:siu` is `emit`, byte for byte."
   (:require [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
-            [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]
+            [ehrt.sim-emit-hl7.emit :as emit]
+            [ehrt.sim-emit-hl7.registry :as registry]
+            [ehrt.sim-emit-hl7.segments :as segments]
             [ehrt.sim-emit-hl7.v2-replay :as v2-replay]
             [ehrt.sim-engine.interface :as engine]
             [ehrt.sim-model.interface :as sim-model]))
@@ -103,7 +105,7 @@
 (defn- wire
   ([siu] (wire siu {} nil))
   ([siu offsets site-profile]
-   (emit-hl7/emit-wire log ref-date utc-offset facility providers site-profile offsets
+   (emit/emit-wire log ref-date utc-offset facility providers site-profile offsets
                        {:siu siu})))
 
 (defn- msh-9 [m] (nth (str/split (first (str/split m #"\r")) #"\|") 8))
@@ -125,67 +127,67 @@
 (deftest the-four-scheduling-kinds-have-registry-entries
   (testing "the entries themselves -- the whole of what the jar settles is that
             S12/S14/S15/S26 are legal v2.4 triggers resolving to one structure"
-    (is (= {:type "SIU" :trigger "S12"} (emit-hl7/message-type-registry :appointment)))
-    (is (= {:type "SIU" :trigger "S14"} (emit-hl7/message-type-registry :reschedule)))
-    (is (= {:type "SIU" :trigger "S15"} (emit-hl7/message-type-registry :appointment-cancel)))
-    (is (= {:type "SIU" :trigger "S26"} (emit-hl7/message-type-registry :no-show))))
+    (is (= {:type "SIU" :trigger "S12"} (registry/message-type-registry :appointment)))
+    (is (= {:type "SIU" :trigger "S14"} (registry/message-type-registry :reschedule)))
+    (is (= {:type "SIU" :trigger "S15"} (registry/message-type-registry :appointment-cancel)))
+    (is (= {:type "SIU" :trigger "S26"} (registry/message-type-registry :no-show))))
   (testing "S14 IS THE EVENT CONTRACT'S OWN CHOICE, pinned here so a later reading of
             HL7 Table 0003 -- which is in NO jar on any classpath in this tree -- is a
             deliberate contract change and not a quiet edit. `event-schema`'s
             `:reschedule` doc says SIU^S14 at 1.7.0; `notes/adr/0174-*.md`:697 says S13
             and is the lone surface that disagrees."
-    (is (= "S14" (:trigger (emit-hl7/message-type-registry :reschedule)))))
+    (is (= "S14" (:trigger (registry/message-type-registry :reschedule)))))
   (testing "the kind set is DERIVED, never listed twice"
     (is (= #{:appointment :reschedule :appointment-cancel :no-show}
-           emit-hl7/siu-event-kinds)))
+           registry/siu-event-kinds)))
   (testing "and all four are SKELETON families, so `gate v2` gates every SIU in FULL
             with no list for anyone to widen"
     (doseq [t ["SIU^S12" "SIU^S14" "SIU^S15" "SIU^S26"]]
-      (is (contains? emit-hl7/skeleton-message-types t) t))))
+      (is (contains? registry/skeleton-message-types t) t))))
 
 (deftest an-siu-registry-entry-does-not-mean-unconditional-rendering
   (testing "every OTHER entry in the registry renders whenever its event occurs; these
             four render only when `:siu` asks. That asymmetry is the whole mechanism
             behind `absent = today byte-for-byte`, and it is asserted rather than
             described because nothing else in this namespace has it."
-    (doseq [kind emit-hl7/siu-event-kinds]
-      (is (some? (emit-hl7/message-type-registry kind)) kind)
-      (is (false? (emit-hl7/siu-renders? nil kind)) kind))))
+    (doseq [kind registry/siu-event-kinds]
+      (is (some? (registry/message-type-registry kind)) kind)
+      (is (false? (registry/siu-renders? nil kind)) kind))))
 
 ;; --- the config shape, and its DEFAULTS, stated as assertions ----------
 
 (deftest siu-renders-defaults-and-the-optional-allow-list
   (testing "absent/nil is OFF"
-    (is (false? (emit-hl7/siu-renders? nil :appointment))))
+    (is (false? (registry/siu-renders? nil :appointment))))
   (testing "`{}` is ON FOR ALL FOUR -- the key's presence IS the opt-in, unlike
             `:ladders`/`:chatter`/`:charges`, whose `{}` is off because their settings
             are what make them do anything"
-    (doseq [kind emit-hl7/siu-event-kinds]
-      (is (true? (emit-hl7/siu-renders? {} kind)) kind)))
+    (doseq [kind registry/siu-event-kinds]
+      (is (true? (registry/siu-renders? {} kind)) kind)))
   (testing "`:triggers` narrows it, in ENGINE vocabulary and never HL7 trigger strings"
-    (is (true? (emit-hl7/siu-renders? {:triggers [:no-show]} :no-show)))
-    (is (false? (emit-hl7/siu-renders? {:triggers [:no-show]} :appointment)))
-    (is (false? (emit-hl7/siu-renders? {:triggers ["S26"]} :no-show))
+    (is (true? (registry/siu-renders? {:triggers [:no-show]} :no-show)))
+    (is (false? (registry/siu-renders? {:triggers [:no-show]} :appointment)))
+    (is (false? (registry/siu-renders? {:triggers ["S26"]} :no-show))
         "an HL7 trigger string names no kind and therefore allows nothing"))
   (testing "and it never speaks for a kind outside the family"
-    (is (false? (emit-hl7/siu-renders? {} :admission)))
-    (is (false? (emit-hl7/siu-renders? {:triggers [:admission]} :admission)))))
+    (is (false? (registry/siu-renders? {} :admission)))
+    (is (false? (registry/siu-renders? {:triggers [:admission]} :admission)))))
 
 ;; --- the identity half: absent `:siu` is what this emitter rendered
 ;; before ruling B1's third tranche existed ------------------------------
 
 (deftest absent-and-nil-siu-are-the-byte-identical-path
-  (let [plain (emit-hl7/emit log ref-date utc-offset facility providers)]
-    (is (= plain (emit-hl7/emit-wire log ref-date utc-offset facility providers nil {})))
-    (is (= plain (emit-hl7/emit-wire log ref-date utc-offset facility providers nil {} {})))
+  (let [plain (emit/emit log ref-date utc-offset facility providers)]
+    (is (= plain (emit/emit-wire log ref-date utc-offset facility providers nil {})))
+    (is (= plain (emit/emit-wire log ref-date utc-offset facility providers nil {} {})))
     (is (= plain (wire nil)))
     (testing "and the log really does carry appointments, or the claim above is vacuous
               (`rulings.md#R-empty-population-is-red`)"
-      (is (= 6 (count (filter #(contains? emit-hl7/siu-event-kinds (:event %)) log))))
+      (is (= 6 (count (filter #(contains? registry/siu-event-kinds (:event %)) log))))
       (is (empty? (filter siu? plain))))))
 
 (deftest turning-siu-on-adds-siu-messages-and-moves-nothing-else
-  (let [plain (emit-hl7/emit log ref-date utc-offset facility providers)
+  (let [plain (emit/emit log ref-date utc-offset facility providers)
         on (wire {})]
     (testing "every non-SIU message is byte-equal AND in the same relative order"
       (is (= plain (filterv (complement siu?) on))))
@@ -304,8 +306,8 @@
     (testing "`control-id-for` agrees with what the wire actually renders, which is the
               contract `sim identifiers` depends on"
       (is (= (mapv msh-10 siu)
-             (mapv emit-hl7/control-id-for
-                   (filterv #(contains? emit-hl7/siu-event-kinds (:event %)) log)))))))
+             (mapv segments/control-id-for
+                   (filterv #(contains? registry/siu-event-kinds (:event %)) log)))))))
 
 (deftest an-siu-takes-its-own-event-s-latency-offset
   (testing "unlike a ladder rung, an SIU has no basis message to borrow a lag from: it IS
@@ -357,8 +359,8 @@
 
 (deftest a-real-scheduling-run-renders-all-four-triggers-and-no-pv1-anywhere
   (let [{:keys [ground-truth facility providers]} (engine/run scheduling-run)
-        plain (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
-        on (emit-hl7/emit-wire ground-truth ref-date utc-offset facility providers nil {}
+        plain (emit/emit ground-truth ref-date utc-offset facility providers)
+        on (emit/emit-wire ground-truth ref-date utc-offset facility providers nil {}
                                {:siu {}})
         siu (filterv siu? on)
         families (frequencies (map msh-9 siu))]
@@ -379,22 +381,22 @@
               goes red the engine started stamping a mid-stay booking, which is a
               CHANGE and not a break -- re-measure, do not delete."
       (is (empty? (filter #(some? (:encounter-id %))
-                          (filter #(contains? emit-hl7/siu-event-kinds (:event %))
+                          (filter #(contains? registry/siu-event-kinds (:event %))
                                   ground-truth))))
       (is (every? #(= ["MSH" "SCH" "PID"] (segment-ids %)) siu)))
     (testing "MSH-10 is unique across the whole population's wire"
       (is (= (count on) (count (distinct (map msh-10 on))))))
     (testing "and every SIU event this emitter consumes still conforms to the contract --
               the four kinds did not move, only their rendering did"
-      (doseq [event (filter #(contains? emit-hl7/siu-event-kinds (:event %)) ground-truth)]
+      (doseq [event (filter #(contains? registry/siu-event-kinds (:event %)) ground-truth)]
         (is (engine/valid-event? event) (pr-str (engine/explain-event event)))))))
 
 (deftest siu-on-with-scheduling-off-renders-nothing-and-moves-nothing
   (testing "the key is emission, not generation: `:siu` creates no event, so a run with
             no `:scheduling` has nothing to render and is byte-identical with it on"
     (let [{:keys [ground-truth facility providers]} (engine/run {:seed 11 :patients 6})
-          plain (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
-          on (emit-hl7/emit-wire ground-truth ref-date utc-offset facility providers nil {}
+          plain (emit/emit ground-truth ref-date utc-offset facility providers)
+          on (emit/emit-wire ground-truth ref-date utc-offset facility providers nil {}
                                  {:siu {}})]
       (is (seq plain))
       (is (= plain on)))))

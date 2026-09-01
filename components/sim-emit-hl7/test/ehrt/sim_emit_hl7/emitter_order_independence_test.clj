@@ -20,7 +20,7 @@
   ever introduced, might not fail every single run."
   (:require [clojure.test :refer [deftest is testing]]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]
-            [ehrt.sim-engine.engine :as engine]))
+            [ehrt.sim-engine.run :as run]))
 
 (def ref-date "2024-01-01")
 (def utc-offset "+00:00")
@@ -88,8 +88,8 @@
     (is (= providers-a providers-b)))
   (testing "same seed, structurally-equal-but-differently-built facility/provider
             config -> byte-identical ground truth and byte-identical ER7"
-    (let [run-a (engine/run {:seed 42 :patients 5 :facility facility-a :providers providers-a})
-          run-b (engine/run {:seed 42 :patients 5 :facility facility-b :providers providers-b})]
+    (let [run-a (run/run {:seed 42 :patients 5 :facility facility-a :providers providers-a})
+          run-b (run/run {:seed 42 :patients 5 :facility facility-b :providers providers-b})]
       (is (= (:ground-truth run-a) (:ground-truth run-b)))
       (is (= (:providers run-a) (:providers run-b)))
       (is (= (emit-hl7/emit (:ground-truth run-a) ref-date utc-offset (:facility run-a) (:providers run-a))

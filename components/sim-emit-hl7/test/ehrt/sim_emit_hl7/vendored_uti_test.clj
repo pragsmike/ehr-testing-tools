@@ -11,7 +11,7 @@
   throw this file's own previous version pinned (ADR-0030 J3); UTI's
   own lookup-table entry path (`lookup_table_transition`, H2) was a
   SECOND engine-closure gap the same pinning session found live --
-  `engine.clj`'s bare 5-arity `run-module` call never threaded a
+  `decide.clj`'s bare 5-arity `run-module` call never threaded a
   `tables` map through either. This session's own AR-2/AR-3 close
   BOTH: the closure's real `:modules` AND `:tables` maps now reach
   `run-module`'s full arity.
@@ -19,7 +19,7 @@
   Dated note (2026-08-04, ADR-0042 AR-4, Wave H pre-roll -- closes the
   ADR-0033/0034 straddle linkage below, RETIRING seed 777): this
   closure's own mandatory Care Pathways Encounter reliably straddles
-  `engine.clj`'s own fixed registration-t anchor for most seeds (opens
+  `decide.clj`'s own fixed registration-t anchor for most seeds (opens
   in history, closes in horizon) -- a real, disclosed gap in the LEGACY
   (`:history` absent) path, where a straddling encounter's own opening
   drops as a pre-horizon fact but its closing compiles for real, an
@@ -38,7 +38,7 @@
             [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
             [ehrt.patient-simulator.gmf :as gmf]
-            [ehrt.sim-engine.engine :as engine]
+            [ehrt.sim-engine.run :as run]
             [ehrt.sim-check.check :as check]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]))
 
@@ -84,7 +84,7 @@
             closure's own CallSubmodule care-pathway content, and the
             lookup-table entry path (H2) resolves correctly through the
             engine too -- real compiled clinical content lands"
-    (let [{:keys [ground-truth] :as result} (engine/run run-config)
+    (let [{:keys [ground-truth] :as result} (run/run run-config)
           kinds (into #{} (map :event) ground-truth)]
       (is (some #{:condition-onset :encounter :encounter-end :medication-order} kinds)
           (str "expected real compiled clinical content across 300 patients, got " kinds))

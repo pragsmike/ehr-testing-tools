@@ -126,7 +126,7 @@
   ARC 4 SWEEP 5 (ADR-0175 design (g)): the MLLP sink reads this to
   state its own ACK pairing law -- MSA-2 must echo the MSH-10 of the
   message at the same POSITION. It is deliberately not used as a KEY
-  anywhere: `ehrt.sim-emit-hl7.emit-hl7/control-id-for` is known
+  anywhere: `ehrt.sim-emit-hl7.segments/control-id-for` is known
   non-injective over `:result-available`
   (`roadmap.md#oru-control-id-collision`), so two messages in one
   shipped corpus can carry the same value here."

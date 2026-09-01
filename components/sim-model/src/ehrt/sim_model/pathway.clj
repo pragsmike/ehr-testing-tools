@@ -84,7 +84,7 @@
   RULING Q2+Q3: 'supplies the OBX reference-range/abnormal-flag
   inputs'), populated only for a table-sourced (`vital_sign`-field)
   value, absent otherwise, the SAME optional-field shape
-  ehrt.sim-engine.engine/ObservationRecord already establishes for
+  ehrt.sim-engine.state/ObservationRecord already establishes for
   :result-available's own richer per-analyte record. Every field but
   :codes is optional, so a hand-authored :observation step written
   before this wave (:codes only, or :codes+:value+:unit) validates
@@ -285,7 +285,7 @@
   member ({:pathway :weight}, a sampled mixture across the patient
   population) OR an explicit per-patient override ({:patient-ordinal
   :pathway}, a scripted assignment for a specific arrival), never both
-  at once. `ehrt.sim-engine.engine/run`'s degenerate case -- today's
+  at once. `ehrt.sim-engine.run/run`'s degenerate case -- today's
   single :pathway config -- is a :pathways vector of exactly one
   weighted entry with :weight 1, unchanged behavior for every other
   entry shape."

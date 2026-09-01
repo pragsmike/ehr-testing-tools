@@ -27,7 +27,7 @@
   - `fhir-bundle-patient1.json` -- ONE patient's bundle out of the
     `--emit fhir` envelope's `{patient-id -> Bundle}` map, pretty JSON.
     Patient 1 is the lowest patient ordinal, and the ids sort by it
-    (`PID-<ordinal6>-<hash>`, `ehrt.sim-engine.engine/patient-id-for`),
+    (`PID-<ordinal6>-<hash>`, `ehrt.sim-engine.streams/patient-id-for`),
     so `first`-of-`sort` names it without a literal id here that would
     silently stop matching if the run changed.
 

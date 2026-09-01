@@ -45,7 +45,7 @@
             [ehrt.kernel.interface :as result]
             [ehrt.patient-simulator.gmf :as gmf]
             [ehrt.patient-simulator.interface :as patient-simulator]
-            [ehrt.sim-engine.engine :as engine]
+            [ehrt.sim-engine.run :as run]
             [ehrt.sim-check.check :as check]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]))
 
@@ -77,7 +77,7 @@
                          :modules [colorectal-closure]
                          :module-assignment [{:module-id "colorectal-cancer" :weight 1}]
                          :module-horizon-days 36500}
-            {:keys [ground-truth facility providers] :as result} (engine/run run-config)
+            {:keys [ground-truth facility providers] :as result} (run/run run-config)
             kinds (into #{} (map :event) ground-truth)]
         (is (some #{:outpatient-visit :outpatient-visit-end :observation :procedure} kinds)
             (str "expected real compiled clinical content across 300 patients, got " kinds))
@@ -93,7 +93,7 @@
 ;; `:suppressed-straddle-spans` lives on `compile-trajectory`'s own
 ;; return map (ADR-0086, AR-SF-7) -- unlike the A5 arm's own
 ;; interpreter-layer-only `:suppressed-encounter-ends`, `engine/run`
-;; DOES reach this layer for every patient (`engine.clj`'s own
+;; DOES reach this layer for every patient (`decide.clj`'s own
 ;; `:registered` decide method calls `compile-trajectory` directly), so
 ;; interception at that one call boundary, across the SAME three-seed
 ;; 300-patient population the round trip above already exercises, is
@@ -136,7 +136,7 @@
                         (let [compiled (apply real-compile-trajectory trajectory facility reg-t more)]
                           (swap! total + (or (:suppressed-straddle-spans compiled) 0))
                           compiled))]
-          (engine/run {:seed seed :patients 300 :pathway {:name "module-only" :steps []}
+          (run/run {:seed seed :patients 300 :pathway {:name "module-only" :steps []}
                        :modules [colorectal-closure]
                        :module-assignment [{:module-id "colorectal-cancer" :weight 1}]
                        :module-horizon-days 36500}))

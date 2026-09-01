@@ -23,7 +23,7 @@
   ONE VAR WAS PUBLIC in `engine.clj`, the `defmulti` itself, and it
   keeps a delegating `(def evolve evolve/evolve)` there under ruling
   C1(a). That def and this one are the SAME multifn object, so every
-  method registered here is dispatched by `ehrt.sim-engine.engine/
+  method registered here is dispatched by `ehrt.sim-engine.evolve/
   evolve` too. `replay` and `run` called it unqualified through that
   def until the fifth and tenth extractions took them to
   `ehrt.sim-engine.fold` and `ehrt.sim-engine.run`, where each names

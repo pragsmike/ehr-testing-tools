@@ -2,7 +2,7 @@
   "The `sim run` capability's result-not-throw contract. Milestone M2b,
   Task 0: allocation-ladder exhaustion is a structured outcome, not a
   thrown exception -- ehrt.sim-model.facility/allocate returns
-  {:exhausted true ...} instead of throwing, ehrt.sim-engine.engine/run
+  {:exhausted true ...} instead of throwing, ehrt.sim-engine.run/run
   halts the loop and echoes it back, and run-command surfaces it as
   :error :capacity-exhausted with the patient, ward, and census in the
   payload (docs/clinical-realities.md's ED-diversion stub names the
@@ -10,10 +10,10 @@
 
   Milestone M4, Task 0: the plumbing-completeness test below is the red
   test that reproduces the tools consumer-loop's own finding -- M3's
-  `:pathways` reached `ehrt.sim-engine.engine/run` from a direct API
+  `:pathways` reached `ehrt.sim-engine.run/run` from a direct API
   caller (engine-test exercises it directly) but never from
   `run-command`, so it was invisible to every CLI invocation despite
-  181 green tests and a demo. `ehrt.sim-engine.engine/config-keys` is
+  181 green tests and a demo. `ehrt.sim-engine.config/config-keys` is
   now the canonical, documented list of every key `engine/run` accepts;
   this test asserts `run-command` forwards ALL of them, not just the
   ones already known to work, using the injectable `:engine-run-fn`
@@ -26,7 +26,9 @@
             [ehrt.kernel.interface :as result]
             [ehrt.patient-simulator.interface :as patient-simulator]
             [ehrt.sim-check.interface :as check]
-            [ehrt.sim-engine.engine :as engine]
+            [ehrt.sim-engine.config :as config]
+            [ehrt.sim-engine.fold :as fold]
+            [ehrt.sim-engine.streams :as streams]
             [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim.run :as run]))
 
@@ -52,7 +54,7 @@
 ;; --- M4 Task 0: plumbing completeness -------------------------------------
 
 (def ^:private sentinel-opts
-  "One sentinel value per ehrt.sim-engine.engine/config-keys entry --
+  "One sentinel value per ehrt.sim-engine.config/config-keys entry --
   distinguishable from any real default so a dropped key reads as a
   clear mismatch, not a coincidental match. :churn-profile is a MAP
   sentinel, not a bare keyword: run-command's own effective-churn-
@@ -85,7 +87,7 @@
    :bed-cycle ::bed-cycle-sentinel})
 
 (deftest run-command-forwards-every-engine-config-key
-  (testing "the FULL ehrt.sim-engine.engine/config-keys set reaches
+  (testing "the FULL ehrt.sim-engine.config/config-keys set reaches
             engine/run, not just the keys already known to work -- red
             today on :pathway/:pathways/:order-profiles (M3's
             :pathways was the tools consumer-loop's own finding; this
@@ -96,7 +98,7 @@
                             (reset! captured engine-opts)
                             {:ground-truth [] :facility nil :providers nil})]
       (run/run-command sentinel-opts {:engine-run-fn stub-engine-run})
-      (doseq [k engine/config-keys]
+      (doseq [k config/config-keys]
         (if (= :churn-profile k)
           (is (true? (::churn-profile-sentinel (:churn-profile @captured)))
               "the :churn-profile sentinel must survive run-command's own default-merge")
@@ -166,10 +168,10 @@
 ;; at all.
 
 (deftest run-command-threads-site-profile-into-emitted-messages
-  (testing "a :site-profile reaches ehrt.sim-emit-hl7.emit-hl7/emit (its own
+  (testing "a :site-profile reaches ehrt.sim-emit-hl7.emit/emit (its own
             MSH dialect renders) without being a member of
-            ehrt.sim-engine.engine/config-keys"
-    (is (not (contains? (set engine/config-keys) :site-profile)))
+            ehrt.sim-engine.config/config-keys"
+    (is (not (contains? (set config/config-keys) :site-profile)))
     (let [r (run/run-command {:seed 42 :patients 1 :emit "hl7"
                               :site-profile {:msh {:sending-app "ALDRIC-EHR"}}})
           message (first (:messages (:payload r)))]
@@ -253,7 +255,7 @@
   (testing "--at queries an arbitrary instant, not only end-of-run"
     (let [end (run/run-command {:seed 42 :patients 1 :emit "fhir"})
           mid (run/run-command {:seed 42 :patients 1 :emit "fhir" :at 0})
-          pid (engine/patient-id-for 42 0)]
+          pid (streams/patient-id-for 42 0)]
       (is (not= (get (:fhir-bundles (:payload end)) pid)
                 (get (:fhir-bundles (:payload mid)) pid))
           "an early instant sees less state than end-of-run"))))
@@ -278,10 +280,10 @@
 ;; never reaches engine/run at all.
 
 (deftest run-command-threads-latency-into-emit-wire-transmit-time-ordering
-  (testing "a :latency profile reaches ehrt.sim-emit-hl7.emit-hl7/emit-wire
+  (testing "a :latency profile reaches ehrt.sim-emit-hl7.emit/emit-wire
             (transmit-time order, MSH-7 shifted) without being a member
-            of ehrt.sim-engine.engine/config-keys"
-    (is (not (contains? (set engine/config-keys) :latency)))
+            of ehrt.sim-engine.config/config-keys"
+    (is (not (contains? (set config/config-keys) :latency)))
     (let [pathway {:name "admission-transfer-discharge"
                    :steps [{:type :admission :location "Renal"}
                            {:type :delay :from 30 :to 30}
@@ -1133,7 +1135,7 @@
   arc removed, so the equivalence would be unfalsifiable in exactly the
   configuration that matters."
   [ground-truth]
-  (let [records (engine/replay ground-truth)]
+  (let [records (fold/replay ground-truth)]
     (for [ev ground-truth
           :let [fields (get reinstating-cancel-fields (:event ev))]
           :when fields

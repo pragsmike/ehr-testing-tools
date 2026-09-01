@@ -935,7 +935,7 @@
   distributions): a cumulative-weight pick over `entries`
   ({:transition :distribution}), consuming EXACTLY one `.nextDouble` --
   fixed consumption regardless of which member is chosen, the same law
-  ehrt.sim-engine.engine/assign-pathway and
+  ehrt.sim-engine.assignment/assign-pathway and
   ehrt.sim-engine.order-profiles/sample-analyte-value already establish."
   [^Random rng entries]
   (let [total (reduce + (map :distribution entries))

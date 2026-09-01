@@ -19,7 +19,9 @@
             [ehrt.kernel.interface :as result]
             [ehrt.sim-check.check :as check]
             [ehrt.sim-model.interface :as sim-model]
-            [ehrt.sim-engine.engine :as engine]
+            [ehrt.sim-engine.decide :as decide]
+            [ehrt.sim-engine.fold :as fold]
+            [ehrt.sim-engine.run :as run]
             [ehrt.sim-engine.churn :as churn]
             [ehrt.sim-engine.order-profiles :as order-profiles]
             [ehrt.patient-simulator.interface :as patient-simulator]))
@@ -544,7 +546,7 @@
                                             {:type :discharge}]}
           empty-pathway {:name "module-only" :steps []}
           {:keys [ground-truth] :as result}
-          (engine/run {:seed 8589258984 :patients 4
+          (run/run {:seed 8589258984 :patients 4
                        :pathways [{:patient-ordinal 0 :pathway pathway}
                                   {:patient-ordinal 1 :pathway pathway}
                                   {:patient-ordinal 2 :pathway empty-pathway}
@@ -562,7 +564,7 @@
                                           {:type :medication-order :codes [a-concept] :citation a-citation}
                                           {:type :medication-end :order-citation a-citation}
                                           {:type :discharge}]}
-        {:keys [ground-truth] :as result} (engine/run {:seed 5 :patients 2 :pathways [{:pathway pathway :weight 1}]})]
+        {:keys [ground-truth] :as result} (run/run {:seed 5 :patients 2 :pathways [{:pathway pathway :weight 1}]})]
     (is (result/ok? (check/check-all ground-truth (:facility result))))))
 
 (deftest outpatient-patients-occupy-no-bed-detects-a-bed-assigned-to-an-outpatient
@@ -590,7 +592,7 @@
     (is (empty? (check/warm-up-mark-matches-window log 10)))))
 
 (deftest engine-run-warm-up-seconds-marks-exactly-the-window
-  (let [{:keys [ground-truth]} (engine/run {:seed 42 :patients 5 :warm-up-seconds 100})]
+  (let [{:keys [ground-truth]} (run/run {:seed 42 :patients 5 :warm-up-seconds 100})]
     (is (empty? (check/warm-up-mark-matches-window ground-truth 100)))
     (testing "a nonzero window actually marks at least one early event for this seed"
       (is (some :warm-up ground-truth)))))
@@ -689,7 +691,7 @@
 
 (deftest step-rejected-reason-is-documented-holds-for-every-real-reason
   (is (empty? (check/step-rejected-reason-is-documented
-               (for [reason engine/documented-step-rejection-reasons]
+               (for [reason decide/documented-step-rejection-reasons]
                  {:event :step-rejected :t 10 :participants (subject "P1")
                   :attempted-step {:type :cancel-admit} :reason reason})))))
 
@@ -756,13 +758,13 @@
   (let [pathway {:name "cbc" :steps [{:type :admission :location "Renal"}
                                      {:type :order :profile :cbc}
                                      {:type :discharge}]}
-        {:keys [ground-truth]} (engine/run {:seed 3 :patients 4 :pathways [{:pathway pathway :weight 1}]})]
+        {:keys [ground-truth]} (run/run {:seed 3 :patients 4 :pathways [{:pathway pathway :weight 1}]})]
     (is (result/ok? (check/check-all ground-truth)))))
 
 ;; --- check-all: facility-aware, backward-compatible arity ---------------
 
 (deftest check-all-defaults-facility-when-omitted
-  (let [{:keys [ground-truth]} (engine/run {:seed 42 :patients 3})]
+  (let [{:keys [ground-truth]} (run/run {:seed 42 :patients 3})]
     (is (result/ok? (check/check-all ground-truth)))))
 
 ;; --- D6-1: the invariant catalog's own sample, widened ------------------
@@ -852,7 +854,7 @@
                  facility mixed-ward-facility-gen
                  pathways multi-home-pathways-gen
                  churn-profile churn-on-a-fraction-gen]
-    (let [{:keys [ground-truth]} (engine/run (cond-> {:seed seed :patients patients
+    (let [{:keys [ground-truth]} (run/run (cond-> {:seed seed :patients patients
                                                       :arrival-gap arrival-gap
                                                       :facility facility
                                                       :pathways pathways}
@@ -908,7 +910,7 @@
             [{:event :registered :t 0 :active-mrn "MRN000001" :persona {:name "not a map"} :participants (subject "P1")}]))))
 
 (deftest engine-run-satisfies-check-all-with-persona
-  (let [{:keys [ground-truth]} (engine/run {:seed 5 :patients 4})]
+  (let [{:keys [ground-truth]} (run/run {:seed 5 :patients 4})]
     (is (result/ok? (check/check-all ground-truth)))))
 
 ;; --- ADR-0169 (arc 0): the naive reference oracles, and the defspec ------
@@ -928,27 +930,27 @@
 ;; with NOTHING changed but the name.
 
 (defn- naive-no-double-occupancy [ground-truth]
-  (for [{:keys [event world-after]} (engine/replay ground-truth)
+  (for [{:keys [event world-after]} (fold/replay ground-truth)
         :let [beds (keep (comp :bed :location) (vals world-after))
               dupes (->> beds frequencies (filter (comp #(> % 1) val)) (map key))]
         bed dupes]
     {:invariant :no-double-occupancy :bed bed :at (:t event)}))
 
 (defn- naive-admitted-occupies-one-slot [ground-truth]
-  (for [{:keys [event world-after]} (engine/replay ground-truth)
+  (for [{:keys [event world-after]} (fold/replay ground-truth)
         [patient-id {:keys [status location class]}] world-after
         :when (and (= status :admitted) (not= class :outpatient)
                    (or (nil? location) (nil? (:bed location))))]
     {:invariant :admitted-occupies-one-slot :patient-id patient-id :at (:t event)}))
 
 (defn- naive-outpatient-patients-occupy-no-bed [ground-truth]
-  (for [{:keys [event world-after]} (engine/replay ground-truth)
+  (for [{:keys [event world-after]} (fold/replay ground-truth)
         [patient-id {:keys [class location]}] world-after
         :when (and (= class :outpatient) (some? location))]
     {:invariant :outpatient-patients-occupy-no-bed :patient-id patient-id :at (:t event)}))
 
 (defn- naive-occupancy-within-capacity [ground-truth facility-config]
-  (for [{:keys [event world-after]} (engine/replay ground-truth)
+  (for [{:keys [event world-after]} (fold/replay ground-truth)
         ward (:wards facility-config)
         :let [cap (+ (:beds ward) (:surge-slots ward))
               occ (count (filter #(= (:name ward) (get-in % [:location :ward])) (vals world-after)))]
@@ -1142,7 +1144,7 @@
                  a (gen/choose 3 9)
                  b (gen/choose 4 11)
                  c (gen/choose 5 13)]
-    (let [{:keys [ground-truth]} (engine/run (cond-> {:seed seed :patients patients
+    (let [{:keys [ground-truth]} (run/run (cond-> {:seed seed :patients patients
                                                       :facility facility}
                                                churn-profile (assoc :churn-profile churn-profile)))
           mutated (mutate ground-truth a b c)]
@@ -1202,7 +1204,7 @@
                                     :surge-format "%s-H%02d" :class :inpatient}
                                    {:id :ed :name "Emergency" :beds 8 :surge-slots 4
                                     :surge-format "%s-H%02d" :class :ed}]}
-          {:keys [ground-truth]} (engine/run {:seed 18 :patients 60
+          {:keys [ground-truth]} (run/run {:seed 18 :patients 60
                                               :facility facility
                                               :churn-profile churn/sample-profile})
           mutated (mutate ground-truth 3 5 7)]

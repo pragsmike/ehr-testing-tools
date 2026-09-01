@@ -23,7 +23,7 @@
             [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
             [ehrt.patient-simulator.gmf :as gmf]
-            [ehrt.sim-engine.engine :as engine]
+            [ehrt.sim-engine.run :as run]
             [ehrt.sim-check.check :as check]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]))
 
@@ -68,7 +68,7 @@
             correct, documented behavior for an unseeded config, not a
             defect."
     (let [{:keys [ground-truth] :as result}
-          (engine/run (assoc run-config :modules [tjr-closure]))
+          (run/run (assoc run-config :modules [tjr-closure]))
           kinds (into #{} (map :event) ground-truth)
           registered (filter #(= :registered (:event %)) ground-truth)]
       (is (= 300 (count ground-truth)) "one bare :registered event per patient, nothing else")
@@ -89,7 +89,7 @@
             guard (H4's own analytical jump, age 51) and land the full
             post-op CarePlan cycle for real, through the engine"
     (let [{:keys [ground-truth] :as result}
-          (engine/run (assoc run-config :modules [seeded-closure]))
+          (run/run (assoc run-config :modules [seeded-closure]))
           kinds (into #{} (map :event) ground-truth)
           registered (filter #(= :registered (:event %)) ground-truth)
           care-plan-starts (filter #(= :care-plan-start (:event %)) ground-truth)]

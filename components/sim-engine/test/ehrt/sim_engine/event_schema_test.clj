@@ -33,7 +33,7 @@
             [clojure.test.check.properties :as prop]
             [clojure.set :as set]
             [clojure.string :as str]
-            [ehrt.sim-engine.engine :as engine]
+            [ehrt.sim-engine.run :as run]
             [ehrt.sim-engine.event-schema :as es]
             [ehrt.sim-engine.event-fleet :as fleet]
             [malli.core :as m]))
@@ -85,13 +85,13 @@
 (defspec every-event-of-every-generated-run-validates 100
   (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 6)]
-    (let [{:keys [ground-truth]} (engine/run {:seed seed :patients patients})]
+    (let [{:keys [ground-truth]} (run/run {:seed seed :patients patients})]
       (every? es/valid-event? ground-truth))))
 
 (defspec every-event-of-every-generated-churn-run-validates 100
   (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 2 6)]
-    (let [{:keys [ground-truth]} (engine/run {:seed seed :patients patients
+    (let [{:keys [ground-truth]} (run/run {:seed seed :patients patients
                                               :facility fleet/crowded-facility
                                               :churn true})]
       ;; A capacity-exhausted run returns no :ground-truth; vacuously
@@ -101,7 +101,7 @@
 (defspec generated-runs-are-t-monotone 100
   (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 6)]
-    (es/run-t-monotone? (:ground-truth (engine/run {:seed seed :patients patients})))))
+    (es/run-t-monotone? (:ground-truth (run/run {:seed seed :patients patients})))))
 
 ;; --- Q-B (a): the EDN export, and Q-A (a): the stability gate -------------
 
@@ -223,7 +223,7 @@
 ;; the one construction site exactly as `evolve` already translated it.
 
 (deftest result-entries-carry-unit-singular
-  (let [{:keys [ground-truth]} (engine/run {:seed 1 :patients 1
+  (let [{:keys [ground-truth]} (run/run {:seed 1 :patients 1
                                             :pathways [{:pathway {:name "cbc"
                                                                   :steps [{:type :admission :location "Renal"}
                                                                           {:type :order :profile :cbc}

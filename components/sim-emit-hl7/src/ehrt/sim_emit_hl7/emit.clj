@@ -70,7 +70,7 @@
   "A fixed, arbitrary reference-seed provider pool -- purely a fallback
   default for callers that don't care about exact NPI values (`emit`'s
   lower arities). A real run threads back its OWN materialized
-  providers (ehrt.sim-engine.engine/run's :providers) instead, so its
+  providers (ehrt.sim-engine.run/run's :providers) instead, so its
   messages' PV1-7 matches its own ground-truth log's :attending ids."
   (sim-model/materialize-providers (java.util.Random. 0) sim-model/default-provider-templates))
 
@@ -88,7 +88,7 @@
   -- the default-profile identity property (docs/site-profiles.md, this
   milestone's own determinism anchor) -- since :site-profile reaches no
   stage but this one's own render call sites, never ground-truth-log or
-  check.clj (ehrt.sim-engine.engine/config-keys has no such key).
+  check.clj (ehrt.sim-engine.config/config-keys has no such key).
 
   ADR-0109: this function's own output is BYTE-FROZEN -- always calls
   `event->messages` with offsets {}, so every transmit instant equals

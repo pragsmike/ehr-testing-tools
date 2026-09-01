@@ -22,7 +22,9 @@
   assertion and the byte-equality of every non-ladder message."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.string :as str]
-            [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]
+            [ehrt.sim-emit-hl7.emit :as emit]
+            [ehrt.sim-emit-hl7.planners :as planners]
+            [ehrt.sim-emit-hl7.registry :as registry]
             [ehrt.sim-emit-hl7.v2-replay :as v2-replay]
             [ehrt.sim-model.interface :as sim-model])
   (:import [java.util Random]))
@@ -132,12 +134,12 @@
 
 (def ^:private both-ladders {:rungs [0.25 0.5] :order-rungs [0.1 0.2]})
 
-(defn- plan [ladders] (emit-hl7/plan-ladders log ladders))
+(defn- plan [ladders] (planners/plan-ladders log ladders))
 
 (defn- wire
   ([ladders] (wire ladders {} nil))
   ([ladders offsets site-profile]
-   (emit-hl7/emit-wire log ref-date utc-offset facility providers site-profile offsets
+   (emit/emit-wire log ref-date utc-offset facility providers site-profile offsets
                        {:ladders (plan ladders)})))
 
 (defn- msh-9 [m] (nth (str/split (first (str/split m #"\r")) #"\|") 8))
@@ -157,10 +159,10 @@
 ;; this emitter rendered before design (b) existed. -------------------------
 
 (deftest absent-nil-and-empty-ladders-are-the-byte-identical-path
-  (let [plain (emit-hl7/emit log ref-date utc-offset facility providers)]
-    (is (= plain (emit-hl7/emit-wire log ref-date utc-offset facility providers nil {})))
-    (is (= plain (emit-hl7/emit-wire log ref-date utc-offset facility providers nil {} {})))
-    (is (= plain (emit-hl7/emit-wire log ref-date utc-offset facility providers nil {}
+  (let [plain (emit/emit log ref-date utc-offset facility providers)]
+    (is (= plain (emit/emit-wire log ref-date utc-offset facility providers nil {})))
+    (is (= plain (emit/emit-wire log ref-date utc-offset facility providers nil {} {})))
+    (is (= plain (emit/emit-wire log ref-date utc-offset facility providers nil {}
                                      {:ladders nil})))
     (is (= plain (wire nil)))
     (is (= plain (wire {})))
@@ -251,7 +253,7 @@
                                :result-status {:preliminary {:code "XX"} :final {:code "WW"}}
                                :observation-result-status {:preliminary {:code "VV"}
                                                            :final {:code "UU"}}}}
-        messages (emit-hl7/emit-wire log ref-date utc-offset facility providers profile {}
+        messages (emit/emit-wire log ref-date utc-offset facility providers profile {}
                                      {:ladders (plan both-ladders)})
         oru-rungs (filterv #(and (rung? %) (= "ORU^R01" (msh-9 %))) messages)
         orm-rungs (filterv #(and (rung? %) (= "ORM^O01" (msh-9 %))) messages)
@@ -270,7 +272,7 @@
 ;; --- What must NOT move --------------------------------------------------
 
 (deftest turning-ladders-on-moves-no-other-message-s-bytes
-  (let [plain (emit-hl7/emit log ref-date utc-offset facility providers)
+  (let [plain (emit/emit log ref-date utc-offset facility providers)
         laddered (wire both-ladders)
         ;; The two terminal messages of the two LADDERED orders are the
         ;; one place this sweep edits an existing message's bytes, and
@@ -340,11 +342,11 @@
         (is (= [0 1] (sort (mapv :ordinal at-3200))))))))
 
 (deftest msh-10-is-unique-across-base-chatter-and-ladder-at-a-t-collision
-  (let [chatter (emit-hl7/plan-chatter (Random. 7) log
+  (let [chatter (planners/plan-chatter (Random. 7) log
                                        {:demographic-update 1.0 :coverage-change 1.0
                                         :registered 1.0
                                         :restatement {:rate-per-patient-day 2.0}})
-        messages (emit-hl7/emit-wire log ref-date utc-offset facility providers nil {}
+        messages (emit/emit-wire log ref-date utc-offset facility providers nil {}
                                      {:chatter chatter :ladders (plan both-ladders)})
         ids (mapv msh-10 messages)]
     (testing "all three streams are present -- otherwise this asserts nothing"
@@ -382,7 +384,7 @@
 (deftest the-latency-plan-for-every-non-ladder-message-is-untouched
   (let [offsets {"MRN000001-O01-1200" 1800 "MRN000001-R01-5200" 3600
                  "MRN000001-A01-1000" 600}
-        without (emit-hl7/emit-wire log ref-date utc-offset facility providers nil offsets)
+        without (emit/emit-wire log ref-date utc-offset facility providers nil offsets)
         with (wire both-ladders offsets nil)
         moved-ids #{"MRN000001-R01-5200" "MRN000001-R01-6200"}]
     (is (= (filterv #(not (moved-ids (msh-10 %))) without)
@@ -397,10 +399,10 @@
   (testing "turning the ladder on does not disturb chatter's own draws"
     (let [chatter-profile {:demographic-update 1.0 :coverage-change 1.0 :registered 1.0
                            :restatement {:rate-per-patient-day 2.0}}
-          chatter (emit-hl7/plan-chatter (Random. 7) log chatter-profile)
-          without (emit-hl7/emit-wire log ref-date utc-offset facility providers nil {}
+          chatter (planners/plan-chatter (Random. 7) log chatter-profile)
+          without (emit/emit-wire log ref-date utc-offset facility providers nil {}
                                       {:chatter chatter})
-          with (emit-hl7/emit-wire log ref-date utc-offset facility providers nil {}
+          with (emit/emit-wire log ref-date utc-offset facility providers nil {}
                                    {:chatter chatter :ladders (plan both-ladders)})
           chatter? (comp #{"ADT^A08" "ADT^A31" "ADT^A28"} msh-9)]
       (is (seq (filterv chatter? without)))
@@ -409,7 +411,7 @@
 ;; --- The consumer: a preliminary is not folded ---------------------------
 
 (deftest replaying-a-laddered-corpus-reconstructs-the-un-laddered-state
-  (let [plain (emit-hl7/emit log ref-date utc-offset facility providers)
+  (let [plain (emit/emit log ref-date utc-offset facility providers)
         laddered (wire both-ladders)
         fold (fn [ms] (reduce v2-replay/fold-message {} ms))]
     (testing "the observations are actually there -- an equality of two empties proves nothing"
@@ -425,7 +427,7 @@
 (deftest every-message-is-derivable-from-the-log-and-the-ladder-config
   (let [{:keys [rungs]} (plan both-ladders)
         messages (wire both-ladders)
-        base (emit-hl7/emit log ref-date utc-offset facility providers)]
+        base (emit/emit log ref-date utc-offset facility providers)]
     (testing "TOTAL: every message traces to exactly one basis -- a ground-truth event's
               own render, or one ladder instruction. The terminal status codes ADD NO
               MESSAGE; they edit one that already existed, which is why this arithmetic
@@ -462,7 +464,7 @@
              :cancel-discharge :bed-swap :merge :order-placed :result-available
              :outpatient-visit :bed-status-change :observation :diagnostic-report
              :appointment :reschedule :appointment-cancel :no-show}
-           (set (keys emit-hl7/message-type-registry))))
+           (set (keys registry/message-type-registry))))
     (testing "and both ladder families are SKELETON, so `gate v2` gates every rung in full"
-      (is (contains? emit-hl7/skeleton-message-types "ORM^O01"))
-      (is (contains? emit-hl7/skeleton-message-types "ORU^R01")))))
+      (is (contains? registry/skeleton-message-types "ORM^O01"))
+      (is (contains? registry/skeleton-message-types "ORU^R01")))))

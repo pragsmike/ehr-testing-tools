@@ -15,7 +15,7 @@
   every identifier to look for and remove (docs/simulate-your-
   facility.md's own FAQ answer to exactly that question).
 
-  A PROJECTION over `ehrt.sim-engine.engine/run`'s own output, reusing
+  A PROJECTION over `ehrt.sim-engine.run/run`'s own output, reusing
   this project's existing single-sourced id-derivation functions
   (`ehrt.sim-emit-hl7.interface/control-id-for`, `ehrt.sim.emit-
   state/bundle-run`'s own resource ids) rather than re-deriving any of
@@ -87,7 +87,7 @@
 (defn identifiers-command
   "opts: the SAME config surface `ehrt.sim.run/run-command`
   accepts (:seed required, :patients, :config, plus every
-  `ehrt.sim-engine.engine/config-keys` entry) -- this is a projection
+  `ehrt.sim-engine.config/config-keys` entry) -- this is a projection
   over the SAME run, not a parallel config dialect. Runs the simulation
   exactly once (`engine-run-fn`, injectable, the same -fn convention
   `run-command` uses), builds this run's own end-of-run FHIR Bundles

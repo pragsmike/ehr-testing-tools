@@ -14,7 +14,7 @@
     out of a churned pathway recovers the original exactly.
   - all stochastic choices draw from THIS PATIENT's own seeded stream:
     `inject` takes the `:patient`-family `java.util.Random`
-    ehrt.sim-engine.engine/run derives for the patient whose pathway is
+    ehrt.sim-engine.run/run derives for the patient whose pathway is
     being churned (ADR-0171, arc 1). Churn's draw sites are PATIENT-
     scoped by the census -- they read no other patient's state and land
     on no other patient -- so injecting churn into patient N's pathway

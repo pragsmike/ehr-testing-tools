@@ -508,7 +508,7 @@
 ;; what `:site-profile` and `:latency` already are: EMISSION, on the
 ;; explicit condition that the price table is emission config and never
 ;; ground truth. THE ENGINE NEVER READS IT -- `:charges` reaches no
-;; member of `ehrt.sim-engine.engine/config-keys`, and a missing price
+;; member of `ehrt.sim-engine.config/config-keys`, and a missing price
 ;; is a COUNTED SKIP here, never a read-back into the log for something
 ;; to bill instead.
 

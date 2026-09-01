@@ -23,7 +23,8 @@
   (:require [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
             [ehrt.sim-check.check :as check]
-            [ehrt.sim-engine.engine :as engine]
+            [ehrt.sim-engine.run :as run]
+            [ehrt.sim-engine.streams :as streams]
             [ehrt.sim-model.interface :as sim-model]))
 
 ;; --- a minimal, hand-built log --------------------------------------------
@@ -64,8 +65,8 @@
 
 (def ^:private clean-run
   (delay
-   (let [pa (sim-model/persona (engine/stream 15 :person 1) {})]
-     (engine/run
+   (let [pa (sim-model/persona (streams/stream 15 :person 1) {})]
+     (run/run
       {:seed 15 :patients 4 :arrival-gap 0
        :pathway {:name "brief" :steps [{:type :admission :location "Renal"}
                                        {:type :discharge}]}
@@ -431,8 +432,8 @@
   * Arrival 3 (t 9900) falls outside both windows, so it RESOLVES to
     the canonical patient and queues nothing."
   (delay
-   (let [persona-c (sim-model/persona (engine/stream 15 :person 3) {})]
-     (engine/run
+   (let [persona-c (sim-model/persona (streams/stream 15 :person 3) {})]
+     (run/run
       {:seed 15 :patients 4 :arrival-gap 100
        :pathway {:name "empty" :steps []}
        :facility p4-facility
@@ -453,7 +454,7 @@
                   :pregnancy-event-id "p-c#x" :participants ["p-c" "p-c/b0"]}
                  {:event :person-registered :person-id "p-c/b0" :t 20000
                   :event-id "p-c/b0#0"
-                  :persona (sim-model/persona (engine/stream 15 :person 4) {:age-min 0 :age-max 0})
+                  :persona (sim-model/persona (streams/stream 15 :person 4) {:age-min 0 :age-max 0})
                   :delivery-event-id "p-c#4" :participants ["p-c/b0" "p-c"]}]}}))))
 
 (deftest the-identification-run-actually-mints-all-three-shapes-test
@@ -519,9 +520,9 @@
   ;; the "carries none, cannot be judged" clause; the "close instant
   ;; still in the future" clause is a hand-authored-log shape and is
   ;; exercised by the mutation gates above.
-  (let [persona-c (sim-model/persona (engine/stream 15 :person 3) {})
+  (let [persona-c (sim-model/persona (streams/stream 15 :person 3) {})
         gt (:ground-truth
-            (engine/run
+            (run/run
              {:seed 15 :patients 4 :arrival-gap 100
               :pathway {:name "empty" :steps []}
               :facility p4-facility

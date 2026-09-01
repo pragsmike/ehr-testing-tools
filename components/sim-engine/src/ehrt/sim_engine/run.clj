@@ -1012,7 +1012,7 @@
   ...]} :facility .. :providers [materialized-provider ...]}. The
   facility and MATERIALIZED providers (real NPIs, not just templates)
   are echoed back so a caller rendering this run's log
-  (ehrt.sim-emit-hl7.emit-hl7/emit needs facility + providers for PV1)
+  (ehrt.sim-emit-hl7.emit/emit needs facility + providers for PV1)
   uses the EXACT config this run allocated against, not a fresh default
   that might not even share ward names. ground-truth is format-free,
   ordered by [t seq-no]; emitters consume it and test assertions target

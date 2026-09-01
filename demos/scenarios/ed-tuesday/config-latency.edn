@@ -185,7 +185,7 @@
  ;; ENGINE-facing: a different value there would reshuffle this file's
  ;; arrivals away from its sibling's and break the ground-truth
  ;; byte-identity `bin/demo-exerciser-ed-tuesday` asserts. These two are
- ;; EMISSION-facing -- neither reaches `ehrt.sim-engine.engine/
+ ;; EMISSION-facing -- neither reaches `ehrt.sim-engine.config/
  ;; config-keys`, so no value here could move a single ground-truth
  ;; byte even if it disagreed. They are copied anyway, because the two
  ;; files describe ONE scenario and a reader comparing them should not
@@ -239,13 +239,13 @@
  ;; THE PRICES ARE INVENTED AND THE ENGINE NEVER READS THEM. They are
  ;; emission config, exactly like `:site-profile` and `:latency`: no
  ;; invariant reads a charge, `:charges` reaches no member of
- ;; `ehrt.sim-engine.engine/config-keys`, and ground truth is
+ ;; `ehrt.sim-engine.config/config-keys`, and ground truth is
  ;; byte-identical with and without this block (proved per commit by
  ;; `bin/ground-truth-bracket`, not asserted here). They are round
  ;; plausible numbers chosen to be obviously synthetic; nothing in this
  ;; repository claims they resemble any real chargemaster.
  ;;
- ;; THE TABLE IS DELIBERATELY PARTIAL. `ehrt.sim-emit-hl7.emit-hl7/
+ ;; THE TABLE IS DELIBERATELY PARTIAL. `ehrt.sim-emit-hl7.planners/
  ;; plan-charges` COUNTS a code it cannot price and renders no line for
  ;; it, and a partial table is what keeps that census non-vacuous: the
  ;; four codes below cover the CBC order and the three commonest
@@ -253,7 +253,7 @@
  ;; codes the vendored modules produce are left unpriced on purpose.
  ;;
  ;; `ROOM-BOARD` is the one key no log fact carries a code for --
- ;; `ehrt.sim-emit-hl7.emit-hl7/room-and-board-code`, the reserved key
+ ;; `ehrt.sim-emit-hl7.registry/room-and-board-code`, the reserved key
  ;; for the per-inpatient-day line. Absent from this table it would be a
  ;; counted skip like any other; there is no default price anywhere.
  :charges {:price-table {"58410-2"   {:amount 148.00 :display "CBC panel"}
@@ -289,7 +289,7 @@
  ;; (`:result-available` carries `:order-event-id`), so `plan-ladders`
  ;; takes no RNG at all, claims no `:emission` id-tag, and cannot
  ;; reshuffle anything. `:ladders` reaches no member of
- ;; `ehrt.sim-engine.engine/config-keys`.
+ ;; `ehrt.sim-engine.config/config-keys`.
  ;;
  ;; THE STATUS CODES ARE SITE-PROFILE DATA, NOT A CITATION. HL7 tables
  ;; 0038/0123/0085 appear in no jar and no resource in this tree, so
@@ -314,7 +314,7 @@
  ;; NO DRAW, no planner, and no ground truth: `:siu` decides only
  ;; whether `event->messages` fills a lane-0 slot for an event that
  ;; already exists. It claims no `:emission` id-tag and reaches no
- ;; member of `ehrt.sim-engine.engine/config-keys`.
+ ;; member of `ehrt.sim-engine.config/config-keys`.
  ;;
  ;; SCH-25'S STATUS CODES ARE SITE-PROFILE DATA, NOT A CITATION, the
  ;; same standing the three ladder tables have: HL7 Table 0278 appears

@@ -104,7 +104,7 @@ The same patient's `Patient` and one `Observation` resource, from
 
 Resolving across both:
 
-- **`Patient.id` ("PID-000000-918175ce") is `ehrt.sim-engine.engine/patient-id-for`'s
+- **`Patient.id` ("PID-000000-918175ce") is `ehrt.sim-engine.streams/patient-id-for`'s
   own internal id for patient ordinal 0** — never rendered on the wire
   itself (HL7 has no field for it), but the SAME id
   `ehrt.sim-emit-hl7.emit-hl7` uses internally to know which patient a

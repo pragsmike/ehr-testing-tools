@@ -13,7 +13,7 @@
   property-tested in emit-hl7-test alongside the stronger two-profile
   invariance property (Task 4): ground truth never depends on which
   site profile, if any, is in effect, because :site-profile is not a
-  member of ehrt.sim-engine.engine/config-keys at all -- structurally
+  member of ehrt.sim-engine.config/config-keys at all -- structurally
   incapable of reaching `engine/run`, not merely undertested.
 
   :naming :surge-format is the one documented exception to 'binds at
@@ -22,7 +22,7 @@
   pre-dates this namespace -- docs/operational-models.md) -- so unlike
   the other three components, a site profile's naming override
   (`apply-naming`, below) is a FACILITY-CONFIG TRANSFORM a caller
-  applies to `:facility` BEFORE ehrt.sim-engine.engine/run, not
+  applies to `:facility` BEFORE ehrt.sim-engine.run/run, not
   something ehrt.sim-emit-hl7.emit-hl7 ever reads. Calling it a
   'config-level compatibility shim' (docs/site-profiles.md,
   .agents/plans/roadmap.md) is exactly this distinction: config-level,
@@ -279,7 +279,7 @@
   entirely) is the identity function on `facility` -- a caller who
   doesn't opt into this transform sees the exact same facility they
   always would. A caller applies this BEFORE
-  ehrt.sim-engine.engine/run, if at all: never automatically wired into
+  ehrt.sim-engine.run/run, if at all: never automatically wired into
   `run` itself (this is a config-authoring convenience, not a stage the
   engine or emitter knows exists), and never inside decide/evolve."
   [site-profile facility]

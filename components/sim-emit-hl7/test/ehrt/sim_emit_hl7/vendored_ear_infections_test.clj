@@ -11,7 +11,7 @@
   reaching this closure's own mandatory `CallSubmodule` medication path
   threw). This session's own AR-2/AR-3 wire the closure's real
   `:modules`/`:tables` maps through to `run-module`'s full arity
-  (`engine.clj`'s own `:registered` defmethod) -- this file now proves
+  (`decide.clj`'s own `:registered` defmethod) -- this file now proves
   the round trip works for real, replacing the pin with the working
   assertion its own docstring always said it would become.
 
@@ -35,7 +35,7 @@
             [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
             [ehrt.patient-simulator.gmf :as gmf]
-            [ehrt.sim-engine.engine :as engine]
+            [ehrt.sim-engine.run :as run]
             [ehrt.sim-check.check :as check]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]))
 
@@ -71,7 +71,7 @@
             closure's own CallSubmodule medication path -- real compiled
             clinical content, walked through the closure's own called
             submodules, lands in ground truth"
-    (let [{:keys [ground-truth] :as result} (engine/run run-config)
+    (let [{:keys [ground-truth] :as result} (run/run run-config)
           kinds (into #{} (map :event) ground-truth)
           registered (filter #(= :registered (:event %)) ground-truth)]
       (is (some #{:medication-order :medication-end :outpatient-visit} kinds)

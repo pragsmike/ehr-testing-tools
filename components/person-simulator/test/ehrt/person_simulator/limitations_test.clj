@@ -149,7 +149,7 @@
 ;; "Demographics reach the wire through ONE per-run lookup keyed by
 ;; patient-id alone; until arc 3 re-keys it, a delta folded onto patient
 ;; state is invisible to every message." The fold landed, and the row's
-;; substance is now FALSE BY DESIGN: `emit_hl7.clj`'s
+;; substance is now FALSE BY DESIGN: `timelines.clj`'s
 ;; `demographics-timeline` folds `:demographic-update` and
 ;; `:coverage-change` into a t-ascending per-patient timeline, and
 ;; `demographics-at` answers state-at-t. Its gate,

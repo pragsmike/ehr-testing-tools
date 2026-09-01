@@ -106,7 +106,7 @@ slice of state through `evolve`, and returns a parallel sequence of
 records. `sim-check`'s entire invariant catalog is built on this same
 `replay` (`components/sim-check/src/ehrt/sim_check/check.clj:21-23`,
 its own header docstring: *"These read patient/world state via
-`ehrt.sim-engine.engine/replay` — the same fold `evolve` always was,
+`ehrt.sim-engine.fold/replay` — the same fold `evolve` always was,
 reused rather than reimplemented"*) — this is the oracle regime: a
 log's own claimed state is never trusted as a second source of truth,
 only ever re-derived by folding.

@@ -30,7 +30,7 @@
             [ehrt.patient-simulator.gmf :as gmf]
             [ehrt.patient-simulator.interface :as patient-simulator]
             [ehrt.sim-model.interface :as sim-model]
-            [ehrt.sim-engine.engine :as engine]
+            [ehrt.sim-engine.run :as run]
             [ehrt.sim-check.check :as check]
             [ehrt.sim-emit-hl7.interface :as emit-hl7])
   (:import [java.util Random]))
@@ -72,7 +72,7 @@
                          :module-assignment [{:module-id "anemia-unknown-etiology" :weight 1}]
                          :module-horizon-days 36500
                          :persona-config race-weighted-persona-config}
-            {:keys [ground-truth facility providers] :as result} (engine/run run-config)
+            {:keys [ground-truth facility providers] :as result} (run/run run-config)
             kinds (into #{} (map :event) ground-truth)]
         (is (some #{:outpatient-visit :outpatient-visit-end :diagnostic-report :procedure} kinds)
             (str "expected real compiled clinical content across 300 patients, got " kinds))

@@ -9,7 +9,7 @@
 
   Population/horizon sizing, empirically measured this session (the
   same 'measure, don't guess' discipline the death-fixture test's own
-  docstring already establishes): engine.clj's own :registered event
+  docstring already establishes): decide.clj's own :registered event
   anchors registration-t at a FIXED calendar instant
   (sim-model/reference-today-epoch-day), not DOB -- sepsis's own onset
   gate (Age_Guard >= 18 years, then a 2-40 year Delay, D1a-1) means real
@@ -24,9 +24,10 @@
   (:require [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
             [ehrt.patient-simulator.gmf :as gmf]
-            [ehrt.sim-engine.engine :as engine]
+            [ehrt.sim-engine.run :as run]
             [ehrt.sim-check.check :as check]
-            [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]
+            [ehrt.sim-emit-hl7.emit :as emit]
+            [ehrt.sim-emit-hl7.segments :as segments]
             [com.nervestaple.hl7-parser.parser :as parser]
             [com.nervestaple.hl7-parser.message :as message]))
 
@@ -45,7 +46,7 @@
    :module-horizon-days 36500})
 
 (deftest a-run-with-the-sepsis-module-configured-produces-diagnostic-report-content-for-real
-  (let [{:keys [ground-truth] :as result} (engine/run run-config)
+  (let [{:keys [ground-truth] :as result} (run/run run-config)
         dr-events (filter #(= :diagnostic-report (:event %)) ground-truth)
         value-code-dr-events (filter #(some :value-code (:observations %)) dr-events)
         table-sourced-observations (filter #(and (= :observation (:event %)) (:reference-range %) (:interpretation %))
@@ -60,11 +61,11 @@
       (is (result/ok? (check/check-all ground-truth (:facility result)))))))
 
 (deftest the-emitted-oru-for-a-diagnostic-report-event-is-structurally-correct
-  (let [{:keys [ground-truth facility providers]} (engine/run run-config)
+  (let [{:keys [ground-truth facility providers]} (run/run run-config)
         dr-event (first (filter #(and (= :diagnostic-report (:event %)) (some :value-code (:observations %)))
                                 ground-truth))
-        messages (emit-hl7/emit ground-truth "2024-01-01" "+00:00" facility providers)
-        control-id (emit-hl7/control-id-for dr-event)
+        messages (emit/emit ground-truth "2024-01-01" "+00:00" facility providers)
+        control-id (segments/control-id-for dr-event)
         oru (first (filter #(re-find (re-pattern (str "\\Q" control-id "\\E")) %) messages))
         parsed (parser/parse oru)
         obx-segments (message/get-segments parsed "OBX")]
@@ -81,8 +82,8 @@
       (is (= "10828004^Positive (qualifier value)^SCT" (message/get-field-first-value parsed "OBX" 5))))))
 
 (deftest emission-is-deterministic-for-the-same-seed
-  (let [r1 (engine/run run-config)
-        r2 (engine/run run-config)
-        emit1 (emit-hl7/emit (:ground-truth r1) "2024-01-01" "+00:00" (:facility r1) (:providers r1))
-        emit2 (emit-hl7/emit (:ground-truth r2) "2024-01-01" "+00:00" (:facility r2) (:providers r2))]
+  (let [r1 (run/run run-config)
+        r2 (run/run run-config)
+        emit1 (emit/emit (:ground-truth r1) "2024-01-01" "+00:00" (:facility r1) (:providers r1))
+        emit2 (emit/emit (:ground-truth r2) "2024-01-01" "+00:00" (:facility r2) (:providers r2))]
     (is (= emit1 emit2))))

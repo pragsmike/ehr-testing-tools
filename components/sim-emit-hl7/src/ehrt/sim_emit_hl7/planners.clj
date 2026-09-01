@@ -92,7 +92,7 @@
   "RNG x GT x LatencyProfile (ehrt.sim-model.config/LatencyProfile) ->
   offsets ({control-id -> offset-seconds}). Fixed RNG consumption (the
   RNG-path law, `rulings.md#R-measure-claimed-population`'s own
-  underlying discipline; `ehrt.sim-engine.engine/assign-pathway`'s own
+  underlying discipline; `ehrt.sim-engine.assignment/assign-pathway`'s own
   worked example -- cited BY NAME, never by line: that line moved twice
   already, once under arc 0's refactor and once under ADR-0171's, which
   is exactly the species ADR-0170 named -- is the precedent this
@@ -143,7 +143,7 @@
 ;; not move). What reaches the wire here is derivable RESTATEMENT of
 ;; demographic state the log already carries -- `rulings.md#R-skeleton-
 ;; or-emission` classifies that emission, which is why it may ride
-;; `:config` and may never reach `ehrt.sim-engine.engine/config-keys`.
+;; `:config` and may never reach `ehrt.sim-engine.config/config-keys`.
 
 (def restatement-day-seconds
   "One patient-day, in seconds -- the periodic re-statement census's own

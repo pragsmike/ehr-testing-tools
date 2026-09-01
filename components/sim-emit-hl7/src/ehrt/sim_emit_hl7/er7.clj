@@ -204,7 +204,7 @@
   docs/site-profiles.md's own examples name) plus :persona -- looked up
   off the SAME `demographics` map `emit` computes once per call, the primary
   (first) participant's persona for a genuinely multi-participant event
-  (bed-swap, merge), the same simplification `ehrt.sim-engine.engine/
+  (bed-swap, merge), the same simplification `ehrt.sim-engine.fold/
   replay`'s own :patient-id convenience view already makes."
   [demographics event]
   (assoc event :persona (timelines/demographics-at demographics

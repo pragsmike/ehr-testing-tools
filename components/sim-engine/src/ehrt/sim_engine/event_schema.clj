@@ -498,7 +498,7 @@
 (def DemographicValue
   "What a `:demographic-update` carries as its `:value` (and, when it
   reports one, its `:prior-value`): whichever of the three
-  `engine/Demographics` fields a person event can move. The field is
+  `ehrt.sim-engine.state/Demographics` fields a person event can move. The field is
   named alongside it, so a consumer dispatches on `:field` rather than
   on the value's own shape.
 

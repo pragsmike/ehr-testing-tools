@@ -25,7 +25,10 @@
             [clojure.test.check.properties :as prop]
             [clojure.string :as str]
             [ehrt.sim-engine.interface :as engine]
-            [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]
+            [ehrt.sim-emit-hl7.emit :as emit]
+            [ehrt.sim-emit-hl7.planners :as planners]
+            [ehrt.sim-emit-hl7.registry :as registry]
+            [ehrt.sim-emit-hl7.segments :as segments]
             [ehrt.sim-model.interface :as sim-model])
   (:import [java.util Random]))
 
@@ -93,8 +96,8 @@
 (defn- wire
   ([chatter-profile] (wire chatter-profile 7))
   ([chatter-profile rng-seed]
-   (emit-hl7/emit-wire log ref-date utc-offset facility providers nil {}
-                       {:chatter (emit-hl7/plan-chatter (Random. (long rng-seed)) log chatter-profile)})))
+   (emit/emit-wire log ref-date utc-offset facility providers nil {}
+                       {:chatter (planners/plan-chatter (Random. (long rng-seed)) log chatter-profile)})))
 
 (defn- msh-9 [m] (nth (str/split (first (str/split m #"\r")) #"\|") 8))
 (defn- msh-10 [m] (nth (str/split (first (str/split m #"\r")) #"\|") 9))
@@ -106,15 +109,15 @@
 ;; what this emitter rendered before design (a) existed. --------------------
 
 (deftest absent-nil-and-empty-chatter-are-the-byte-identical-path
-  (let [plain (emit-hl7/emit log ref-date utc-offset facility providers)]
-    (is (= plain (emit-hl7/emit-wire log ref-date utc-offset facility providers nil {})))
-    (is (= plain (emit-hl7/emit-wire log ref-date utc-offset facility providers nil {} {})))
-    (is (= plain (emit-hl7/emit-wire log ref-date utc-offset facility providers nil {} {:chatter nil})))
-    (is (= plain (emit-hl7/emit-wire log ref-date utc-offset facility providers nil {} {:chatter []})))
+  (let [plain (emit/emit log ref-date utc-offset facility providers)]
+    (is (= plain (emit/emit-wire log ref-date utc-offset facility providers nil {})))
+    (is (= plain (emit/emit-wire log ref-date utc-offset facility providers nil {} {})))
+    (is (= plain (emit/emit-wire log ref-date utc-offset facility providers nil {} {:chatter nil})))
+    (is (= plain (emit/emit-wire log ref-date utc-offset facility providers nil {} {:chatter []})))
     (testing "and a profile that names no rule still draws its whole
               census and produces nothing"
-      (is (= [] (emit-hl7/plan-chatter (Random. 1) log {})))
-      (is (= [] (emit-hl7/plan-chatter (Random. 1) log nil)))
+      (is (= [] (planners/plan-chatter (Random. 1) log {})))
+      (is (= [] (planners/plan-chatter (Random. 1) log nil)))
       (is (= plain (wire {}))))))
 
 ;; --- ADR-0175 section 2(a)'s message table, verbatim ---------------------
@@ -175,7 +178,7 @@
   (testing "ADR-0175 section 2(a): an event-driven-only reading of an
             A08 witness is the miss the design names. These two halves
             are asserted apart, never as one A08 total."
-    (let [plan (emit-hl7/plan-chatter (Random. 7) log
+    (let [plan (planners/plan-chatter (Random. 7) log
                                       (assoc all-on :restatement {:rate-per-patient-day 1.0}))
           {periodic true event-driven false} (group-by (comp boolean :periodic?) plan)]
       (is (pos? (count event-driven)))
@@ -191,7 +194,7 @@
            inside it")))
   (testing "the rate scales the census: r = 3 is three restatements on
             every patient-day of care, evenly spaced inside the day"
-    (let [plan (emit-hl7/plan-chatter (Random. 7) log {:restatement {:rate-per-patient-day 3.0}})]
+    (let [plan (planners/plan-chatter (Random. 7) log {:restatement {:rate-per-patient-day 3.0}})]
       (is (= 3 (count plan)))
       (is (= [1000 1333 1666] (mapv :at plan))))))
 
@@ -214,8 +217,8 @@
                           {:demographic-update 0.5 :coverage-change 0.5
                            :restatement {:rate-per-patient-day 1.0}}]]]
       (testing label
-        (let [pa (emit-hl7/plan-chatter (Random. 99) log a)
-              pb (emit-hl7/plan-chatter (Random. 99) log b)
+        (let [pa (planners/plan-chatter (Random. 99) log a)
+              pb (planners/plan-chatter (Random. 99) log b)
               shared (fn [plan kinds] (filterv #(kinds (:kind %)) plan))
               kinds (into #{} (map :kind) pa)]
           (is (seq kinds) "the unchanged rules must actually fire, or
@@ -227,9 +230,9 @@
 
 (defspec plan-chatter-is-a-pure-function-of-rng-log-and-profile 50
   (prop/for-all [rng-seed (gen/large-integer* {:min 0 :max 1000000})]
-    (= (emit-hl7/plan-chatter (Random. ^long rng-seed) log
+    (= (planners/plan-chatter (Random. ^long rng-seed) log
                               (assoc all-on :restatement {:rate-per-patient-day 0.5}))
-       (emit-hl7/plan-chatter (Random. ^long rng-seed) log
+       (planners/plan-chatter (Random. ^long rng-seed) log
                               (assoc all-on :restatement {:rate-per-patient-day 0.5})))))
 
 ;; --- MSH-10: the control-id ordinal, at a real t collision --------------
@@ -249,7 +252,7 @@
                (set (map msh-10 colliding))))))
     (testing "and a ground-truth event's own control id still carries NO
               ordinal, so the two id spaces cannot collide"
-      (is (= "MRN000001-A01-1000" (emit-hl7/control-id-for (nth log 1)))))))
+      (is (= "MRN000001-A01-1000" (segments/control-id-for (nth log 1)))))))
 
 ;; --- The interleave: chatter rides emit-wire's own sort, and the
 ;; latency plan for every non-chatter message is untouched. ---------------
@@ -257,10 +260,10 @@
 (deftest chatter-interleaves-at-its-own-instant-and-moves-no-other-messages-bytes
   (let [latency {:admission {:from-minutes 30 :to-minutes 30}
                  :discharge {:from-minutes 5 :to-minutes 5}}
-        offsets (emit-hl7/plan-latency (Random. 3) log latency)
-        without (emit-hl7/emit-wire log ref-date utc-offset facility providers nil offsets)
-        with (emit-hl7/emit-wire log ref-date utc-offset facility providers nil offsets
-                                 {:chatter (emit-hl7/plan-chatter (Random. 7) log all-on)})
+        offsets (planners/plan-latency (Random. 3) log latency)
+        without (emit/emit-wire log ref-date utc-offset facility providers nil offsets)
+        with (emit/emit-wire log ref-date utc-offset facility providers nil offsets
+                                 {:chatter (planners/plan-chatter (Random. 7) log all-on)})
         add-on? #(#{"ADT^A08" "ADT^A31" "ADT^A28"} (msh-9 %))]
     (is (pos? (count (filter add-on? with))))
     (is (= without (filterv (complement add-on?) with))
@@ -276,9 +279,9 @@
 
 (deftest every-message-is-derivable-from-the-log-and-the-emission-config
   (let [profile (assoc all-on :restatement {:rate-per-patient-day 2.0})
-        plan (emit-hl7/plan-chatter (Random. 7) log profile)
+        plan (planners/plan-chatter (Random. 7) log profile)
         messages (wire profile)
-        base (emit-hl7/emit log ref-date utc-offset facility providers)]
+        base (emit/emit log ref-date utc-offset facility providers)]
     (testing "TOTAL: every message traces to exactly one basis -- a
               ground-truth event's own render, or one chatter
               instruction. The old `bidirectional-derivability`
@@ -325,11 +328,11 @@
              :cancel-discharge :bed-swap :merge :order-placed :result-available
              :outpatient-visit :bed-status-change :observation :diagnostic-report
              :appointment :reschedule :appointment-cancel :no-show}
-           (set (keys emit-hl7/message-type-registry))))
-    (is (empty? (filter #(contains? emit-hl7/message-type-registry %)
-                        (keys emit-hl7/chatter-event-kinds)))
+           (set (keys registry/message-type-registry))))
+    (is (empty? (filter #(contains? registry/message-type-registry %)
+                        (keys registry/chatter-event-kinds)))
         "the three kinds chatter restates are exactly three of the
          registry's own deliberate silences, and stay silent there")
     (is (every? (into #{} (map first) (rest (rest engine/Event)))
-                (keys emit-hl7/chatter-event-kinds))
+                (keys registry/chatter-event-kinds))
         "and all three are contract kinds -- chatter invents none")))

@@ -21,7 +21,7 @@
             [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
             [ehrt.patient-simulator.interface :as patient-simulator]
-            [ehrt.sim-engine.engine :as engine]
+            [ehrt.sim-engine.run :as run]
             [ehrt.sim-check.check :as check]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]))
 
@@ -43,7 +43,7 @@
                          :modules [seeded-closure]
                          :module-assignment [{:module-id "veteran-ptsd" :weight 1}]
                          :module-horizon-days 36500}
-            {:keys [ground-truth facility providers]} (engine/run run-config)
+            {:keys [ground-truth facility providers]} (run/run run-config)
             kinds (into #{} (map :event) ground-truth)]
         (is (some #{:care-plan-start :procedure} kinds)
             (str "expected real compiled clinical content across 300 patients, got " kinds))
@@ -100,7 +100,7 @@
                         (let [compiled (apply real-compile-trajectory trajectory facility reg-t more)]
                           (swap! total + (or (:suppressed-straddle-spans compiled) 0))
                           compiled))]
-          (engine/run {:seed seed :patients 300 :pathway {:name "module-only" :steps []}
+          (run/run {:seed seed :patients 300 :pathway {:name "module-only" :steps []}
                        :modules [seeded-closure]
                        :module-assignment [{:module-id "veteran-ptsd" :weight 1}]
                        :module-horizon-days 36500}))

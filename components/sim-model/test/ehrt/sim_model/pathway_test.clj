@@ -70,7 +70,7 @@
 (deftest entry-with-invalid-pathway-ir-is-invalid
   (is (not (pathway/valid-pathways-config? [{:pathway {:steps "not-a-pathway"} :weight 1}]))))
 
-;; --- M3: order (result auto-pairs, never hand-authored -- see engine.clj) --
+;; --- M3: order (result auto-pairs, never hand-authored -- see decide.clj) --
 
 (deftest order-step-is-valid-ir
   (is (pathway/valid? {:name "t" :steps [{:type :admission :location "Renal"}

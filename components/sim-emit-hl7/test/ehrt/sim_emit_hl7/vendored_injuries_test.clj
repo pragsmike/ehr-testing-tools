@@ -18,7 +18,7 @@
             [ehrt.kernel.interface :as result]
             [ehrt.patient-simulator.interface :as patient-simulator]
             [ehrt.patient-simulator.gmf :as gmf]
-            [ehrt.sim-engine.engine :as engine]
+            [ehrt.sim-engine.run :as run]
             [ehrt.sim-check.check :as check]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]))
 
@@ -61,7 +61,7 @@
             this closure's own max-steps (ADR-0105) or nested-encounter
             (ADR-0107) branches -- real compiled clinical content lands
             in ground truth across the whole population"
-    (let [{:keys [ground-truth] :as result} (engine/run run-config)
+    (let [{:keys [ground-truth] :as result} (run/run run-config)
           kinds (into #{} (map :event) ground-truth)]
       (is (some #{:encounter :encounter-end :condition-onset :medication-order :outpatient-visit} kinds)
           (str "expected real compiled clinical content across 300 patients, got " kinds))
@@ -75,7 +75,7 @@
 ;;
 ;; `:synthesized-encounter-ends` lives on `run-module`'s own return ctx
 ;; (ADR-0107), not on `compile-trajectory`'s -- interception happens at
-;; the `patient-simulator/run-module` boundary itself (`engine.clj`'s own
+;; the `patient-simulator/run-module` boundary itself (`decide.clj`'s own
 ;; `:registered` decide method calls it directly, one walk per patient),
 ;; the same "intercept at the real call boundary" technique the
 ;; colorectal/veteran-prostate-cancer payoffs already established one
@@ -112,7 +112,7 @@
                       (let [ctx (apply real-run-module module rng persona registration-t more)]
                         (swap! total + (or (:synthesized-encounter-ends ctx) 0))
                         ctx))]
-        (engine/run run-config))
+        (run/run run-config))
       (is (= pinned-synthesized-encounter-ends @total)
           (str "expected " pinned-synthesized-encounter-ends
                " total synthesized encounter-ends across 300 patients, got " @total)))))

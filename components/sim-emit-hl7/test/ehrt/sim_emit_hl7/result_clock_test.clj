@@ -36,7 +36,9 @@
             [clojure.java.io :as io]
             [clojure.edn :as edn]
             [ehrt.sim-engine.interface :as engine]
-            [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]
+            [ehrt.sim-emit-hl7.emit :as emit]
+            [ehrt.sim-emit-hl7.hl7-time :as hl7-time]
+            [ehrt.sim-emit-hl7.segments :as segments]
             [com.nervestaple.hl7-parser.parser :as parser]
             [com.nervestaple.hl7-parser.message :as message]))
 
@@ -97,7 +99,7 @@
   [pathway seed result-event-type]
   (let [{:keys [ground-truth facility providers]}
         (engine/run {:seed seed :patients 1 :pathways [{:pathway pathway :weight 1}]})
-        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        messages (emit/emit ground-truth ref-date utc-offset facility providers)
         result-event (first (filter #(= result-event-type (:event %)) ground-truth))]
     {:ground-truth ground-truth :facility facility :providers providers
      :messages messages :result-event result-event}))
@@ -112,7 +114,7 @@
             MSH-7 too (the identity case: one instant, three fields)"
     (let [{:keys [messages result-event]} (run-with result-available-pathway 7 :result-available)
           oru (oru-for messages)
-          expected (emit-hl7/hl7-timestamp ref-date (:t result-event) utc-offset)
+          expected (hl7-time/hl7-timestamp ref-date (:t result-event) utc-offset)
           obr (first (segments-named oru "OBR"))
           obxs (segments-named oru "OBX")]
       (is (some? result-event) "non-vacuity: the pathway really produced a :result-available")
@@ -135,7 +137,7 @@
             pad' -- ruled Q2 \"a\", the pad is accepted for OBX-14"
     (let [{:keys [messages result-event]} (run-with observation-pathway 1 :observation)
           oru (oru-for messages)
-          expected (emit-hl7/hl7-timestamp ref-date (:t result-event) utc-offset)
+          expected (hl7-time/hl7-timestamp ref-date (:t result-event) utc-offset)
           obxs (segments-named oru "OBX")]
       (is (some? result-event) "non-vacuity: the pathway really produced an :observation")
       (is (some? oru) "non-vacuity: it really rendered an ORU^R01")
@@ -152,7 +154,7 @@
             not a single call site"
     (let [{:keys [messages result-event]} (run-with diagnostic-report-pathway 1 :diagnostic-report)
           oru (oru-for messages)
-          expected (emit-hl7/hl7-timestamp ref-date (:t result-event) utc-offset)
+          expected (hl7-time/hl7-timestamp ref-date (:t result-event) utc-offset)
           obr (first (segments-named oru "OBR"))
           obxs (segments-named oru "OBX")]
       (is (some? result-event) "non-vacuity: the pathway really produced a :diagnostic-report")
@@ -176,9 +178,9 @@
   [pathway seed result-event-type offset-seconds]
   (let [{:keys [ground-truth facility providers messages result-event]}
         (run-with pathway seed result-event-type)
-        control-id (emit-hl7/control-id-for result-event)
+        control-id (segments/control-id-for result-event)
         offsets {control-id offset-seconds}
-        wire (emit-hl7/emit-wire ground-truth ref-date utc-offset facility providers nil offsets)]
+        wire (emit/emit-wire ground-truth ref-date utc-offset facility providers nil offsets)]
     {:result-event result-event
      :plain-oru (oru-for messages)
      :wire-oru (oru-for wire)
@@ -195,9 +197,9 @@
       (testing label
         (let [{:keys [result-event plain-oru wire-oru offset]}
               (split-clock-case pathway seed event-type 5400)
-              clinical (emit-hl7/hl7-timestamp ref-date (:t result-event) utc-offset)]
+              clinical (hl7-time/hl7-timestamp ref-date (:t result-event) utc-offset)]
           (testing "MSH-7 shifted by exactly the offset"
-            (is (= (emit-hl7/hl7-timestamp ref-date (+ (:t result-event) offset) utc-offset)
+            (is (= (hl7-time/hl7-timestamp ref-date (+ (:t result-event) offset) utc-offset)
                    (msh-7 wire-oru)))
             (is (not= (msh-7 plain-oru) (msh-7 wire-oru))
                 "non-vacuity: the offset really moved the transmit clock"))
@@ -226,8 +228,8 @@
       (testing label
         (let [{:keys [ground-truth facility providers messages]} (run-with pathway seed :admission)]
           (is (= messages
-                 (emit-hl7/emit-wire ground-truth ref-date utc-offset facility providers nil {})
-                 (emit-hl7/emit-wire ground-truth ref-date utc-offset facility providers nil nil))))))))
+                 (emit/emit-wire ground-truth ref-date utc-offset facility providers nil {})
+                 (emit/emit-wire ground-truth ref-date utc-offset facility providers nil nil))))))))
 
 ;; --- Contract neutrality: this is an emitter-seam change, not a schema
 ;; change (ADR-0141 Q-A's versioning is untouched) -------------------------

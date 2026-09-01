@@ -2,7 +2,7 @@
   "EmitState (docs/sim-theory.edn): state-history -> FHIR R4 Bundle.
   Written test-first (sim/ADR-0004). snapshot-at is the literal
   snapshot-at-instant law (a pure function of REPLAY RECORDS --
-  ehrt.sim-engine.engine/replay's own output, the fold, sim/ADR-0008 -- at
+  ehrt.sim-engine.fold/replay's own output, the fold, sim/ADR-0008 -- at
   an instant t; no log access beyond the fold). The resource builders
   are pure functions of one patient's own folded state; `bundle-run` is
   the convenience that ties both to a real ground-truth log.
@@ -18,7 +18,9 @@
             [clojure.data.json :as json]
             [ehrt.sim-emit-fhir.emit-fhir :as emit-fhir]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]
-            [ehrt.sim-engine.engine :as engine]
+            [ehrt.sim-engine.fold :as fold]
+            [ehrt.sim-engine.run :as run]
+            [ehrt.sim-engine.streams :as streams]
             [com.nervestaple.hl7-parser.parser :as parser]
             [com.nervestaple.hl7-parser.message :as message]))
 
@@ -28,26 +30,26 @@
 ;; --- snapshot-at: the pure fold-at-instant primitive ----------------------
 
 (deftest snapshot-at-before-any-event-is-empty
-  (let [{:keys [ground-truth]} (engine/run {:seed 1 :patients 1})
-        records (engine/replay ground-truth)]
+  (let [{:keys [ground-truth]} (run/run {:seed 1 :patients 1})
+        records (fold/replay ground-truth)]
     (is (= {} (emit-fhir/snapshot-at records -1)))))
 
 (deftest snapshot-at-returns-the-fold-immediately-after-the-last-applicable-event
-  (let [{:keys [ground-truth]} (engine/run {:seed 1 :patients 1})
-        records (engine/replay ground-truth)
+  (let [{:keys [ground-truth]} (run/run {:seed 1 :patients 1})
+        records (fold/replay ground-truth)
         admission-t (:t (first (filter #(= :admission (:event %)) ground-truth)))
         snapshot (emit-fhir/snapshot-at records admission-t)
-        pid (engine/patient-id-for 1 0)]
+        pid (streams/patient-id-for 1 0)]
     (is (= :admitted (:status (get snapshot pid))))))
 
 (deftest snapshot-at-end-matches-the-runs-own-final-fold
-  (let [{:keys [ground-truth]} (engine/run {:seed 1 :patients 3})
-        records (engine/replay ground-truth)
+  (let [{:keys [ground-truth]} (run/run {:seed 1 :patients 3})
+        records (fold/replay ground-truth)
         end-t (reduce max 0 (map :t ground-truth))
         snapshot (emit-fhir/snapshot-at records end-t)]
     (is (= 3 (count snapshot)))
     (doseq [i (range 3)]
-      (is (= :discharged (:status (get snapshot (engine/patient-id-for 1 i))))))))
+      (is (= :discharged (:status (get snapshot (streams/patient-id-for 1 i))))))))
 
 ;; --- resource builders: pure functions of one patient's own state --------
 
@@ -135,7 +137,7 @@
 ;; --- the bundle is valid JSON --------------------------------------------
 
 (deftest patient-bundle-round-trips-through-clojure-data-json
-  (let [{:keys [ground-truth]} (engine/run {:seed 42 :patients 2})
+  (let [{:keys [ground-truth]} (run/run {:seed 42 :patients 2})
         bundles (emit-fhir/bundle-run ground-truth ref-date utc-offset 42 :end)]
     (is (= 2 (count bundles)))
     (doseq [[_ bundle] bundles]
@@ -147,12 +149,12 @@
 (defspec fhir-patient-id-and-active-mrn-resolve-to-the-same-hl7-identity 150
   (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 8)]
-    (let [{:keys [ground-truth]} (engine/run {:seed seed :patients patients})
+    (let [{:keys [ground-truth]} (run/run {:seed seed :patients patients})
           bundles (emit-fhir/bundle-run ground-truth ref-date utc-offset seed :end)
           messages (emit-hl7/emit ground-truth ref-date utc-offset)]
       (every?
        (fn [i]
-         (let [pid (engine/patient-id-for seed i)
+         (let [pid (streams/patient-id-for seed i)
                bundle (get bundles pid)]
            (or (nil? bundle) ;; never registered at end -- impossible today, but not this property's claim
                (let [patient (first (filter #(= "Patient" (:resourceType %)) (map :resource (:entry bundle))))
@@ -183,7 +185,7 @@
 (defspec every-resource-in-every-bundle-carries-htest-and-run-tag 100
   (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 5)]
-    (let [{:keys [ground-truth]} (engine/run {:seed seed :patients patients})
+    (let [{:keys [ground-truth]} (run/run {:seed seed :patients patients})
           bundles (emit-fhir/bundle-run ground-truth ref-date utc-offset seed :end)]
       (and (seq bundles)
            (every?
@@ -290,7 +292,7 @@
   (testing "the FHIR half of ADR-0174's opt-in law, proved over a real
             run rather than over a hand-built state"
     (let [cfg {:seed 42 :patients 4}
-          gt (:ground-truth (engine/run cfg))
+          gt (:ground-truth (run/run cfg))
           bundles (emit-fhir/bundle-run gt ref-date utc-offset 42 :end)]
       (is (seq bundles))
       (is (every? (fn [[_ b]]

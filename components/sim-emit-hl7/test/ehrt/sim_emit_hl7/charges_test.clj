@@ -16,7 +16,9 @@
   carries the population-scale witness table."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.string :as str]
-            [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]
+            [ehrt.sim-emit-hl7.emit :as emit]
+            [ehrt.sim-emit-hl7.planners :as planners]
+            [ehrt.sim-emit-hl7.registry :as registry]
             [ehrt.sim-model.interface :as sim-model]))
 
 (def ^:private ref-date "2024-01-01")
@@ -88,16 +90,16 @@
   skip assertion below is about."
   {"58410-2" {:amount 148.00 :display "CBC panel"}
    "10509002" {:amount 962.50 :display "Haemodialysis session"}
-   emit-hl7/room-and-board-code {:amount 1875.00 :display "Room and board, per day"}})
+   registry/room-and-board-code {:amount 1875.00 :display "Room and board, per day"}})
 
 (def ^:private charges {:price-table price-table})
 
-(defn- plan [] (emit-hl7/plan-charges log charges))
+(defn- plan [] (planners/plan-charges log charges))
 
 (defn- wire
   ([] (wire charges))
-  ([c] (emit-hl7/emit-wire log ref-date utc-offset facility providers nil {}
-                           {:charges (:lines (emit-hl7/plan-charges log c))})))
+  ([c] (emit/emit-wire log ref-date utc-offset facility providers nil {}
+                           {:charges (:lines (planners/plan-charges log c))})))
 
 (defn- msh-9 [m] (nth (str/split (first (str/split m #"\r")) #"\|") 8))
 (defn- msh-10 [m] (nth (str/split (first (str/split m #"\r")) #"\|") 9))
@@ -109,22 +111,22 @@
 ;; --- The identity half ---------------------------------------------------
 
 (deftest absent-nil-and-empty-charges-are-the-byte-identical-path
-  (let [plain (emit-hl7/emit log ref-date utc-offset facility providers)]
-    (is (= plain (emit-hl7/emit-wire log ref-date utc-offset facility providers nil {})))
-    (is (= plain (emit-hl7/emit-wire log ref-date utc-offset facility providers nil {} {:charges nil})))
-    (is (= plain (emit-hl7/emit-wire log ref-date utc-offset facility providers nil {} {:charges {}})))
+  (let [plain (emit/emit log ref-date utc-offset facility providers)]
+    (is (= plain (emit/emit-wire log ref-date utc-offset facility providers nil {})))
+    (is (= plain (emit/emit-wire log ref-date utc-offset facility providers nil {} {:charges nil})))
+    (is (= plain (emit/emit-wire log ref-date utc-offset facility providers nil {} {:charges {}})))
     (testing "NOT CONFIGURED and CONFIGURED-BUT-EMPTY are different
               things, deliberately. Absent `:charges` plans nothing and
               skips nothing -- there was no table to miss. A table that
               is present and empty skips EVERY candidate, and says so,
               because that is a misconfiguration a reader should be
               able to see rather than infer from silence."
-      (is (= {:lines {} :skipped {}} (emit-hl7/plan-charges log nil)))
-      (is (= {} (:lines (emit-hl7/plan-charges log {}))))
-      (is (pos? (reduce + (vals (:skipped (emit-hl7/plan-charges log {})))))))
+      (is (= {:lines {} :skipped {}} (planners/plan-charges log nil)))
+      (is (= {} (:lines (planners/plan-charges log {}))))
+      (is (pos? (reduce + (vals (:skipped (planners/plan-charges log {})))))))
     (testing "a table that prices NOTHING renders no DFT at all, and
               counts every candidate as a skip"
-      (let [{:keys [lines skipped]} (emit-hl7/plan-charges log {:price-table {}})]
+      (let [{:keys [lines skipped]} (planners/plan-charges log {:price-table {}})]
         (is (= {} lines))
         (is (pos? (reduce + (vals skipped))))
         (is (= plain (wire {:price-table {}})))))))
@@ -165,7 +167,7 @@
       (is (= ["1" "2" "3" "4"] (mapv #(field % 1) lines)) "FT1-1 set ids"))
     (let [by-code (into {} (map (juxt #(first (str/split (field % 7) #"\^")) identity)) lines)]
       (testing "FT1-7 carries the transaction code on EVERY line"
-        (is (= #{"58410-2" "10509002" emit-hl7/room-and-board-code} (set (keys by-code)))))
+        (is (= #{"58410-2" "10509002" registry/room-and-board-code} (set (keys by-code)))))
       (testing "FT1-6 is the transaction type, FT1-10/11/12 the quantity
                 and the extended and unit amounts"
         (let [order (get by-code "58410-2")]
@@ -177,7 +179,7 @@
                 procedure line carries it"
         (is (= "10509002" (first (str/split (field (get by-code "10509002") 25) #"\^"))))
         (is (= "" (field (get by-code "58410-2") 25)))
-        (is (= "" (field (get by-code emit-hl7/room-and-board-code) 25))))
+        (is (= "" (field (get by-code registry/room-and-board-code) 25))))
       (testing "FT1-4 is the fact's own CLINICAL instant, never the
                 DFT's transmit instant -- ADR-0109's split clock"
         (is (= "20240101003320+0000" (field (get by-code "58410-2") 4))
@@ -185,7 +187,7 @@
 
 (deftest room-and-board-is-one-line-per-started-inpatient-day-and-outpatients-get-none
   (let [{:keys [lines]} (plan)
-        rb (fn [k] (filterv #(= emit-hl7/room-and-board-code (:code %)) (get lines k)))]
+        rb (fn [k] (filterv #(= registry/room-and-board-code (:code %)) (get lines k)))]
     (testing "ENC-1 runs t 1000 -> 91000, which is 90,000 seconds and
               two started days, and the lines sit on the day grid from
               the admission instant"
@@ -228,7 +230,7 @@
       (is (= 4 (count (ft1s (first (dfts (wire))))))))
     (testing "dropping a price from the table moves the skip census, not
               the amounts of what remains"
-      (let [{:keys [skipped]} (emit-hl7/plan-charges log {:price-table (dissoc price-table "58410-2")})]
+      (let [{:keys [skipped]} (planners/plan-charges log {:price-table (dissoc price-table "58410-2")})]
         (is (= {"24323-8" 1 "58410-2" 3} skipped))))))
 
 (deftest amounts-render-locale-free-at-two-decimal-places
@@ -257,8 +259,8 @@
             that discharge's own lag happened to be, with nothing in any
             config asking for it."
     (let [latency {:discharge {:from-minutes 45 :to-minutes 45}}
-          offsets (emit-hl7/plan-latency (java.util.Random. 11) log latency)
-          messages (emit-hl7/emit-wire log ref-date utc-offset facility providers nil offsets
+          offsets (planners/plan-latency (java.util.Random. 11) log latency)
+          messages (emit/emit-wire log ref-date utc-offset facility providers nil offsets
                                        {:charges (:lines (plan))})
           msh-7 (fn [m] (nth (str/split (first (str/split m #"\r")) #"\|") 6))
           by-id (into {} (map (juxt msh-10 identity)) messages)]
@@ -272,8 +274,8 @@
             control id of its own -- there is no ADT to align with, and
             the DFT transmits at its clinical instant"
     (let [latency {:discharge {:from-minutes 45 :to-minutes 45}}
-          offsets (emit-hl7/plan-latency (java.util.Random. 11) log latency)
-          messages (emit-hl7/emit-wire log ref-date utc-offset facility providers nil offsets
+          offsets (planners/plan-latency (java.util.Random. 11) log latency)
+          messages (emit/emit-wire log ref-date utc-offset facility providers nil offsets
                                        {:charges (:lines (plan))})
           m (first (filter #(= "MRN000001-P03-402000" (msh-10 %)) messages))]
       (is (some? m))

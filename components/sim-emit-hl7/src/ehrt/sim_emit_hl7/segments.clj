@@ -137,7 +137,7 @@
 (defn pid-segment
   "PID-1/2/3 unconditionally (Set ID, blank, the active MRN); PID-4/6/9/10/12
   stay blank placeholders so positional fields (5/7/8/11/13) land correctly.
-  M4: when `persona` is present (every real ehrt.sim-engine.engine/run output,
+  M4: when `persona` is present (every real ehrt.sim-engine.run/run output,
   post the :registered event -- ehrt.sim-model.persona/Persona), PID gains
   demographic enrichment: PID-5 (XPN name), PID-7 (DOB, HL7 date), PID-8 (sex,
   Table 0001 F/M), PID-11 (XAD address), PID-13 (TN phone, `tn-field`). nil persona (hand-
@@ -247,7 +247,7 @@
   ARC 3B SWEEP 1 (ADR-0174 ruling C1): PV1-19, the VISIT NUMBER, is the
   encounter's one wire face and the only field this sweep adds to any
   message. It was one of the 28 blanks below, on every message this
-  project had ever produced -- `emit_hl7.clj`'s own registry comment
+  project had ever produced -- `registry.clj`'s own comment
   calls traffic invisible to every consumer a failure mode, and an
   encounter with no visit number was exactly that. `visit-number` is
   nil for every event of every run that did not opt into `:encounters`,

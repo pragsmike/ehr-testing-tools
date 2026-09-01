@@ -45,7 +45,7 @@
   section 2(b)'s two kinds fold onto it.
 
   THE VALUE IS PERSONA-SHAPED, deliberately, and this is the one design
-  choice here worth stating. `ehrt.sim-engine.engine/Demographics` is the
+  choice here worth stating. `ehrt.sim-engine.state/Demographics` is the
   ENGINE's state-at-t shape, and it carries a residence SUM where a
   Persona carries an `:address`. This namespace may not depend on
   sim-engine at all (`components/sim-emit-hl7` depends on

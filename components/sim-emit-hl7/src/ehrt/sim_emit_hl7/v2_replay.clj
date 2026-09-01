@@ -92,7 +92,7 @@
 
 (defn- hl7-date->iso
   "\"yyyyMMdd\" -> \"yyyy-MM-dd\" -- the inverse of
-  ehrt.sim-emit-hl7.emit-hl7/pid-segment's own dash-stripping.
+  ehrt.sim-emit-hl7.segments/pid-segment's own dash-stripping.
 
   nil/BLANK IN, nil OUT (arc 3a part 4, 2026-08-26). PID-7 was
   unconditionally populated until the identification flow landed: a
@@ -163,7 +163,7 @@
 
 (defn- tn->persona-phone
   "\"(NNN)NNN-NNNN\" -> \"NNN-NNN-NNNN\" -- the inverse of
-  ehrt.sim-emit-hl7.emit-hl7/tn-field, exactly as `hl7-date->iso` above
+  ehrt.sim-emit-hl7.er7/tn-field, exactly as `hl7-date->iso` above
   is the inverse of `pid-segment`'s own dash-stripping.
 
   ARC 4 SWEEP 1 (`notes/adr/0175-arc-4-emission-add-ons.md` ruling A1,
@@ -185,7 +185,7 @@
           (str/replace #"^\((\d{3})\)(\d{3})-(\d{4})$" "$1-$2-$3")))
 
 (defn- parse-persona
-  "Every message carries this uniformly (ehrt.sim-emit-hl7.emit-hl7/
+  "Every message carries this uniformly (ehrt.sim-emit-hl7.segments/
   pid-segment's own docstring) -- `:ssn` and `:age` are never rendered,
   the same exclusion `project-to-wire-visible-fields` states from the
   ground-truth side.
@@ -290,7 +290,7 @@
 
 (defn- evolve-entry
   "(entry, trigger, parsed, t) -> entry'. Pure and total, mirroring
-  ehrt.sim-engine.engine/evolve's own shape one layer up the wire --
+  ehrt.sim-engine.evolve/evolve's own shape one layer up the wire --
   dispatch on the message's own trigger, never mutate anything but the
   ONE mrn-keyed entry this message is about. Single-PID/PV1 triggers
   only -- A17/A40 (genuinely two-participant) are dispatched by
@@ -556,7 +556,7 @@
     registry entry at all, that namespace's own comment). Genuinely
     truth-only, not a gap this property should paper over.
   - :persona's own :ssn/:age -- PID never carries either
-    (ehrt.sim-emit-hl7.emit-hl7/pid-segment's own fixed field list).
+    (ehrt.sim-emit-hl7.segments/pid-segment's own fixed field list).
   - :persona's own :payer -- wire-visible ONLY once an :admission
     message has actually carried IN1 (IN1 rides admission alone) --
     gated here on `:admitted-at` being non-nil, the real wire's own

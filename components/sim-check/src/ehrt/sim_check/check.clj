@@ -20,7 +20,7 @@
   event-validity rows from docs/patient-state-model.md (admission only
   when :new, transfer only when :admitted, a transfer's declared
   :from matches the fold). These read patient/world state via
-  ehrt.sim-engine.engine/replay -- the same fold `evolve` always was,
+  ehrt.sim-engine.fold/replay -- the same fold `evolve` always was,
   reused rather than reimplemented (sim/ADR-0008).
 
   M2a (sim/ADR-0010) adds two structural invariants over :participants
@@ -66,7 +66,7 @@
 
 (def ^:private encounter-openers
   "The two event kinds that OPEN an encounter -- and therefore mint its
-  id (`ehrt.sim-engine.engine/encounter-id-for`)."
+  id (`ehrt.sim-engine.streams/encounter-id-for`)."
   #{:admission :outpatient-visit})
 
 (def ^:private encounter-closers
@@ -984,11 +984,11 @@
 
 ;; --- sim/ADR-0012: :step-rejected -- truth about the run, checked structurally
 ;; (never a message-bearing event -- no message-type-registry entry, by
-;; design; see ehrt.sim-engine.engine/documented-step-rejection-reasons) --
+;; design; see ehrt.sim-engine.decide/documented-step-rejection-reasons) --
 
 (defn step-rejected-reason-is-documented
   "sim/ADR-0012's own invariant: every :step-rejected event's :reason is one
-  of the documented enum (ehrt.sim-engine.engine/documented-step-
+  of the documented enum (ehrt.sim-engine.decide/documented-step-
   rejection-reasons) -- a rejection with an undocumented reason would
   mean a new decide-time rejection path shipped without updating the
   enum, the co-landing convention extended to this event type."
@@ -1610,9 +1610,9 @@
 (defn registered-is-every-patients-first-event
   "docs/sim-theory.edn's :persona stage lands as the engine-internal
   :registered event, prepended to every patient's step queue
-  (ehrt.sim-engine.engine/run) -- structurally, that means it must be
+  (ehrt.sim-engine.run/run) -- structurally, that means it must be
   the FIRST event naming any given patient-id, every time, or
-  ehrt.sim-engine.engine/replay's own bootstrap (which seeds a
+  ehrt.sim-engine.fold/replay's own bootstrap (which seeds a
   never-yet-seen participant's initial state off the first event
   naming them, sim/ADR-0010) would silently seed from the wrong event."
   [ground-truth]

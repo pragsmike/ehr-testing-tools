@@ -263,7 +263,7 @@ What **does** invalidate a reproduction:
   **discriminator, not a warranty**: two corpora with the same seed and
   config and *different* stream schemes are expected to differ, and the
   marker says so on the artifact's face instead of making you resolve a
-  version against a changelog. `ehrt.sim-engine.engine/stream-scheme`'s
+  version against a changelog. `ehrt.sim-engine.streams/stream-scheme`'s
   own docstring is the authority.
 - **Turning an engine key on or off.** Every engine key in the table
   above is a fact generator, so it draws, and a draw reshuffles

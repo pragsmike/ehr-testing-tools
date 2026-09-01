@@ -10,7 +10,7 @@
 
 A plain default run — no `--config` needed, since every patient is
 now unconditionally prepended with a `:registered` step
-(`ehrt.sim-engine.engine/run`'s own docstring) that samples a persona
+(`ehrt.sim-engine.run/run`'s own docstring) that samples a persona
 (name, DOB, sex, address, phone, SSN-shaped id, payer). Seed 41 was
 originally picked because it happened to produce a patient named
 `O'Brien`, giving this demo a real, naturally-occurring apostrophe to
@@ -74,7 +74,7 @@ IN1|1||medicaid|Medicaid
 
 **PID-5** (`Smith^Jennifer`) — the family and given names are separated
 by ER7's own component delimiter and are otherwise passed through
-byte-faithfully; `ehrt.sim-emit-hl7.emit-hl7/escape-er7` is the identity
+byte-faithfully; `ehrt.sim-emit-hl7.er7/escape-er7` is the identity
 function on any string containing none of ER7's five reserved
 characters (`|^~\&`). The property, not this capture, is what the tree
 gates: `escape-er7-is-identity-for-strings-with-no-delimiter-characters`

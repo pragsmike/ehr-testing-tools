@@ -4,7 +4,7 @@
   single-file closure (no CallSubmodule, no lookup tables, the census
   substance artifact's own `:closure-file-count 1`). Population/horizon
   sizing follows this repo's own 'measure, don't guess' discipline
-  (`ehrt.sim-emit-hl7.vendored-sepsis-test`'s own docstring): engine.clj
+  (`ehrt.sim-emit-hl7.vendored-sepsis-test`'s own docstring): decide.clj
   anchors registration-t at a FIXED calendar instant
   (`sim-model/reference-today-epoch-day`), not DOB, so `Initial`'s own
   0.4/0.6 `AlzheimersGene` split plus the downstream onset delay only
@@ -16,7 +16,7 @@
             [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
             [ehrt.patient-simulator.gmf :as gmf]
-            [ehrt.sim-engine.engine :as engine]
+            [ehrt.sim-engine.run :as run]
             [ehrt.sim-check.check :as check]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]))
 
@@ -34,7 +34,7 @@
   (testing "load-clean sanity -- single-file closure, no submodules"
     (is (result/ok? loaded-closure)))
   (testing "real compiled clinical content lands across 300 patients"
-    (let [{:keys [ground-truth] :as result} (engine/run run-config)
+    (let [{:keys [ground-truth] :as result} (run/run run-config)
           kinds (into #{} (map :event) ground-truth)]
       (is (some #{:condition-onset :encounter :encounter-end :medication-order} kinds)
           (str "expected real compiled clinical content across 300 patients, got " kinds))

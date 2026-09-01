@@ -25,7 +25,8 @@
   runtime cost to emission (`event-schema`'s own no-runtime-cost note)."
   (:require [clojure.test :refer [deftest is testing]]
             [ehrt.sim-engine.interface :as engine]
-            [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]
+            [ehrt.sim-emit-hl7.emit :as emit]
+            [ehrt.sim-emit-hl7.registry :as registry]
             [ehrt.sim-model.interface :as sim-model]
             [clojure.set]))
 
@@ -37,7 +38,7 @@
   consumes, not a hand-built sample of it."
   [opts]
   (let [{:keys [ground-truth facility providers] :as result} (engine/run opts)]
-    (assoc result :messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers))))
+    (assoc result :messages (emit/emit ground-truth ref-date utc-offset facility providers))))
 
 (deftest every-event-this-emitter-consumes-conforms-to-the-contract
   (doseq [opts [{:seed 21 :patients 4}
@@ -58,7 +59,7 @@
             registry already documents, now mechanically checked
             against the schema rather than against a reader's memory"
     (let [declared (into #{} (map first) (rest (rest engine/Event)))
-          rendered (set (keys emit-hl7/message-type-registry))]
+          rendered (set (keys registry/message-type-registry))]
       (is (empty? (clojure.set/difference rendered declared))
           (str "rendered but not declared: "
                (sort (clojure.set/difference rendered declared)))))))
@@ -69,7 +70,7 @@
             absence from the wire is a design choice this project has
             documented (`message-type-registry`), not a gap in the log"
     (let [declared (into #{} (map first) (rest (rest engine/Event)))
-          rendered (set (keys emit-hl7/message-type-registry))
+          rendered (set (keys registry/message-type-registry))
           silent (clojure.set/difference declared rendered)]
       ;; 1.3.0 (ADR-0173, arc 3a part 3) adds TWO, and the addition is
       ;; recorded in all three places this gate's own message demands:

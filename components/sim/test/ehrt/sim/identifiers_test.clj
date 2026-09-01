@@ -15,7 +15,8 @@
             [ehrt.kernel.interface :as result]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]
             [ehrt.sim-emit-fhir.emit-fhir :as emit-fhir]
-            [ehrt.sim-engine.engine :as engine]
+            [ehrt.sim-engine.run :as run]
+            [ehrt.sim-engine.streams :as streams]
             [ehrt.sim.identifiers :as identifiers]
             [com.nervestaple.hl7-parser.parser :as parser]
             [com.nervestaple.hl7-parser.message :as message]))
@@ -99,13 +100,13 @@
 (defspec identifiers-command-is-complete-against-a-real-run 50
   (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 5)]
-    (let [{:keys [ground-truth facility providers]} (engine/run {:seed seed :patients patients})
+    (let [{:keys [ground-truth facility providers]} (run/run {:seed seed :patients patients})
           messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
           bundles (emit-fhir/bundle-run ground-truth ref-date utc-offset seed :end)
           wire-mrns (into #{} (map #(message/get-field-first-value (parser/parse %) "PID" 3)) messages)
           wire-control-ids (into #{} (map #(message/get-field-first-value (parser/parse %) "MSH" 10)) messages)
           bundle-resource-ids (into #{} (mapcat (fn [[_ b]] (map (comp :id :resource) (:entry b)))) bundles)
-          expected-patient-ids (into #{} (map #(engine/patient-id-for seed %)) (range patients))
+          expected-patient-ids (into #{} (map #(streams/patient-id-for seed %)) (range patients))
           expected-npis (into #{} (map :id) providers)
           {:keys [payload]} (identifiers/identifiers-command {:seed seed :patients patients})]
       (and (clojure.set/subset? wire-mrns (set (:mrns payload)))

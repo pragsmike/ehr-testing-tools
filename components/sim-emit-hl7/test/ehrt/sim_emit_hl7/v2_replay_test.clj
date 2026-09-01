@@ -24,8 +24,12 @@
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [ehrt.sim-engine.churn :as churn]
-            [ehrt.sim-engine.engine :as engine]
-            [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]
+            [ehrt.sim-engine.fold :as fold]
+            [ehrt.sim-engine.run :as run]
+            [ehrt.sim-engine.streams :as streams]
+            [ehrt.sim-emit-hl7.emit :as emit]
+            [ehrt.sim-emit-hl7.er7 :as er7]
+            [ehrt.sim-emit-hl7.registry :as registry]
             [ehrt.patient-simulator.interface :as patient-simulator]
             [ehrt.sim-emit-hl7.v2-replay :as v2-replay]))
 
@@ -40,8 +44,8 @@
             self-initializes -- no separate 'register' step needed on
             the wire side, since EVERY message carries full PID
             enrichment already"
-    (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
-          messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+    (let [{:keys [ground-truth facility providers]} (run/run {:seed 42 :patients 1})
+          messages (emit/emit ground-truth ref-date utc-offset facility providers)
           reconstructed (v2-replay/replay-messages (take 1 messages))
           [mrn entry] (first reconstructed)]
       (is (= 1 (count reconstructed)))
@@ -50,8 +54,8 @@
       (is (some? (:persona entry))))))
 
 (deftest replay-messages-reconstructs-admission-transfer-discharge
-  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 7 :patients 1})
-        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+  (let [{:keys [ground-truth facility providers]} (run/run {:seed 7 :patients 1})
+        messages (emit/emit ground-truth ref-date utc-offset facility providers)
         reconstructed (v2-replay/replay-messages messages)
         [_ entry] (first reconstructed)]
     (is (= :discharged (:status entry)))
@@ -61,8 +65,8 @@
 (deftest replay-messages-reconstructs-cancel-admit-back-to-new
   (let [pathway {:name "cancel-admit" :steps [{:type :admission :location "Renal"}
                                               {:type :cancel-admit}]}
-        {:keys [ground-truth facility providers]} (engine/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
-        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        {:keys [ground-truth facility providers]} (run/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
+        messages (emit/emit ground-truth ref-date utc-offset facility providers)
         reconstructed (v2-replay/replay-messages messages)
         [_ entry] (first reconstructed)]
     (is (= :new (:status entry)))
@@ -73,8 +77,8 @@
   (let [pathway {:name "cbc-order" :steps [{:type :admission :location "Renal"}
                                            {:type :order :profile :cbc}
                                            {:type :discharge}]}
-        {:keys [ground-truth facility providers]} (engine/run {:seed 7 :patients 1 :pathways [{:pathway pathway :weight 1}]})
-        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        {:keys [ground-truth facility providers]} (run/run {:seed 7 :patients 1 :pathways [{:pathway pathway :weight 1}]})
+        messages (emit/emit ground-truth ref-date utc-offset facility providers)
         reconstructed (v2-replay/replay-messages messages)
         [_ entry] (first reconstructed)]
     (is (= 5 (count (:observations entry))) "CBC's 5 analytes")
@@ -100,9 +104,9 @@
             since this test folds the A17 alone, from an empty
             accumulator (foreign traffic opening mid-stream)"
     (let [seed 100
-          p2-id (engine/patient-id-for seed 1)
+          p2-id (streams/patient-id-for seed 1)
           {:keys [ground-truth facility providers]}
-          (engine/run {:seed seed :patients 2 :arrival-gap 0
+          (run/run {:seed seed :patients 2 :arrival-gap 0
                        :pathways [{:patient-ordinal 0
                                    :pathway {:name "p1" :steps [{:type :admission :location "Renal"}
                                                                  {:type :bed-swap :with p2-id}]}}
@@ -114,7 +118,7 @@
           mrn2 (get-in bed-swap-event [:swap p2-id* :active-mrn])
           loc1 (get-in bed-swap-event [:swap p1-id :to])
           loc2 (get-in bed-swap-event [:swap p2-id* :to])
-          a17 (last (emit-hl7/emit ground-truth ref-date utc-offset facility providers))
+          a17 (last (emit/emit ground-truth ref-date utc-offset facility providers))
           acc (v2-replay/fold-message {} a17)]
       (is (= 2 (count acc)))
       (is (= {:ward (:ward loc1) :bed (:bed loc1)} (:location (get acc mrn1))))
@@ -132,15 +136,15 @@
             last-known fields, mirroring ehrt.sim-engine.engine's own
             evolve :merge :merged arm exactly (only :status changes)"
     (let [seed 100
-          p2-id (engine/patient-id-for seed 1)
+          p2-id (streams/patient-id-for seed 1)
           {:keys [ground-truth facility providers]}
-          (engine/run {:seed seed :patients 2 :arrival-gap 0
+          (run/run {:seed seed :patients 2 :arrival-gap 0
                        :pathways [{:patient-ordinal 0
                                    :pathway {:name "p1" :steps [{:type :admission :location "Renal"}
                                                                  {:type :merge :with p2-id}]}}
                                   {:patient-ordinal 1
                                    :pathway {:name "p2" :steps [{:type :admission :location "Renal"}]}}]})
-          messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+          messages (emit/emit ground-truth ref-date utc-offset facility providers)
           [a01-p1 a01-p2 a40] messages
           seeded-acc (-> {} (v2-replay/fold-message a01-p1) (v2-replay/fold-message a01-p2))
           acc (v2-replay/fold-message seeded-acc a40)
@@ -213,15 +217,15 @@
 
 (defn- coherent-at-every-boundary?
   "Checks EVERY participant named in an event's own :participants (not
-  only the primary one, ehrt.sim-engine.engine/replay's own doc) against
+  only the primary one, ehrt.sim-engine.fold/replay's own doc) against
   the SAME folded accumulator -- generalizes cleanly over single-
   participant events (one participant, same check as before) and
   bed-swap/merge (two, each keyed by that participant's OWN
   post-event :active-mrn, which neither event ever reassigns -- ADR-0066
   AR-BB1-1/2's own tombstone design)."
   [ground-truth messages]
-  (let [records (engine/replay ground-truth)
-        rendered (filterv #(emit-hl7/message-type-registry (:event (:event %))) records)]
+  (let [records (fold/replay ground-truth)
+        rendered (filterv #(registry/message-type-registry (:event (:event %))) records)]
     (and (= (count rendered) (count messages))
          (loop [acc {} rs rendered ms messages]
            (if (empty? rs)
@@ -258,7 +262,7 @@
                  exchange (gen/choose 200 999)
                  subscriber (gen/choose 0 9999)]
     (let [phone (format "%03d-%03d-%04d" area exchange subscriber)
-          rendered (first (:content (#'emit-hl7/tn-field phone)))]
+          rendered (first (:content (#'er7/tn-field phone)))]
       (and (re-matches #"^\(\d{3}\)\d{3}-\d{4}$" rendered)
            (= phone (#'v2-replay/tn->persona-phone rendered))))))
 
@@ -288,19 +292,19 @@
                                            {:type :discharge}]})
           config (cond-> {:seed seed :patients patients :pathways [{:pathway pathway :weight 1}]}
                    use-churn (assoc :churn-profile churn/sample-profile))
-          {:keys [ground-truth facility providers]} (engine/run config)
-          messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)]
+          {:keys [ground-truth facility providers]} (run/run config)
+          messages (emit/emit ground-truth ref-date utc-offset facility providers)]
       (coherent-at-every-boundary? ground-truth messages))))
 
 (defspec emitter-coherence-holds-for-module-driven-outpatient-trajectories 150
   (prop/for-all [seed (gen/large-integer* {:min 0})]
     (let [{:keys [ground-truth facility providers]}
-          (engine/run {:seed seed :patients 5
+          (run/run {:seed seed :patients 5
                        :pathway {:name "module-only" :steps []}
                        :modules [(patient-simulator/singleton-closure
                                   (:payload (patient-simulator/load-module
                                              "sinusitis" (slurp (io/resource "sim/modules/sinusitis.json")))))]
                        :module-assignment [{:module-id "sinusitis" :weight 1}]
                        :module-horizon-days 3650})
-          messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)]
+          messages (emit/emit ground-truth ref-date utc-offset facility providers)]
       (coherent-at-every-boundary? ground-truth messages))))

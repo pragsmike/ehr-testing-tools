@@ -30,7 +30,7 @@
 
   RNG consumption is FIXED per persona (13 draws, always, regardless of
   which branch any weighted pick lands in) -- the same fixed-consumption
-  law `ehrt.sim-engine.engine/assign-pathway` and `ehrt.sim-engine.churn`
+  law `ehrt.sim-engine.assignment/assign-pathway` and `ehrt.sim-engine.churn`
   already establish for this project's other probabilistic choices (see
   `persona`'s own docstring for the exact sequence). GMF coverage Wave F
   (2026-08-03, ADR-0036 AR-4/AR-5) adds two further, CONFIG-GATED draws
@@ -164,7 +164,7 @@
   "The fixed, documented anchor 'today' is relative to when computing a
   birth year from a sampled age -- deliberately NOT wall-clock (the
   determinism law: no unseeded entropy anywhere in the output path).
-  2024 matches ehrt.sim-emit-hl7.emit-hl7/default-reference-date's own
+  2024 matches ehrt.sim-emit-hl7.hl7-time/default-reference-date's own
   year, so DOB and rendered message timestamps stay mutually plausible
   for a run using the default reference date; a caller who overrides
   :reference-date and needs exact DOB-vs-encounter-date coherence is
@@ -240,7 +240,7 @@
 
   13 draws total, always -- fixed regardless of which pool/bucket any
   weighted pick lands in (the same `sim/ADR-0009`-derived law
-  ehrt.sim-engine.engine/assign-pathway and ehrt.sim-engine.churn/
+  ehrt.sim-engine.assignment/assign-pathway and ehrt.sim-engine.churn/
   roll-gap already state for this project's other probabilistic
   choices).
 
