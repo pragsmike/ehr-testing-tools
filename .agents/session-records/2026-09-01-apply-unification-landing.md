@@ -194,6 +194,16 @@ claimed or fixed.
 * **`ehrt.docs-tooling.roadmap-lint-test`** — 20 tests / 32 assertions,
   0 failures, after the retirement.
 * **`gitleaks`** — clean on every staged tree.
+* **Push** — one push, `bf4616f..a9f44bf`, five commits. `gitleaks`
+  clean over 1,332 commits and the pre-push hook `OK`.
+* **Post-push message verification** — all five commits diffed against
+  the message files that produced them; the only delta on each is the
+  single trailing blank line `git log --format=%B` adds. Nothing the WSL
+  wrapper dropped.
+* **CI** — `33525696425` at `a9f44bf`, `completed / success`, not
+  retried, every step green including `generated-doc freshness (regen +
+  diff)`. That is the close marker under
+  `rulings.md#R-session-verifies-ci-via-gh`.
 
 ## 7. Fences honoured
 
