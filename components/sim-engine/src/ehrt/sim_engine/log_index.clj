@@ -16,14 +16,17 @@
   still walk it. Every form below is `engine.clj`'s own text, moved and
   not rewritten.
 
-  THIS NAMESPACE OWNS AN APPLY SITE. `reinstated-state`'s fallback,
-  `(:before (nth (fold/replay ground-truth) idx))`, is the census's
-  apply site 3 (section 4d) -- the one a unification pass can most
-  cheaply delete. It is moved VERBATIM: the `(contains? world
-  :reinstate-index)` guard and the index read are the same two
-  expressions in the same order, and nothing it folds is added, removed
-  or reordered. The ruled unification pays its divergence from the other
-  two apply sites later, not here.
+  THIS NAMESPACE OWNS AN APPLY SITE. `reinstated-state`'s fallback is
+  the census's apply site 3 (section 4d) -- the one a unification pass
+  can most cheaply delete. Stage 1 of the application-path unification
+  repointed it at the choke point: it was `(:before (nth (fold/replay
+  ground-truth) idx))` and is now the same read off
+  `fold/apply-events` under `fold/reinstated-projection`, which is
+  `fold/replay-projection` BY VALUE -- site 3's stack is inherited from
+  site 2 rather than chosen, and saying so as an alias is what keeps the
+  two from drifting apart without a stage-2 commit (census correction
+  C5). The `(contains? world :reinstate-index)` guard is untouched and
+  nothing the fallback folds was added, removed or reordered.
 
   ONE VAR WAS PUBLIC in `engine.clj`, `events-for-patient`, and it keeps
   a delegating `(def events-for-patient log-index/events-for-patient)`
@@ -39,7 +42,10 @@
   The other nine were `defn-` or `^:private` -- NINE, where the census's
   section-1 rendering shows five, because that rendering drops
   `^:private` from every `def` -- so under constraint 5 they become
-  public HERE and get no def THERE. The call sites that stayed behind
+  public HERE and get no def THERE. TWO OF THE TEN HAVE SINCE LEFT
+  AGAIN, `reinstatable-event-types` and `cited-opening-event-types`,
+  moved down into `ehrt.sim-engine.fold` by the unification pass's stage
+  1 and keeping delegating defs here; see either def below for why. The call sites that stayed behind
   are `log-index/`-qualified instead -- thirteen of them then, eleven of
   which left with the ninth extraction's `decide` cluster and the last
   two with the tenth's `run`, so `engine.clj` holds none today -- which
@@ -47,12 +53,11 @@
   the `encounters` and `fold` moves gave their own.
 
   Two edges, both taken DIRECTLY into the namespace that owns them
-  rather than back through `engine.clj`'s delegating defs:
-  `fold/replay` inside `reinstated-state`, and
+  rather than back through `engine.clj`'s delegating defs: `fold` --
+  `apply-events` and `reinstated-projection` inside `reinstated-state`,
+  plus the two delegating defs stage 1 left here -- and
   `sim-model/occupancy-board` inside `bed-reoccupied-by-someone-else?`.
-  `fold/replay` IS the value `engine.clj`'s own `replay` def holds, so
-  this is the same function reached one hop shorter, not a different
-  one. Nothing else in the moved text resolved in `engine.clj` at all:
+  Nothing else in the moved text resolved in `engine.clj` at all:
   `evolve`, `state` and `streams` are absent from this cluster
   entirely.
 
@@ -79,20 +84,14 @@
            ground-truth))
 
 (def reinstatable-event-types
-  "The event classes a cancel decide reinstates state FROM, and therefore
-  the only ones `run`'s `:reinstate-index` records (ADR-0169).
-
-  `:cancel-transfer` restores `:home-ward`/`:location`; `:cancel-discharge`
-  restores those plus `:attending`. `:cancel-admit` is deliberately
-  ABSENT: its own decide reads nothing but the live patient's
-  `:active-mrn`, so it never queried the log for prior state and has
-  nothing to carry. `:transfer-in-error` is absent for the opposite
-  reason -- it emits its transfer and that transfer's cancel in ONE
-  decide, off the live pre-transfer patient -- there is no intervening
-  event for anything to have queried yet, its own comment -- so it too
-  never replayed. Both were checked rather than assumed: the arc's scope
-  named them as candidates."
-  #{:transfer :discharge})
+  "MOVED to `ehrt.sim-engine.fold` by the apply-unification pass's stage
+  1 -- it is apply-site policy (which events the `:reinstate-index`
+  accumulator records), the choke point that reads it lives there, and
+  this namespace requires that one, so leaving it here and naming it
+  from there would have closed a require cycle. Delegating def under
+  ruling C1(a); the set, and the reasoning for each of the two classes
+  it excludes, travelled with it."
+  fold/reinstatable-event-types)
 
 (defn last-uncancelled-index
   "Index into `ground-truth` of the most recent `event-type` event
@@ -115,12 +114,9 @@
                         ground-truth))))
 
 (def cited-opening-event-types
-  "The two event classes whose LAST citation-matching occurrence a
-  terminal step resolves against: a `:medication-end` resolves its
-  `:order-citation` to a `:medication-order`, a `:care-plan-end` its
-  `:care-plan-citation` to a `:care-plan-start`. ADR-0169's carrier
-  records these and nothing else."
-  #{:medication-order :care-plan-start})
+  "MOVED to `ehrt.sim-engine.fold` with `reinstatable-event-types`
+  above, for the same reason and under the same ruling. Delegating def."
+  fold/cited-opening-event-types)
 
 (defn last-cited-index
   "Index into the log of the LAST `opening-type` event carrying
@@ -302,4 +298,9 @@
   [world ground-truth patient-id idx]
   (if (contains? world :reinstate-index)
     (get (:reinstate-index world) idx)
-    (:before (nth (fold/replay ground-truth) idx))))
+    (:before (nth (persistent!
+                   (:entries (fold/apply-events {:world {:patients {}}
+                                                 :entries (transient [])}
+                                                ground-truth
+                                                fold/reinstated-projection)))
+                  idx))))

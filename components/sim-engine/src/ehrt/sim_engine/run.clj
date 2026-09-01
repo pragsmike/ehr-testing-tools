@@ -17,15 +17,20 @@
   shape `(def decide decide/decide)` has carried since the ninth
   extraction.
 
-  THIS NAMESPACE HOLDS THE PROGRAM'S SOLE EVENT PRODUCER AND ITS MAIN
-  APPLY SITE. The census's section 4a records that `run`'s own
-  `(decide ...)` call is the only expression in the tree that mints a
-  ground-truth event; its section 4b enumerates the ten things `run`'s
-  in-loop fold then does with what comes back. Both moved verbatim --
-  nothing added, removed or reordered -- and the divergence between this
-  apply site and `replay`'s (`ehrt.sim-engine.fold`) is documented in
-  section 4c and RULED to be paid at application-path unification, not
-  here.
+  THIS NAMESPACE HOLDS THE PROGRAM'S SOLE EVENT PRODUCER. The census's
+  section 4a records that `run`'s own `(decide ...)` call is the only
+  expression in the tree that mints a ground-truth event, and that is
+  still true here.
+
+  IT NO LONGER HOLDS AN APPLY FOLD. Stage 1 of the application-path
+  unification (`.agents/plans/apply-unification-census.md`) moved the
+  in-loop fold into `ehrt.sim-engine.fold/apply-events`, the ONE fold
+  all three apply sites now run, and what stands here is a call to it
+  under `fold/run-loop-projection` -- this site's own stack, eleven of
+  the thirteen concerns, as an explicit declared subset. Behaviour is
+  unchanged by construction: nothing was enabled, disabled or reordered.
+  Three requires went dead with the fold that used them -- `encounters`,
+  `evolve` and `log-index`, whose only uses here were inside it.
 
   Extracted OUTPUT-IDENTICAL: every form below is `engine.clj`'s own
   text, moved and not rewritten. FOURTEEN call sites are qualified that
@@ -53,21 +58,19 @@
   exactly as it was when these lines stood in `engine.clj`, and the shim
   is the ONE form here that is not `engine.clj`'s own text.
 
-  Its edges are the ones `engine.clj` already took, unchanged -- this
-  namespace is the driver, so it reaches every sibling: `assignment`,
-  `churn`, `config`, `decide`, `encounters`, `evolve`, `fold`,
-  `log-index`, `order-profiles`, `person-fold`, `state` and `streams`,
-  plus `sim-model` and `kernel`. No sibling reaches back, which is what
-  makes this the last cluster and what let the other nine go first."
+  Its edges were the ones `engine.clj` already took -- this namespace is
+  the driver, so it reached every sibling. NINE remain after stage 1:
+  `assignment`, `churn`, `config`, `decide`, `fold`, `order-profiles`,
+  `person-fold`, `state` and `streams`, plus `sim-model` and `kernel`.
+  `encounters`, `evolve` and `log-index` left with the fold. No sibling
+  reaches back, which is what made this the last cluster and what let
+  the other nine go first."
   (:require [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim-engine.assignment :as assignment]
             [ehrt.sim-engine.churn :as churn]
             [ehrt.sim-engine.config :as config]
             [ehrt.sim-engine.decide :as decide]
-            [ehrt.sim-engine.encounters :as encounters]
-            [ehrt.sim-engine.evolve :as evolve]
             [ehrt.sim-engine.fold :as fold]
-            [ehrt.sim-engine.log-index :as log-index]
             [ehrt.sim-engine.order-profiles :as order-profiles]
             [ehrt.sim-engine.person-fold :as person-fold]
             [ehrt.sim-engine.state :as state]
@@ -1245,7 +1248,6 @@
                                            {:seed seed
                                             :ordinals (into {} (for [i (concat firsts hook-patient-ordinals)]
                                                                  [(pid-for i) i]))})}
-        mark-warmup (fn [ev] (assoc ev :warm-up (< (:t ev) warm-up-seconds)))
         ;; ADR-0171: what `decide` receives. The two run-scoped families
         ;; are fixed for the whole loop; `:patient` is swapped per queue
         ;; entry below off this map, keyed by patient-id because that is
@@ -1316,80 +1318,34 @@
               (cond
                 exhausted (final-result ground-truth state-history {:exhausted exhausted})
                 :else
-            (let [;; ARC 3B SWEEP 1: the encounter stamp rides here, off
-                  ;; `world` as it stands BEFORE this batch, for the same
-                  ;; reason `:reinstate-index` is written in the fold
-                  ;; below -- the pre-event state exists at this point
-                  ;; and nowhere later. Per event, not once for the
-                  ;; batch: a `:discharge` decide can emit a bed-ready
-                  ;; `:transfer` for a DIFFERENT patient, whose own open
-                  ;; encounter is the one that transfer belongs to.
-                  events (mapv (comp mark-warmup (partial encounters/stamp-encounter world)) events)
-                  base-idx (count (:ground-truth world))
-                  ;; ADR-0169: the patient-state fold and the reinstate
-                  ;; index are built in ONE pass, because the index's
-                  ;; value IS this fold's accumulator one step early --
-                  ;; `w` before `ev` is applied. A `:discharge` decide can
-                  ;; emit two events (the discharge, then a bed-ready
-                  ;; :transfer for a DIFFERENT patient), so the subject is
-                  ;; read off each event rather than assumed to be
-                  ;; `patient-id`, and the state is captured per event
-                  ;; rather than once for the batch.
-                  [world' reinstate' citations' registrations']
-                  (reduce (fn [[w ridx cidx gidx] [offset ev]]
-                            (let [idx (+ base-idx offset)
-                                  subject (:patient-id (first (:participants ev)))
-                                  ridx' (if (log-index/reinstatable-event-types (:event ev))
-                                          (assoc ridx idx (get-in w [:patients subject]))
-                                          ridx)
-                                  cidx' (if (and (log-index/cited-opening-event-types (:event ev))
-                                                 (some? (:citation ev)))
-                                          (reduce (fn [ci {:keys [patient-id]}]
-                                                    (assoc ci [(:event ev) patient-id (:citation ev)] idx))
-                                                  cidx (:participants ev))
-                                          cidx)
-                                  ;; ADR-0173 section 2(d): one more index
-                                  ;; off the SAME fold, for the same
-                                  ;; reason the two above are here -- the
-                                  ;; log index exists at this point and
-                                  ;; nowhere later.
-                                  gidx' (if (= :registered (:event ev))
-                                          (assoc gidx subject idx)
-                                          gidx)]
-                              ;; ARC 3B SWEEP 2: the participant filter,
-                              ;; and the bed index folded in the SAME
-                              ;; pass for the same reason the three
-                              ;; indexes above are -- the pre-event and
-                              ;; post-event patient maps both exist here
-                              ;; and nowhere later.
-                              (let [w-next (reduce (fn [w2 {:keys [patient-id]}]
-                                                     (update-in w2 [:patients patient-id] evolve/evolve ev))
-                                                   w (filter :patient-id (:participants ev)))]
-                                [(cond-> w-next
-                                   (:beds w-next)
-                                   (assoc :beds (fold/update-beds (:beds w-next) ev
-                                                                  (:patients w) (:patients w-next))))
-                                 ridx' cidx' gidx'])))
-                          [world (:reinstate-index world) (:citation-index world)
-                           (:registration-index world)]
-                          (map-indexed vector events))
-                  world'' (assoc world'
-                                 :ground-truth (into (:ground-truth world) events)
-                                 :reinstate-index reinstate'
-                                 :citation-index citations'
-                                 :registration-index registrations')
-                  ground-truth' (reduce conj! ground-truth events)
-                  ;; ARC 3B SWEEP 2: same filter, same reason -- a bed
-                  ;; participant has no patient whose history to append
-                  ;; to, and a nil key here would put a phantom patient
-                  ;; in `:state-history` for `patient-state-is-a-fold-of-
-                  ;; the-log` to trip over.
-                  state-history' (reduce (fn [sh ev]
-                                            (reduce (fn [sh2 {:keys [patient-id]}]
-                                                      (update sh2 patient-id (fnil conj [])
-                                                              (get-in world' [:patients patient-id])))
-                                                    sh (filter :patient-id (:participants ev))))
-                                          state-history events)
+            (let [;; THE APPLY CHOKE POINT (P5 stage 1,
+                  ;; `.agents/plans/apply-unification-census.md`). This
+                  ;; site's own accumulator stack -- ELEVEN of the
+                  ;; thirteen concerns, everything the fold that stood
+                  ;; here did -- is passed as `fold/run-loop-projection`,
+                  ;; an explicit declared subset, and the fold itself
+                  ;; lives in `ehrt.sim-engine.fold`, where `replay`
+                  ;; (census site 2) and `reinstated-state`'s fallback
+                  ;; (site 3) reach the same one.
+                  ;;
+                  ;; NOTHING WAS ENABLED OR DISABLED by the move: the two
+                  ;; concerns this site omits, `:patient-bootstrap` and
+                  ;; `:replay-entries`, stay omitted (both predicted
+                  ;; INERT, census section 3a), and the choke point's
+                  ;; order of operations is the one that stood here --
+                  ;; decorate off the pre-batch world, take the log
+                  ;; ordinal off it, one per-event reduce, then the
+                  ;; per-batch post-pass off the post-reduce world.
+                  ;; `:log` is the TRANSIENT log accumulator, in and out
+                  ;; as a transient; `final-result` is still the only
+                  ;; thing that persists it.
+                  {world'' :world ground-truth' :log state-history' :state-history}
+                  (fold/apply-events {:world world
+                                      :log ground-truth
+                                      :state-history state-history
+                                      :warm-up-seconds warm-up-seconds}
+                                     events
+                                     fold/run-loop-projection)
                   ;; M3: :order's decide may ask for a follow-up queue
                   ;; entry (the auto-paired :result -- see engine's :order
                   ;; docstring for why it rides the REAL queue instead of

@@ -1,30 +1,52 @@
 (ns ehrt.sim-engine.fold
-  "The derived-state fold: `replay`, the bed index it maintains for
-  `run` but does NOT maintain for itself, and that index's correction
-  table -- `engine.clj`'s fifth extraction under
+  "The derived-state fold and THE APPLY CHOKE POINT: `apply-events`,
+  `replay`, the bed index, and the two policy sets the in-fold indexes
+  are keyed on -- `engine.clj`'s fifth extraction under
   `roadmap.md#engine-namespace-extraction-and-apply-unification` (the
   census's own dependency order, `.agents/plans/engine-extraction-
   census.md` section 3a: `fold` lands after `streams`, `state`,
   `encounters` and `evolve`, and before `log-index`, whose
-  `reinstated-state` calls `replay`).
+  `reinstated-state` calls into here).
 
-  THIS NAMESPACE OWNS AN APPLY SITE. `replay` is the census's apply
-  site 2 (section 4c), and its divergence from `run`'s in-loop fold
-  (section 4b) is six concerns wide: no encounter stamp, no warm-up
-  mark, no bed index, and none of the three log indexes. That
-  divergence is DOCUMENTED and RULED to be paid at application-path
-  unification, not at this move. Nothing `replay` folds is added,
-  removed or reordered here.
+  THIS NAMESPACE OWNS THE APPLY PATH. Until stage 1 of the
+  application-path unification it owned an apply SITE -- `replay`, the
+  census's site 2 -- and the other two folded their own way. It now owns
+  the ONE fold all three run, `apply-events`, with each site passing the
+  accumulator stack it already ran as an explicit declared subset of
+  `full-algebra`:
 
-  Extracted OUTPUT-IDENTICAL: every form below is `engine.clj`'s own
-  text, moved and not rewritten -- including one comment phrase that
-  carries a stale `below` (`bed-correction-event-types`' \"the guard in
-  `decide :bed-ready` below\", which pointed UP even where it stood,
-  `decide :bed-ready` being 523 lines above it), moved verbatim rather
-  than corrected inside a commit whose whole claim is that the moved
-  text is unchanged. Unlike the four extractions before it this cluster
-  has NO interior comment blocks at all: three forms, contiguous,
-  nothing between them but blank lines.
+  * site 1, `ehrt.sim-engine.run`'s in-loop fold -- `run-loop-projection`,
+    eleven of thirteen;
+  * site 2, `replay` below -- `replay-projection`, three of thirteen;
+  * site 3, `ehrt.sim-engine.log-index/reinstated-state`'s fallback --
+    `reinstated-projection`, site 2's by value.
+
+  STAGE 1 CHANGED NO BEHAVIOUR, by construction rather than by
+  assertion: the choke point's order of operations is site 1's,
+  unchanged, and every concern is guarded by its own projection
+  membership and by nothing else. NOTHING IS ENABLED OR DISABLED HERE.
+  The twenty-two omitted (site x accumulator) pairs, and the cone
+  prediction for each -- three OUTPUT-MOVING, nineteen INERT -- are
+  `.agents/plans/apply-unification-census.md` sections 2 and 3; stage 2
+  enables them one commit each, and a delta against a prediction is a
+  FINDING.
+
+  TWO FORMS ARRIVED FROM `ehrt.sim-engine.log-index` with stage 1,
+  `reinstatable-event-types` and `cited-opening-event-types`, each
+  leaving a delegating def there under ruling C1(a). They are apply-site
+  policy rather than log queries -- each names which events an in-fold
+  index RECORDS, and site 1 was their only live code consumer -- and
+  `log-index` requires THIS namespace, so naming them from here while
+  they lived there would have closed a require cycle. The census's
+  section 4a carries that derivation and the two homes it rejected.
+
+  Extracted OUTPUT-IDENTICAL originally: `bed-correction-event-types`
+  and `update-beds` below are `engine.clj`'s own text, moved and not
+  rewritten -- including one comment phrase that carries a stale `below`
+  (`bed-correction-event-types`' \"the guard in `decide :bed-ready`
+  below\", which pointed UP even where it stood, `decide :bed-ready`
+  being 523 lines above it), moved verbatim rather than corrected inside
+  a commit whose whole claim is that the moved text is unchanged.
 
   ONE VAR WAS PUBLIC in `engine.clj`, `replay`, and it keeps a
   delegating `(def replay fold/replay)` there under ruling C1(a) -- not
@@ -32,22 +54,17 @@
   `interface.clj:89` (`(def replay engine/replay)`), and census
   constraint 4 requires that file to keep naming `engine/...`, so the
   delegating def is what keeps the brick's own public surface
-  resolving. `engine.clj`'s `reinstated-state` called `replay` through
-  it until the SIXTH extraction moved that form to
-  `ehrt.sim-engine.log-index`, whose fallback now names `replay` here
-  directly.
+  resolving.
 
-  The other two were `^:private` and `defn-`, so under constraint 5
-  they become public HERE and get no def THERE. `run`'s one call site
-  is `fold/update-beds`-qualified instead, which is the treatment the
-  encounters move gave its own ten.
-
-  Two edges, both taken DIRECTLY into the namespace that owns them
+  Four edges, all taken DIRECTLY into the namespace that owns them
   rather than back through `engine.clj`'s delegating defs:
-  `evolve/evolve` and `state/initial-patient`, both inside `replay`. It
-  reaches nothing else -- not `streams`, not `encounters`, not
-  `sim-model`, not malli, not `clojure.*`."
-  (:require [ehrt.sim-engine.evolve :as evolve]
+  `evolve/evolve` and `state/initial-patient` (the two `replay` always
+  had, now inside `apply-events`), and `encounters/stamp-encounter`,
+  which arrived with the choke point -- site 1's decoration edge, which
+  `run` used to hold. It reaches nothing else -- not `streams`, not
+  `log-index`, not `sim-model`, not malli, not `clojure.*`."
+  (:require [ehrt.sim-engine.encounters :as encounters]
+            [ehrt.sim-engine.evolve :as evolve]
             [ehrt.sim-engine.state :as state]))
 
 (def bed-correction-event-types
@@ -118,6 +135,252 @@
             beds
             (filter :patient-id (:participants ev)))))
 
+(def reinstatable-event-types
+  "The event classes a cancel decide reinstates state FROM, and therefore
+  the only ones `run`'s `:reinstate-index` records (ADR-0169).
+
+  `:cancel-transfer` restores `:home-ward`/`:location`; `:cancel-discharge`
+  restores those plus `:attending`. `:cancel-admit` is deliberately
+  ABSENT: its own decide reads nothing but the live patient's
+  `:active-mrn`, so it never queried the log for prior state and has
+  nothing to carry. `:transfer-in-error` is absent for the opposite
+  reason -- it emits its transfer and that transfer's cancel in ONE
+  decide, off the live pre-transfer patient -- there is no intervening
+  event for anything to have queried yet, its own comment -- so it too
+  never replayed. Both were checked rather than assumed: the arc's scope
+  named them as candidates.
+
+  MOVED HERE from `ehrt.sim-engine.log-index` by the apply-unification
+  pass's stage 1, with a delegating def left there under ruling C1(a).
+  It is APPLY-SITE POLICY, not a log query: it names which events the
+  `:reinstate-index` accumulator records, its only live code consumer is
+  `apply-events` below, and `log-index` requires THIS namespace -- so
+  leaving it there and naming it here would close a require cycle.
+  `.agents/plans/apply-unification-census.md` section 4a carries the
+  derivation and the two rejected alternatives."
+  #{:transfer :discharge})
+
+(def cited-opening-event-types
+  "The two event classes whose LAST citation-matching occurrence a
+  terminal step resolves against: a `:medication-end` resolves its
+  `:order-citation` to a `:medication-order`, a `:care-plan-end` its
+  `:care-plan-citation` to a `:care-plan-start`. ADR-0169's carrier
+  records these and nothing else.
+
+  MOVED HERE with `reinstatable-event-types` above, for the same reason
+  and under the same ruling."
+  #{:medication-order :care-plan-start})
+
+;; --- The apply choke point (P5 stage 1, `.agents/plans/apply-
+;; unification-census.md`). ONE fold, three projected call sites: `run`'s
+;; in-loop fold (census site 1), `replay` below (site 2), and
+;; `ehrt.sim-engine.log-index/reinstated-state`'s fallback (site 3).
+;; Stage 1 changes NO behaviour: each site passes exactly the accumulator
+;; stack it already ran, as an explicit declared subset of
+;; `full-algebra`. Stage 2 enables omitted (site x accumulator) pairs one
+;; commit each, against the census's own cone predictions.
+
+(def full-algebra
+  "The THIRTEEN concerns the three apply sites perform between them --
+  the census's section 1 inventory, as the vocabulary a projection is a
+  subset of. Their grains are not uniform and the census says so:
+  `:encounter-stamp`/`:warm-up-mark` are DECORATIONS (a pre-pass over
+  the batch, off the world as it stands BEFORE it);
+  `:log-mirror`/`:log-accumulator`/`:state-history` are PER-BATCH (a
+  post-pass off the world as it stands AFTER it -- which is why
+  `:state-history` appends the post-BATCH state, not the post-event
+  one, census correction C2); the remaining eight are per-event.
+
+  `apply-events` reads this set for nothing: it is the closure the
+  three projections below are subsets of, and the population
+  `ehrt.sim-engine.apply-projection-test` checks them against."
+  #{:encounter-stamp :warm-up-mark :log-ordinal :reinstate-index
+    :citation-index :registration-index :patient-bootstrap
+    :patient-state :bed-index :log-mirror :log-accumulator
+    :state-history :replay-entries})
+
+(def run-loop-projection
+  "Census site 1 -- `ehrt.sim-engine.run`'s in-loop fold. Eleven of the
+  thirteen: everything but `:patient-bootstrap` (nothing reaches that
+  fold unregistered -- `decide :registered` is every patient's first
+  event) and `:replay-entries` (nothing in `run`'s result reads an
+  entries vector). Both omissions are predicted INERT by the census's
+  section 3a, and neither is enabled here: stage 2 owns that."
+  (disj full-algebra :patient-bootstrap :replay-entries))
+
+(def replay-projection
+  "Census site 2 -- `replay` below. Three of the thirteen. The ten it
+  omits are the census's section 3b, of which exactly two are predicted
+  OUTPUT-MOVING: `:encounter-stamp` and `:warm-up-mark`, the two
+  DECORATIONS -- the concerns applied on the way IN, which a re-fold of
+  an existing log would RECOMPUTE rather than accumulate. That is the
+  whole of section 4c's 'replay cannot do them'."
+  #{:patient-bootstrap :patient-state :replay-entries})
+
+(def reinstated-projection
+  "Census site 3 -- `ehrt.sim-engine.log-index/reinstated-state`'s
+  replay fallback. Site 2's projection BY VALUE, because site 3's stack
+  is inherited rather than chosen: its fallback folds through this same
+  choke point from an empty world and reads one element of the result.
+  Written as an alias, not a second literal, so the two cannot drift
+  apart without a stage-2 commit saying so (census correction C5)."
+  replay-projection)
+
+(defn apply-events
+  "THE APPLY CHOKE POINT. `acc x events x projection -> acc'`.
+
+  `projection` is a subset of `full-algebra`; every concern is guarded
+  by its own membership test and by nothing else. `acc` is a map of the
+  accumulator slots that projection needs, plus the parameters those
+  concerns take:
+
+  | slot | held for | shape |
+  |---|---|---|
+  | `:world` | always | the world map; `(:patients ...)` is what the per-event concerns read and write |
+  | `:log` | `:log-accumulator` | the TRANSIENT log accumulator, in and out as a transient -- `run` persists it at `final-result`, never here |
+  | `:state-history` | `:state-history` | `{patient-id [state ...]}` |
+  | `:entries` | `:replay-entries` | the TRANSIENT entries accumulator |
+  | `:warm-up-seconds` | `:warm-up-mark` | parameter, threaded unchanged |
+
+  `:log-mirror` needs no slot of its own -- it publishes into
+  `(:world acc')` under `:ground-truth`, which is where a mid-run
+  `decide` reads the log back from. `:log-ordinal` needs none either:
+  its base is derived from `(:world acc)` on entry.
+
+  THE ORDER IS `run`'s, unchanged, and that is what makes stage 1
+  output-identical by construction rather than by assertion: decorate
+  the batch off the PRE-batch world; take the log ordinal off the
+  PRE-batch world; one per-event reduce; then the per-batch post-pass
+  off the POST-reduce world.
+
+  TWO SUBJECT NOTIONS coexist here and are not interchangeable (census
+  correction C4). `subject` is the FIRST participant's `:patient-id`,
+  which the two index concerns key on and which is nil for a
+  `:bed-status-change` (whose first participant names a bed) -- an event
+  neither of those concerns can see. `subject-id` is the first
+  participant that HAS a patient-id, which is what a replay entry's
+  `:patient-id`/`:before`/`:after` mean. They coincide on every event
+  whose first participant is a patient and diverge on every event whose
+  first participant is not."
+  [acc events projection]
+  (let [{:keys [world warm-up-seconds]} acc
+        ;; DECORATIONS. Off `world` as it stands BEFORE this batch, for
+        ;; the same reason `:reinstate-index` is written inside the fold
+        ;; below -- the pre-event state exists at this point and nowhere
+        ;; later. Per event, not once for the batch: a `:discharge`
+        ;; decide can emit a bed-ready `:transfer` for a DIFFERENT
+        ;; patient, whose own open encounter is the one that transfer
+        ;; belongs to.
+        events (cond->> events
+                 (projection :encounter-stamp)
+                 (mapv (partial encounters/stamp-encounter world))
+
+                 (projection :warm-up-mark)
+                 (mapv (fn [ev] (assoc ev :warm-up (< (:t ev) warm-up-seconds)))))
+        base-idx (if (projection :log-ordinal) (count (:ground-truth world)) 0)
+        ;; ADR-0169: the patient-state fold and the reinstate index are
+        ;; built in ONE pass, because the index's value IS this fold's
+        ;; accumulator one step early -- `w` before `ev` is applied. A
+        ;; `:discharge` decide can emit two events (the discharge, then a
+        ;; bed-ready :transfer for a DIFFERENT patient), so the subject is
+        ;; read off each event rather than assumed, and the state is
+        ;; captured per event rather than once for the batch.
+        ;;
+        ;; `:patient-bootstrap` runs FIRST of the per-event concerns, so
+        ;; the "pre-event world" the three indexes and a replay entry all
+        ;; see is the BOOTSTRAPPED one. That is `replay`'s own prior
+        ;; semantics (its `:before`/`:world-before` were the bootstrapped
+        ;; map), and no site holds bootstrap and an index together at
+        ;; stage 1, so the choice is inert today and stated for stage 2.
+        [world' ridx' cidx' gidx' entries']
+        (reduce (fn [[w ridx cidx gidx entries] [offset ev]]
+                  (let [idx (+ base-idx offset)
+                        subject (:patient-id (first (:participants ev)))
+                        ;; ARC 3B SWEEP 2: the participant filter. A
+                        ;; `:bed-status-change`'s participant names a BED,
+                        ;; not a patient, and a nil-keyed phantom patient
+                        ;; must not reach `ehrt.sim-check.check`.
+                        participants (filter :patient-id (:participants ev))
+                        w (if (projection :patient-bootstrap)
+                            (reduce (fn [w2 {:keys [patient-id]}]
+                                      (if (contains? (:patients w2) patient-id)
+                                        w2
+                                        (assoc-in w2 [:patients patient-id]
+                                                  (state/initial-patient patient-id (:active-mrn ev)))))
+                                    w participants)
+                            w)
+                        ridx' (if (and (projection :reinstate-index)
+                                       (reinstatable-event-types (:event ev)))
+                                (assoc ridx idx (get-in w [:patients subject]))
+                                ridx)
+                        cidx' (if (and (projection :citation-index)
+                                       (cited-opening-event-types (:event ev))
+                                       (some? (:citation ev)))
+                                (reduce (fn [ci {:keys [patient-id]}]
+                                          (assoc ci [(:event ev) patient-id (:citation ev)] idx))
+                                        cidx (:participants ev))
+                                cidx)
+                        ;; ADR-0173 section 2(d): one more index off the
+                        ;; SAME fold, for the same reason the two above
+                        ;; are here -- the log index exists at this point
+                        ;; and nowhere later.
+                        gidx' (if (and (projection :registration-index)
+                                       (= :registered (:event ev)))
+                                (assoc gidx subject idx)
+                                gidx)
+                        ;; ARC 3B SWEEP 2: the bed index folded in the
+                        ;; SAME pass for the same reason the three indexes
+                        ;; above are -- the pre-event and post-event
+                        ;; patient maps both exist here and nowhere later.
+                        w-next (if (projection :patient-state)
+                                 (reduce (fn [w2 {:keys [patient-id]}]
+                                           (update-in w2 [:patients patient-id] evolve/evolve ev))
+                                         w participants)
+                                 w)
+                        entries' (if (projection :replay-entries)
+                                   (let [subject-id (:patient-id (first participants))]
+                                     (conj! entries
+                                            {:event ev :patient-id subject-id
+                                             :before (get (:patients w) subject-id)
+                                             :after (get (:patients w-next) subject-id)
+                                             :world-before (:patients w)
+                                             :world-after (:patients w-next)}))
+                                   entries)]
+                    [(cond-> w-next
+                       (and (projection :bed-index) (:beds w-next))
+                       (assoc :beds (update-beds (:beds w-next) ev
+                                                 (:patients w) (:patients w-next))))
+                     ridx' cidx' gidx' entries']))
+                [world (:reinstate-index world) (:citation-index world)
+                 (:registration-index world) (:entries acc)]
+                (map-indexed vector events))
+        world'' (cond-> world'
+                  (projection :log-mirror)
+                  (assoc :ground-truth (into (:ground-truth world) events))
+
+                  (projection :reinstate-index) (assoc :reinstate-index ridx')
+                  (projection :citation-index) (assoc :citation-index cidx')
+                  (projection :registration-index) (assoc :registration-index gidx'))
+        ;; ARC 3B SWEEP 2: same filter, same reason -- a bed participant
+        ;; has no patient whose history to append to, and a nil key here
+        ;; would put a phantom patient in `:state-history` for
+        ;; `patient-state-is-a-fold-of-the-log` to trip over. Read off
+        ;; `world'`, the POST-BATCH world: two events of one batch
+        ;; touching one patient append that patient's FINAL state twice,
+        ;; which is what this fold has always done (census correction C2).
+        state-history' (if (projection :state-history)
+                         (reduce (fn [sh ev]
+                                   (reduce (fn [sh2 {:keys [patient-id]}]
+                                             (update sh2 patient-id (fnil conj [])
+                                                     (get-in world' [:patients patient-id])))
+                                           sh (filter :patient-id (:participants ev))))
+                                 (:state-history acc) events)
+                         (:state-history acc))]
+    (cond-> (assoc acc :world world'')
+      (projection :log-accumulator) (assoc :log (reduce conj! (:log acc) events))
+      (projection :state-history) (assoc :state-history state-history')
+      (projection :replay-entries) (assoc :entries entries'))))
+
 (defn replay
   "Replays `ground-truth` through `evolve`, returning a parallel seq of
   {:event :patient-id :before :after :world-before :world-after} --
@@ -130,26 +393,15 @@
   folds exactly the events they participate in. `world-before`/
   `world-after` are the full {patient-id -> patient-state} map
   immediately before/after this event (sim/ADR-0008: state-history is
-  derived -- this IS that derivation, generalized across patients)."
+  derived -- this IS that derivation, generalized across patients).
+
+  APPLY SITE 2, and since stage 1 of the unification pass it is a
+  PROJECTION of `apply-events` above rather than a fold of its own:
+  three of the thirteen concerns, named by `replay-projection`. Nothing
+  it folds was added, removed or reordered -- what was a hand-written
+  loop is the same fold under the choke point's own guards."
   [ground-truth]
-  (loop [events ground-truth patients {} acc (transient [])]
-    (if (empty? events)
-      (persistent! acc)
-      (let [event (first events)
-            ;; ARC 3B SWEEP 2: a `:bed-status-change`'s participant names
-            ;; a BED, not a patient. Filtering on `:patient-id` being
-            ;; present is what keeps a nil-keyed phantom patient out of
-            ;; every `world-before`/`world-after` this function hands to
-            ;; `ehrt.sim-check.check`.
-            participant-ids (mapv :patient-id (filter :patient-id (:participants event)))
-            patients (reduce (fn [ps pid]
-                                (if (contains? ps pid)
-                                  ps
-                                  (assoc ps pid (state/initial-patient pid (:active-mrn event)))))
-                              patients participant-ids)
-            patients' (reduce (fn [ps pid] (update ps pid evolve/evolve event)) patients participant-ids)
-            subject-id (first participant-ids)]
-        (recur (rest events) patients'
-               (conj! acc {:event event :patient-id subject-id
-                           :before (get patients subject-id) :after (get patients' subject-id)
-                           :world-before patients :world-after patients'}))))))
+  (persistent!
+   (:entries (apply-events {:world {:patients {}} :entries (transient [])}
+                           ground-truth
+                           replay-projection))))
