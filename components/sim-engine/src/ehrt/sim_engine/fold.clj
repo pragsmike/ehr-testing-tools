@@ -252,14 +252,19 @@
     it is handed `run`'s world and never a replay-built one, so even
     that path does not reach this.
 
+  * `:registration-index` -- same shape again. `ehrt.sim-check.check`'s
+    own registration invariants walk the ENTRIES rather than asking for
+    an index, so enabling this hands nothing to the consumer that would
+    most plausibly have wanted it.
+
   THE TWO IT DOES NOT GET are the DECORATIONS `:encounter-stamp` and
   `:warm-up-mark`, the only two of section 3b predicted OUTPUT-MOVING --
   the concerns applied on the way IN, which a re-fold of an existing log
   RECOMPUTES rather than accumulates. That is the whole of section 4c's
   'replay cannot do them'. Stage 2 PREPARES them and does not land them;
   the author disposes."
-  #{:log-ordinal :reinstate-index :citation-index :patient-bootstrap
-    :patient-state :replay-entries})
+  #{:log-ordinal :reinstate-index :citation-index :registration-index
+    :patient-bootstrap :patient-state :replay-entries})
 
 (def reinstated-projection
   "Census site 3 -- `ehrt.sim-engine.log-index/reinstated-state`'s
