@@ -311,7 +311,13 @@
                                ;; batch `:warm-up false`, and that is inert
                                ;; only because `evolve` never reads `:warm-up`
                                ;; and this site reads a PATIENT STATE.
-                               :warm-up-seconds 0}
+                               :warm-up-seconds 0
+                               ;; `:log-accumulator`'s slot, since stage 2
+                               ;; enabled that pair here. Never persisted
+                               ;; and never read -- `conj!` on nil would
+                               ;; throw, which is the whole of why it is
+                               ;; here.
+                               :log (transient [])}
                               ground-truth
                               fold/reinstated-projection)))
                   idx))))

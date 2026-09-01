@@ -343,6 +343,11 @@
     into a world it does not return, and carrying the same
     `(into nil events)` reversal its site-2 twin's commit recorded.
 
+  * `:log-accumulator` -- the same duplicate in TRANSIENT form, and the
+    second and last pair here that needs a SLOT: `conj!` on nil throws,
+    so the call site carries `:log (transient [])`. Never persisted,
+    never read.
+
   THE ONE IT DOES NOT GET is the DECORATION `:encounter-stamp`, the only
   pair of section 3c predicted OUTPUT-MOVING, and by a mechanism that is
   narrower than its site-2 twin but real: `evolve` folds `:encounter-id`
@@ -353,7 +358,7 @@
   and does not land it; the author disposes."
   #{:warm-up-mark :log-ordinal :reinstate-index :citation-index
     :registration-index :patient-bootstrap :patient-state :bed-index
-    :log-mirror :replay-entries})
+    :log-mirror :log-accumulator :replay-entries})
 
 (defn apply-events
   "THE APPLY CHOKE POINT. `acc x events x projection -> acc'`.
