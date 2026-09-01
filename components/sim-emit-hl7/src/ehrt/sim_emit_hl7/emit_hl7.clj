@@ -26,7 +26,6 @@
             [ehrt.sim-emit-hl7.registry :as registry]
             [ehrt.sim-emit-hl7.er7 :as er7]
             [ehrt.sim-emit-hl7.segments :as segments]
-            [ehrt.sim-emit-hl7.messages :as messages]
             [ehrt.sim-emit-hl7.planners :as planners]
             [ehrt.sim-emit-hl7.emit :as emit]))
 
@@ -40,15 +39,17 @@
 ;; clj`'s own namespace extraction, and a leaf: it called nothing else
 ;; in this file.
 ;;
-;; The THREE public movers keep a delegating def below, so
+;; The THREE public movers kept a delegating def here, so
 ;; `interface.clj` (`default-reference-date`, `default-utc-offset`) and
-;; the test tree resolve exactly as before. `hl7-timestamp`'s def is
-;; owed to the tree rather than to `interface.clj`, which never
-;; re-exported it: thirteen `emit-hl7/hl7-timestamp` call sites across
-;; `emit_hl7_test.clj`, `result_clock_test.clj` and `latency_test.clj`.
-;; It had twenty bare-name sites in this file too, and a twenty-first
-;; that left with `segments`; all twenty left with `messages` in cluster
-;; 6, so the def now stands for the test tree alone.
+;; the test tree resolved exactly as before. `hl7-timestamp`'s was owed
+;; to the tree rather than to `interface.clj`, which never re-exported
+;; it: thirteen call sites across `emit_hl7_test.clj`,
+;; `result_clock_test.clj` and `latency_test.clj`, plus twenty bare-name
+;; sites in this file that all left with `messages` in cluster 6.
+;;
+;; THE RULED REPOINT PASS RETIRED `hl7-timestamp` -- those thirteen sites
+;; name `hl7-time/hl7-timestamp` outright now, and nothing else ever
+;; reached it here. The two `interface.clj` re-exports remain.
 ;;
 ;; The FOUR private movers get no def -- that would widen this file's
 ;; public surface, which C1(a) does not ask for. `transmit-seconds` is
@@ -59,8 +60,6 @@
 
 (def default-reference-date hl7-time/default-reference-date)
 (def default-utc-offset hl7-time/default-utc-offset)
-(def hl7-timestamp hl7-time/hl7-timestamp)
-
 ;; --- moved to `ehrt.sim-emit-hl7.registry` (extraction cluster 2 of 8) ---
 ;;
 ;; Thirteen forms -- the message-type catalog, the three MSH-9
@@ -69,26 +68,28 @@
 ;; left this file for `registry.clj`. It is a LEAF: nothing in it calls
 ;; anything outside itself, so it takes no `:require` with it.
 ;;
-;; The TEN public movers keep a delegating def below, so `interface.clj`
+;; The TEN public movers kept a delegating def here, so `interface.clj`
 ;; (which re-exports seven of them -- `skeleton-message-types`,
 ;; `add-on-message-types`, `emittable-message-types`, `siu-event-kinds`,
 ;; `siu-renders?`, `room-and-board-code`, `chatter-event-kinds`) and the
-;; test tree resolve exactly as before. `message-type-registry`,
-;; `order-status-ladder` and `result-status-ladder` are owed a def by
+;; test tree resolved exactly as before. `message-type-registry`,
+;; `order-status-ladder` and `result-status-ladder` were owed a def by
 ;; THIS FILE rather than by `interface.clj`, which never re-exported
-;; them: thirty-four `emit-hl7/message-type-registry` call sites across
-;; six test files. There were bare-name sites below too, resolving
-;; through these defs; cluster 7 took the last five of them, so all ten
-;; defs now stand for the test tree and `interface.clj` alone.
+;; them: thirty-four call sites across six test files for the first, and
+;; none at all for the other two.
+;;
+;; THE RULED REPOINT PASS RETIRED EXACTLY THOSE THREE and kept the seven
+;; `interface.clj` names. The split the banner drew is the split the
+;; retirement made.
 ;;
 ;; The THREE private movers get no def -- that would widen this file's
 ;; public surface, which C1(a) does not ask for. `siu-filler-status` and
 ;; `charge-closing-kinds` are public in `registry` instead, because
 ;; `sch-segment`, `event->messages` and `plan-charges` still call them;
 ;; those three call sites name them `registry/...`. `final-result-stage`
-;; stays private there, having no caller anywhere in the tree.
+;; had no caller anywhere in the tree and was DELETED by the ruled
+;; repoint pass, which is what a form that arrived dead is owed.
 
-(def message-type-registry registry/message-type-registry)
 (def skeleton-message-types registry/skeleton-message-types)
 (def add-on-message-types registry/add-on-message-types)
 (def emittable-message-types registry/emittable-message-types)
@@ -96,9 +97,6 @@
 (def siu-renders? registry/siu-renders?)
 (def room-and-board-code registry/room-and-board-code)
 (def chatter-event-kinds registry/chatter-event-kinds)
-(def order-status-ladder registry/order-status-ladder)
-(def result-status-ladder registry/result-status-ladder)
-
 ;; --- moved to `ehrt.sim-emit-hl7.segments` (extraction cluster 5 of 8) --
 ;;
 ;; FIFTEEN forms -- `control-id-for`, the thirteen HL7v2 segment builders
@@ -126,18 +124,21 @@
 ;; not one of the fifteen forms calls another, which is why every private
 ;; mover widens and none stays private.
 ;;
-;; THREE delegating defs below. `control-id-for` is the cluster's only
-;; PUBLIC mover and the one form `interface.clj` re-exports, so its def is
-;; owed twice over. `msh-segment` and `pid-segment` are PRIVATE movers and
-;; both widen -- eleven callers each stayed behind -- but
-;; `emit_hl7_test.clj` reaches them as `(#'emit-hl7/msh-segment ...)` and
-;; `(#'emit-hl7/pid-segment ...)`, var accesses on private vars that no
-;; def keeps each var here without widening this file's public surface by
-;; a name. That is the C7 extension `tn-field` established one cluster
-;; ago, applied twice, exactly where cluster 4 predicted it. Their
-;; twenty-two call sites resolved through these defs unqualified until
-;; cluster 6 took every one of them; like `tn-field`'s, both defs now
-;; stand for a test's var access and a namespace claim alone.
+;; THREE delegating defs stood here. `control-id-for` is the cluster's
+;; only PUBLIC mover and the one form `interface.clj` re-exports, so its
+;; def was owed twice over and REMAINS. `msh-segment` and `pid-segment`
+;; are PRIVATE movers and both widened -- eleven callers each stayed
+;; behind -- but `emit_hl7_test.clj` reached them as
+;; `(#'emit-hl7/msh-segment ...)` and `(#'emit-hl7/pid-segment ...)`, var
+;; accesses on private vars that no move can carry and that C1(a) forbade
+;; editing, so each got a `^:private` delegating def: the C7 extension
+;; `tn-field` established one cluster earlier, applied twice, exactly
+;; where cluster 4 predicted it.
+;;
+;; THE RULED REPOINT PASS RETIRED BOTH C7 DEFS. C12(b) lifted the fence
+;; that created them, the two var accesses now read
+;; `(#'segments/msh-segment ...)` and `(#'segments/pid-segment ...)`, and
+;; a `^:private` def with no var access left to answer is nothing at all.
 ;;
 ;; The other TWELVE private movers are widenings too -- every one had a
 ;; caller that stayed behind -- so they are public in `segments` instead
@@ -152,9 +153,6 @@
 ;; fifteen went, and both are dropped from the `ns` above.
 
 (def control-id-for segments/control-id-for)
-(def ^:private msh-segment segments/msh-segment)
-(def ^:private pid-segment segments/pid-segment)
-
 ;; --- moved to `ehrt.sim-emit-hl7.er7` (extraction cluster 4 of 8) --------
 ;;
 ;; NINETEEN forms -- the ER7 escape table and its encoder, the decode map
@@ -173,11 +171,19 @@
 ;; `er7.clj` takes `ehrt.sim-emit-hl7.timelines` with it. That is its one
 ;; cross-cluster edge.
 ;;
-;; The TWO public movers keep a delegating def below, so `v2_replay.clj`'s
-;; two reader call sites and the four `emit-hl7/escape-er7`/`unescape-er7`
-;; sites in `emit_hl7_test.clj` resolve exactly as before. `interface.clj`
-;; re-exports neither -- the first cluster here whose defs are owed to the
-;; TREE alone rather than to the interface.
+;; The TWO public movers kept a delegating def here, so `v2_replay.clj`'s
+;; two reader call sites and the four `escape-er7`/`unescape-er7` sites in
+;; `emit_hl7_test.clj` resolved exactly as before. `interface.clj`
+;; re-exports neither -- the first cluster here whose defs were owed to
+;; the TREE alone rather than to the interface, and the reason the two
+;; parted ways when the ruled repoint pass came.
+;;
+;; THAT PASS RETIRED `escape-er7` AND KEPT `unescape-er7`, which is the
+;; one asymmetry in the whole retirement. `escape-er7` was reached only
+;; from `emit_hl7_test.clj`, which now names `er7/` outright.
+;; `unescape-er7` has a SRC caller that the pass does not touch --
+;; `v2_replay.clj`, a sibling implementation reaching this facade -- so
+;; its def stays until something moves that.
 ;;
 ;; ELEVEN private movers are widenings forced by callers that stayed
 ;; behind -- forty-one call sites across eighteen forms, of which
@@ -193,20 +199,20 @@
 ;; having travelled, so they stay private there: census constraint 5 read
 ;; the way `engine.clj`'s `weighted-pick` read it.
 ;;
-;; `tn-field` is the exception, and the reason for the third def below.
-;; It is a widening like the other ten, but `v2_replay_test.clj` reaches
-;; it as `(#'emit-hl7/tn-field phone)` -- a var access on a PRIVATE var,
-;; which no move can carry and which C1(a) forbids editing. A `^:private`
-;; delegating def keeps that var here without widening this file's public
-;; surface by a name. `pid-segment`'s own call site resolved through it
-;; unqualified until cluster 5 took `pid-segment` as well; what the def
-;; stands for now is that var access and `v2_replay.clj:166`'s namespace
-;; claim, which are the two things a move cannot carry.
+;; `tn-field` was the exception, and the reason for a third def here. It
+;; is a widening like the other ten, but `v2_replay_test.clj` reached it
+;; as `(#'emit-hl7/tn-field phone)` -- a var access on a PRIVATE var,
+;; which no move can carry and which C1(a) forbade editing -- so a
+;; `^:private` delegating def kept that var here without widening this
+;; file's public surface by a name. That was the C7 extension's first
+;; case; `segments` took it twice one cluster later.
+;;
+;; THE RULED REPOINT PASS RETIRED IT. C12(b) lifted the fence, the var
+;; access now reads `(#'er7/tn-field phone)`, and `v2_replay.clj`'s
+;; namespace claim names `ehrt.sim-emit-hl7.er7` -- so neither of the two
+;; things a move could not carry is here any more.
 
-(def escape-er7 er7/escape-er7)
 (def unescape-er7 er7/unescape-er7)
-(def ^:private tn-field er7/tn-field)
-
 ;; --- moved to `ehrt.sim-emit-hl7.messages` (extraction cluster 6 of 8) --
 ;;
 ;; THIRTEEN forms -- the twelve per-kind message builders (single-subject
@@ -228,12 +234,17 @@
 ;; four blocks go with them, along with the D1 ORC+OBR note that heads
 ;; the diagnostic report.
 ;;
-;; ONE delegating def below. `event->messages` is the cluster's only
+;; ONE delegating def stood here. `event->messages` is the cluster's only
 ;; PUBLIC mover, and `interface.clj` re-exports NONE of the thirteen, so
-;; the def is owed to the TREE alone: five `emit-hl7/event->messages`
-;; sites in `emit_hl7_test.clj` and one in `sim-engine`'s
-;; `bed_cycle_test.clj`. No `^:private` def is owed either -- all 106
-;; `#'` sites in the tracked tree were re-read and none names a mover.
+;; the def was owed to the TREE alone: five sites in `emit_hl7_test.clj`
+;; and one in `sim-engine`'s `bed_cycle_test.clj`. No `^:private` def was
+;; owed either -- all 106 `#'` sites in the tracked tree were re-read and
+;; none named a mover.
+;;
+;; THE RULED REPOINT PASS RETIRED IT, and with it the last use of this
+;; file's `ehrt.sim-emit-hl7.messages` require, which is dropped from the
+;; `ns` above. Those six sites name
+;; `ehrt.sim-emit-hl7.messages/event->messages` outright now.
 ;;
 ;; TEN of the twelve private movers STAY PRIVATE, the largest such set in
 ;; the EMITTER -- the engine's `decide` left eighteen of nineteen, and is
@@ -257,8 +268,6 @@
 ;; thirteen movers. `emit_hl7.clj` built no message text of its own after
 ;; that move -- it planned, and delegated the rendering. Cluster 7 took
 ;; the planning too, so what it does now is neither: it delegates both.
-
-(def event->messages messages/event->messages)
 
 ;; --- moved to `ehrt.sim-emit-hl7.planners` (extraction cluster 7 of 8) --
 ;;
@@ -287,8 +296,10 @@
 ;; of five -- and calls them as `emit-hl7/plan-...`, so `ehrt.sim.run`
 ;; reaches a planner through interface, def and namespace in that order.
 ;; `charges_test.clj`, `chatter_test.clj`, `latency_test.clj` and
-;; `ladders_test.clj` alias THIS namespace directly and call the same four,
-;; so every def is owed twice over.
+;; `ladders_test.clj` aliased THIS namespace directly and called the same
+;; four; the ruled repoint pass moved those reaches to `planners/`, so
+;; what the four defs are owed to now is `interface.clj` alone -- which
+;; is reason enough, and the reason all four survive the retirement.
 ;;
 ;; The SIX private movers stay private -- `chatter-trigger`,
 ;; `event-driven-chatter`, `periodic-chatter`,
@@ -332,12 +343,14 @@
 ;; the forms rather than with the file, and the namespace over there is
 ;; named for `emit` -- the rule that named `ehrt.sim-engine.run` too.
 ;;
-;; WITH THEM GONE THIS FILE IS A PURE FACADE: its `ns`, twenty-six
-;; delegating defs and seven explanatory comment blocks, and no executable
-;; code of its own. That is the shape `engine.clj` reached under ruling
-;; C4(b), in 741 lines against this file's 383, and reaching it here
-;; closes the extraction phase of
-;; `roadmap.md#engine-namespace-extraction-and-apply-unification`.
+;; WITH THEM GONE THIS FILE IS A PURE FACADE: its `ns`, its delegating
+;; defs and seven explanatory comment blocks, and no executable code of
+;; its own. That is the shape `engine.clj` reached under ruling C4(b),
+;; and reaching it here closed the extraction phase of
+;; `roadmap.md#engine-namespace-extraction-and-apply-unification`. The
+;; two files stood at 741 and 383 lines, twenty-six defs here and
+;; forty-three there; the ruled repoint pass then retired nine of these
+;; and thirty-one of those, leaving SEVENTEEN here and twelve there.
 ;;
 ;; THE CALLER TRAVELS, which no cluster before this one did and which
 ;; census 2a named in advance as the shape that could only arrive last.
@@ -362,10 +375,12 @@
 ;; points. `interface.clj` re-exports both as `defn` wrappers that call
 ;; them at RUNTIME -- `emit` at three arities, `emit-wire` at two -- so
 ;; the chain `ehrt.sim.run` -> `interface.clj` -> the def -> `emit.clj`
-;; must hold at every link. They are owed to the tree besides:
-;; `components/oracle`'s `digest.clj`, the regression oracle's own
-;; instrument, calls `emit-hl7/emit` at its `:228`, and
-;; `emit_hl7_test.clj` names it at sixty-one sites.
+;; must hold at every link, and `components/oracle`'s `digest.clj` -- the
+;; regression oracle's own instrument -- takes exactly that chain at its
+;; `:228`, where its own `emit-hl7` alias names `interface.clj` rather
+;; than this file. `emit_hl7_test.clj` reached the def directly at
+;; sixty-one sites until the ruled repoint pass moved them to
+;; `emit/emit`; both defs survive that pass on `interface.clj` alone.
 ;;
 ;; `default-providers` was `^:private` here and stays private over there
 ;; with NO def. Both its callers are `emit`'s own lower arities and both

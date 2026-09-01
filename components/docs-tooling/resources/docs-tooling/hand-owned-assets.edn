@@ -30,10 +30,35 @@
 [{:asset "docs/manual/assets/gt-emitters.svg"
   :source "docs/dev/simulator-architecture.md"
   :trigger "regenerate by hand if simulator-architecture.md section 4's own equations change"
-  :reviewed-at "3739084"
+  :reviewed-at "b0642355"
   :verdict :fresh
   :note
-  "Reviewed 2026-08-30 (engine extraction 10 of N, the `run` cluster --
+  "Reviewed 2026-08-31 (THE RULED REPOINT PASS, step 2 -- citations and
+   test reaches moved to the namespaces that own the forms).
+   simulator-architecture.md moved at b0642355, ONE hunk, LINE-NEUTRAL,
+   at line 106 -- inside section 2 (`The decide/evolve doctrine`, lines
+   72-115), nowhere near section 4 (`The palgebra`, lines 194-373).
+
+   THE TRIGGER DID NOT FIRE. It names *section 4's own equations*, and
+   that block -- `walk : RNG x Persona x Closure -> Trajectory`,
+   `engine : RNG x Config -> GT`, `emitH`/`emitF`, `replay`, `check` --
+   is BYTE-IDENTICAL across the diff; the single changed line is a
+   quotation of `check.clj`'s header docstring, whose citation of
+   `replay` moved from `ehrt.sim-engine.engine/replay` to
+   `ehrt.sim-engine.fold/replay` because that is where the fold now
+   lives. The asset depicts GT -> emitH/emitF -> ER7*/FHIR* and carries
+   no namespace citation at all. Not stale.
+
+   FOUND RED BY THE LOCAL SUITE, one step later than it should have
+   been, and the reason is worth keeping: this tripwire reads
+   `git log -1 -- <source>`, so it could not see the edit while it was
+   uncommitted, and step 2's own suite ran before step 2's commit. That
+   is register row L1-8/D3-2 exactly, met one commit earlier than the
+   2026-08-30 precedent, which CI caught instead. The recipe the
+   extraction phase recorded -- read this registry's own SOURCES during
+   the sweep -- is what this pass skipped.
+
+   Prior review, 2026-08-30 (engine extraction 10 of N, the `run` cluster --
    the LAST, and the one after which `engine.clj` holds no code of its
    own). simulator-architecture.md moved at 3739084, the citation sweep,
    TWO hunks and both LINE-NEUTRAL: line 56 in section 1 and line 154 in

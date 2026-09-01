@@ -38,9 +38,11 @@
   `person-entry`. Two are load-bearing for `ehrt.sim-engine.interface`,
   which census constraint 4 requires to keep naming `engine/...`:
   `compile-patient` at its `:62` and `documented-step-rejection-reasons`
-  at its `:93`. `decide` and `person-entry` are owed to the test tree
-  instead -- `engine_test.clj` alone calls `engine/decide` at ninety
-  sites -- which C1(a) forbids this session to touch. The three
+  at its `:93`. `decide` and `person-entry` were owed to the test tree
+  instead -- `engine_test.clj` alone called `decide` through the facade
+  at ninety
+  sites, behind C1(a)'s fence on test files; the ruled repoint pass
+  lifted it, moved those sites to `decide/`, and retired both. The three
   `*-stay-minutes` tables had no caller outside `engine.clj` at all:
   their defs were load-bearing for `prelude`, which named all three
   unqualified. The TENTH extraction moved `prelude` to

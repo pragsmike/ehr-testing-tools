@@ -163,7 +163,8 @@
   overrides the ladder outright and draws no RNG. Returns
   {:home-ward :location {:ward :bed :placement} :forced}, or, when
   every rung is legitimately exhausted, {:exhausted true :home-ward
-  home-ward-name} -- result-not-throw (Task 0): callers (engine/decide)
+  home-ward-name} -- result-not-throw (Task 0): callers
+  (ehrt.sim-engine.decide/decide)
   turn this into a structured outcome rather than catching an
   exception. No RNG draw occurs on the exhausted path, same as the
   exception it replaces -- exhaustion is discovered before any `choose`

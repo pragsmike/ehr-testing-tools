@@ -24,8 +24,9 @@
   `sch-segment`, `event->messages` and `plan-charges` stayed behind and
   call them, so they are public here and `^:private` no longer, and
   they gain NO delegating def, because widening `emit_hl7.clj`'s own
-  public surface is not what C1(a) asks for. `final-result-stage` stays
-  private: it has no caller anywhere in the tree.
+  public surface is not what C1(a) asks for. `final-result-stage` arrived
+  here DEAD -- no caller anywhere in the tree, then or since -- and the
+  ruled repoint pass deleted it rather than carry it further.
 
   `message-type-registry`'s own comment text is CITED BY PATH from
   `components/patient-simulator/docs/limitations.md`'s care-plan row,
@@ -317,8 +318,3 @@
   is. A second stage would have to mean something the log does not
   distinguish."
   [:preliminary])
-
-(def ^:private final-result-stage
-  "The stage the TERMINAL message of a result ladder carries, in both
-  OBR-25 and OBX-11."
-  :final)

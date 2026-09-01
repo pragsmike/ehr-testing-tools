@@ -41,9 +41,12 @@
   TWO OF THE THREE VARS WERE PUBLIC in `engine.clj` and keep delegating
   defs there under ruling C1(a). Neither is on `ehrt.sim-engine.
   interface`'s re-export list, and census constraint 4 names neither:
-  what makes both defs load-bearing is `engine_test.clj`, which calls
-  `engine/assign-pathway` seven times and `engine/assign-module` three,
-  and which C1(a) forbids this session to touch.
+  what made both defs load-bearing was `engine_test.clj`, which called
+  `assign-pathway` seven times and `assign-module` three through the
+  facade,
+  under a fence C1(a) put on test files. The ruled repoint pass lifted
+  that fence, moved all ten sites to `assignment/`, and retired both
+  defs; nothing reaches this namespace through `engine.clj` now.
 
   `weighted-pick` STAYS `defn-`, and it is the first private mover of
   these eight extractions to do so. Census constraint 5 has two halves.

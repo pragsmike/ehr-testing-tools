@@ -62,7 +62,8 @@
   `{:field .. :value ..}` -- nil for a person event with no demographic
   face at all.
 
-  `:field` is a key of `engine/Demographics` verbatim, which is what
+  `:field` is a key of `ehrt.sim-engine.state/Demographics` verbatim,
+  which is what
   lets the fold be one `assoc` rather than a case per kind. The
   residence SUM is where the two residence kinds meet: a move is
   `:housed` with a places row, a loss is `:unhoused` carrying the row
@@ -86,7 +87,8 @@
   `t` folded on. `events` must already be t-ascending -- `persons`
   returns them that way and the engine never re-sorts them.
 
-  Deliberately NOT `engine/demographics-from-persona` plus a reduce
+  Deliberately NOT `ehrt.sim-engine.state/demographics-from-persona`
+  plus a reduce
   over that: this namespace is below `engine` in the require graph
   (`engine` reads it, not the other way round), so the seed is built
   here and `demographics-from-persona`'s own docstring names this as

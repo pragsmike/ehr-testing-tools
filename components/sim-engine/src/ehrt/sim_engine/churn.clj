@@ -153,7 +153,8 @@
 
   :cancel-discharge is deliberately NOT modeled as reliably restoring
   :admitted? true here, even though a SUCCESSFUL one really does
-  (engine/evolve's own :cancel-discharge sets :status :admitted).
+  (ehrt.sim-engine.evolve/evolve's own :cancel-discharge sets
+  :status :admitted).
   Unlike every other churn type, :cancel-discharge can be REJECTED at
   decide-time for a reason InjectChurn has no way to predict statically
   -- the bed it would reinstate into may have been legitimately

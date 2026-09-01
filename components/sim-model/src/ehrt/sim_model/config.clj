@@ -339,7 +339,8 @@
   `:siu {}` -- the whole surface, at its default -- renders ALL FOUR
   kinds. `:triggers` narrows that to exactly the kinds named, as ENGINE
   vocabulary rather than HL7 trigger strings: a config author names what
-  happened and `emit-hl7/message-type-registry` owns the trigger.
+  happened and `ehrt.sim-emit-hl7.registry/message-type-registry`
+  owns the trigger.
 
   UNLIKE `:latency`, `:chatter`, `:charges`, `:ladders` AND
   `:site-profile`, `{}` IS ON, NOT OFF, and the asymmetry is deliberate.

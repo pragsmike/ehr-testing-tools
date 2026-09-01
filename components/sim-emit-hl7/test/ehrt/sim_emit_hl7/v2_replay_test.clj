@@ -243,7 +243,7 @@
                  (recur acc' (rest rs) (rest ms))
                  false)))))))
 
-;; ARC 4 SWEEP 1 (ADR-0175 ruling A1). `emit-hl7/tn-field` and
+;; ARC 4 SWEEP 1 (ADR-0175 ruling A1). `er7/tn-field` and
 ;; `v2-replay/tn->persona-phone` are an INVERSE PAIR, and the spec below
 ;; states that directly.
 ;;

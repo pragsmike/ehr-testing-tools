@@ -79,25 +79,11 @@
   M1's :transfer (docs/operational-models.md's allocation ladder).
   Emission to HL7v2 is a separate namespace consuming the ground-truth
   log -- events here are format-free."
-  (:require [ehrt.sim-model.interface :as sim-model]
-            [ehrt.patient-simulator.interface :as patient-simulator]
-            [ehrt.sim-engine.assignment :as assignment]
-            [ehrt.sim-engine.churn :as churn]
-            [ehrt.sim-engine.config :as config]
+  (:require [ehrt.sim-engine.config :as config]
             [ehrt.sim-engine.decide :as decide]
-            [ehrt.sim-engine.encounters :as encounters]
-            [ehrt.sim-engine.evolve :as evolve]
             [ehrt.sim-engine.fold :as fold]
-            [ehrt.sim-engine.log-index :as log-index]
-            [ehrt.sim-engine.order-profiles :as order-profiles]
-            [ehrt.sim-engine.person-fold :as person-fold]
             [ehrt.sim-engine.run :as run]
-            [ehrt.sim-engine.state :as state]
-            [ehrt.sim-engine.streams :as streams]
-            [ehrt.kernel.interface :as result]
-            [malli.core :as m]
-            [malli.util :as mu])
-  (:import [java.util Random]))
+            [ehrt.sim-engine.streams :as streams]))
 
 ;; --- moved to ehrt.sim-engine.state ---------------------------------------
 ;;
@@ -111,10 +97,12 @@
 ;; here moved WITH them, because `PatientState`'s docstring cites it by
 ;; position.
 ;;
-;; Under C1(a) THIS namespace stays the one every existing requirer
-;; resolves against, so each of the thirteen vars keeps a delegating def
-;; below, in the order it stood in. `ehrt.sim-engine.interface`
-;; re-exports none of them and is untouched.
+;; Under C1(a) each of the thirteen vars kept a delegating def here, in
+;; the order it stood in. THE RULED REPOINT PASS RETIRED ALL THIRTEEN,
+;; and the reason is the sentence that always stood here:
+;; `ehrt.sim-engine.interface` re-exports none of them, so the test tree
+;; was the only thing that ever reached them through this file, and those
+;; reaches now name `state/` outright. `interface.clj` is untouched still.
 ;;
 ;; The private `observation-value-fields` moved down there too and gets
 ;; NO delegating def: it is the census's one CYCLE BREAKER, it was
@@ -122,95 +110,6 @@
 ;; surface. Its three call sites below -- `decide :observation`,
 ;; `evolve :observation`, `evolve :diagnostic-report` -- are
 ;; `state/`-qualified instead.
-
-(def ConditionRecord
-  "One condition, folded from a compiled encounter step's own
-  :conditions annotations. Delegates to
-  `ehrt.sim-engine.state/ConditionRecord`, which carries the contract
-  and the pre-horizon scope note."
-  state/ConditionRecord)
-
-(def ObservationRecord
-  "One observation -- a GMF `:observation` event, or one analyte/child
-  flattened out of a `:result-available` or `:diagnostic-report` event.
-  Delegates to `ehrt.sim-engine.state/ObservationRecord`, which carries
-  the contract."
-  state/ObservationRecord)
-
-(def MedicationOrderRecord
-  "One medication order, folded from :medication-order and closed by a
-  citation-matching :medication-end. Delegates to
-  `ehrt.sim-engine.state/MedicationOrderRecord`, which carries the
-  contract."
-  state/MedicationOrderRecord)
-
-(def CarePlanRecord
-  "One care plan, folded from :care-plan-start and closed by a
-  citation-matching :care-plan-end. Delegates to
-  `ehrt.sim-engine.state/CarePlanRecord`, which carries the contract."
-  state/CarePlanRecord)
-
-(def Demographics
-  "STATE-AT-T demographics (ADR-0173 section 2(b)) -- what a patient's
-  demographic facts are AT ONE INSTANT, as opposed to `:persona`, which
-  is and stays the t0 sample. Delegates to
-  `ehrt.sim-engine.state/Demographics`, which carries the contract, the
-  three deliberate differences from `sim-model/Persona`, and arc 3a part
-  4's optional-field reasoning."
-  state/Demographics)
-
-(def demographics-from-persona
-  "A patient's INITIAL state-at-t demographics, read off their t0
-  Persona; nil in, nil out. Delegates to
-  `ehrt.sim-engine.state/demographics-from-persona`, which carries the
-  contract."
-  state/demographics-from-persona)
-
-(def placeholder-demographics
-  "The state-at-t demographics of a patient who arrived inside an open
-  `:identity-unavailable` window -- the window's `:alias-name` and
-  nothing else. Delegates to
-  `ehrt.sim-engine.state/placeholder-demographics`, which carries the
-  contract."
-  state/placeholder-demographics)
-
-(def PatientLocation
-  "The {:ward :bed :placement} map an admitted patient's `:location`
-  holds. Delegates to `ehrt.sim-engine.state/PatientLocation`, which
-  carries the contract."
-  state/PatientLocation)
-
-(def EncounterRecord
-  "ONE encounter (ADR-0174 section 2(a), arc 3b sweep 1). Delegates to
-  `ehrt.sim-engine.state/EncounterRecord`, which carries the contract
-  and the reasoning for the open record's deliberate thinness."
-  state/EncounterRecord)
-
-(def AppointmentRecord
-  "ONE appointment (ADR-0174 section 2(b), arc 3b sweep 3). Delegates to
-  `ehrt.sim-engine.state/AppointmentRecord`, which carries the contract
-  and the at-most-one-terminal rule."
-  state/AppointmentRecord)
-
-(def PatientState
-  "The engine's per-patient accumulator -- what folding `evolve` over a
-  patient's own event subsequence produces (`components/sim/docs/
-  patient-state-model.md` is the full design spec, and names THIS var).
-  Delegates to `ehrt.sim-engine.state/PatientState`, which carries the
-  contract and the per-milestone field history."
-  state/PatientState)
-
-(def valid-patient?
-  "Validates a patient accumulator against PatientState. Delegates to
-  `ehrt.sim-engine.state/valid-patient?`, which carries the contract."
-  state/valid-patient?)
-
-(def initial-patient
-  "The state a patient starts in when its arrival is scheduled --
-  `evolve`'s fold origin, and the single place this shape is
-  constructed. Delegates to `ehrt.sim-engine.state/initial-patient`,
-  which carries the contract."
-  state/initial-patient)
 
 ;; --- moved to ehrt.sim-engine.streams ------------------------------------
 ;;
@@ -221,50 +120,25 @@
 ;; (author rulings C1(a)/C2(b)). Nothing moved changed: the forms there
 ;; are this file's own text.
 ;;
-;; Under C1(a) THIS namespace stays the one every existing requirer
-;; resolves against -- `ehrt.sim-engine.interface`, and every test that
-;; requires `ehrt.sim-engine.engine` directly -- so each var that was
-;; PUBLIC here keeps a delegating def, in the order it stood in. The four
-;; that were PRIVATE (`rand-int-in`, `uniform-choice`,
-;; `minted-encounter-id-field`, `minted-appointment-id-field`) get none
-;; and are called `streams/`-qualified at their own sites, which is what
-;; keeps this namespace's public surface exactly what it was.
+;; Under C1(a) each var that was PUBLIC here kept a delegating def, in
+;; the order it stood in; the four that were PRIVATE (`rand-int-in`,
+;; `uniform-choice`, `minted-encounter-id-field`,
+;; `minted-appointment-id-field`) got none.
+;;
+;; THE RULED REPOINT PASS RETIRED SIX OF THE ELEVEN -- `patient-id-for`,
+;; `encounter-id-for`, `next-encounter-ordinal`, `appointment-id-for`,
+;; `next-appointment-ordinal` and `one-stream` -- each of which only the
+;; test tree ever reached, and which the test tree now names `streams/`
+;; outright. FIVE REMAIN, every one on `ehrt.sim-engine.interface`'s
+;; re-export list: `mix64`, `stream-scheme`, `stream-seed`, `stream` and
+;; `newborn-id-tag`. `stream` is load-bearing twice over and says so in
+;; its own docstring.
 
 (def mix64
   "A fixed, fully-specified 64-bit mix of two longs, deliberately NOT an
   RNG draw; PUBLIC since ADR-0171 ruling A1. Delegates to
   `ehrt.sim-engine.streams/mix64`, which carries the contract."
   streams/mix64)
-
-(def patient-id-for
-  "The internal, deterministic patient-id (sim/ADR-0010): a PURE function
-  of this run's seed and the patient's arrival ordinal. Delegates to
-  `ehrt.sim-engine.streams/patient-id-for`, which carries the contract."
-  streams/patient-id-for)
-
-(def encounter-id-for
-  "The internal, deterministic encounter-id (ADR-0174 ruling B1) --
-  `patient-id-for`'s own contract one level down. Delegates to
-  `ehrt.sim-engine.streams/encounter-id-for`, which carries it."
-  streams/encounter-id-for)
-
-(def next-encounter-ordinal
-  "The 0-indexed ordinal this patient's NEXT encounter takes. Delegates to
-  `ehrt.sim-engine.streams/next-encounter-ordinal`, which carries the
-  monotonicity argument."
-  streams/next-encounter-ordinal)
-
-(def appointment-id-for
-  "The internal, deterministic appointment-id (ADR-0174 section 2(b)).
-  Delegates to `ehrt.sim-engine.streams/appointment-id-for`, which
-  carries the contract."
-  streams/appointment-id-for)
-
-(def next-appointment-ordinal
-  "The 0-indexed ordinal this patient's NEXT appointment takes. Delegates
-  to `ehrt.sim-engine.streams/next-appointment-ordinal`, which carries
-  the invariant and the way it was found to fail."
-  streams/next-appointment-ordinal)
 
 ;; The encounter -- the opt-in gate `encounter-openable?`, the two
 ;; compiled-step sets and `gate-compiled-encounters`, and the
@@ -328,20 +202,6 @@
   which carries the contract."
   streams/newborn-id-tag)
 
-(def one-stream
-  "Every family bound to ONE `Random` -- the degenerate stream map a
-  caller with no `run` behind it needs. Delegates to
-  `ehrt.sim-engine.streams/one-stream`, which carries the contract."
-  streams/one-stream)
-
-(def events-for-patient
-  "Every event `patient-id` participates in, in log order -- the
-  patient-phrased replacement for what a single :mrn-keyed lookup used
-  to mean before sim/ADR-0010's :participants existed. Delegates to
-  `ehrt.sim-engine.log-index/events-for-patient`, which carries the
-  contract."
-  log-index/events-for-patient)
-
 ;; --- moved to ehrt.sim-engine.decide ---------------------------------------
 ;;
 ;; The decision half of the `decide`/`evolve` pair -- the `decide`
@@ -373,21 +233,20 @@
 ;; `replay` when `replay` was a real `defn` here. They moved too, and are
 ;; in the same relative order over there.
 ;;
-;; Under C1(a) THIS namespace stays the one every existing requirer
-;; resolves against, so the seven vars that were PUBLIC here keep
-;; delegating defs below, in the order they stood in. A delegating `def`
-;; of a multimethod shares the one MultiFn object, so all thirty-two
-;; methods registered over there dispatch through this `decide` too.
-;; Two are load-bearing for `ehrt.sim-engine.interface`, which census
-;; constraint 4 requires to keep naming `engine/...`: `compile-patient`
-;; at its `:62` and `documented-step-rejection-reasons` at its `:93`.
-;; `decide` and `person-entry` are owed to the test tree instead, which
-;; C1(a) forbids touching. The three `*-stay-minutes` tables had NO
-;; caller outside this file at all -- their defs were what kept
-;; `prelude`'s own three unqualified references below resolving. The
-;; TENTH extraction took `prelude` and qualified all three, so those
-;; three defs now have no caller anywhere. They stay: retirement is the
-;; ruled repoint pass's business, not this file's.
+;; Under C1(a) the seven vars that were PUBLIC here kept delegating
+;; defs, in the order they stood in. THE RULED REPOINT PASS RETIRED FIVE
+;; AND KEPT TWO, and the split is the one the banner already predicted.
+;;
+;; The two that remain are load-bearing for `ehrt.sim-engine.interface`,
+;; which census constraint 4 requires to keep naming `engine/...`:
+;; `compile-patient` at its `:62` and
+;; `documented-step-rejection-reasons` at its `:93`. `decide` and
+;; `person-entry` were owed to the test tree, which now names `decide/`
+;; outright -- and because a delegating `def` of a multimethod shares the
+;; one MultiFn object, retiring `decide`'s def changed no dispatch: all
+;; thirty-two methods were, and are, registered over there. The three
+;; `*-stay-minutes` tables had no caller anywhere from the moment the
+;; TENTH extraction took `prelude` and qualified its three references.
 ;;
 ;; EIGHTEEN OF THE NINETEEN PRIVATE MOVERS STAY `defn-` over there, the
 ;; `weighted-pick` precedent at scale: constraint 5's prohibition is the
@@ -398,14 +257,6 @@
 ;; widening outlived the caller that forced it. Nothing in this file
 ;; calls anything at all now.
 
-(def decide
-  "Decides what happens when a patient is due to execute a step: the
-  `decide` half of the `decide`/`evolve` pair (`sim/ADR-0008`).
-  Delegates to `ehrt.sim-engine.decide/decide`, which carries the
-  contract -- and, being a `defmulti`, IS the same `MultiFn` object, so
-  every method registered there dispatches through this var too."
-  decide/decide)
-
 (def compile-patient
   "The whole of a patient's run-start compile -- persona draw, module
   walk and trajectory compile -- resolved BEFORE the loop (ADR-0173
@@ -414,35 +265,12 @@
   re-exports through THIS var."
   decide/compile-patient)
 
-(def delivery-stay-minutes
-  "Stay-length band by delivery kind. Delegates to
-  `ehrt.sim-engine.decide/delivery-stay-minutes`, which carries the
-  contract."
-  decide/delivery-stay-minutes)
-
-(def injury-stay-minutes
-  "Stay-length band by injury severity. Delegates to
-  `ehrt.sim-engine.decide/injury-stay-minutes`, which carries the
-  contract."
-  decide/injury-stay-minutes)
-
-(def unidentified-stay-minutes
-  "Stay-length band for an unidentified arrival. Delegates to
-  `ehrt.sim-engine.decide/unidentified-stay-minutes`, which carries the
-  contract."
-  decide/unidentified-stay-minutes)
-
 (def documented-step-rejection-reasons
   "Every `:reason` a `:step-rejected` event may carry (sim/ADR-0012).
   Delegates to `ehrt.sim-engine.decide/documented-step-rejection-
   reasons`, which carries the contract -- and which
   `ehrt.sim-engine.interface` re-exports through THIS var."
   decide/documented-step-rejection-reasons)
-
-(def person-entry
-  "This world's person-index entry for a patient, or nil. Delegates to
-  `ehrt.sim-engine.decide/person-entry`, which carries the contract."
-  decide/person-entry)
 
 ;; --- moved to ehrt.sim-engine.evolve --------------------------------------
 ;;
@@ -458,11 +286,12 @@
 ;; banner that stood at the head of the methods moved WITH them, because
 ;; its last sentence is a positional claim about the methods themselves.
 ;;
-;; Under C1(a) THIS namespace stays the one every existing requirer
-;; resolves against, so the ONE var that was public here -- the
-;; `defmulti` -- keeps a delegating def below, in the place it stood.
-;; A delegating `def` of a multimethod shares the one multifn object, so
-;; every method registered over there dispatches through this var too.
+;; Under C1(a) the ONE var that was public here -- the `defmulti` --
+;; kept a delegating def, in the place it stood. THE RULED REPOINT PASS
+;; RETIRED IT: `ehrt.sim-engine.interface` never re-exported `evolve`, so
+;; only the test tree reached it here, and those reaches now name
+;; `evolve/evolve` -- the same multifn object the def held, so no
+;; dispatch moved when it went.
 ;; `replay` and `run` both called `evolve` unqualified through it when
 ;; this banner was written; the FIFTH extraction moved `replay` to
 ;; `ehrt.sim-engine.fold` (see the banner below) and the TENTH moved
@@ -472,14 +301,6 @@
 ;; what keeps this namespace's public surface exactly what it was.
 ;; `ehrt.sim-engine.interface` re-exports none of the five and is
 ;; untouched.
-
-(def evolve
-  "Folds one ground-truth event into ONE patient it names:
-  (patient-state, event) -> patient-state'. Delegates to
-  `ehrt.sim-engine.evolve/evolve`, which carries the contract and every
-  one of its twenty-seven methods -- the same multifn object, so a
-  method registered there is dispatched through this var."
-  evolve/evolve)
 
 ;; --- moved to ehrt.sim-engine.fold ----------------------------------------
 ;;
@@ -550,16 +371,14 @@
 ;; above", which is still true over there because the order is
 ;; preserved.
 ;;
-;; Under C1(a) THIS namespace stays the one every existing requirer
-;; resolves against, so the two vars that were PUBLIC here keep
-;; delegating defs below, in the order they stood in. Neither is on
-;; `ehrt.sim-engine.interface`'s re-export list and census constraint 4
-;; names neither: what makes them load-bearing is `engine_test.clj`'s
-;; seven `engine/assign-pathway` and three `engine/assign-module` call
-;; sites, which C1(a) forbids touching. `run`'s own two call sites
-;; called both unqualified through these until the TENTH extraction took
-;; `run` to `ehrt.sim-engine.run`, where they name `assignment/` direct;
-;; the test tree's ten sites are what keeps these defs load-bearing.
+;; Under C1(a) the two vars that were PUBLIC here kept delegating defs,
+;; in the order they stood in. THE RULED REPOINT PASS RETIRED BOTH, and
+;; the banner had already named the only thing holding them up: neither
+;; is on `ehrt.sim-engine.interface`'s re-export list and census
+;; constraint 4 names neither, so `engine_test.clj`'s seven
+;; `assign-pathway` and three `assign-module` call sites were the whole
+;; of it. Those ten now name `assignment/` outright, exactly as `run`'s
+;; own two have since the TENTH extraction.
 ;;
 ;; `weighted-pick` gets NO def here -- that would widen this namespace's
 ;; public surface, which C1(a) does not ask for and constraint 5
@@ -577,21 +396,6 @@
 ;; so widening would have falsified the repoint in the same commit that
 ;; made it.
 
-(def assign-pathway
-  "Resolves the pathway a `sim-model/PathwaysConfig` assigns to patient
-  ordinal `i`, ALWAYS consuming exactly one `.nextDouble`. Delegates to
-  `ehrt.sim-engine.assignment/assign-pathway`, which carries the
-  contract and the fixed-consumption argument behind it."
-  assignment/assign-pathway)
-
-(def assign-module
-  "Resolves the module id a `ehrt.patient-simulator.gmf/ModulesConfig`
-  assigns to patient ordinal `i`, or nil when neither an override nor a
-  pool covers it, ALWAYS consuming exactly one `.nextDouble`. Delegates
-  to `ehrt.sim-engine.assignment/assign-module`, which carries the
-  contract."
-  assignment/assign-module)
-
 ;; --- moved to ehrt.sim-engine.config ---------------------------------------
 ;;
 ;; `run`'s config surface -- `config-keys` and the two opt-in value
@@ -605,21 +409,20 @@
 ;; included, and this cluster had no interior comment block for a banner
 ;; to have to travel with.
 ;;
-;; Under C1(a) THIS namespace stays the one every existing requirer
-;; resolves against, so all five vars -- every one of them PUBLIC here --
-;; keep a delegating def below, in the order they stood in. Two are
-;; load-bearing for `ehrt.sim-engine.interface`, which census constraint
-;; 4 requires to keep naming `engine/...`: `config-keys` at its `:46`
-;; and `valid-persons?` at its `:82`. `valid-scheduling?`'s is owed to
-;; `scheduling_test.clj` instead, which C1(a) forbids touching.
-;; `Persons` and `Scheduling` have no caller at all and keep defs
-;; anyway: C1(a) owes a def for a moved PUBLIC var, and reading that as
-;; "public vars someone calls" would be an exception the ruling does not
-;; grant. `run`'s own two guard call sites called `valid-persons?` and
-;; `valid-scheduling?` unqualified through these until the TENTH
-;; extraction took `run` to `ehrt.sim-engine.run`, where both are
-;; `config/`-qualified; `interface.clj` and `scheduling_test.clj` are
-;; what keeps these defs load-bearing now.
+;; Under C1(a) all five vars -- every one of them PUBLIC here -- kept a
+;; delegating def, in the order they stood in, `Persons` and `Scheduling`
+;; included, which never had a caller at all: C1(a) owed a def for a
+;; moved PUBLIC var, and reading that as "public vars someone calls"
+;; would have been an exception the ruling does not grant.
+;;
+;; THE RULED REPOINT PASS RETIRED THREE AND KEPT TWO. The two that remain
+;; are load-bearing for `ehrt.sim-engine.interface`, which census
+;; constraint 4 requires to keep naming `engine/...`: `config-keys` at
+;; its `:46` and `valid-persons?` at its `:82`. `valid-scheduling?`'s
+;; only caller was `scheduling_test.clj`, which now names `config/`
+;; outright, as `run`'s own two guard sites have since the TENTH
+;; extraction took them to `ehrt.sim-engine.run`. `Persons` and
+;; `Scheduling` went with it, having never had one.
 
 (def config-keys
   "The canonical, documented list of every key `run`'s config map
@@ -629,27 +432,6 @@
   the one thing a delegating def cannot bring along, and
   `docs/consuming-ground-truth.md` names them THERE for that reason."
   config/config-keys)
-
-(def Persons
-  "`run`'s ENGINE-FACING `:persons` value (ADR-0173 section 2(a), arc 3a
-  part 3) -- not the config-facing one `ehrt.sim.run` translates from.
-  Delegates to `ehrt.sim-engine.config/Persons`, which carries the
-  contract for all four sub-keys."
-  config/Persons)
-
-(def Scheduling
-  "`run`'s `:scheduling` value (ADR-0174 section 2(b), arc 3b sweep 3) --
-  the six sub-keys the ADR names, and nothing else. Delegates to
-  `ehrt.sim-engine.config/Scheduling`, which carries the contract and
-  the band-sum argument `valid-scheduling?` enforces."
-  config/Scheduling)
-
-(def valid-scheduling?
-  "Whether `run`'s `:scheduling` value is well-formed. Delegates to
-  `ehrt.sim-engine.config/valid-scheduling?`, which carries the
-  result-not-throw contract and why the band-sum check lives outside the
-  malli schema."
-  config/valid-scheduling?)
 
 (def valid-persons?
   "Whether `run`'s engine-facing `:persons` value is well-formed.
@@ -677,11 +459,12 @@
 ;; `placeholder-registration` to the end of the file. They are gathered
 ;; in that same relative order.
 ;;
-;; WITH THEM GONE THIS FILE IS A PURE FACADE: its `ns`, forty-three
-;; delegating defs and nine explanatory comment blocks, and no
-;; executable code of its own. That is the shape ruling C4(b) chose, and
-;; it is a different shape from the nine moves before it, every one of
-;; which left real code behind.
+;; WITH THEM GONE THIS FILE IS A PURE FACADE: its `ns`, its delegating
+;; defs and nine explanatory comment blocks, and no executable code of
+;; its own. That is the shape ruling C4(b) chose, and it is a different
+;; shape from the nine moves before it, every one of which left real code
+;; behind. It stood at FORTY-THREE defs when this banner was written;
+;; the ruled repoint pass retired thirty-one and it stands at TWELVE.
 ;;
 ;; THIS MOVE MOVES THE PROGRAM'S SOLE EVENT PRODUCER AND ITS MAIN APPLY
 ;; SITE -- the census's sections 4a and 4b, `run`'s `(decide ...)` call
@@ -695,11 +478,12 @@
 ;; plan` and `run` -- keep delegating defs below, in the order they stood
 ;; in. Both are load-bearing for `ehrt.sim-engine.interface`, which
 ;; census constraint 4 requires to keep naming `engine/...`: `run` at its
-;; `:45` and `person-plan` at its `:80`. Both are owed to the test tree
-;; besides, which C1(a) forbids touching -- `run` at a scale no earlier
-;; mover approached, forty-nine `(engine/run ...)` call forms in
-;; `engine_test.clj` alone, and `person-plan` at seven in
-;; `persons_test.clj`.
+;; `:45` and `person-plan` at its `:80`, which is what keeps them here
+;; now. The test tree reached both besides -- `run` at a scale no earlier
+;; mover approached, forty-nine call forms in `engine_test.clj` alone,
+;; and `person-plan` at seven in `persons_test.clj` -- and every one of
+;; those now names `run/` outright, the ruled repoint pass having lifted
+;; C1(a)'s fence to do it.
 ;;
 ;; THE OTHER FOUR MOVERS WERE PRIVATE AND STAY `defn-`, the
 ;; `weighted-pick` precedent (extraction 8) once more: constraint 5's
@@ -721,8 +505,10 @@
 ;; `patient-id-for`, `decide`, `compile-patient`, the three
 ;; `*-stay-minutes` tables, `evolve`, `assign-pathway`, `assign-module`,
 ;; `valid-persons?`, `valid-scheduling?` -- is qualified over there to
-;; the namespace that owns it, which holds the same object the def here
-;; holds. Fourteen call sites, and no other code line differs.
+;; the namespace that owns it. Fourteen call sites, and no other code
+;; line differs. Most of those names have no def here at all any more:
+;; the ruled repoint pass retired them, and qualifying the moved text is
+;; exactly why it could.
 
 (def person-plan
   "ADR-0173 ruling C1's own resolution, exported: for a config `run`

@@ -30,10 +30,11 @@
   there under ruling C1(a). Unlike the `evolve` and `fold` extractions'
   defs, this one is NOT owed to `ehrt.sim-engine.interface`: not one of
   the ten movers is on that seam's re-export list, and census constraint
-  4 names none of them. What makes it load-bearing is
+  4 names none of them. What made it load-bearing was
   `components/sim-engine/test/ehrt/sim_engine/engine_test.clj`, which
-  calls `engine/events-for-patient` at TEN sites and which C1(a) forbids
-  this session to touch.
+  called `events-for-patient` through the facade at TEN sites, behind
+  C1(a)'s fence on test files. That fence lifted, the ten moved to
+  `log-index/`, and retired the def.
 
   The other nine were `defn-` or `^:private` -- NINE, where the census's
   section-1 rendering shows five, because that rendering drops
