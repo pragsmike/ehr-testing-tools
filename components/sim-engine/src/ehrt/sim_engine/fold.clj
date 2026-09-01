@@ -278,6 +278,13 @@
     `replay`'s acc now carries `:log (transient [])`. Never persisted,
     never read.
 
+  * `:state-history` -- duplicates, in a NARROWER shape, what
+    `:replay-entries` already returns: `replay`'s own docstring below
+    says the entries vector IS state-history derived and generalized
+    across patients (sim/ADR-0008). Builds from a nil seed into a fresh
+    map, and no consumer asks for a separate `{patient-id -> [state
+    ...]}`.
+
   THE TWO IT DOES NOT GET are the DECORATIONS `:encounter-stamp` and
   `:warm-up-mark`, the only two of section 3b predicted OUTPUT-MOVING --
   the concerns applied on the way IN, which a re-fold of an existing log
@@ -286,7 +293,7 @@
   the author disposes."
   #{:log-ordinal :reinstate-index :citation-index :registration-index
     :patient-bootstrap :patient-state :bed-index :log-mirror
-    :log-accumulator :replay-entries})
+    :log-accumulator :state-history :replay-entries})
 
 (def reinstated-projection
   "Census site 3 -- `ehrt.sim-engine.log-index/reinstated-state`'s
