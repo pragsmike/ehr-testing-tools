@@ -61,12 +61,16 @@
     :log-mirror :log-accumulator :state-history :replay-entries})
 
 (def ^:private census-site-3
-  "Section 2, column `site 3 -- reinstated-state`: twelve PRESENT
-  cells -- three inherited from site 2 at stage 1 (correction C5),
-  plus the INERT pairs stage 2 enabled in census order."
-  #{:warm-up-mark :log-ordinal :reinstate-index :citation-index
-    :registration-index :patient-bootstrap :patient-state :bed-index
-    :log-mirror :log-accumulator :state-history :replay-entries})
+  "Section 2, column `site 3 -- reinstated-state`: ALL THIRTEEN --
+  three inherited from site 2 at stage 1 (correction C5), the INERT
+  pairs stage 2 enabled in census order, and the DECORATION
+  `:encounter-stamp` under ruling A1(b). FULL PRODUCT, the arc's ruled
+  end state, and this set is `full-algebra` written out rather than
+  aliased for the same reason site 1's is."
+  #{:encounter-stamp :warm-up-mark :log-ordinal :reinstate-index
+    :citation-index :registration-index :patient-bootstrap
+    :patient-state :bed-index :log-mirror :log-accumulator
+    :state-history :replay-entries})
 
 (deftest projections-match-the-census-matrix
   (testing "the closure is section 1's thirteen concerns"
@@ -80,7 +84,7 @@
     (is (= census-site-2 fold/replay-projection)
         "site 2 -- replay, twelve of thirteen")
     (is (= census-site-3 fold/reinstated-projection)
-        "site 3 -- reinstated-state's fallback, twelve of thirteen"))
+        "site 3 -- reinstated-state's fallback, thirteen of thirteen -- full product"))
 
   (testing "every projection is a SUBSET of the closure -- no site names
             a concern the algebra does not have"
@@ -96,13 +100,13 @@
             twin at site 3, which is what one-pair-per-commit forbids"
     (is (not (identical? fold/replay-projection fold/reinstated-projection))))
 
-  (testing "the matrix's own arithmetic: 37 present cells of 39, and the
-            2 omitted ones are what remains of stage 2's three
-            OUTPUT-MOVING predictions"
-    (is (= 37 (+ (count fold/run-loop-projection)
+  (testing "the matrix's own arithmetic: 38 present cells of 39. The
+            ONE omitted cell is 2 x `:warm-up-mark`, and it is a
+            MEASURED PERMANENT omission rather than an unfinished pair"
+    (is (= 38 (+ (count fold/run-loop-projection)
                  (count fold/replay-projection)
                  (count fold/reinstated-projection))))
-    (is (= 2 (- (* 3 (count fold/full-algebra))
+    (is (= 1 (- (* 3 (count fold/full-algebra))
                  (+ (count fold/run-loop-projection)
                     (count fold/replay-projection)
                     (count fold/reinstated-projection)))))))

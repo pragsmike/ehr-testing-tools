@@ -19,7 +19,7 @@
     THIRTEEN of thirteen, the ruled end state;
   * site 2, `replay` below -- `replay-projection`, twelve of thirteen;
   * site 3, `ehrt.sim-engine.log-index/reinstated-state`'s fallback --
-    `reinstated-projection`, twelve of thirteen and its OWN literal
+    `reinstated-projection`, THIRTEEN of thirteen and its OWN literal
     since stage 2's de-alias commit, not site 2's by value.
 
   THOSE THREE COUNTS WERE STALE FROM STAGE 2 AND ARE CORRECTED HERE
@@ -333,8 +333,33 @@
 
   SITE 3'S READ IS ONE ELEMENT OF ONE KEY -- `(:before (nth entries
   idx))`, a PATIENT STATE and not an event -- which narrows every cone
-  below relative to its site-2 twin. Stage 2 enables its nine INERT
-  pairs one commit each in census order:
+  below relative to its site-2 twin. Stage 2 enabled its nine INERT
+  pairs one commit each in census order, and ruling A1(b) added the
+  tenth, the DECORATION `:encounter-stamp`, whose OUTPUT-MOVING
+  prediction measurement refuted -- so this projection is now FULL
+  PRODUCT, all thirteen, the same end state site 1 has held since stage
+  2's first span:
+
+  * `:encounter-stamp` -- THE ONE PAIR SECTION 3c PREDICTED
+    OUTPUT-MOVING HERE, and the prediction is REFUTED BY MEASUREMENT.
+    The cone was real as far as it went -- `evolve` does fold
+    `:encounter-id` into conditions, observations, medication orders and
+    care plans, so a DIFFERENT id at `idx` would reach the `:before` the
+    two reinstating cancel decides restore, and from there the emitted
+    events -- but it never asked whether a re-stamp PRODUCES a different
+    id, and it does not. Measured directly across the same three
+    encounter-carrying roots as its site-2 twin, reading this site's own
+    `:before` projection: no divergence at any index, including the 59
+    `:transfer`/`:discharge` indexes of `encounter-horizon` that a
+    reinstating cancel could actually ask about
+    (`.agents/session-records/2026-09-01-apply-unification-stage-2.md`
+    section 4c). THE TWO MECHANISMS ARE ITS SITE-2 TWIN'S, UNCHANGED --
+    `stamp-encounter`'s `contains?` guard and the pre-batch world, which
+    here too is `{:patients {}}` -- and they are gated, for this site's
+    read as well as site 2's, by
+    `ehrt.sim-engine.apply-restamp-identity-test`. The two columns are
+    one mechanism seen from two sites and are disposed the same way,
+    which is why ruling A1(b) took both.
 
   * `:warm-up-mark` -- INERT because `:warm-up` is a key on the EVENT
     and `evolve` never reads it (no `warm-up` occurrence in
@@ -381,17 +406,16 @@
     `:replay-entries` already returns, and this site reads ONE element
     of that. Builds from a nil seed; no slot.
 
-  THE ONE IT DOES NOT GET is the DECORATION `:encounter-stamp`, the only
-  pair of section 3c predicted OUTPUT-MOVING, and by a mechanism that is
-  narrower than its site-2 twin but real: `evolve` folds `:encounter-id`
-  into conditions, observations, medication orders and care plans, so a
-  re-stamped log gives a different `:before` at `idx` -- and that value
-  is what the two reinstating cancel decides RESTORE, so the delta would
-  reach emitted events and the byte-identity gate. Stage 2 PREPARES it
-  and does not land it; the author disposes."
-  #{:warm-up-mark :log-ordinal :reinstate-index :citation-index
-    :registration-index :patient-bootstrap :patient-state :bed-index
-    :log-mirror :log-accumulator :state-history :replay-entries})
+  THERE IS NOTHING IT DOES NOT GET. Site 3 names every one of the
+  thirteen, which is the ruled end state of the whole unification arc,
+  and it is the SECOND of the three sites to reach it -- site 2 keeps
+  one measured, permanent omission, `:warm-up-mark`, for a reason that
+  does not apply here (`replay-projection` above, and record section
+  4d)."
+  #{:encounter-stamp :warm-up-mark :log-ordinal :reinstate-index
+    :citation-index :registration-index :patient-bootstrap
+    :patient-state :bed-index :log-mirror :log-accumulator
+    :state-history :replay-entries})
 
 (defn apply-events
   "THE APPLY CHOKE POINT. `acc x events x projection -> acc'`.

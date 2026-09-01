@@ -2,7 +2,9 @@
   "THE CO-LANDED INVARIANT OF RULING A1(b): re-stamping an
   ALREADY-STAMPED log is the IDENTITY, which is what makes
   `:encounter-stamp` an inert pair at the two apply sites that replay a
-  log rather than build one.
+  log rather than build one -- site 2, `fold/replay`, and site 3,
+  `log-index/reinstated-state`'s fallback, which reads ONE `:before` out
+  of the same entries.
 
   WHY A GATE AND NOT A MEASUREMENT. The census predicted this pair
   OUTPUT-MOVING at both sites and stage 2's measurement REFUTED that --
@@ -41,6 +43,7 @@
             [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim-engine.encounters :as encounters]
             [ehrt.sim-engine.fold :as fold]
+            [ehrt.sim-engine.log-index :as log-index]
             [ehrt.sim-engine.run :as run]
             [ehrt.sim-engine.streams :as streams]))
 
@@ -72,12 +75,23 @@
                            :persons pool :encounters true})))
 
 (defn- entries-under
-  "`replay`'s own fold, at an arbitrary projection -- the accumulator
-  shape is `replay`'s, so the only variable is the projection."
+  "A replay site's own fold, at an arbitrary projection -- the
+  accumulator shape is held fixed so the only variable is the
+  projection.
+
+  `:warm-up-seconds 0` is site 3's OWN declared value, not this
+  namespace's invention (`log-index/reinstated-state`, and census
+  section 3d's disclosure of it): a log carries no warm-up window, so
+  the site that enables `:warm-up-mark` must declare one. It is here
+  rather than behind a conditional because the concern throws on a nil
+  window, and it is inert for the site-2 calls below -- ruling A2(b)
+  omits `:warm-up-mark` from `replay-projection` PERMANENTLY, so those
+  calls never reach the line that reads it."
   [projection log]
   (persistent!
    (:entries (fold/apply-events {:world {:patients {}}
                                  :entries (transient [])
+                                 :warm-up-seconds 0
                                  :log (transient [])}
                                 log
                                 projection))))
@@ -134,3 +148,31 @@
       (is (zero? (count (keep :encounter-id (map :event (entries-under fold/replay-projection stripped)))))
           "not one id minted from an unstamped log, though the same
            events minted three on the way in at site 1"))))
+
+(deftest site-3s-before-is-the-identity-too
+  (testing "site 3 -- `reinstated-state`'s replay fallback reads
+            `(:before (nth entries idx))`, a PATIENT STATE, and ruling
+            A1(b) enables the same decoration there. The live function is
+            driven, not a projection of it: its answer at every index
+            must equal the one computed WITHOUT the decoration"
+    (is (fold/reinstated-projection :encounter-stamp)
+        "the pair is enabled at site 3 -- otherwise this deftest gates nothing")
+    (let [subject (:patient-id (first (:participants (first gt))))
+          without (entries-under (disj fold/reinstated-projection :encounter-stamp) gt)]
+      (is (some? subject))
+      (doseq [idx (range (count gt))]
+        (is (= (:before (nth without idx))
+               ;; the world carries no `:reinstate-index`, which is what
+               ;; sends `reinstated-state` down the replay fallback --
+               ;; the site this pair was enabled at.
+               (log-index/reinstated-state {} gt subject idx))
+            (str "site 3's :before at index " idx)))))
+
+  (testing "and the indexes a reinstating cancel could actually ask
+            about are among them -- the fixture has reinstatable events,
+            so this is not a gate over an empty range"
+    (let [reinstatable (keep-indexed (fn [i e]
+                                       (when (fold/reinstatable-event-types (:event e)) i))
+                                     gt)]
+      (is (= [2 4 6] (vec reinstatable))
+          "three discharges, at the indexes a `:cancel-discharge` would name"))))
