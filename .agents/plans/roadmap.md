@@ -77,21 +77,26 @@ with them.
   divergence is what it costs: `replay` does six fewer things than site 1 and
   cannot do them, which is why `ehrt.sim-check.check` has no bed index on the
   replay path.
-  THREE STANDING BACKLOGS the extraction phase handed on, none of them a
-  mover's to pay and each enumerated per member in the records that found it.
-  (1) THE RULED REPOINT PASS (C5), carrying both FENCED CITATIONS -- C1(a)
-  forbids touching test files, and the engine phase left twelve stale
-  `engine.clj`-by-file citations across ten test files plus one, the emit
-  phase four more -- and STALE-BEFORE-THE-MOVE, a citation already false when
-  the move relocating it arrived, four members, one of which the seventeenth
-  session became the first to relocate. (2) C10 RESIDUAL SURFACES: of nine
-  live surfaces citing gates `e189418` deleted, C10(b) renamed four as
-  CONVENTIONS and FIVE REMAIN, two of them in `state_derived.clj`'s own `src`
-  half; no gate was restored. (3) THE RETIREMENT INVENTORY: fourteen of
-  `engine.clj`'s forty-three delegating defs and ALL TWENTY-SIX of
-  `emit_hl7.clj`'s now have no in-file caller, which is what a pure facade
-  means; the facade rule correctly kept every one, and deciding which to
-  retire is the repoint pass's business rather than a mover's.
+  THE THREE STANDING BACKLOGS ARE CLEARED, by the ruled repoint pass of
+  2026-08-31 (C12(b), which lifted C1(a)'s test-file fence for that session
+  and resumed it at its close). Manifest first, at
+  `.agents/plans/repoint-pass-manifest.md`, derived before the first edit and
+  reconciled row by row in `.agents/session-records/2026-08-31-repoint-pass.md`.
+  (1) REPOINT: 976 test code reaches in 52 files and 267 prose citations moved
+  to the namespaces that own the forms, the fenced-citation backlog cleared at
+  22 by-file sites -- 8 of them NEW, found by re-deriving. (2) C10: the five
+  remaining surfaces named as conventions; no gate restored. (3) RETIREMENT:
+  40 of the 69 delegating defs retired -- `engine.clj` 43 -> 12,
+  `emit_hl7.clj` 26 -> 17 -- with 13 requires, an import and one dead form.
+  Every survivor is one an `interface.clj` resolves through, plus
+  `unescape-er7`, whose SRC caller the pass did not touch. Oracle IDENTICAL at
+  every commit; suite 4,751/24,161/408 unmoved throughout. TWO THINGS IT DID
+  NOT PAY, disclosed rather than absorbed: 23 `docs/operational-models.md`
+  citations INSIDE `components/sim/docs/`, which are that directory's own
+  whole-directory convention rather than one file's defect; and 8 further live
+  citations of a gate `e189418` deleted, in `docsgen.clj`, `help_voice_test.clj`,
+  two one-shot `bin/` migration scripts and a skill HISTORY -- so the C10
+  population was never nine. Both need a ruling, not a session.
 - OPEN **[event-stream-mutation]** PRIORITY 6 -- mutation moves to the
   ground-truth event stream (emitters inherit mutations); ADR-0166's test-side
   event mutations promoted to a shipped operator catalog with `check` as oracle;
