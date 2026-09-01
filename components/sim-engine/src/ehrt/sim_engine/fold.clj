@@ -331,6 +331,8 @@
   * `:citation-index` -- not read at this site: the read is a patient
     state, and a citation index is not in one.
 
+  * `:registration-index` -- not read at this site, same reason.
+
   THE ONE IT DOES NOT GET is the DECORATION `:encounter-stamp`, the only
   pair of section 3c predicted OUTPUT-MOVING, and by a mechanism that is
   narrower than its site-2 twin but real: `evolve` folds `:encounter-id`
@@ -340,7 +342,8 @@
   reach emitted events and the byte-identity gate. Stage 2 PREPARES it
   and does not land it; the author disposes."
   #{:warm-up-mark :log-ordinal :reinstate-index :citation-index
-    :patient-bootstrap :patient-state :replay-entries})
+    :registration-index :patient-bootstrap :patient-state
+    :replay-entries})
 
 (defn apply-events
   "THE APPLY CHOKE POINT. `acc x events x projection -> acc'`.
