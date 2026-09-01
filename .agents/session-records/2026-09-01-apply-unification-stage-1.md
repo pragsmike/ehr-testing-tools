@@ -306,8 +306,19 @@ this one's.
   7ab7cdb (38 roots)`, coverage line `38 roots carry :ground-truth and are
   digested; 3 skipped (no such key): appendicitis.edn, ear-infections.edn,
   sore-throat.edn`. No declaration.
-* Push, post-push message verification and the CI close marker via `gh`
-  follow this commit; they are recorded in the close-marker commit under
+* **Push** -- `3e65ff9..6848bcc` to `origin/main`, `gitleaks` clean over
+  1,303 commits and the pre-push hook `OK`.
+* **Post-push message verification** -- all three commits diffed against the
+  message file that produced them. Each diff is exactly one trailing blank
+  line, which is `git log --format=%B`'s own formatting artifact and not a
+  failure. Nothing the WSL wrapper dropped.
+* **CI** -- `gh run watch 33487672386 --exit-status` exits 0 on its FIRST
+  attempt; completed / success at `6848bcc`. `generated-doc freshness (regen +
+  diff)` passed, which is the step this session had most reason to watch. The
+  run carries the two standing annotations the extraction phase's close marker
+  already recorded (Node.js 20 deprecation across four actions,
+  `setup-java@v4` superseded by `v5`) -- infrastructure drift, not this
+  session's. That is the close marker under
   `rulings.md#R-session-verifies-ci-via-gh`.
 
 **What this session deliberately did NOT do.** No accumulator was enabled or
