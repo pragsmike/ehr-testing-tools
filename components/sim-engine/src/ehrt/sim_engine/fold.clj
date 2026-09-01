@@ -225,13 +225,26 @@
   full-algebra)
 
 (def replay-projection
-  "Census site 2 -- `replay` below. Three of the thirteen. The ten it
-  omits are the census's section 3b, of which exactly two are predicted
-  OUTPUT-MOVING: `:encounter-stamp` and `:warm-up-mark`, the two
-  DECORATIONS -- the concerns applied on the way IN, which a re-fold of
-  an existing log would RECOMPUTE rather than accumulate. That is the
-  whole of section 4c's 'replay cannot do them'."
-  #{:patient-bootstrap :patient-state :replay-entries})
+  "Census site 2 -- `replay` below. THREE of the thirteen at stage 1.
+  Stage 2 enables its eight INERT pairs one commit each in census order,
+  and each bullet below names why that pair moved no output -- the cone
+  the census's section 3b predicted, as the commit that took it found
+  it:
+
+  * `:log-ordinal` -- INERT BY VALUE, not merely unread. `base-idx` is
+    `(count (:ground-truth world))` and replay's world is `{:patients
+    {}}`, so the enabled branch computes `(count nil)` = 0, which is
+    exactly the 0 the disabled branch substituted. The two arms are the
+    same number. It is enabled because the three indexes below key on
+    it, and for no other reason.
+
+  THE TWO IT DOES NOT GET are the DECORATIONS `:encounter-stamp` and
+  `:warm-up-mark`, the only two of section 3b predicted OUTPUT-MOVING --
+  the concerns applied on the way IN, which a re-fold of an existing log
+  RECOMPUTES rather than accumulates. That is the whole of section 4c's
+  'replay cannot do them'. Stage 2 PREPARES them and does not land them;
+  the author disposes."
+  #{:log-ordinal :patient-bootstrap :patient-state :replay-entries})
 
 (def reinstated-projection
   "Census site 3 -- `ehrt.sim-engine.log-index/reinstated-state`'s
