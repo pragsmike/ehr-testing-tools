@@ -83,6 +83,14 @@
    [:expected-findings {:optional true} [:set :keyword]]
    [:seed-consuming? {:optional true} :boolean]
    [:candidate-sites {:optional true} [:fn fn?]]
+   ;; :reference-field -- the log-index reference an event operator
+   ;; corrupts, for the DERIVED referential family only (the structural
+   ;; three carry none). The acceptance suite walks the live event
+   ;; schema for every int-typed reference field and requires each to be
+   ;; either covered here or recorded as a declared population gap, so
+   ;; this slot is what makes a fifth reference field arriving without
+   ;; operators turn a gate red instead of going silently uncovered.
+   [:reference-field {:optional true} :keyword]
    [:fn [:fn fn?]]])
 
 (def EventOperator
@@ -384,62 +392,451 @@
 ;;                     drawn by `corpus.mutate` (Q3(a): exactly one
 ;;                     site per application, chosen by one draw).
 ;;
-;; THIS SESSION LANDS ONE, deliberately. ADR-0176 Q8(a)'s v1 catalog is
-;; the DERIVED referential family (four log-index reference fields x
-;; five defect shapes, minus the cells the schema forbids) plus three
-;; structural operators; this is the SPINE session, which proves the
-;; whole contract end to end on one operator so the breadth session has
-;; a contract to fill in rather than a design to discover. The
-;; derivation itself -- and the gate that turns red when a fifth
-;; reference field arrives without an operator for it, which is
-;; ADR-0166's error ledger applied one layer up -- is that session's.
+;; THE REFERENTIAL FAMILY IS DERIVED, NOT HAND-LISTED, and that is
+;; ADR-0166's own error ledger applied one layer up: that arc gave
+;; `:medication-end` a referential invariant, did not mirror it onto
+;; its structural twin `:care-plan-end`, and the asymmetry sat
+;; unnoticed for three weeks. A hand-listed operator catalog reproduces
+;; exactly that failure mode. Here the catalog is the cross product of
+;; `referential-columns` and `referential-shapes`, so adding a column
+;; adds its whole family at once -- and the acceptance suite's own
+;; `every-schema-reference-field-is-covered-or-declared-empty-test`
+;; walks the LIVE event schema and turns red when a fifth reference
+;; field arrives with neither operators nor a declared population gap
+;; behind it.
+;;
+;; WHICH COLUMNS ARE HERE, and why the matrix has holes. Five carrier
+;; columns exist in the schema; two are below. The other three
+;; (`:cancels-event-id`, `:order-event-id` on `:medication-end`, and
+;; `:start-event-id`) have NO population -- no log this repository can
+;; generate carries a single candidate site for them, measured over
+;; both opt-in demo configs at their own documented invocations. They
+;; are POPULATION GAPS, recorded in
+;; `.agents/plans/2026-09-01-event-mutation-population-ledger.md`
+;; section 6 with the invariant that would convict each, rather than
+;; shipped as operators that can never fire. That distinction --
+;; convictable in principle but unwitnessable today -- is NOT the same
+;; thing as the unconvictable-operator refusal above, which is about a
+;; hole in `check` rather than a hole in the corpora.
 
-(defn- identity-fill-sites
-  "Every `:demographic-update` with `:cause :identity-fill` whose
-  `:placeholder-event-id` is an in-range log index.
+(defn- subject-id
+  "The patient a log event is about: its first participant's id."
+  [event]
+  (:patient-id (first (:participants event))))
+
+(defn- first-index-where
+  [pred events]
+  (first (keep-indexed (fn [i e] (when (pred e) i)) events)))
+
+;; ---- the referential family ----------------------------------------
+
+(def ^:private referential-columns
+  "One row per CARRIER of a log-index reference, not per field name.
+  `:order-event-id` appears on two event kinds convicted by DIFFERENT
+  invariants and typed differently, so the carrier is what a column is
+  keyed by; ADR-0176 section 2(i)'s matrix arithmetic misses that and
+  its own dated addendum (b) corrects it.
+
+  `:target` is the event kind the reference must resolve to. `:law` is
+  the referential law in consumer-facing prose, rendered verbatim into
+  docs/operators.md as part of each derived operator's contract target,
+  so it is written for a reader who has never seen this file."
+  [{:field :placeholder-event-id
+    :carrier? (fn [e] (and (= :demographic-update (:event e))
+                           (= :identity-fill (:cause e))))
+    :carrier "identity fill"
+    :target :registered
+    :nilable? true
+    :invariant :identity-fill-references-its-placeholder-registration
+    :law (str "an identity fill cites a real `:registered` event in the same log, "
+              "for the same patient, carrying `:identity :placeholder`, at or "
+              "before the fill's own `:t`")}
+   {:field :order-event-id
+    :carrier? (fn [e] (= :result-available (:event e)))
+    :carrier "result"
+    :target :order-placed
+    ;; The event schema types this one a plain `:int` (its
+    ;; `:medication-end` cousin is `[:maybe :int]`), so the null shape
+    ;; is schema-forbidden here and Q9(a) drops that cell: a
+    ;; schema-invalid mutant is convicted by Malli rather than by
+    ;; `check`, which would close the loop on the wrong instrument.
+    :nilable? false
+    :invariant :result-references-existing-order-and-follows-it-in-time
+    :law (str "a result cites a real `:order-placed` event in the same log, "
+              "for the same patient, at or before the result's own `:t`")}])
+
+(defn- resolving-sites
+  "Every index whose event is one of this column's carriers and whose
+  reference field holds an in-range log index -- the population every
+  shape below narrows further.
 
   Purely structural, and that is what keeps it honest: it duplicates
-  none of `check`'s own excusing logic, because
-  `identity-fill-references-its-placeholder-registration` HAS none --
-  unlike its `:medication-end` and `:care-plan-end` cousins, it carries
-  no pre-horizon-fact escape hatch, so a resolving reference made
-  dangling convicts unconditionally. That is precisely why this field
-  is the spine's operator and one of those two is not."
-  [events]
-  (let [v (vec events)
-        n (count v)]
+  none of `check`'s own excusing logic. Where an invariant HAS such
+  logic (`medication-end-...` and `care-plan-end-...` both excuse a nil
+  reference when the patient's own `:registered` carries a matching
+  `:pre-horizon-facts` citation), a column for it would have to mirror
+  it -- neither column here does, so neither has to."
+  [column events]
+  (let [n (count events)
+        field (:field column)]
     (vec (keep-indexed
           (fn [i e]
-            (when (and (= :demographic-update (:event e))
-                       (= :identity-fill (:cause e))
-                       (int? (:placeholder-event-id e))
-                       (< -1 (:placeholder-event-id e) n))
+            (when (and ((:carrier? column) e)
+                       (int? (get e field))
+                       (< -1 (get e field) n))
               i))
-          v))))
+          events))))
 
-(defn- phantom-placeholder-event-id
-  "Repoints the site's `:placeholder-event-id` at `(count events)` --
-  one past the last index, so it resolves nowhere. `(count events)` and
-  not a drawn value: Q3(a) spends the operator's ONE draw on the site,
-  and a second draw here would buy nothing a fixed out-of-range index
-  does not already give."
+(def ^:private referential-shapes
+  "The five defect shapes, one per disjunct of the referential
+  invariants' shared form -- `(nil? target)` reached by both PHANTOM
+  and NULL, the kind clause by WRONG-KIND, the participant clause by
+  CROSS-PATIENT, and the time clause by INVERTED-SPAN. Covering the
+  invariant rather than decorating it is the point of deriving them.
+
+  `:sites` narrows this column's resolving sites to the ones this shape
+  can actually convict at; `:apply` is the one-site edit. Both take the
+  column, so a new column inherits all five for free.
+
+  `:nilable-only?` marks the one shape the event schema can forbid."
+  [{:shape :phantom
+    :edit "at a log index that does not exist"
+    :violation "past the end of the log, where nothing is"
+    :sites (fn [column events] (resolving-sites column events))
+    :apply (fn [column events site]
+             ;; `(count events)` and not a drawn value: Q3(a) spends
+             ;; the operator's ONE draw on the site, and a second draw
+             ;; here would buy nothing a fixed out-of-range index does
+             ;; not already give.
+             (assoc-in events [site (:field column)] (count events)))}
+   {:shape :null
+    :nilable-only? true
+    :edit "to nil, citing nothing at all"
+    :violation "to nil, so it cites nothing at all"
+    :sites (fn [column events] (resolving-sites column events))
+    :apply (fn [column events site] (assoc-in events [site (:field column)] nil))}
+   {:shape :cross-patient
+    :edit "at a real event of the right kind belonging to a DIFFERENT patient"
+    :violation "at an event of the right kind belonging to a different patient"
+    :sites (fn [column events]
+             (filterv (fn [i]
+                        (let [p (subject-id (nth events i))]
+                          (some? (first-index-where
+                                  #(and (= (:target column) (:event %))
+                                        (not= p (subject-id %)))
+                                  events))))
+                      (resolving-sites column events)))
+    :apply (fn [column events site]
+             (let [p (subject-id (nth events site))]
+               (assoc-in events [site (:field column)]
+                         (first-index-where #(and (= (:target column) (:event %))
+                                                  (not= p (subject-id %)))
+                                            events))))}
+   {:shape :wrong-kind
+    :edit "at a real event of the WRONG kind"
+    :violation "at an event that is not of the kind the reference promises"
+    :sites (fn [column events]
+             (let [j (first-index-where #(not= (:target column) (:event %)) events)]
+               (if j (resolving-sites column events) [])))
+    :apply (fn [column events site]
+             (assoc-in events [site (:field column)]
+                       (first-index-where #(not= (:target column) (:event %)) events)))}
+   {:shape :inverted-span
+    :edit "backwards in time, so it happens BEFORE the event it cites"
+    :violation "before its own referent in time"
+    ;; The one shape that edits `:t` rather than the reference, and so
+    ;; the one whose declared finding set has two members: it trips the
+    ;; span's own referential invariant AND `timestamps-monotone`.
+    ;; ADR-0176 section 2(iv) predicted exactly this case when it chose
+    ;; a SET over a singleton, and measurement confirmed it.
+    :extra-findings #{:timestamps-monotone}
+    :sites (fn [column events]
+             (filterv (fn [i]
+                        (let [e (nth events i)
+                              target (nth events (get e (:field column)))]
+                          ;; A positive referent time, so the moved
+                          ;; clock stays non-negative, and a referent
+                          ;; that really does precede its citer -- which
+                          ;; is what makes the moved clock land behind
+                          ;; the citer's own predecessor and trip
+                          ;; monotonicity as well.
+                          (and (pos? (:t target)) (<= (:t target) (:t e)))))
+                      (resolving-sites column events)))
+    :apply (fn [column events site]
+             (let [target (nth events (get (nth events site) (:field column)))]
+               (assoc-in events [site :t] (dec (:t target)))))}])
+
+(defn- referential-entry
+  [column shape]
+  {:id (keyword (str (name (:shape shape)) "-" (name (:field column))))
+   :version "1"
+   :format :event
+   :reference-field (:field column)
+   :doc (str "Repoints one " (:carrier column) "'s `" (:field column) "` "
+             (:edit shape)
+             ", leaving every other field and every other event exactly as it was.")
+   :contract {:type :violates
+              ;; No internal register token in this sentence: it is
+              ;; rendered verbatim into docs/operators.md, which is
+              ;; consumer-facing prose, and the link-footnote gate
+              ;; rejects a visible internal token there. The provenance
+              ;; lives in this catalog's own comments instead.
+              :target (str "points one " (:carrier column) "'s `" (:field column) "` "
+                           (:violation shape)
+                           ", violating this engine's own referential law that "
+                           (:law column)
+                           " (the invariant `ehrt.sim-check.check/"
+                           (name (:invariant column)) "` states)")}
+   :locator-required? false
+   :seed-consuming? true
+   :expected-findings (into #{(:invariant column)} (:extra-findings shape))
+   :candidate-sites (fn [events] ((:sites shape) column (vec events)))
+   :fn (fn [events site] ((:apply shape) column (vec events) site))})
+
+(doseq [column referential-columns
+        shape referential-shapes
+        :when (or (:nilable? column) (not (:nilable-only? shape)))]
+  (register! (referential-entry column shape)))
+
+;; ---- the structural three ------------------------------------------
+;;
+;; ADR-0176 section 2(i) proposes three structural operators and gives
+;; each ONE convicting invariant. ITS OWN DATED ADDENDUM (c) RECORDS
+;; ALL THREE CLAIMS REFUTED BY MEASUREMENT: a structural edit is not a
+;; content fault confined to one field, so it cascades through the
+;; state machine, and as worded each produced between one and eight
+;; DIFFERENT finding sets depending on which site the draw landed on.
+;; A varying set cannot be declared, and Q5(a)'s equality is not
+;; negotiable -- so what gives is the breadth of `:candidate-sites`,
+;; which is exactly what a candidate-site predicate is for.
+;;
+;; The three below are the NARROWED operators, each with a set measured
+;; identical at every sampled site of both demo logs. Each narrowing is
+;; a statement about what the operator MEANS, not a fudge to make a
+;; gate pass, and each is argued at its own definition.
+;;
+;; Two mechanisms behind the cascades are properties of the LOG FORMAT
+;; rather than of these operators, and any later structural operator
+;; meets them too:
+;;
+;;   1. DROPPING AN EVENT RENUMBERS THE LOG. Every log-index reference
+;;      past the drop point silently repoints one event earlier, so a
+;;      drop injects referential faults it never declared unless the
+;;      indices are repaired as part of the same edit. `drop-one-event`
+;;      below repairs them.
+;;   2. RENAMING A PARTICIPANT MOVES THE EVENT into a phantom patient's
+;;      timeline, where every patient-scoped invariant convicts the
+;;      phantom for having no `:registered` first event -- correct, and
+;;      part of the declared class rather than noise around it.
+
+(def ^:private reference-fields
+  "Every log-index reference field, for the two structural operators
+  that must reason about references without caring which is which."
+  [:cancels-event-id :order-event-id :start-event-id :placeholder-event-id])
+
+(defn- referenced-indices
+  [events]
+  (into #{} (mapcat (fn [e] (keep #(get e %) reference-fields))) events))
+
+(defn- carries-reference?
+  [event]
+  (boolean (some #(some? (get event %)) reference-fields)))
+
+;; --- clock-skew
+
+(defn- clock-skew-sites
+  "Every event with a strictly-earlier predecessor in its own patient's
+  log, EXCEPT those whose `:t` is load-bearing for something other than
+  monotonicity.
+
+  Three exclusions, and the third is the one measurement forced. An
+  event that CARRIES a reference, or that IS referenced, has its `:t`
+  read by a referential invariant's time clause, so moving it convicts
+  that invariant too. An event carrying an `:appointment-id` or a
+  `:scheduled-t` has its `:t` read against its appointment's -- two
+  ed-tuesday sites tripped `scheduled-encounter-follows-its-appointment`
+  before this clause existed. Excluding all three is what makes this
+  operator mean *move a clock* rather than *move a clock, and sometimes
+  break a schedule*."
+  [events]
+  (let [referenced (referenced-indices events)
+        seen (volatile! {})]
+    (vec (keep-indexed
+          (fn [i e]
+            (let [p (subject-id e)
+                  prior (get @seen p)]
+              (when p (vswap! seen assoc p (:t e)))
+              (when (and p prior (< prior (:t e))
+                         (not (carries-reference? e))
+                         (not (contains? referenced i))
+                         (nil? (:appointment-id e))
+                         (nil? (:scheduled-t e)))
+                i)))
+          events))))
+
+(defn- clock-skew
   [events site]
-  (let [v (vec events)]
-    (assoc-in v [site :placeholder-event-id] (count v))))
+  (let [p (subject-id (nth events site))
+        prior (last (keep-indexed (fn [i e] (when (and (< i site) (= p (subject-id e))) (:t e)))
+                                  events))]
+    (assoc-in events [site :t] (dec prior))))
 
 (register!
- {:id :phantom-placeholder-event-id :version "1" :format :event
-  :doc "Repoints one identity-fill's :placeholder-event-id at a log index that does not exist, leaving every other field and every other event exactly as it was."
+ {:id :clock-skew :version "1" :format :event
+  :doc "Moves one event's clock behind its own predecessor's, so that patient's log runs backwards across one step. No other field and no other event changes."
   :contract {:type :violates
-             ;; No ADR-NNNN token in this sentence: it is rendered
-             ;; verbatim into docs/operators.md, which is
-             ;; consumer-facing prose, and the link-footnote gate
-             ;; (ehrt.docs-tooling.link-footnote-gate-test) rejects a
-             ;; visible internal register token there. The provenance
-             ;; lives in this catalog's own comments instead.
-             :target "repoints a `:demographic-update`'s `:placeholder-event-id` at an index past the end of the log, violating this engine's own referential law that an identity fill cites a real `:registered` event in the same log, for the same patient, carrying `:identity :placeholder`, at or before the fill's own `:t` (the invariant `ehrt.sim-check.check/identity-fill-references-its-placeholder-registration` states)"}
+             :target (str "sets one event's `:t` earlier than the `:t` of the event "
+                          "that precedes it in the same patient's log, violating this "
+                          "engine's own guarantee that log order is emission order and "
+                          "emission order is time order, so within a patient event times "
+                          "never decrease (the invariant "
+                          "`ehrt.sim-check.check/timestamps-monotone` states)")}
   :locator-required? false
   :seed-consuming? true
-  :expected-findings #{:identity-fill-references-its-placeholder-registration}
-  :candidate-sites identity-fill-sites
-  :fn phantom-placeholder-event-id})
+  :expected-findings #{:timestamps-monotone}
+  :candidate-sites clock-skew-sites
+  :fn clock-skew})
+
+;; --- drop-registration
+
+(defn- drop-registration-sites
+  "Every non-placeholder `:registered` whose removal convicts exactly
+  the declared class, and nothing else.
+
+  This operator REPLACES ADR-0176's `drop-event`, whose stated single
+  finding was measured to be between four and eight depending on the
+  site. Four clauses narrow it, and the first is the one that matters
+  most:
+
+  THE PATIENT MUST HAVE AT LEAST ONE OTHER EVENT. Dropping the lone
+  `:registered` of a patient who does nothing else leaves a log that
+  checks CLEAN -- 5 of 33 sampled drops did exactly that. A fault
+  injector reporting success while injecting nothing is ADR-0165's own
+  silence one layer up, and it is what the loop's step 7 exists to
+  catch; excluding those sites is how this operator never reaches it.
+
+  A PLACEHOLDER registration is excluded because it is cited by the
+  identity-fill and merge machinery, which convicts separately; a
+  registration NAMED BY A MERGE likewise; and one that is the TARGET of
+  any log-index reference would have its citer convicted too, which is
+  the referential family's job and not this one's."
+  [events]
+  (let [referenced (referenced-indices events)
+        merged (into #{}
+                     (mapcat (fn [e] (when (= :merge (:event e))
+                                       (map :patient-id (:participants e)))))
+                     events)
+        per-patient (frequencies (keep subject-id events))]
+    (vec (keep-indexed
+          (fn [i e]
+            (when (and (= :registered (:event e))
+                       (not= :placeholder (:identity e))
+                       (not (contains? referenced i))
+                       (not (contains? merged (subject-id e)))
+                       (< 1 (get per-patient (subject-id e) 0)))
+              i))
+          events))))
+
+(defn- drop-one-event
+  "Removes the site's event AND repairs every log-index reference past
+  it. The repair is not tidiness: a log index is a position, so
+  dropping event `s` silently repoints every reference greater than `s`
+  one event earlier, and without the repair this operator injects a
+  referential defect class it never declared."
+  [events site]
+  (let [shorter (into (subvec events 0 site) (subvec events (inc site)))]
+    (mapv (fn [e]
+            (reduce (fn [acc k]
+                      (let [x (get acc k)]
+                        (if (and (int? x) (> x site)) (assoc acc k (dec x)) acc)))
+                    e
+                    reference-fields))
+          shorter)))
+
+(register!
+ {:id :drop-registration :version "1" :format :event
+  :doc "Removes one patient's `:registered` event, leaving the rest of their log in place, and renumbers every log-index reference that pointed past it so no other defect class rides along."
+  :contract {:type :violates
+             :target (str "removes the `:registered` event that opens one patient's "
+                          "record while leaving the rest of that patient's events in "
+                          "place, violating this engine's own laws that every patient "
+                          "id named anywhere in a log belongs to a patient that log "
+                          "registered, and that a patient's first event is their "
+                          "registration (the invariants "
+                          "`ehrt.sim-check.check/participant-ids-exist-in-run` and "
+                          "`ehrt.sim-check.check/registered-is-every-patients-first-event` "
+                          "state)")}
+  :locator-required? false
+  :seed-consuming? true
+  :expected-findings #{:participant-ids-exist-in-run
+                       :registered-is-every-patients-first-event}
+  :candidate-sites drop-registration-sites
+  :fn drop-one-event})
+
+;; --- orphan-participant
+
+(def ^:private therapeutic-intent-kinds
+  "The event kinds `check`'s own `clinical-content-only-when-admitted`
+  scopes -- DERIVED from that invariant's subject rather than
+  hand-picked, so a sixth clinical kind joining it joins this operator
+  with it. That is ADR-0166's error ledger applied here too: the whole
+  reason the referential family above is a cross product."
+  #{:procedure :observation :medication-order :diagnostic-report :care-plan-start})
+
+(def ^:private orphan-patient-id
+  "A patient id no run can mint. Fixed rather than drawn, for the same
+  reason the phantom index is: Q3(a) spends the one draw on the site."
+  "PID-ORPHANED-BY-MUTATION")
+
+(defn- orphan-participant-sites
+  "Every therapeutic-intent clinical event naming a patient.
+
+  Scoped to that class because the wider operator ADR-0176 proposes --
+  reattribute ANY event -- was measured to produce eight different
+  finding sets across sampled sites, since which invariants a phantom
+  patient trips depends entirely on what kind of event was moved into
+  their timeline. Clinical content is the class where that answer is
+  the same every time, over every site of both demo logs."
+  [events]
+  (vec (keep-indexed
+        (fn [i e]
+          (when (and (contains? therapeutic-intent-kinds (:event e))
+                     (some :patient-id (:participants e)))
+            i))
+        events)))
+
+(defn- orphan-participant
+  [events site]
+  (update-in events [site :participants]
+             (fn [ps] (mapv (fn [p] (if (:patient-id p)
+                                      (assoc p :patient-id orphan-patient-id)
+                                      p))
+                            ps))))
+
+(register!
+ {:id :orphan-participant :version "1" :format :event
+  :doc "Reattributes one clinical event to a patient the run never registered, leaving every other field and every other event exactly as it was."
+  :contract {:type :violates
+             :target (str "renames the patient on one clinical event to an id the run "
+                          "never registered, so that content is attributed to an unknown "
+                          "patient, sits in no encounter, and is not preceded by an "
+                          "admission or a registration -- violating four of this engine's "
+                          "own laws at once: that clinical content happens only while a "
+                          "patient is admitted, that every encounter is opened and closed "
+                          "or still open, that every patient id named in a log belongs to "
+                          "a patient that log registered, and that a patient's first event "
+                          "is their registration")}
+  :locator-required? false
+  :seed-consuming? true
+  ;; Four members, and every one of them is part of the sentence the
+  ;; contract states rather than a cascade tolerated: a clinical event
+  ;; attributed to a patient the run never registered IS unadmitted
+  ;; content, in no encounter, for an unknown patient whose first event
+  ;; is not a registration. Q5(a) declares a SET precisely so an
+  ;; operator whose defect class genuinely has four faces can say so.
+  :expected-findings #{:clinical-content-only-when-admitted
+                       :every-encounter-is-opened-and-closed-or-still-open
+                       :participant-ids-exist-in-run
+                       :registered-is-every-patients-first-event}
+  :candidate-sites orphan-participant-sites
+  :fn orphan-participant})
