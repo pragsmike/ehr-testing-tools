@@ -83,28 +83,30 @@ with them.
   STAGE 1 IS IN THE TREE, 2026-09-01: `434e939` the census, `7ab7cdb` the
   choke point. `fold/apply-events` is the ONE fold all three sites run, each
   passing the stack it already ran as a declared subset of `fold/full-algebra`,
-  gated by the co-landed `ehrt.sim-engine.apply-projection-test` (which
-  transcribes the matrix, never reads it). Oracle IDENTICAL over 41 roots,
-  bracket IDENTICAL over 38, no declaration; site 3 driven live down BOTH
-  branches -- the coverage caveat stands, neither bracket reaches a cancel
-  decide. Census: `.agents/plans/apply-unification-census.md`, re-derived at
-  `3e65ff9`, SIX corrections to section 4, of which C2 (`:state-history`
-  appends the POST-BATCH state) is the one an output-identical refactor turns
-  on. Home is `fold.clj` as the channel expected, at a cost it did not have:
-  two apply-site policy sets moved down out of `log_index.clj` (delegating
-  defs, C1(a)) or `fold` naming them closes a require cycle.
-  STAGE 2's PAIR CHECKLIST -- 22 omitted (site x accumulator) pairs, ONE
-  COMMIT EACH, cone prediction alongside, consuming paths in census section 3;
-  a delta against a prediction is a FINDING. NONE IS TAKEN. OUTPUT-MOVING, 3,
-  all DECORATIONS (recomputed by a re-fold, not accumulated): 2xA1
-  `:encounter-stamp`, 2xA2 `:warm-up-mark`, 3xA1 `:encounter-stamp`. INERT,
-  19 -- site 1: A7 `:patient-bootstrap`, A13 `:replay-entries`; site 2: A3
-  `:log-ordinal`, A4 `:reinstate-index`, A5 `:citation-index`, A6
-  `:registration-index`, A9 `:bed-index`, A10 `:log-mirror`, A11
-  `:log-accumulator`, A12 `:state-history`; site 3: those eight plus A2. Two
-  are worth taking for reasons other than a delta: 2xA4 gives site 3's read a
-  first-class source (4d's own cheapest-deletion) and 3xA4 buys the
-  O(N)-per-cancel ADR-0169 measures at 35.3% of generate.
+  gated by `ehrt.sim-engine.apply-projection-test`, which TRANSCRIBES the
+  matrix rather than reading it. Oracle IDENTICAL over 41 roots, bracket over
+  38. Census `.agents/plans/apply-unification-census.md` at `3e65ff9`, SIX
+  corrections to section 4, of which C2 (`:state-history` appends the
+  POST-BATCH state) is the one an output-identical refactor turns on; home is
+  `fold.clj`, at a cost the channel did not have -- two apply-site policy sets
+  moved down out of `log_index.clj` under C1(a).
+  STAGE 2 IS DONE BUT FOR THREE PAIRS, 2026-09-01, `f84005a..3abfa44`: all
+  NINETEEN pairs predicted INERT are enabled, ONE COMMIT EACH in census order,
+  and ALL NINETEEN ARE CONFIRMED -- none refuted, so the cone method was never
+  in question. Three pushed spans, oracle IDENTICAL over 41 roots and bracket
+  over 38 at each, no declaration. Sites end 13/11/12 of 13, site 1 at FULL
+  PRODUCT. ONE COMMIT IS NOT A PAIR and is the finding the census missed:
+  `c4f6ddd` DE-ALIASES site 3's projection, which was `replay-projection` by
+  IDENTITY, so no site-2 pair could be enabled without silently enabling its
+  site-3 twin. THE THREE OUTPUT-MOVING PAIRS ARE PREPARED, NOT LANDED, and TWO
+  PREDICTIONS ARE REFUTED BY MEASUREMENT: 2xA1 and 3xA1 `:encounter-stamp` are
+  the IDENTITY on every encounter-carrying root, twice over -- `stamp-encounter`
+  guards on `contains?`, and the decoration reads a pre-batch world empty at
+  both sites. 2xA2 `:warm-up-mark` IS output-moving (entry 0, 2 of 9, byte
+  425) but only on a WINDOWED log, which no oracle root is, and is the
+  identity once the window is threaded. THE ORACLE IS BLIND HERE and
+  `digest.clj` says so -- `engine/replay` is on its own unreached list -- so
+  an IDENTICAL probe is a VACUOUS GATE. Author disposes; options in the record.
   THE THREE STANDING BACKLOGS ARE CLEARED, by the ruled repoint pass of
   2026-08-31 (C12(b), which lifted C1(a)'s test-file fence for that session
   and resumed it at its close). Manifest first, at
@@ -119,13 +121,11 @@ with them.
   Every survivor is one an `interface.clj` resolves through, plus
   `unescape-er7`, whose SRC caller the pass did not touch. Oracle IDENTICAL at
   every commit; suite 4,751/24,161/408 unmoved throughout. ITS TWO UNPAID
-  ITEMS ARE RULED AND CLOSED 2026-08-31: C13, the 23 in-directory
-  `docs/operational-models.md` cites under `components/sim/docs/` are that
-  directory's own convention, ACCEPTABLE, not a defect; C14, of the 8 live
-  cites of a gate `e189418` deleted, the two LIVE surfaces (`docsgen.clj`,
-  `help_voice_test.clj`) are corrected and historical artifacts stay. ONE more
-  stale live surface found while paying C14, rowed not widened into:
-  `roadmap_lint_test.clj:43` cites `notes-prompts-frozen-test` as live.
+  ITEMS ARE RULED AND CLOSED 2026-08-31, landed at `f84005a`: C13, the 23
+  in-directory `docs/operational-models.md` cites under `components/sim/docs/`
+  are a convention, not a defect; C14, the two LIVE surfaces citing a gate
+  `e189418` deleted are corrected and historical artifacts stay. ONE more
+  stale live surface found paying it, rowed: `roadmap_lint_test.clj:43`.
 - OPEN **[event-stream-mutation]** PRIORITY 6 -- mutation moves to the
   ground-truth event stream (emitters inherit mutations); ADR-0166's test-side
   event mutations promoted to a shipped operator catalog with `check` as oracle;

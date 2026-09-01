@@ -198,6 +198,84 @@ existing log therefore RECOMPUTES rather than accumulates. That is the
 divergence's real shape, and it is the same fact section 4c states
 (`replay` "cannot" do them) rendered as a prediction stage 2 can check.
 
+### 3d. Stage-2 status, pair by pair — the checklist, marked
+
+Stage 2 ran 2026-09-01 (`.agents/session-records/2026-09-01-apply-
+unification-stage-2.md`). **Every one of the nineteen INERT predictions
+is CONFIRMED; none was refuted, so the cone method itself was never put
+in question.** The proof is three pushed spans, each with
+`bin/regression-oracle` IDENTICAL over 41 roots and
+`bin/ground-truth-bracket` IDENTICAL over 38, no declaration owed at
+any of the six runs. **Span-identity is not per-commit identity** — a
+delta anywhere in a span would have forced a bisect to the enabling
+commit — but no span moved, so no bisect was owed.
+
+**One commit in the table is not a pair.** The de-alias, `c4f6ddd`, is
+the precondition correction C5 anticipated: `reinstated-projection` was
+`replay-projection` BY IDENTITY, so sites 2 and 3 could not be enabled
+independently. It is forced rather than chosen — 3 × A2 is INERT while
+its twin 2 × A2 is OUTPUT-MOVING, so the two columns must diverge for
+the inert one to land at all. It enabled nothing: the set's value is
+unchanged.
+
+| pair | prediction | status | commit |
+|---|---|---|---|
+| — (de-alias, correction C5) | n/a | **LANDED**, output-identical | `c4f6ddd` |
+| 1 × A7 `:patient-bootstrap` | INERT | **CONFIRMED-INERT** | `649403e` |
+| 1 × A13 `:replay-entries` | INERT | **CONFIRMED-INERT** | `e05da9c` |
+| 2 × A1 `:encounter-stamp` | OUTPUT-MOVING | **PREPARED, NOT LANDED** | — |
+| 2 × A2 `:warm-up-mark` | OUTPUT-MOVING | **PREPARED, NOT LANDED** | — |
+| 2 × A3 `:log-ordinal` | INERT | **CONFIRMED-INERT** | `0d0db6e` |
+| 2 × A4 `:reinstate-index` | INERT | **CONFIRMED-INERT** | `2505a68` |
+| 2 × A5 `:citation-index` | INERT | **CONFIRMED-INERT** | `396e047` |
+| 2 × A6 `:registration-index` | INERT | **CONFIRMED-INERT** | `59605ed` |
+| 2 × A9 `:bed-index` | INERT | **CONFIRMED-INERT** | `7658e82` |
+| 2 × A10 `:log-mirror` | INERT | **CONFIRMED-INERT**, with an observation below | `d771829` |
+| 2 × A11 `:log-accumulator` | INERT | **CONFIRMED-INERT** | `15ea306` |
+| 2 × A12 `:state-history` | INERT | **CONFIRMED-INERT** | `b547f8f` |
+| 3 × A1 `:encounter-stamp` | OUTPUT-MOVING | **PREPARED, NOT LANDED** | — |
+| 3 × A2 `:warm-up-mark` | INERT | **CONFIRMED-INERT**, at one declared value | `00373db` |
+| 3 × A3 `:log-ordinal` | INERT | **CONFIRMED-INERT** | `f34c423` |
+| 3 × A4 `:reinstate-index` | INERT | **CONFIRMED-INERT** | `1aa5796` |
+| 3 × A5 `:citation-index` | INERT | **CONFIRMED-INERT** | `ee2b01e` |
+| 3 × A6 `:registration-index` | INERT | **CONFIRMED-INERT** | `162080a` |
+| 3 × A9 `:bed-index` | INERT | **CONFIRMED-INERT** | `5f11ee7` |
+| 3 × A10 `:log-mirror` | INERT | **CONFIRMED-INERT** | `bc34aba` |
+| 3 × A11 `:log-accumulator` | INERT | **CONFIRMED-INERT** | `ae93afe` |
+| 3 × A12 `:state-history` | INERT | **CONFIRMED-INERT** | `3abfa44` |
+
+End state after stage 2: site 1 at **13 of 13** (full product, the
+ruled end state), site 2 at **11 of 13**, site 3 at **12 of 13**. The
+three cells still omitted are exactly the three this section predicted
+OUTPUT-MOVING, all of them DECORATIONS.
+
+**Two findings the cones did not carry, recorded here because they are
+properties of the concerns rather than of one commit.**
+
+* **`:log-mirror` REVERSES when the site's world carries no
+  `:ground-truth`.** The concern is `(assoc world' :ground-truth (into
+  (:ground-truth world) events))`. Site 1's world always holds a
+  `:ground-truth` VECTOR, so `into` appends in log order; sites 2 and 3
+  start from `{:patients {}}`, so it is `(into nil events)` — a LIST,
+  in REVERSE order. Inert at both sites because both discard the world,
+  and NOT fixed here (editing the accumulator while enabling is outside
+  the session's fence). A consumer must seed `:ground-truth []` first.
+* **Only the two TRANSIENT accumulators need a slot.** `:log` and
+  `:entries` are `conj!`-ed and throw on nil; every persistent concern
+  — the three indexes, `:log-mirror`, `:state-history` — builds from
+  nil cleanly. That is what decided which of the nineteen enabling
+  diffs touched a call site at all: three did (1 × A13, 2 × A11,
+  3 × A11), plus 3 × A2 for its parameter.
+
+**3 × A2 carries one DECLARED value, disclosed rather than absorbed.**
+`:warm-up-mark` takes a `:warm-up-seconds` parameter and a log has no
+source for one — which is precisely why its site-2 twin is
+OUTPUT-MOVING. Site 3's call site declares `0`, the option this section
+names in the 2 × A2 row, and the effect is that every event in that
+fallback's local copy of the batch is marked `:warm-up false`. It is
+inert only because `evolve` reads `:warm-up` nowhere (checked: zero
+occurrences in `evolve.clj`) and site 3 reads a PATIENT STATE.
+
 ## 4. The choke point
 
 ### 4a. Home — `fold.clj`, confirmed, at one cost
