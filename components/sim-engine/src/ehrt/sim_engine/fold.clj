@@ -238,13 +238,22 @@
     same number. It is enabled because the three indexes below key on
     it, and for no other reason.
 
+  * `:reinstate-index` -- accumulates CORRECTLY and is read by nobody.
+    Its input is the pre-event subject state, which is exactly the
+    `:before` replay already computes, so the index is right; it
+    publishes into the returned world, and `replay` returns
+    `(:entries ...)` and discards that world. Its value is that site 3's
+    `nth` now has a first-class source here -- census 4d's own cheapest
+    deletion, which stage 2 does not take.
+
   THE TWO IT DOES NOT GET are the DECORATIONS `:encounter-stamp` and
   `:warm-up-mark`, the only two of section 3b predicted OUTPUT-MOVING --
   the concerns applied on the way IN, which a re-fold of an existing log
   RECOMPUTES rather than accumulates. That is the whole of section 4c's
   'replay cannot do them'. Stage 2 PREPARES them and does not land them;
   the author disposes."
-  #{:log-ordinal :patient-bootstrap :patient-state :replay-entries})
+  #{:log-ordinal :reinstate-index :patient-bootstrap :patient-state
+    :replay-entries})
 
 (def reinstated-projection
   "Census site 3 -- `ehrt.sim-engine.log-index/reinstated-state`'s
