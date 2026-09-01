@@ -320,6 +320,14 @@
     world))` is `(count nil)` = 0, the same number the disabled branch
     substituted.
 
+  * `:reinstate-index` -- THE PAIR THE ARC EXISTS FOR, and inert
+    because the two answers are proven equal. Enabling it here makes the
+    fallback's own answer available as a LOOKUP rather than an `nth`
+    over a materialised replay -- which is what `run` already does. The
+    win is the O(N)-per-cancel cost ADR-0169 measures at 35.3% of the
+    generate phase, not an output move; taking that win is a later
+    session's, not a pair.
+
   THE ONE IT DOES NOT GET is the DECORATION `:encounter-stamp`, the only
   pair of section 3c predicted OUTPUT-MOVING, and by a mechanism that is
   narrower than its site-2 twin but real: `evolve` folds `:encounter-id`
@@ -328,8 +336,8 @@
   is what the two reinstating cancel decides RESTORE, so the delta would
   reach emitted events and the byte-identity gate. Stage 2 PREPARES it
   and does not land it; the author disposes."
-  #{:warm-up-mark :log-ordinal :patient-bootstrap :patient-state
-    :replay-entries})
+  #{:warm-up-mark :log-ordinal :reinstate-index :patient-bootstrap
+    :patient-state :replay-entries})
 
 (defn apply-events
   "THE APPLY CHOKE POINT. `acc x events x projection -> acc'`.
