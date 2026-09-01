@@ -242,6 +242,29 @@ worth more than the lines they cost. `:docs` is untouched at -2.
    nothing in the tree escalates this one. It was named the same way by
    the eighteenth session.
 
+## 8b. CI, the close marker
+
+Pushed `9dffb2b..9b328fd`, five commits. `bin/post-push-verify` clean on
+all three checks: remote tip matches HEAD, every message in range is
+pure ASCII, and the CI run was reported rather than awaited (AR-CI-4).
+Each of the five messages was then diffed against the file that produced
+it -- the only delta on any of them is one trailing blank line, which is
+`git log --format=%B`'s own formatting artifact and not a mismatch.
+
+**CI GREEN at `9b328fd`**, run
+[33470321378](https://github.com/pragsmike/ehr-testing-tools/actions/runs/33470321378),
+`status=completed conclusion=success` -- `poly check`, `poly test :all
+skip:integration`, the NIST supply-chain lock and the generated-doc
+freshness regen-and-diff all passing. The freshness step is the one that
+matters most to this pass, because it is the gate a prose sweep of this
+size could most easily have moved, and it did not.
+
+ONE CEREMONY HAZARD FIRED AND IS RECORDED so it is not rediscovered:
+both new archive files landed **`100755`** because they were copied in
+from `/mnt/c`, and were `chmod 644`'d before the commit. The staging
+check that caught it -- `git diff --cached --summary | grep -i mode` --
+is the one the workspace already prescribes for exactly this.
+
 ## 9. C1(a)'s FENCE RESUMES AT THIS SESSION'S CLOSE
 
 C12(b) lifted it for this session alone. **It is back in force from this
