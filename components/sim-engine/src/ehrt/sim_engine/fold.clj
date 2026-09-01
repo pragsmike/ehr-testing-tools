@@ -219,12 +219,24 @@
 
 (def reinstated-projection
   "Census site 3 -- `ehrt.sim-engine.log-index/reinstated-state`'s
-  replay fallback. Site 2's projection BY VALUE, because site 3's stack
-  is inherited rather than chosen: its fallback folds through this same
-  choke point from an empty world and reads one element of the result.
-  Written as an alias, not a second literal, so the two cannot drift
-  apart without a stage-2 commit saying so (census correction C5)."
-  replay-projection)
+  replay fallback. THE SAME THREE CONCERNS as site 2 at this commit, and
+  inherited rather than chosen -- but a LITERAL now, not the alias stage
+  1 wrote.
+
+  THIS IS THE STAGE-2 COMMIT CENSUS CORRECTION C5 SAID WOULD SAY SO, and
+  it is FORCED rather than chosen. The alias made sites 2 and 3 one
+  object, so no (site x accumulator) pair at either could be enabled
+  without silently enabling its twin at the other -- and the ruled
+  granularity is ONE PAIR PER COMMIT. It cannot be worked around by
+  ordering, because the two columns must genuinely DIVERGE: 3 x
+  `:warm-up-mark` is predicted INERT (census 3c -- `:warm-up` is a key on
+  the EVENT, `evolve` never reads it, so it cannot reach the patient
+  state site 3 reads) while its site-2 twin 2 x `:warm-up-mark` is
+  predicted OUTPUT-MOVING and does not land at all.
+
+  NOTHING IS ENABLED HERE: the set's VALUE is unchanged, only its
+  identity, which is why this commit is output-identical."
+  #{:patient-bootstrap :patient-state :replay-entries})
 
 (defn apply-events
   "THE APPLY CHOKE POINT. `acc x events x projection -> acc'`.

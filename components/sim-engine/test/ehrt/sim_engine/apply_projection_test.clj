@@ -73,9 +73,11 @@
       (is (empty? (remove fold/full-algebra projection))
           (str site " names only concerns in full-algebra"))))
 
-  (testing "site 3's projection is site 2's BY VALUE, not by coincidence
-            -- the alias correction C5 asks stage 1 to make visible"
-    (is (identical? fold/replay-projection fold/reinstated-projection)))
+  (testing "site 3's projection is its OWN literal since stage 2's
+            de-alias commit, and must STAY one -- re-aliasing would
+            re-couple the two columns and silently enable a site-2 pair's
+            twin at site 3, which is what one-pair-per-commit forbids"
+    (is (not (identical? fold/replay-projection fold/reinstated-projection))))
 
   (testing "the matrix's own arithmetic: 17 present cells of 39, and the
             22 omitted ones are what stage 2 enables pair by pair"
