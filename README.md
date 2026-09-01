@@ -335,6 +335,11 @@ the actual contract with readers.
 **Status: pre-release.** No version tag, nothing published to Clojars
 or Maven Central, interfaces may still move.
 
+**What it doesn't do yet:** [`docs/future-features.md`](docs/future-features.md)
+is the menu of fault injection this workspace can't do today — wrong
+bytes inside a message, wrong sequence, wrong framing — with the design
+stance on each, so you can see what's missing without reading a backlog.
+
 ## Scope
 
 This workspace does **not** do:

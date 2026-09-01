@@ -586,6 +586,12 @@ supported path is to mutate the vector yourself between
 `--format ground-truth` and your own consumer; `ehrt sim check` is the
 oracle that will tell you what you broke.
 
+**And three whole fault layers are missing, not just this one.**
+[`future-features.md`](future-features.md) is the menu — wrong bytes
+inside a message, wrong sequence with the messages intact, wrong framing
+— with the design stance on each and the layer boundary that makes them
+different faults rather than three ways of saying the same thing.
+
 ## Where this comes from
 
 - [`formats.md`](formats.md#the-event-log) — the shape contract, generated from
