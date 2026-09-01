@@ -257,6 +257,13 @@
     an index, so enabling this hands nothing to the consumer that would
     most plausibly have wanted it.
 
+  * `:bed-index` -- INERT BY GUARD, and the guard is unreachable here:
+    the concern fires only when `(:beds w-next)` is truthy, replay's
+    world starts `{:patients {}}`, and nothing `evolve` does puts a
+    `:beds` key on it. THE PAIR THE ARC WAS MIS-SOLD ON -- census
+    correction C3: `ehrt.sim-check.check` deliberately does NOT call
+    `update-beds`, on vacuous-gate grounds, so no consumer waits.
+
   THE TWO IT DOES NOT GET are the DECORATIONS `:encounter-stamp` and
   `:warm-up-mark`, the only two of section 3b predicted OUTPUT-MOVING --
   the concerns applied on the way IN, which a re-fold of an existing log
@@ -264,7 +271,7 @@
   'replay cannot do them'. Stage 2 PREPARES them and does not land them;
   the author disposes."
   #{:log-ordinal :reinstate-index :citation-index :registration-index
-    :patient-bootstrap :patient-state :replay-entries})
+    :patient-bootstrap :patient-state :bed-index :replay-entries})
 
 (def reinstated-projection
   "Census site 3 -- `ehrt.sim-engine.log-index/reinstated-state`'s
