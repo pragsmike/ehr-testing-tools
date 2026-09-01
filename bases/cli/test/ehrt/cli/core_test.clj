@@ -214,7 +214,7 @@
                         [:fetch-fn :fetch-all-fn :resolve-fn :generate-fn :generate-sim-fn
                          :mutate-fn :intake-fn :operators-fn :batch-fn :gate-v2-fn :gate-fhir-fn
                          :gate-v2-nist-fn :check-fn :version-fn :doctor-fn :sim-run-fn
-                         :sim-check-fn :sim-identifiers-fn :sim-version-fn :show-fn :play-fn])]
+                         :sim-check-fn :sim-mutate-fn :sim-identifiers-fn :sim-version-fn :show-fn :play-fn])]
     (doseq [[group verb] (help/command-pairs help/cli-spec)
             :let [g (help/find-group help/cli-spec group)
                   declared (if verb
@@ -676,10 +676,18 @@
     (is (result/ok? r))
     (is (= {} @called))))
 
-(deftest dispatch-sim-unknown-verb-names-run-check-identifiers-version-test
+(deftest dispatch-routes-sim-mutate-test
+  (let [called (atom nil)
+        r (cli/dispatch ["sim" "mutate"] {:operator-id "x" :seed 1}
+                        {:sim-mutate-fn (fn [opts] (reset! called opts) (result/ok {}))})]
+    (is (result/ok? r))
+    (is (= {:operator-id "x" :seed 1} @called))))
+
+(deftest dispatch-sim-unknown-verb-names-every-sim-verb-test
   (let [r (cli/dispatch ["sim" "explode"] {} {})]
     (is (= :unknown-command (:category r)))
-    (is (= #{"run" "check" "identifiers" "version"} (set (:valid-options (:payload r)))))))
+    (is (= #{"run" "check" "mutate" "identifiers" "version"}
+           (set (:valid-options (:payload r)))))))
 
 (deftest sim-check-command-runs-invariant-catalog-over-stdin-test
   (let [run-result (cli/sim-run-command {:seed 1 :patients 1})
@@ -712,6 +720,130 @@
     (let [r (cli/sim-check-command {})]
       (is (result/rejected? r))
       (is (= :malformed-input (:category r))))))
+
+;; ---- sim-mutate-command (`ehrt sim mutate`, 2026-09-01, ADR-0176
+;; Q7(a)): a stdin -> stdout filter, so the closed oracle loop is
+;; typeable. The CONTRACT -- one site, lineage, schema validity,
+;; observed findings = declared findings over a REAL log -- is proved
+;; at the component boundary (ehrt.corpus.event-mutate-test); these
+;; tests prove the CLI's own wiring, plus one end-to-end pipe. ----
+
+(def ^:private mutable-log
+  "The smallest vector carrying one candidate site for
+  :phantom-placeholder-event-id. Deliberately NOT a check-clean log:
+  `ehrt sim mutate` never runs the checker, and its operator's own
+  site predicate is purely structural, so a fuller fixture here would
+  buy nothing and hide which property is actually under test."
+  [{:event :registered :t 0 :identity :placeholder
+    :participants [{:patient-id "P1" :role :subject}]}
+   {:event :demographic-update :t 10 :cause :identity-fill :field :identity
+    :placeholder-event-id 0
+    :participants [{:patient-id "P1" :role :subject}]}])
+
+(deftest sim-mutate-command-with-no-operator-is-a-byte-identical-pass-through-test
+  ;; The opt-in law's CLI face: mutation absent means bytes unchanged.
+  (let [in (pr-str mutable-log)]
+    (with-in-str in
+      (let [r (cli/sim-mutate-command {})]
+        (is (result/ok? r))
+        (is (false? (:mutated (:payload r))))
+        (is (= in (:bare-text (meta r))) "byte-identical, not merely equal-as-data")))))
+
+(deftest sim-mutate-command-injects-one-defect-and-emits-the-mutant-as-bare-text-test
+  (with-in-str (pr-str mutable-log)
+    (let [r (cli/sim-mutate-command {:operator-id "phantom-placeholder-event-id" :seed 7})
+          mutant (clojure.edn/read-string (:bare-text (meta r)))]
+      (is (result/ok? r))
+      (is (true? (:mutated (:payload r))))
+      (is (= {:id :phantom-placeholder-event-id :version "1"} (:operator (:payload r))))
+      (is (= 7 (:seed (:payload r))))
+      (is (= 1 (:site (:payload r))))
+      (is (= #{:identity-fill-references-its-placeholder-registration}
+             (:expected-findings (:payload r))))
+      (testing "the lineage record rides the payload even though stdout is the mutant"
+        (is (= :mutate (:stage (:lineage (:payload r))))))
+      (testing "stdout is the mutant, and it differs from the input at exactly one site"
+        (is (= 2 (count mutant)))
+        (is (= (first mutable-log) (first mutant)))
+        (is (= 2 (:placeholder-event-id (second mutant))))))))
+
+(deftest sim-mutate-command-requires-a-seed-once-an-operator-is-named-test
+  (with-in-str (pr-str mutable-log)
+    (let [r (cli/sim-mutate-command {:operator-id "phantom-placeholder-event-id"})]
+      (is (= :missing-required-opt (:category r)))
+      (is (= :seed (:opt (:payload r)))))))
+
+(deftest sim-mutate-command-unknown-operator-names-only-the-event-operators-test
+  (with-in-str (pr-str mutable-log)
+    (let [r (cli/sim-mutate-command {:operator-id "no-such-operator" :seed 1})]
+      (is (result/rejected? r))
+      (is (= :unknown-operator (:category r)))
+      (is (= [:phantom-placeholder-event-id] (:valid-options (:payload r)))
+          "the file-level operators are a different verb's catalog, so listing them here would misdirect")
+      (is (= "run: ehrt corpus operators --format event" (:hint (:payload r)))))))
+
+(deftest sim-mutate-command-refuses-a-file-level-operator-by-name-test
+  ;; Two layers, two verbs -- and the wrong one is named, not merely
+  ;; rejected.
+  (with-in-str (pr-str mutable-log)
+    (let [r (cli/sim-mutate-command {:operator-id "remove-required-element" :seed 1})]
+      (is (result/rejected? r))
+      (is (= :operator-format-mismatch (:category r)))
+      (is (= :fhir (:format (:payload r)))))))
+
+(deftest sim-mutate-command-with-no-candidate-site-is-a-named-rejection-test
+  (with-in-str (pr-str [{:event :registered :t 0
+                         :participants [{:patient-id "P1" :role :subject}]}])
+    (let [r (cli/sim-mutate-command {:operator-id "phantom-placeholder-event-id" :seed 1})]
+      (is (result/rejected? r))
+      (is (= :no-candidate-site (:category r))))))
+
+(deftest sim-mutate-command-gives-the-same-three-stdin-rejections-as-sim-check-test
+  ;; Same contract, same categories, same messages -- proved by
+  ;; comparing the two verbs' own results rather than by restating the
+  ;; strings here, which is what would drift.
+  (doseq [[stdin category] [["" :empty-input]
+                            ["]" :unreadable-input]
+                            ["{:not :a-vector}" :malformed-input]]]
+    (let [check-r (with-in-str stdin (cli/sim-check-command {}))
+          mutate-r (with-in-str stdin (cli/sim-mutate-command {}))]
+      (is (= category (:category mutate-r)))
+      (is (= (:category check-r) (:category mutate-r)))
+      (is (= (:message (:payload check-r)) (:message (:payload mutate-r)))))))
+
+(deftest run-then-mutate-then-check-closes-the-oracle-loop-at-the-cli-boundary-test
+  ;; The whole point of the verb, typed as a consumer would type it:
+  ;;   ehrt sim run --format ground-truth \
+  ;;     | ehrt sim mutate --operator-id ID --seed N \
+  ;;     | ehrt sim check
+  ;; A real run, because the reference fields this catalog mutates are
+  ;; minted only by the full sim path (rulings.md#R-measure-claimed-
+  ;; population).
+  (let [run-r (cli/sim-run-command {:seed 5 :patients 60
+                                    :config "demos/scenarios/clinic-decade/config.edn"
+                                    :format "ground-truth"})]
+    (testing "the parent is clean"
+      (with-in-str (:bare-text (meta run-r))
+        (is (result/ok? (cli/sim-check-command {})))))
+    (let [mutate-r (with-in-str (:bare-text (meta run-r))
+                     (cli/sim-mutate-command {:operator-id "phantom-placeholder-event-id"
+                                              :seed 424242}))]
+      (is (result/ok? mutate-r))
+      (testing "and the checker reports the declared class, exactly and nothing else"
+        (with-in-str (:bare-text (meta mutate-r))
+          (let [check-r (cli/sim-check-command {})]
+            (is (result/rejected? check-r))
+            (is (= (:expected-findings (:payload mutate-r))
+                   (set (map :invariant (:violations (:payload check-r))))))))))))
+
+(deftest main!-sim-mutate-prints-the-mutant-as-bare-text-test
+  (let [printed (atom []) exited (atom nil)]
+    (with-in-str (pr-str mutable-log)
+      (cli/main! ["sim" "mutate" "--operator-id" "phantom-placeholder-event-id" "--seed" "7"]
+                 {:println-fn #(swap! printed conj %) :exit-fn #(reset! exited %)}))
+    (is (= 0 @exited))
+    (is (= 1 (count @printed)))
+    (is (vector? (clojure.edn/read-string (first @printed))))))
 
 (deftest sim-identifiers-command-returns-the-complete-inventory-test
   (let [r (cli/sim-identifiers-command {:seed 1 :patients 1})]

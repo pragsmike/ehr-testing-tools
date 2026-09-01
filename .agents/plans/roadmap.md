@@ -55,11 +55,19 @@ with them.
   event mutations promoted to a shipped operator catalog with `check` as oracle;
   file-level operators remain only for lowering-layer faults; AFTER
   `roadmap.md#engine-namespace-extraction-and-apply-unification`; design ADR
-  first. Author-ruled 2026-08-29. THE INJECTION POINT NOW EXISTS: that row
-  CLOSED 2026-09-01 and its stage 1 built `fold/apply-events`, the ONE fold
-  all three apply sites run, so the unified path this row was to inject into
-  is in the tree rather than pending -- the design ADR comes first all the
-  same.
+  first. Author-ruled 2026-08-29. THE UNIFIED APPLY PATH IS NOT THE INJECTION
+  POINT after all -- this row's own inference, superseded by ADR-0176 Q1(a)
+  (ruled 2026-09-01): the stage is POST-RUN and outside `engine/run` entirely,
+  because `fold/apply-events` sees one decide's batch and not the log, a
+  mutation folded there becomes a wrong WORLD rather than a wrong record, and
+  the engine silently repairs some injections. DESIGN ADR LANDED (ADR-0176,
+  all nine questions ruled (a)); SPINE LANDED 2026-09-01 -- one referential
+  operator end to end, registry/mutate stage/lineage/`ehrt sim mutate`/closed
+  oracle loop. REMAINING: the derived referential family (4 reference fields
+  x 5 defect shapes, minus the cells the event schema forbids) plus the three
+  structural operators, and the catalog-wide gate over a population that
+  actually carries candidate sites -- measured this session, the oracle's own
+  gated corpora carry NONE.
 - OPEN **[cancel-discharge-reopens-an-encounter-that-never-closes]** PRIORITY 9 --
   MEASURED 2026-08-29 while tracing `roadmap.md#ts-3-outpatient-opens-over-an-encounter`,
   and it is a population fact rather than one patient's: a legal

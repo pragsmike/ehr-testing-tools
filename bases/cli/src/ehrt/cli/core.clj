@@ -2414,6 +2414,24 @@
           (and (= format "ground-truth") (result/ok? r)) (vary-meta r assoc :bare-text (sim-ground-truth-bare-text r))
           :else r)))))
 
+(defn- read-ground-truth-stdin
+  "Reads a ground-truth EDN vector off stdin, or one of the three named
+  rejections `ehrt sim check` has always given for the three ways that
+  can fail. Returns result/ok {:log <vector>} on success.
+
+  Extracted 2026-09-01 (ADR-0176) when `ehrt sim mutate` became the
+  second verb on this contract: two verbs reading the same stdin shape
+  must give the same rejection categories AND the same messages, and a
+  second hand-written copy is how that stops being true."
+  []
+  (let [log (try (edn/read {:eof ::eof} (java.io.PushbackReader. *in*))
+                 (catch Exception _e ::unreadable))]
+    (cond
+      (= ::eof log) (result/rejected :empty-input {:message "expected a ground-truth EDN vector on stdin"})
+      (= ::unreadable log) (result/rejected :unreadable-input {:message "stdin was not readable EDN"})
+      (not (vector? log)) (result/rejected :malformed-input {:message "expected a vector of event maps"})
+      :else (result/ok {:log log}))))
+
 (defn sim-check-command
   "`ehrt sim check`: mounts sim's own invariant catalog
   (ehrt.sim.interface/check-all, via the sim adapter's `check!` --
@@ -2427,15 +2445,101 @@
   P3-6 parity mount (2026-08-01): bases/sim-cli's `check` verb had no
   `ehrt` equivalent before this -- found during the sim-cli retirement
   review's own parity check (notes/facts-register.md F2), escalated,
-  and wired before that retirement could proceed."
+  and wired before that retirement could proceed.
+
+  2026-09-01 (ADR-0176): the stdin read itself moved out to
+  `read-ground-truth-stdin` so `ehrt sim mutate` gives EXACTLY these
+  three named rejections with exactly these messages rather than a
+  second, drifting copy of them. Behaviour here is unchanged."
   [_opts]
-  (let [log (try (edn/read {:eof ::eof} (java.io.PushbackReader. *in*))
-                 (catch Exception _e ::unreadable))]
-    (cond
-      (= ::eof log) (result/rejected :empty-input {:message "expected a ground-truth EDN vector on stdin"})
-      (= ::unreadable log) (result/rejected :unreadable-input {:message "stdin was not readable EDN"})
-      (not (vector? log)) (result/rejected :malformed-input {:message "expected a vector of event maps"})
-      :else (sim/sim-check! log))))
+  (let [in (read-ground-truth-stdin)]
+    (if-not (result/ok? in)
+      in
+      (sim/sim-check! (:log (:payload in))))))
+
+(defn sim-mutate-command
+  "`ehrt sim mutate`: applies one EVENT-LOG mutation operator to a
+  ground-truth EDN vector read from stdin, and writes the mutant to
+  stdout. A filter, deliberately (ADR-0176 Q7(a)) -- it slots into the
+  idiom the help text already teaches, so the closed oracle loop is
+  something a consumer can type:
+
+    ehrt sim run --format ground-truth \\
+      | ehrt sim mutate --operator-id <id> --seed <n> \\
+      | ehrt sim check
+
+  THE MUTATION IS POST-RUN, and that is the ruling this verb exists to
+  express. `ehrt sim run` produced a log the engine believes; this verb
+  corrupts the RECORD of it without re-deriving the world from the
+  corruption. A wrong WORLD is a different want and already ships as
+  `:churn-profile` (rulings.md#R-transport-realism-vs-mutation).
+
+  THE OPT-IN LAW'S CLI FACE: invoked with NO --operator-id, this is a
+  byte-identical pass-through. Not a no-op that happens to look like
+  one -- the log is read and re-serialized through the same codec the
+  mutated path uses, and the round trip is measured byte-identical, so
+  the absent-operator path and the absent-key path make the same
+  promise for the same reason: mutation absent means bytes unchanged,
+  everywhere.
+
+  Options: :operator-id (a string, coerced to keyword -- must name a
+  :format :event operator; a file operator's id is a
+  :operator-format-mismatch rejection, since `ehrt corpus mutate` is
+  that layer's verb), :operator-version (default \"1\"), :seed (the
+  OPERATOR's own seed, independent of the run's master seed -- Q4(a) --
+  and required once an operator is named, since the operator's one site
+  is drawn from it).
+
+  Stdout is the mutant, via :bare-text metadata -- the same precedence
+  `ehrt sim run --format ground-truth` established, and for the same
+  reason: a filter's stdout must be exactly the content a downstream
+  consumer decodes. The lineage record (parent hash, operator, seed,
+  site, contract, expected findings) rides the :payload, reachable
+  programmatically; surfacing it at the shell without corrupting the
+  pipe is a named want, not shipped here."
+  [{:keys [operator-id operator-version seed] :or {operator-version "1"}}]
+  (let [in (read-ground-truth-stdin)]
+    (if-not (result/ok? in)
+      in
+      (let [log (:log (:payload in))]
+        (cond
+          (nil? operator-id)
+          (vary-meta (result/ok {:events (count log) :mutated false})
+                     assoc :bare-text (pr-str log))
+
+          (nil? seed)
+          (result/error :missing-required-opt
+                        {:opt :seed
+                         :hint "--seed is required with --operator-id -- an event operator draws its one site from its own seed"})
+
+          :else
+          (let [operator (operators/operator-lookup (keyword operator-id) operator-version)]
+            (cond
+              (not operator)
+              (result/rejected :unknown-operator
+                               {:id operator-id :version operator-version
+                                :valid-options (sort (map :id (filter #(= :event (:format %))
+                                                                     (operators/operator-entries))))
+                                :hint "run: ehrt corpus operators --format event"})
+
+              (not= :event (:format operator))
+              (result/rejected :operator-format-mismatch
+                               {:id operator-id :format (:format operator)
+                                :hint "ehrt sim mutate applies event-log operators; ehrt corpus mutate applies file operators"})
+
+              :else
+              (let [r (mutate/mutate log operator seed)]
+                (if-not (result/ok? r)
+                  r
+                  (let [{:keys [mutant lineage]} (:payload r)]
+                    (vary-meta (result/ok {:events (count log)
+                                           :mutated true
+                                           :operator {:id (:id operator) :version (:version operator)}
+                                           :seed seed
+                                           :site (:site (:transformation lineage))
+                                           :expected-findings (:expected-findings operator)
+                                           :lineage lineage})
+                               assoc :bare-text (pr-str mutant))))))))))))
 
 (defn sim-identifiers-command
   "`ehrt sim identifiers`: mounts ehrt.sim.interface/identifiers-command
@@ -2713,7 +2817,7 @@
   ([args opts] (dispatch args opts {}))
   ([args opts {:keys [fetch-fn fetch-all-fn resolve-fn generate-fn generate-sim-fn mutate-fn intake-fn operators-fn batch-fn
                        gate-v2-fn gate-fhir-fn gate-v2-nist-fn check-fn version-fn doctor-fn
-                       sim-run-fn sim-check-fn sim-identifiers-fn sim-version-fn show-fn play-fn columns-env-fn]
+                       sim-run-fn sim-check-fn sim-mutate-fn sim-identifiers-fn sim-version-fn show-fn play-fn columns-env-fn]
                :or {columns-env-fn #(System/getenv "COLUMNS")
                     fetch-fn fetch-command
                     fetch-all-fn fetch-all-command
@@ -2732,6 +2836,7 @@
                     doctor-fn doctor-command
                     sim-run-fn sim-run-command
                     sim-check-fn sim-check-command
+                    sim-mutate-fn sim-mutate-command
                     sim-identifiers-fn sim-identifiers-command
                     sim-version-fn sim-version-command
                     show-fn show-command
@@ -2853,6 +2958,7 @@
            "sim" (case action
                    "run" (sim-run-fn opts)
                    "check" (sim-check-fn opts)
+                   "mutate" (sim-mutate-fn opts)
                    "identifiers" (sim-identifiers-fn opts)
                    "version" (sim-version-fn opts)
                    (unknown-command-error args (help/verb-names (help/find-group help/cli-spec "sim"))))

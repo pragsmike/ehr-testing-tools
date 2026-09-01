@@ -254,6 +254,16 @@ Runs the invariant catalog (capacity/surge-ladder, timestamp-monotone, and frien
 
 _No flags._
 
+### `ehrt sim mutate`
+
+Injects ONE event-level defect into a ground-truth EDN vector read from stdin and writes the mutant to stdout -- a filter, so `ehrt sim run --format ground-truth | ehrt sim mutate --operator-id ID --seed N | ehrt sim check` is the whole loop: inject a named defect class, and see the checker report that class and nothing else. Mutating the event log rather than a rendered file means every emitter downstream inherits one mutated truth, instead of the same defect having to be written once per format (`ehrt corpus mutate` is the file-level verb, and stays the right one for faults that only exist once a record is written out as bytes). With no --operator-id, this is a byte-identical pass-through.
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--operator-id` | — | which defect to inject -- an event-log operator's id, listed by `ehrt corpus operators --format event` with the exact finding each one is built to trip. Omitted: the log passes through unchanged, byte for byte |
+| `--operator-version` | `1` | operator version |
+| `--seed` | — | the OPERATOR's own seed (integer), required once --operator-id is given -- it selects which one of the log's eligible sites gets the defect, so re-running with the same seed reproduces the same mutant and a different seed injects somewhere else. Independent of the run's own --seed, so this works on any log, including one whose run seed you don't have |
+
 ### `ehrt sim identifiers`
 
 Config + seed -> the complete EDN inventory of every identifier this run's output would contain (patient-ids, MRNs, visit beds, HL7 control ids, FHIR resource ids, provider NPIs, run-id) -- how you'd find and remove synthetic data that ever reached a real system (docs/simulate-your-facility.md).

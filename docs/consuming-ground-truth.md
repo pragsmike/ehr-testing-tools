@@ -560,31 +560,55 @@ reached a real system.
 
 ## Fault injection, as it stands today
 
-Three mechanisms exist, at three different layers. **A fourth — the one
-a ground-truth consumer asks for most often — does not**, and is named
-below so nobody plans around it.
+Four mechanisms exist, across three layers — and the event layer holds
+two of them, which is the distinction worth reading carefully.
 
 | Layer | Mechanism | What it produces |
 |---|---|---|
-| **Event** | `:churn-profile` / `--churn`, at generate time | *correct* traffic that is awkward: merges, cancels, transfers-in-error, duplicate records. Real behaviours a real hospital produces |
+| **Event — behaviour** | `:churn-profile` / `--churn`, at generate time | *correct* traffic that is awkward: merges, cancels, transfers-in-error, duplicate records. Real behaviours a real hospital produces |
+| **Event — content** | `ehrt sim mutate --operator-id … --seed …` | *incorrect* content injected into the ground-truth log itself, with the finding it should trip declared up front. Every emitter downstream inherits the one mutated truth. See [`operators.md`](operators.md) |
 | **File** | `ehrt corpus mutate --operator-id …` | *incorrect* content injected into rendered messages, each with an expected finding attached. See [`operators.md`](operators.md) |
 | **Transport** | `:latency`, `ehrt corpus batch` | *correct* transport behaviour: delayed transmission, schedule batching, straddled encounters |
 
-The taxonomy is worth keeping straight: churn and transport realism
-simulate correct behaviour deterministically; mutation injects incorrect
-content with an expected finding. Message loss and duplication sit on
-the boundary and are a named, unresolved taxonomy question.
+The taxonomy is worth keeping straight, and the two event-layer rows are
+why: churn and transport realism simulate correct behaviour
+deterministically — the world really did that, and the record is right.
+Mutation injects incorrect content — the world was right, and the
+*record* is wrong. Message loss and duplication sit on the boundary and
+are a named, unresolved taxonomy question.
 
-**There is no event-level mutation operator catalog today.** Mutating
-the ground-truth stream itself — so that every emitter inherits the
-mutation, rather than each file-level operator having to be written per
-format — is a rowed future at
-`.agents/plans/roadmap.md#event-stream-mutation`, sitting behind
-`.agents/plans/roadmap.md#engine-namespace-extraction-and-apply-unification`.
-Nothing on that row is built. If you need event-level faults now, the
-supported path is to mutate the vector yourself between
-`--format ground-truth` and your own consumer; `ehrt sim check` is the
-oracle that will tell you what you broke.
+**The event-level catalog exists now, and it is one operator deep.**
+`ehrt sim mutate` is a filter, so the loop is something you can type:
+
+```bash
+ehrt sim run --format ground-truth --seed 5 --patients 60 --config demos/scenarios/clinic-decade/config.edn \
+  | ehrt sim mutate --operator-id phantom-placeholder-event-id --seed 424242 \
+  | ehrt sim check
+```
+
+Run without the middle stage, `ehrt sim check` exits 0. With it, the
+checker reports exactly the finding that operator declares —
+`:identity-fill-references-its-placeholder-registration` — and nothing
+else. That equality is the contract, not a description of one run: an
+operator naming a defect class it does not produce, or producing
+findings it did not name, fails the build. Applied with no
+`--operator-id` at all, `ehrt sim mutate` passes its input through
+byte for byte, so the stage costs nothing when it is not wanted.
+
+Each operator mutates exactly ONE site per application, chosen by one
+draw from its own seed — independent of the run's seed, so it works on
+any log, including one whose run seed you don't have. Re-running with
+the same seed reproduces the same mutant; a different seed injects
+somewhere else. For many faults, apply it many times with many seeds.
+
+What is *not* there yet: the catalog is one operator, deliberately —
+the spine, built to prove the whole contract end to end. The full
+family (one operator per reference field per defect shape, plus
+structural operators for dropped events, clock skew and orphan
+participants) is the next session's work. Until then, mutating the
+vector yourself between `--format ground-truth` and your own consumer
+is still supported, and `ehrt sim check` is still the oracle that tells
+you what you broke.
 
 **And three whole fault layers are missing, not just this one.**
 [`future-features.md`](future-features.md) is the menu — wrong bytes
