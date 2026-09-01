@@ -58,8 +58,8 @@ Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entr
 | roadmap rows (all sections) | 71 |
 | rulings rows | 113 |
 | rulings rows superseded | 6 |
-| session records | 223 |
-| archived prompts | 215 |
+| session records | 224 |
+| archived prompts | 216 |
 
 ### Roadmap rows by section
 

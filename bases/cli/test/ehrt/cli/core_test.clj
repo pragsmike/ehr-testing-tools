@@ -385,7 +385,7 @@
   (let [r (cli/dispatch ["help" "sim" "frobnicate"] {} {})]
     (is (result/error? r))
     (is (= :unknown-command (:category r)))
-    (is (= #{"run" "check" "identifiers" "version"} (set (:valid-options (:payload r)))))
+    (is (= #{"run" "check" "mutate" "identifiers" "version"} (set (:valid-options (:payload r)))))
     (is (= "run: ehrt help sim" (:hint (:payload r))))
     (is (= 2 (cli/result->exit-code r)))))
 
