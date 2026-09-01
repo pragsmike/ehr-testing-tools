@@ -646,3 +646,96 @@ MESSAGE means the world had one and the receiver must dedupe.** Same
 observable bytes, opposite correct behaviour — which is precisely why
 the layers cannot be collapsed into one injector, and why this record's
 catalog stops at the content layer.
+
+### 6. Dated addendum, 2026-09-01 — three claims corrected by measurement
+
+Entered by event-stream mutation implementation 2 (the breadth session),
+under author ruling **Q10(a)**: *ship operators ONLY where a real
+population exists in a generatable log; columns without one are recorded
+as POPULATION GAPS — a kind distinct from Q6's catalog gaps, convictable
+in principle but unwitnessable today — and the population work is rowed
+as its own priced item, not begun in that session.* ADRs append and
+never rewrite, so sections 1–5 above stand as written; what follows says
+where the tree refuted them. The evidence is
+`.agents/plans/2026-09-01-event-mutation-population-ledger.md`.
+
+**(a) Section 2(iv)'s declared population is EMPTY.** That section names
+`bin/ground-truth-bracket`'s gated corpora as "the natural population"
+for the catalog-wide gate. Measured first by the spine session (its
+record's finding F1) and confirmed here: every engine-layer oracle root
+runs a `module-only` pathway and carries ZERO carriers of all four
+log-index reference fields, because those fields are minted by the full
+sim path — scheduling, identification, medication spans — which those
+roots never exercise.
+
+**The population is the opt-in demo configs**, derived by grep rather
+than recalled: `demos/scenarios/clinic-decade/config.edn` and
+`demos/scenarios/ed-tuesday/config.edn` are the only two distinct logs
+in the tree carrying candidate sites at all (`config-latency.edn` is
+byte-identical to `ed-tuesday`'s, `:latency` being emission config that
+reaches no member of `engine/config-keys`). Measured at each config's
+own documented invocation, they carry sites in **two of five carrier
+columns**; the other three are empty in both and are rowed as population
+gaps.
+
+**(b) Section 2(i)'s matrix arithmetic UNDER-COUNTS.** The text says
+"four reference fields × five defect shapes"; the table in that same
+section already splits `:order-event-id` into "two, by carrier kind",
+and the split is real — `:result-available` carries it as a plain `:int`
+convicted by `result-references-existing-order-and-follows-it-in-time`,
+`:medication-end` as `[:maybe :int]` convicted by
+`medication-end-references-existing-order-and-follows-it-in-time`. The
+matrix is therefore **5 carrier columns × 5 shapes = 25 cells, minus the
+2 that Q9(a) forbids = 23**, not 20; the spine record's forward price of
+"19 referential operators remaining" reads 22.
+
+**(c) Section 2(i)'s three structural operators are each given ONE
+convicting invariant, and all three claims are false as worded.**
+Measured across sampled sites on both logs:
+
+| as worded here | claimed | measured |
+|---|---|---|
+| `drop-event` (drop an `:admission`) | `discharge-follows-admission` | 2–6 distinct finding sets, 4–8 invariants each |
+| `clock-skew` | `timestamps-monotone` | 1 set on clinic-decade, 2 on ed-tuesday |
+| `orphan-participant` | `participant-ids-exist-in-run` | 8 distinct sets, 1–9 invariants each |
+
+A structural edit is not a content fault confined to one field, so it
+cascades through the state machine, and two mechanisms behind that are
+properties of the LOG FORMAT rather than of these operators — worth
+recording here because any later structural operator meets them too:
+
+1. **Dropping an event RENUMBERS the log**, silently repointing every
+   log-index reference past the drop point one event earlier. A drop
+   therefore injects referential faults it never declared unless the
+   indices are repaired as part of the same edit.
+2. **Renaming a participant MOVES the event into a phantom patient's
+   timeline**, where every patient-scoped invariant convicts the phantom
+   for having no `:registered` first event — correct, and not the
+   declared class.
+
+**This does not weaken Q5(a).** Set equality stands; what gives is the
+breadth of `:candidate-sites`, which is what a candidate-site predicate
+is for. All three ship NARROWED, each with a set measured identical
+across every sampled site of both logs — `:clock-skew` unchanged in
+name, `drop-event` replaced by `:drop-registration`, and
+`:orphan-participant` scoped to therapeutic-intent clinical content by
+deriving its kind list from `check`'s own
+`clinical-content-only-when-admitted` rather than hand-listing it. The
+ledger states each narrowing and the measurement behind it.
+
+**A third gap kind follows from (c)**, and this addendum names it so
+later sessions do not have to re-derive the distinction: a **shape gap**
+is a candidate whose observed finding set varies site to site, so no set
+can honestly be declared. It is neither a Q6 catalog gap (the catalog
+convicts it — too well, and ambiguously) nor a Q10 population gap (sites
+are plentiful). Its remedy is narrowing or nothing, never a declared set
+chosen from the modal case.
+
+**One finding outside this record's scope, recorded where it was
+found.** `check-all`'s 1-arity defaults `facility-config` to
+`sim-model/default-facility`, and `ehrt sim check` exposes no way to
+pass another — so ed-tuesday's own clean log, whose config bumps its ED
+ward from 6 surge slots to 16, reads at the shell as violating
+`:occupancy-within-capacity`. The corpus is sound; the checker is
+config-starved. Rowed on `roadmap.md`; not fixed by the breadth session,
+whose fences and Q11(a) both forbid widening that surface.

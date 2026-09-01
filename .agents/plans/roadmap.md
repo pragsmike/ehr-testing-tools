@@ -63,11 +63,54 @@ with them.
   the engine silently repairs some injections. DESIGN ADR LANDED (ADR-0176,
   all nine questions ruled (a)); SPINE LANDED 2026-09-01 -- one referential
   operator end to end, registry/mutate stage/lineage/`ehrt sim mutate`/closed
-  oracle loop. REMAINING: the derived referential family (4 reference fields
-  x 5 defect shapes, minus the cells the event schema forbids) plus the three
-  structural operators, and the catalog-wide gate over a population that
-  actually carries candidate sites -- measured this session, the oracle's own
-  gated corpora carry NONE.
+  oracle loop. BREADTH LANDED 2026-09-01 under rulings Q10-Q12 -- **12
+  operators** in the catalog (9 referential across the two populated carrier
+  columns, 3 structural), each with its own closed loop asserting Q5(a) set
+  EQUALITY, plus `ehrt sim mutate --lineage PATH`. The population question the
+  spine handed forward is ANSWERED and measured:
+  `.agents/plans/2026-09-01-event-mutation-population-ledger.md` is the basis,
+  and ADR-0176 carries a dated addendum correcting three claims it refuted.
+  REMAINING on this row: the catalog-wide gate (now buildable -- the ledger
+  gives it a population); `:expected-findings` still unchecked against `check`'s
+  own vocabulary at registration (needs the ruling Q11(a) deferred, on widening
+  `ehrt.sim-check.interface`); and RNG family tag 6 (`:mutation`) still
+  unreserved in `streams.clj`, a one-line sim-engine edit carried since the
+  spine. The 14 population-gapped cells are NOT on this row -- they are
+  `roadmap.md#referential-corpus-population` below.
+- OPEN **[referential-corpus-population]** PRIORITY 7 -- three of the five
+  referential carrier columns have NO population in anything this repository
+  can generate, so 14 operator cells are convictable in principle and
+  unwitnessable today (ADR-0176's addendum (a), and
+  `.agents/plans/2026-09-01-event-mutation-population-ledger.md` section 6,
+  which names the invariant that would convict each). Measured 2026-09-01 over
+  both opt-in demo configs at their own documented invocations: **zero**
+  `:cancel-admit`/`:cancel-transfer`/`:cancel-discharge` (column A, 4 cells),
+  **zero** `:medication-end` (column B2, 5 cells), **zero** `:care-plan-end`
+  (column C, 5 cells -- clinic-decade emits 5 `:care-plan-start` and closes
+  none, because the vendored closures cite their start by
+  `referenced_by_attribute`, a resolution the GMF interpreter never declared
+  for the CarePlan family). PRICED: this is corpus/config authoring, not
+  operator work -- a scenario or module set that exercises the cancel family
+  and closes its medication and care-plan spans. Each column that gains a
+  population turns straight into its cells' operators, because the contract,
+  the shapes and the convicting invariants are already fixed; the operators
+  are then a `:candidate-sites` predicate and a `:fn` apiece. Do NOT invent a
+  hand-scripted fixture to stand in for the population -- that is precisely the
+  gap ADR-0176 section 1(e) says this arc closes.
+- OPEN **[sim-check-takes-no-facility-config]** PRIORITY 8 -- `check-all`'s
+  1-arity defaults `facility-config` to `sim-model/default-facility` and
+  `ehrt sim check` exposes no flag for another, so a scenario that overrides
+  `:facility` cannot be checked clean at the shell. FOUND LIVE 2026-09-01 while
+  establishing the mutation population's clean baselines: `ed-tuesday`'s own
+  log reads as violating `:occupancy-within-capacity` under `ehrt sim check`
+  and is `#{}` at the 2-arity with its own `:facility` -- the corpus is sound
+  and the checker is config-starved. The demo teaches
+  `run --format ground-truth | sim check` as the oracle pipe, so this makes a
+  shipped demo's own pipe report a false positive. Fix is a `--config` (or
+  `--facility`) flag on `sim check` reading the same EDN `sim run` already
+  takes; the 2-arity it needs already exists in `ehrt.sim.interface/check-all`.
+  Deliberately not fixed by the breadth session, whose fences forbade widening
+  that surface.
 - OPEN **[cancel-discharge-reopens-an-encounter-that-never-closes]** PRIORITY 9 --
   MEASURED 2026-08-29 while tracing `roadmap.md#ts-3-outpatient-opens-over-an-encounter`,
   and it is a population fact rather than one patient's: a legal
