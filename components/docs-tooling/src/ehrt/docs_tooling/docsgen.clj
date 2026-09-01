@@ -160,10 +160,10 @@
 ;; line, and CI's freshness step diffs the result.
 ;;
 ;; The row shape below is deliberately today's, not a new one: it is
-;; ADR-0046 AR-B-1's own, `ehrt.docs-tooling.done-pointer-adr-test`
-;; parses its `- **ADR-NNNN**` prefix, and keeping it made 62 of the
-;; 140 rows regenerate byte-identical -- so the landing diff was
-;; exactly the compression and nothing else.
+;; ADR-0046 AR-B-1's own, and `ehrt.docs-tooling.done-pointer-adr-test`
+;; parsed its `- **ADR-NNNN**` prefix until `e189418` deleted that gate;
+;; keeping the shape made 62 of the 140 rows regenerate byte-identical
+;; -- so the landing diff was exactly the compression and nothing else.
 
 (def adr-index-preamble
   "The index's own header prose -- the numbering rule, the frozen-era

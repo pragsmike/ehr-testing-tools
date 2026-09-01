@@ -62,8 +62,8 @@
 
 ;; ---- mechanism-sanity: prove the pattern actually catches what it
 ;; claims to, and doesn't false-positive on the legitimate lookalikes
-;; already living in clean cli-spec text (same pairing shape
-;; ehrt.docs-tooling.tag-law-test and -done-pointer-adr-test use) ----
+;; already in clean cli-spec text (the pairing shape `e189418`-deleted
+;; ehrt.docs-tooling.tag-law-test and -done-pointer-adr-test used) ----
 
 (deftest agent-speak-pattern-catches-what-it-claims-test
   (testing "each token class is caught, standalone"

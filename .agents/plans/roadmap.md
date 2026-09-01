@@ -118,13 +118,14 @@ with them.
   `emit_hl7.clj` 26 -> 17 -- with 13 requires, an import and one dead form.
   Every survivor is one an `interface.clj` resolves through, plus
   `unescape-er7`, whose SRC caller the pass did not touch. Oracle IDENTICAL at
-  every commit; suite 4,751/24,161/408 unmoved throughout. TWO THINGS IT DID
-  NOT PAY, disclosed rather than absorbed: 23 `docs/operational-models.md`
-  citations INSIDE `components/sim/docs/`, which are that directory's own
-  whole-directory convention rather than one file's defect; and 8 further live
-  citations of a gate `e189418` deleted, in `docsgen.clj`, `help_voice_test.clj`,
-  two one-shot `bin/` migration scripts and a skill HISTORY -- so the C10
-  population was never nine. Both need a ruling, not a session.
+  every commit; suite 4,751/24,161/408 unmoved throughout. ITS TWO UNPAID
+  ITEMS ARE RULED AND CLOSED 2026-08-31: C13, the 23 in-directory
+  `docs/operational-models.md` cites under `components/sim/docs/` are that
+  directory's own convention, ACCEPTABLE, not a defect; C14, of the 8 live
+  cites of a gate `e189418` deleted, the two LIVE surfaces (`docsgen.clj`,
+  `help_voice_test.clj`) are corrected and historical artifacts stay. ONE more
+  stale live surface found while paying C14, rowed not widened into:
+  `roadmap_lint_test.clj:43` cites `notes-prompts-frozen-test` as live.
 - OPEN **[event-stream-mutation]** PRIORITY 6 -- mutation moves to the
   ground-truth event stream (emitters inherit mutations); ADR-0166's test-side
   event mutations promoted to a shipped operator catalog with `check` as oracle;
