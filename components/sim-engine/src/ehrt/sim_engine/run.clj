@@ -1328,10 +1328,11 @@
                   ;; (census site 2) and `reinstated-state`'s fallback
                   ;; (site 3) reach the same one.
                   ;;
-                  ;; NOTHING WAS ENABLED OR DISABLED by the move: the two
-                  ;; concerns this site omits, `:patient-bootstrap` and
-                  ;; `:replay-entries`, stay omitted (both predicted
-                  ;; INERT, census section 3a), and the choke point's
+                  ;; STAGE 2 ENABLED `:patient-bootstrap` here (census
+                  ;; section 3a, predicted INERT and confirmed: `prelude`
+                  ;; seeds every patient before the loop, so the branch
+                  ;; never fires). `:replay-entries` stays omitted for
+                  ;; now, and the choke point's
                   ;; order of operations is the one that stood here --
                   ;; decorate off the pre-batch world, take the log
                   ;; ordinal off it, one per-event reduce, then the

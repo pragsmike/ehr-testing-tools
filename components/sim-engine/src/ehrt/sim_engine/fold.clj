@@ -200,13 +200,20 @@
     :state-history :replay-entries})
 
 (def run-loop-projection
-  "Census site 1 -- `ehrt.sim-engine.run`'s in-loop fold. Eleven of the
-  thirteen: everything but `:patient-bootstrap` (nothing reaches that
-  fold unregistered -- `decide :registered` is every patient's first
-  event) and `:replay-entries` (nothing in `run`'s result reads an
-  entries vector). Both omissions are predicted INERT by the census's
-  section 3a, and neither is enabled here: stage 2 owns that."
-  (disj full-algebra :patient-bootstrap :replay-entries))
+  "Census site 1 -- `ehrt.sim-engine.run`'s in-loop fold. TWELVE of the
+  thirteen since stage 2 enabled 1 x `:patient-bootstrap`, the first of
+  the census's section 3a pairs and predicted INERT.
+
+  WHY IT IS INERT, and it is a property of `run` rather than of the
+  concern: nothing reaches this fold unregistered. `prelude` seeds every
+  patient with `state/initial-patient` before the loop runs, and `decide
+  :registered` is every patient's first event, so the bootstrap branch
+  finds every participant already in `(:patients w)` and returns `w`
+  unchanged. IF IT EVER FIRES, that is worth more than the pair -- it
+  means an unregistered participant reached the log.
+
+  Still omitted: `:replay-entries`, section 3a's other pair."
+  (disj full-algebra :replay-entries))
 
 (def replay-projection
   "Census site 2 -- `replay` below. Three of the thirteen. The ten it
