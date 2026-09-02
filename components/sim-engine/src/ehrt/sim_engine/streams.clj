@@ -264,7 +264,18 @@
    :person   2
    :world    3
    :facility 4
-   :emission 5})
+   :emission 5
+   ;; 6 is RESERVED for `:mutation` (ADR-0176 section 2(iii), ruling
+   ;; Q4(a); tree-recorded here by ruling Q13(a), 2026-09-01, after the
+   ;; spine and breadth sessions each carried it forward unwritten).
+   ;; A reservation and not a row, deliberately: `ehrt sim mutate` draws
+   ;; from its OWN seed and touches no run stream, so a row today would
+   ;; name a family with no stream behind it. The NUMBER is what needs
+   ;; holding -- so a later session that does want a run-seed-derived
+   ;; mutation stream adds row 6 rather than re-keying this table and
+   ;; reshuffling every existing stream, the same reason `:person` was
+   ;; declared with zero draw sites (ADR-0171).
+   })
 
 (defn stream-seed
   "The seed of one stream: `(mix64 (mix64 master family-tag) id-tag)`
