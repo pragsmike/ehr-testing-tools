@@ -101,7 +101,7 @@
                ;; layer, so the CLI spelling and the function's own
                ;; parameter name are the same thing here).
                {:flag "--lockfile" :doc "synthea: path to the lockfile" :default "artifacts.lock.edn"}
-               {:flag "--patients" :doc "sim: patient count (integer)" :default "1"}
+               {:flag "--patients" :doc "sim: patient count (integer): simulated ARRIVALS, not emitted-event volume (docs/consuming-ground-truth.md#scale)" :default "1"}
                {:flag "--churn" :doc "sim: turn churn on with sensible defaults" :default "false"}
                {:flag "--emit" :doc "sim: message format to emit -- \"hl7\" produces a v2 corpus" :default "hl7"}
                {:flag "--config" :doc "sim: path to an EDN file carrying the data-heavy engine keys (:pathway/:pathways/:order-profiles/:churn-profile/:site-profile/:modules/...)" :default "none"}]}
@@ -212,7 +212,7 @@
      :verbs
      [{:verb "run" :doc "Runs one deterministic simulation and returns its ground truth, manifest, and summary (plus --emit's rendered messages/bundles, when given)."
        :flags [{:flag "--seed" :doc "simulation seed (integer, non-negative) -- required, determinism is a feature, not a default"}
-               {:flag "--patients" :doc "patient count (integer)"}
+               {:flag "--patients" :doc "patient count (integer): simulated ARRIVALS, not emitted-event volume (docs/consuming-ground-truth.md#scale)"}
                {:flag "--arrival-gap" :doc "max minutes between arrivals (integer)" :default "60"}
                {:flag "--reference-date" :doc "ISO date string, pinned input for HL7 timestamp anchoring"}
                {:flag "--utc-offset" :doc "fixed ISO offset suffixed onto HL7 timestamps (pinned input, no DST)" :default "+00:00"}
@@ -231,7 +231,7 @@
                {:flag "--lineage" :doc "path to write this mutation's provenance to, as an EDN sidecar: the parent log's hash, the operator and seed, the site it landed on, and the exact finding set the defect is built to trip. Stdout is the mutant and nothing else, so provenance rides beside the pipe rather than in it. Omitted: no file is written and stdout is unchanged"}]}
       {:verb "identifiers" :doc "Config + seed -> the complete EDN inventory of every identifier this run's output would contain (patient-ids, MRNs, visit beds, HL7 control ids, FHIR resource ids, provider NPIs, run-id) -- how you'd find and remove synthetic data that ever reached a real system (docs/simulate-your-facility.md)."
        :flags [{:flag "--seed" :doc "RNG seed (required, non-negative; same as `ehrt sim run`'s own --seed)"}
-               {:flag "--patients" :doc "patient count (integer)" :default "1"}
+               {:flag "--patients" :doc "patient count (integer): simulated ARRIVALS, not emitted-event volume (docs/consuming-ground-truth.md#scale)" :default "1"}
                {:flag "--config" :doc "path to an EDN file supplying data-heavy engine keys (same as `ehrt sim run`)"}]}
       {:verb "version" :doc "Print sim's own library version and git SHA -- the same source the run manifest's :generator block stamps."
        :flags []}]}

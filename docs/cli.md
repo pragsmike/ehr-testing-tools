@@ -98,7 +98,7 @@ Generate a deterministic synthetic corpus. Takes a source subcommand: `corpus ge
 | `--timezone` | `UTC` | synthea: timezone |
 | `--java-bin` | `resolved via the artifact registry` | synthea: java executable to invoke |
 | `--lockfile` | `artifacts.lock.edn` | synthea: path to the lockfile |
-| `--patients` | `1` | sim: patient count (integer) |
+| `--patients` | `1` | sim: patient count (integer): simulated ARRIVALS, not emitted-event volume (docs/consuming-ground-truth.md#scale) |
 | `--churn` | `false` | sim: turn churn on with sensible defaults |
 | `--emit` | `hl7` | sim: message format to emit -- "hl7" produces a v2 corpus |
 | `--config` | `none` | sim: path to an EDN file carrying the data-heavy engine keys (:pathway/:pathways/:order-profiles/:churn-profile/:site-profile/:modules/...) |
@@ -237,7 +237,7 @@ Runs one deterministic simulation and returns its ground truth, manifest, and su
 | Flag | Default | Meaning |
 |---|---|---|
 | `--seed` | — | simulation seed (integer, non-negative) -- required, determinism is a feature, not a default |
-| `--patients` | — | patient count (integer) |
+| `--patients` | — | patient count (integer): simulated ARRIVALS, not emitted-event volume (docs/consuming-ground-truth.md#scale) |
 | `--arrival-gap` | `60` | max minutes between arrivals (integer) |
 | `--reference-date` | — | ISO date string, pinned input for HL7 timestamp anchoring |
 | `--utc-offset` | `+00:00` | fixed ISO offset suffixed onto HL7 timestamps (pinned input, no DST) |
@@ -274,7 +274,7 @@ Config + seed -> the complete EDN inventory of every identifier this run's outpu
 | Flag | Default | Meaning |
 |---|---|---|
 | `--seed` | — | RNG seed (required, non-negative; same as `ehrt sim run`'s own --seed) |
-| `--patients` | `1` | patient count (integer) |
+| `--patients` | `1` | patient count (integer): simulated ARRIVALS, not emitted-event volume (docs/consuming-ground-truth.md#scale) |
 | `--config` | — | path to an EDN file supplying data-heavy engine keys (same as `ehrt sim run`) |
 
 ### `ehrt sim version`
