@@ -27,9 +27,9 @@ index lists every charter. Today: **20 bricks, 273 interface vars, OK.**
 Two charters have ADR ancestry and restate — never supersede — a
 scope their ADR already ruled and gated:
 [`patient-simulator`](../components/patient-simulator/docs/charter.md)
-(ADR-0162) and
+[^adr-0162] and
 [`person-simulator`](../components/person-simulator/docs/charter.md)
-(ADR-0172). Both keep `docs/limitations.md` as the gated authority for
+[^adr-0172]. Both keep `docs/limitations.md` as the gated authority for
 what they decline.
 
 ## Components
@@ -69,3 +69,6 @@ bricks** depend on nothing and are where the shared vocabulary lives:
 `kernel`, `sim-model`, `palgebra`, `provenance`. `oracle` is the
 mirror case — the only component **nothing depends on**, which is what
 keeps its unusually wide dependency set harmless.
+
+[^adr-0162]: Design record [ADR-0162](../notes/ADRs.md).
+[^adr-0172]: Design record [ADR-0172](../notes/ADRs.md).

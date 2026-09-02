@@ -107,16 +107,14 @@ author's alone, unchanged, regardless of ceremony mode — the
 
 ## Reading this repo
 
-Per-task-class reading sets (onboarding / corpus / sim / judge / docs,
-each a budgeted path list) live in
-[`.agents/reading-sets.edn`](.agents/reading-sets.edn) (charter R-D,
-`.agents/plans/2026-08-01-agent-ux-charter.md`, landed migration
-session 4, 2026-08-02). The budget gate over them,
-`ehrt.docs-tooling.reading-set-budget-test`, was deleted by the
-de-scaffold ruling of 2026-08-25: the sets are a reading aid now, and
-nothing enforces a line-count ceiling on them. Also start from this file's own Structure section below,
-`docs/dev/architecture.md` for the fuller workspace map, and
-`.agents/` (routing below) for durable session context.
+Read [`docs/charters.md`](docs/charters.md) first: one page per brick —
+mission, interface contract, invariants, non-goals, forbidden edges —
+so you can reason about a brick without reading its source. Then this
+file's own Structure section below, `docs/dev/architecture.md` for the
+fuller workspace map, and `.agents/` (routing below) for durable
+session context. Per-task-class reading sets live in
+[`.agents/reading-sets.edn`](.agents/reading-sets.edn) (charter R-D),
+whose own header names each set, its budget, and the ratchet over it.
 
 ## Structure
 

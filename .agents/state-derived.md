@@ -58,8 +58,8 @@ Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entr
 | roadmap rows (all sections) | 74 |
 | rulings rows | 113 |
 | rulings rows superseded | 6 |
-| session records | 226 |
-| archived prompts | 218 |
+| session records | 227 |
+| archived prompts | 219 |
 
 ### Roadmap rows by section
 
@@ -76,11 +76,11 @@ Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entr
 
 | set | paths | actual | budget | baseline | headroom |
 |---|---|---|---|---|---|
-| :corpus | 7 | 1891 | 2045 | 2045 | 154 |
-| :docs | 5 | 787 | 785 | 785 | -2 |
-| :judge | 8 | 977 | 1000 | 1000 | 23 |
-| :onboarding | 10 | 1488 | 1530 | 1530 | 42 |
-| :sim | 6 | 1349 | 1405 | 1405 | 56 |
+| :corpus | 7 | 1889 | 2045 | 2045 | 156 |
+| :docs | 5 | 785 | 785 | 785 | 0 |
+| :judge | 8 | 975 | 1000 | 1000 | 25 |
+| :onboarding | 10 | 1486 | 1530 | 1530 | 44 |
+| :sim | 6 | 1347 | 1405 | 1405 | 58 |
 
 ## What this page reads
 
