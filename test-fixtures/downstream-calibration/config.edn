@@ -1,0 +1,25 @@
+{:facility {:id :large-synthetic-hospital
+            :wards [{:id :ed :name "Emergency" :beds 0 :surge-slots 500 :surge-format "%s-H%03d" :class :ed :turnaround-minutes [5 15]}
+                    {:id :renal :name "Renal" :beds 100 :surge-slots 100 :surge-format "%s-H%03d" :class :inpatient :turnaround-minutes [15 30]}
+                    {:id :cardiology :name "Cardiology" :beds 100 :surge-slots 100 :surge-format "%s-H%03d" :class :inpatient :turnaround-minutes [15 30]}]}
+ :arrival-gap 60
+ :pathways [{:pathway {:name "fast-track" :steps [{:type :admission :location "Emergency" :reason "Minor injury"} {:type :delay :from 30 :to 90} {:type :discharge}]} :weight 35}
+            {:pathway {:name "lab-observation" :steps [{:type :admission :location "Emergency" :reason "Chest pain"} {:type :delay :from 60 :to 120} {:type :order :profile :cbc} {:type :delay :from 60 :to 150} {:type :discharge}]} :weight 30}
+            {:pathway {:name "renal-admission" :steps [{:type :admission :location "Emergency" :reason "Acute kidney injury"} {:type :delay :from 45 :to 120} {:type :transfer :location "Renal"} {:type :delay :from 240 :to 960} {:type :discharge}]} :weight 15}
+            {:pathway {:name "cardiology-admission" :steps [{:type :admission :location "Emergency" :reason "High-risk chest pain"} {:type :delay :from 45 :to 120} {:type :transfer :location "Cardiology"} {:type :delay :from 240 :to 960} {:type :discharge}]} :weight 12}
+            {:pathway {:name "trauma" :steps [{:type :admission :location "Emergency" :reason "Multi-system trauma"} {:type :delay :from 30 :to 90} {:type :order :profile :cbc} {:type :delay :from 45 :to 90} {:type :transfer :location "Renal"} {:type :delay :from 480 :to 1440} {:type :discharge}]} :weight 8}
+            {:patient-ordinal 6 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 18 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 30 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 42 :pathway {:name "module-only" :steps []}}]
+ :modules ["sore_throat" "sinusitis" "bronchitis" "ear_infections"]
+ :module-horizon-days 365
+ :module-assignment [{:patient-ordinal 6 :module-id "sore_throat"} {:patient-ordinal 18 :module-id "sinusitis"} {:patient-ordinal 30 :module-id "bronchitis"} {:patient-ordinal 42 :module-id "ear_infections"}]
+ :persons {:count 20000 :years 20}
+ :encounters true
+ :bed-cycle true
+ :scheduling {:scheduled-fraction 0.30 :lead-time-days [1 14] :no-show-rate 0.10 :reschedule-rate 0.08 :cancel-rate 0.07 :follow-up {:rate 0.25 :interval-days [7 30]}}
+ :chatter {:demographic-update 1.0 :coverage-change 1.0 :registered 1.0 :restatement {:rate-per-patient-day 0.25}}
+ :charges {:price-table {"58410-2" {:amount 148.00 :display "CBC panel"} "ROOM-BOARD" {:amount 1875.00 :display "Room and board, per day"}}}
+ :ladders {:rungs [0.5] :order-rungs [0.25]}
+ :siu {}}
