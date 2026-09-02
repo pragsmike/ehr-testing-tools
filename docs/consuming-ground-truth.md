@@ -332,8 +332,13 @@ counted rather than prevented — see [What is not warranted](#what-is-not-warra
 
 ```bash
 bin/ehrt sim run --seed 42 --patients 20 --churn --format ground-truth \
-  --config demos/scenarios/ed-tuesday/config.edn | bin/ehrt sim check
+  --config demos/scenarios/ed-tuesday/config.edn \
+  | bin/ehrt sim check --config demos/scenarios/ed-tuesday/config.edn
 ```
+
+**Pass `sim check` the same `--config` the run used.** Four of the
+invariants need config the log itself does not carry, and without the
+flag they are checked against the shipped defaults — see below.
 
 `sim check` runs **44 invariants** over the log and reports each one it
 ran, by name, in `:payload :invariants-checked`. Exit 0 with `:status
@@ -372,28 +377,39 @@ config-needing siblings:
 
 Two things about that list that a reader will otherwise get wrong.
 
-**`sim check` reads the DEFAULT facility, warm-up window and order
-profiles.** It takes a log on stdin and has no flags at all, so it
-cannot know what `--config` produced the log. **Four** of the 44
-invariants need config the log does not carry —
-`occupancy-within-capacity` and `surge-only-when-earlier-rungs-exhausted`
-need the facility, `warm-up-mark-matches-window` needs the warm-up
-window, and `result-analytes-match-order-profile` needs the order
-profiles — and all four are checked against the shipped defaults
-regardless. Measured: `ehrt sim check` over
-`ed-tuesday`'s own corpus — a scenario whose `:facility` raises the
-Emergency ward's surge slots from 6 to 16 — reports **115
+**Without `--config`, `sim check` reads the DEFAULT facility, warm-up
+window and order profiles.** **Four** of the 44 invariants need config
+the log does not carry — `occupancy-within-capacity` and
+`surge-only-when-earlier-rungs-exhausted` need the facility,
+`warm-up-mark-matches-window` needs the warm-up window, and
+`result-analytes-match-order-profile` needs the order profiles. A log on
+stdin cannot say what produced it, so a flagless `sim check` checks all
+four against the shipped defaults.
+
+What that costs when it is wrong, measured: `ehrt sim check` with no
+flag over `ed-tuesday`'s own corpus — a scenario whose `:facility`
+raises the Emergency ward's surge slots from 6 to 16 — reports **115
 `:occupancy-within-capacity` violations, every one of them spurious**,
-because the check is comparing a 16-slot ward against the 6-slot
-default. **The run's own self-check, which `ehrt sim run` and
-`ehrt corpus generate sim` perform in-process, does not have this
-problem for the first three** — it passes the real facility and the real
-warm-up window (`ehrt.sim.run`'s call is `check/check-all ground-truth
-facility warm-up-seconds`). It does **not** pass order profiles, so
-`result-analytes-match-order-profile` runs against the shipped defaults
-even there. If your corpus overrides `:facility` or `:warm-up-seconds`,
-trust the run's own self-check over a piped `sim check`; if it overrides
-`:order-profiles`, neither one is checking what you configured.
+because it is comparing a 16-slot ward against the 6-slot default. The
+corpus is sound; the checker was starved.
+
+**`--config PATH` is the fix, and it takes the same file `sim run`
+reads.** Given it, `sim check` threads that config's `:facility` and
+`:warm-up-seconds` — *exactly* the pair the run's own in-process
+self-check threads (`ehrt.sim.run`'s own call is `check/check-all
+ground-truth facility warm-up-seconds`), so the two agree by
+construction rather than by coincidence. The same corpus above checks
+clean.
+
+**`:order-profiles` is threaded by neither**, so
+`result-analytes-match-order-profile` reads the shipped defaults in the
+run's self-check and in `sim check` alike. That is deliberate rather
+than an oversight: threading it in only one of the two would let
+`sim check --config X` convict a log that `sim run --config X` had
+already passed. If your corpus overrides `:order-profiles`, neither
+check is testing what you configured — and that is the one remaining
+case where this section's old advice, *trust the run's own self-check*,
+still has nothing better to offer.
 
 **Seven of the 44 are vacuous on a log that does not opt in.** The three
 bed-cycle invariants are no-ops on a log with no `:bed-status-change`,

@@ -19,12 +19,31 @@
   Any future narrowing (or widening) of this façade is a separate,
   author-ruled decision (the interface's own docstring) -- this gate
   makes that decision VISIBLE as a named baseline edit, rather than
-  silent."
+  silent.
+
+  BASELINE EDIT 1, 2026-09-01: `check-command`, arity 2, ADDED under an
+  author ruling taken this session (`.agents/session-records/2026-09-01-
+  sim-check-facility-config.md` section 11; AR-M4-3 amended by dated
+  note in `notes/adr/0043-sim-split-b-m1.md`). `ehrt sim check` gained
+  `--config PATH` (ruling Q14(a)) and needed `ehrt.sim.run/merge-config-
+  file` -- sim-internal, reachable only through this façade -- so that
+  `sim run`, `sim identifiers` and `sim check` give ONE
+  `:config-not-found`/`:config-unreadable` rather than three drifting
+  copies. This gate is what turned that into a decision instead of a
+  side effect: it went red, the session STOPPED, and the ruling was
+  taken before the baseline moved. Recorded here rather than only in
+  the record, because this literal is where the next session looks.
+  An ADDITION, and only an addition -- no var renamed, removed or
+  re-arited, so AR-M4-3's own harm model (`corpus` depending on this
+  façade's stability in-process, ADR-0012) is untouched: the five vars
+  `corpus` actually calls are byte-identical."
   (:require [clojure.test :refer [deftest is testing]]
             [ehrt.sim.interface]))
 
 (def ^:private frozen-baseline
   {"check-all" #{1 2 3 4}
+   ;; BASELINE EDIT 1, 2026-09-01, ruled -- see the ns docstring.
+   "check-command" #{2}
    "error" #{2}
    "git-sha" #{0}
    "identifiers-command" #{1}

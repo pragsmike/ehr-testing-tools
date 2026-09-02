@@ -854,6 +854,24 @@ context the way this arc's own four stages did.
   (ADR-0012). Any future thinning of the façade itself is a SEPARATE,
   explicit author-ruled decision — never a side effect of some other
   session's own work.
+
+  **Amended 2026-09-01 (one addition, ruled).** `check-command`
+  (arity 2) was ADDED to the façade so `ehrt sim check` could take
+  `--config PATH` under ruling Q14(a): the config read it needs
+  (`ehrt.sim.run/merge-config-file`) is sim-internal and reachable
+  only here, and the alternative was a second config-read
+  implementation in `corpus` drifting from `run`'s own — three verbs
+  answering the same bad path three ways. The ruling was taken
+  DELIBERATELY and in advance of the edit, which is the distinction
+  this clause exists to enforce: `ehrt.sim.interface-surface-test`
+  went red on the addition, the session stopped and asked, and the
+  baseline moved only after. Note what the clause above escalates on
+  and what this is not — a THINNING. Nothing was renamed, removed or
+  re-arited; the five vars `corpus` actually calls
+  (`run-command`, `check-all`, `identifiers-command`, `git-sha`,
+  `version`) are byte-identical, so the in-process stability
+  AR-M4-3 protects is untouched. Record:
+  `.agents/session-records/2026-09-01-sim-check-facility-config.md`.
 - **Every future parity/deftest ledger in this project states which
   counting definition it uses** (`deftest`-only, or `deftest`+
   `defspec`), explicitly, rather than leaving the reader to infer it
