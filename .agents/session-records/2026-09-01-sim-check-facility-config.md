@@ -279,3 +279,33 @@ ADR-0176 spent a commit collapsing for this verb's three stdin
 rejections.
 
 ## 12. Close
+
+**Full suite, unpiped, at `eff7a0f`** (`rulings.md#R-full-suite-before-push`):
+`clojure -M:poly check` **OK**; `clojure -M:poly test :all
+skip:integration` **0 failures / 0 errors** across every project;
+`bin/verify-nist-lock` OK (6 hit-nexus coordinates match); 19m54s.
+
+**Oracle IDENTICAL**, `188e26a` → `cfea631`, all **41** roots,
+`bin/regression-oracle` exit 0. Not vacuous here, and not merely
+expected: the span contains the only `components/sim-engine` edit this
+session made, inside the table that seeds every RNG stream. A comment,
+and proved to be one.
+
+**The fixed pipe, end to end, real subprocesses** (repeating section 5
+because it is the deliverable): `run --config X | check --config X`
+exits **0** on ed-tuesday's own clean log, where it reported 16 spurious
+`:occupancy-within-capacity` findings before; and
+`run --config X | mutate clock-skew | check --config X` reports
+**exactly `#{:timestamps-monotone}`**, equal to the lineage sidecar's own
+declared set, where the same pipe without the flag buried that one
+finding under the same 16.
+
+**CI: green at `eff7a0f`** — run 33582036664, the `test` workflow on
+`main`, 12m27s, conclusion success. The close marker for this session.
+
+**Handed forward.** Two live rows and one blocked item:
+`roadmap.md#event-mutation-catalog-gate` (the catalog-wide gate, now both
+buildable and meaningful at the shell; and the `:expected-findings`
+vocabulary cross-check, BLOCKED on a Q11(a) re-ruling) and
+`roadmap.md#referential-corpus-population` (the 14 population-gapped
+cells, priced as corpus authoring). Nothing else is owed.
