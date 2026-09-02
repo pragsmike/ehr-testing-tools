@@ -492,6 +492,40 @@ per-capability contract.
 
 ## Scale
 
+### What `--patients` buys you
+
+**`--patients` is a count of simulated arrivals, not a dial on output
+volume.** It says how many patients walk through the door. It says
+nothing about how much each of them generates once inside.
+
+What generates volume is the opt-in keys. At the same seed and the
+same `--patients 20`, differing only in whether a `--config` file is
+supplied, the runs at the top of this page give **74 events across 7
+kinds** without one and **399 across 18** with `ed-tuesday`'s — five
+times the events and more than twice the vocabulary, with the arrival
+count untouched.
+[The mix, and why the default is thin](#the-mix-and-why-the-default-is-thin)
+is the section that explains which keys do that, and the minimal
+config there reaches 261 events across 15 kinds on the opt-in keys
+alone. **To size a corpus, reach for those keys first and
+`--patients` second.**
+
+**Capacity, not `--patients`, is the ceiling.** Every arrival has to
+be placed, and what can hold them is the facility you configured:
+each ward's bed count, its surge slots, and — when `:bed-cycle` is on
+— whether a vacated bed has finished `:dirty` → `:cleaning` →
+`:ready` in time to take the next one. A run whose arrivals outrun
+that reachable capacity does not quietly thin out. It stops:
+`:capacity-exhausted` is the run refusing an arrival it cannot place,
+returned as a structured error carrying the patient, the ward, and
+the census at the moment of refusal — and no corpus is produced and
+no self-check is run. The two fixes are the two sides of one
+inequality: **raise capacity, or lower `--patients`.**
+
+Whatever size you settle on, the shape of what you read back does not
+change, and the one rule for reading it is formats.md's
+[Read the top-level vector only](formats.md#read-the-top-level-vector-only).
+
 Measured on the traffic-scale programme's own reference machine — WSL2,
 6c/12t i7-10750H, 15 GiB, OpenJDK 21.0.7, JVM defaults as shipped
 (`MaxHeapSize` 3.88 GB; `bin/ehrt` sets no JVM options). Full method and
