@@ -383,6 +383,29 @@ the author to place, edit or discard:
 4. **The proposed roadmap row is proposed only.** Ratification pending by
    definition — the prompt asked for exactly this.
 
+## Close
+
+**CI green at `ce117d8`** — run
+[33650606614](https://github.com/pragsmike/ehr-testing-tools/actions/runs/33650606614),
+`test` on `main`, success in 12m51s. Verified with `gh run view`, not
+inferred from the push (`rulings.md#R-session-verifies-ci-via-gh`); no
+tag was paid. `make test` was also green locally before the push, and
+`clojure -M:poly check` green through the pre-push hook.
+
+Post-push message verification: all three commits diffed against their
+own message files, and every diff was a single trailing blank line —
+`git log --format=%B`'s own artifact, not a mismatch. All three are pure
+ASCII (`rulings.md#R-post-push-ascii`).
+
+| commit | |
+|---|---|
+| `d00b5a5` | step 1 — README names the top-level-vector counting rule |
+| `7463e7f` | step 2 — the downstream config as a fixture, with provenance |
+| `ce117d8` | step 6 — this record and the prompt archive |
+
+**The session stops here**, per ruling `R-shape`. The fork is the
+author's to rule and the proposed roadmap row stays proposed.
+
 ## Findings
 
 1. **The reproduction is exact, and stronger than the prompt asked for.**
