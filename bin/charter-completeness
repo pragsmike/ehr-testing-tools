@@ -97,6 +97,27 @@ for basedir in $(find bases -maxdepth 1 -mindepth 1 -type d | sort); do
   fi
 done
 
+
+# ---- the index must list every charter (step 3's own gate) ----
+INDEX=docs/charters.md
+if [ ! -f "$INDEX" ]; then
+  echo "MISSING INDEX: $INDEX"
+  fail=1
+else
+  for f in $(ls components/*/docs/charter.md bases/*/docs/charter.md 2>/dev/null); do
+    if ! grep -qF -- "$f)" "$INDEX"; then
+      echo "INDEX GAP: $INDEX does not link $f"
+      fail=1
+    fi
+  done
+  # And the reverse: every charter link in the index must resolve.
+  for link in $(grep -oP '\]\(\.\./\K[^)]+' "$INDEX"); do
+    if [ ! -f "$link" ]; then
+      echo "INDEX GHOST: $INDEX links $link, which does not exist"
+      fail=1
+    fi
+  done
+fi
 echo "---"
 echo "bricks checked: $bricks   interface vars checked: $vars_total"
 if [ "$fail" -eq 0 ]; then
