@@ -40,7 +40,11 @@
   draw sites in the engine, so a component drawing only from it cannot
   move a byte of any existing corpus, and `bin/regression-oracle`
   reporting IDENTICAL with no declaration is evidence rather than an
-  absence of red."
+  absence of red.
+
+  2026-09-02: arc 3's fold has landed -- ehrt.sim.run requires this
+  interface and calls initial-persona and persons; the paragraph above
+  is the landing-time record, kept verbatim."
   (:require [ehrt.person-simulator.persona :as persona]
             [ehrt.person-simulator.process :as process]))
 
