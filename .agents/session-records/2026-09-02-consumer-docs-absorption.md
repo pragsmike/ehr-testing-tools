@@ -141,7 +141,19 @@ Commits:
 | C2 | `829abca` docs: --patients is arrivals, not output volume |
 | C3 | `7592459` docs: scaling a run -- patients, capacity, the ceiling |
 | C4 | `8a708b3` docs: future-features -- the scale-ergonomics half |
-| C5 | this record |
+| C5 | `1029f29` docs: session record -- consumer-docs absorption |
 
-HEAD landed and CI: recorded in the close-marker commit that follows
-the push, per `rulings.md#R-session-verifies-ci-via-gh`.
+**HEAD landed: `1029f29`**, pushed as `217498c..1029f29`.
+
+`bin/post-push-verify 217498c 1029f29` clean on all three checks:
+remote tip matches HEAD, every commit message in range is pure ASCII,
+CI reported once. One message needed fixing before it committed --
+the `commit-msg` hook refused C5 over a single non-ASCII `§`,
+which is the ASCII law (AR-RL2-5) working as designed and is recorded
+rather than quietly fixed.
+
+**CI green at the tip:** run `33627144901`, conclusion `success`,
+headSha `1029f298c3a93d1c97dda804c06b198b940d9a20`
+(`rulings.md#R-session-verifies-ci-via-gh`). No tag was paid -- the
+tag law was retired by the de-scaffold ruling of 2026-08-25, and CI
+green at the tip is the close marker.
