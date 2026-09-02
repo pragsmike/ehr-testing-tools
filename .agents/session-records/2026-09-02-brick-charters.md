@@ -299,3 +299,32 @@ is a **script, not a test**, deliberately: promoting it into `make
 test` would add a namespace that runs twice (development and
 `projects/conformance`) plus a `state-derived` regeneration, which is
 code, not docs. Registered as `docs-tooling`'s UNCLEAR-DT2.
+
+## Close marker
+
+CI run **33618920156** @ `7b9fa37` concluded **success**, verified in
+session via `gh` (`.agents/rulings.md#R-session-verifies-ci-via-gh`).
+The whole session was green first time on CI; the one red this session
+saw was local (`link-footnote-gate-test`, fixed before the push).
+
+No tag was licensed by this prompt, so none was paid — tagging remains
+AUTHOR ACTION.
+
+**Open for the author, in priority order:**
+
+1. The 26 UNCLEARs above, by brick. The four bare-`valid?` entries
+   (`kernel` K2, `sim-model` M2, `provenance` PV1, `palgebra` PA1) are
+   one question, not four.
+2. `sim-model` UNCLEAR-M1 — `valid-facility?` has no production
+   caller while a facility is user-supplied config. Nearest neighbour
+   to the defect Q14(a) already fixed.
+3. The judge-family structural question (VH3 / VN3) — two of three
+   engines do not require `judge`.
+4. ADR-0172 ruling F1's stale sentence on
+   `ehrt.person-simulator.interface`, and `ehrt.corpus.interface`'s
+   "became 38 here" (now 44). Both are `src` edits, fenced out here.
+5. Reading-set placement, at **headroom 0** on `:docs`.
+6. Whether `bin/charter-completeness` should become a gated test
+   (`docs-tooling` UNCLEAR-DT2), and whether the two ADR-era charter
+   gates should re-point at `charter.md` (`patient-simulator`
+   UNCLEAR-P1).
