@@ -721,6 +721,66 @@
       (is (result/rejected? r))
       (is (= :malformed-input (:category r))))))
 
+;; ---- `ehrt sim check --config PATH` (2026-09-01, ruling Q14(a)): the
+;; config-starved checker, taught its facility. Found live by the event-
+;; mutation breadth session (`.agents/plans/2026-09-01-event-mutation-
+;; population-ledger.md` section 1a): `check` had no flags at all, so it
+;; ran every config-needing invariant against the SHIPPED DEFAULTS
+;; whatever produced the log -- and `demos/scenarios/ed-tuesday`, whose
+;; `:facility` raises the Emergency ward from the default 6 surge slots
+;; to 16, therefore read as violating `:occupancy-within-capacity` on
+;; its OWN clean log. The corpus was sound; the checker was starved.
+;;
+;; The log below is ed-tuesday's canonical invocation -- README.md:197's
+;; own seed, reference-date, `--churn` and config -- at 20 patients
+;; rather than 100. The reduction is for test cost (a 100-patient run is
+;; ~30x this one), and it is disclosed rather than silent: 20 is the
+;; smallest count MEASURED this session to still carry the conviction
+;; (15 spurious `:occupancy-within-capacity` findings against the
+;; default facility, 0 against ed-tuesday's own). ----
+
+(def ^:private edt-canonical-log
+  ;; A delay, not a def: one real run shared by the tests below, and
+  ;; none at namespace-load time for the tests that don't need it.
+  (delay (:ground-truth (:payload (cli/sim-run-command
+                                   {:seed 20260811 :patients 20
+                                    :reference-date "2026-08-11" :churn true
+                                    :config "demos/scenarios/ed-tuesday/config.edn"})))))
+
+(deftest sim-check-with-config-reads-the-scenarios-own-facility-test
+  ;; The false positive the ruling exists to kill: this is the shipped
+  ;; demo's own oracle pipe, and it must exit 0 on a clean log.
+  (with-in-str (pr-str @edt-canonical-log)
+    (let [r (cli/sim-check-command {:config "demos/scenarios/ed-tuesday/config.edn"})]
+      (is (result/ok? r)
+          "ed-tuesday's own clean log checks clean against ed-tuesday's own facility")
+      (is (empty? (filter #(= :occupancy-within-capacity (:invariant %))
+                          (:violations (:payload r))))))))
+
+(deftest sim-check-without-config-still-reads-the-default-facility-test
+  ;; PINNING the documented default, not changing it (docs/consuming-
+  ;; ground-truth.md, "What `ehrt sim check` certifies"): with no flag,
+  ;; the shipped defaults are still what every config-needing invariant
+  ;; is checked against. A no-flag invocation is byte-identical to what
+  ;; it was before the flag existed -- that is the fence, asserted.
+  (with-in-str (pr-str @edt-canonical-log)
+    (let [r (cli/sim-check-command {})]
+      (is (result/rejected? r))
+      (is (= :invariant-violation (:category r)))
+      (is (seq (filter #(= :occupancy-within-capacity (:invariant %))
+                       (:violations (:payload r))))
+          "the default 6-slot Emergency ward still convicts a 16-slot corpus"))))
+
+(deftest sim-check-config-not-found-is-the-same-rejection-sim-run-gives-test
+  ;; `--config` reaches the SAME `ehrt.sim.run/merge-config-file` that
+  ;; `sim run` and `sim identifiers` already use, so a missing path is
+  ;; one named rejection across all three verbs rather than a third
+  ;; hand-written copy of it (the ADR-0176 discipline that already
+  ;; governs this verb's three stdin rejections).
+  (with-in-str (pr-str @edt-canonical-log)
+    (let [r (cli/sim-check-command {:config "demos/scenarios/no-such-scenario/config.edn"})]
+      (is (= :config-not-found (:category r))))))
+
 ;; ---- sim-mutate-command (`ehrt sim mutate`, 2026-09-01, ADR-0176
 ;; Q7(a)): a stdin -> stdout filter, so the closed oracle loop is
 ;; typeable. The CONTRACT -- one site, lineage, schema validity,
