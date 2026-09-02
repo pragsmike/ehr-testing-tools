@@ -386,6 +386,58 @@
                        (cond-> {:path path} sibling (assoc :did-you-mean sibling)))))
     (result/ok opts)))
 
+(defn check-command
+  "The `sim check` capability: a ground-truth log plus THIS run's own
+  config -> the invariant catalog's verdict over it. Q14(a)
+  (2026-09-01): `ehrt sim check` had no config input at all, so the
+  four config-needing invariants ran against the shipped defaults
+  whatever produced the log -- and a scenario that overrides
+  `:facility` therefore read as violating `:occupancy-within-capacity`
+  on its OWN clean log (`demos/scenarios/ed-tuesday`, whose Emergency
+  ward carries 16 surge slots against the default 6; found live by the
+  event-mutation breadth session, `.agents/plans/2026-09-01-event-
+  mutation-population-ledger.md` section 1a). The corpus was sound; the
+  checker was starved.
+
+  Lives HERE, beside `run-command`'s own self-check call, deliberately:
+  this is the SAME orchestration step (config -> facility -> catalog)
+  that self-check performs at the end of a run, and colocating them is
+  what stops the two from drifting into disagreeing about the same
+  corpus.
+
+  Threads exactly what the run's own self-check threads -- `:facility`
+  and `:warm-up-seconds`, the 3-arity -- and deliberately NOT
+  `:order-profiles`. Passing order profiles here would make
+  `check --config X` able to convict a log that `run --config X` had
+  already passed, which breaks the demo's oracle pipe in the opposite
+  direction from the defect this fixes. That `result-analytes-match-
+  order-profile` runs against the shipped defaults in BOTH the run's
+  self-check and here is a real, pre-existing gap; it is documented
+  (docs/consuming-ground-truth.md) rather than half-closed.
+
+  Reuses `merge-config-file`, the same step `run-command` and
+  `identifiers-command` already use, so a missing or unreadable
+  `--config` is ONE named rejection across all three verbs
+  (`:config-not-found`, with its `:did-you-mean` sibling hint, and
+  `:config-unreadable`) rather than a third hand-written copy of them --
+  the discipline ADR-0176 already applied to this verb's three stdin
+  rejections. Only `:facility` and `:warm-up-seconds` are read off the
+  merged map; every other key a caller passes rides along unread.
+
+  With no `:config` and no explicit `:facility`/`:warm-up-seconds`,
+  `merge-config-file` is the identity and this reduces to
+  `check/check-all ground-truth sim-model/default-facility 0`, which is
+  the 1-arity's own definition expanded -- so a flagless `ehrt sim
+  check` is byte-identical to what it was before this existed."
+  [ground-truth opts]
+  (let [config-result (merge-config-file opts)]
+    (if-not (result/ok? config-result)
+      config-result
+      (let [{:keys [facility warm-up-seconds]} (:payload config-result)]
+        (check/check-all ground-truth
+                         (or facility sim-model/default-facility)
+                         (or warm-up-seconds 0))))))
+
 (defn- unknown-fan-out-message-types
   "Every `TYPE^TRIGGER` a `:fan-out` table names that this emitter
   cannot produce -- THE ALLOW-LIST LAW's own measurement (ADR-0175

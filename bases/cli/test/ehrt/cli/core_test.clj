@@ -771,6 +771,20 @@
                        (:violations (:payload r))))
           "the default 6-slot Emergency ward still convicts a 16-slot corpus"))))
 
+(deftest sim-check-accepts-config-through-main!-flag-validation-test
+  ;; The flag has to survive `validate-known-flags` too, not just reach
+  ;; `sim-check-command`. `help/cli-spec` is the ONE source both the
+  ;; help page and that whitelist read (AR-U3-2), so a verb whose
+  ;; `:flags` vector is empty rejects every flag by name at exit 2 --
+  ;; which is exactly what a real shell invocation of the fixed pipe hit
+  ;; before this entry existed, while the in-process tests above passed.
+  (let [exited (atom nil)]
+    (with-in-str (pr-str @edt-canonical-log)
+      (cli/main! ["sim" "check" "--config" "demos/scenarios/ed-tuesday/config.edn"]
+                 {:println-fn (fn [_]) :exit-fn #(reset! exited %)}))
+    (is (= 0 @exited)
+        "the demo's own oracle pipe exits 0 at the real CLI boundary")))
+
 (deftest sim-check-config-not-found-is-the-same-rejection-sim-run-gives-test
   ;; `--config` reaches the SAME `ehrt.sim.run/merge-config-file` that
   ;; `sim run` and `sim identifiers` already use, so a missing path is

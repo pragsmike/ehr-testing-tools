@@ -2450,12 +2450,24 @@
   2026-09-01 (ADR-0176): the stdin read itself moved out to
   `read-ground-truth-stdin` so `ehrt sim mutate` gives EXACTLY these
   three named rejections with exactly these messages rather than a
-  second, drifting copy of them. Behaviour here is unchanged."
-  [_opts]
+  second, drifting copy of them. Behaviour here is unchanged.
+
+  2026-09-01 (ruling Q14(a)): `--config PATH` -- the SAME flag name and
+  the SAME EDN file `ehrt sim run` already reads -- now reaches the
+  checker, so a scenario that overrides `:facility` can be checked
+  against its own facility instead of the shipped default. Before this
+  the verb had no flags at all and every parsed opt was dropped on the
+  floor, which made the demo's own oracle pipe
+  (`run --format ground-truth --config X | sim check`) report false
+  `:occupancy-within-capacity` violations on a clean log. Opts pass
+  through wholesale, the same way `sim-run-command` forwards its own;
+  only `:facility` and `:warm-up-seconds` (post-config-merge) are read,
+  and a flagless invocation is byte-identical to what it was before."
+  [opts]
   (let [in (read-ground-truth-stdin)]
     (if-not (result/ok? in)
       in
-      (sim/sim-check! (:log (:payload in))))))
+      (sim/sim-check! (:log (:payload in)) opts))))
 
 (defn sim-mutate-command
   "`ehrt sim mutate`: applies one EVENT-LOG mutation operator to a

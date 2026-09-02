@@ -250,9 +250,11 @@ Runs one deterministic simulation and returns its ground truth, manifest, and su
 
 ### `ehrt sim check`
 
-Runs the invariant catalog (capacity/surge-ladder, timestamp-monotone, and friends) over a ground-truth EDN vector read from stdin -- e.g. `ehrt sim run --format ground-truth | ehrt sim check`.
+Runs the invariant catalog (capacity/surge-ladder, timestamp-monotone, and friends) over a ground-truth EDN vector read from stdin -- e.g. `ehrt sim run --format ground-truth | ehrt sim check`. Four of the invariants need config the log itself does not carry, so pass the SAME --config the run used: without it they are checked against the shipped defaults, and a scenario that raises a ward's capacity reads as violating `occupancy-within-capacity` on its own clean log.
 
-_No flags._
+| Flag | Default | Meaning |
+|---|---|---|
+| `--config` | `the shipped default facility and a zero warm-up window` | path to the EDN file the run used (same flag, same file, as `ehrt sim run`) -- its `:facility` and `:warm-up-seconds` are what the config-needing invariants are then checked against, exactly the pair the run's own self-check uses. `:order-profiles` is NOT threaded, here or in the run's self-check, so `result-analytes-match-order-profile` reads the shipped defaults either way |
 
 ### `ehrt sim mutate`
 

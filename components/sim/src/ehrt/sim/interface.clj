@@ -39,6 +39,13 @@
   ([ground-truth facility-config warm-up-seconds order-profiles-config]
    (check/check-all ground-truth facility-config warm-up-seconds order-profiles-config)))
 
+(defn check-command
+  ;; Q14(a) (2026-09-01): `ehrt sim check`, given the config that
+  ;; produced the log -- see `ehrt.sim.run/check-command` for why it
+  ;; threads facility and warm-up but not order profiles, and why a
+  ;; flagless call is byte-identical to the 1-arity `check-all` above.
+  [ground-truth opts] (run/check-command ground-truth opts))
+
 (defn identifiers-command [opts] (identifiers/identifiers-command opts))
 
 (defn run-command [opts] (run/run-command opts))

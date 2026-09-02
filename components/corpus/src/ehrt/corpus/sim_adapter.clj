@@ -69,14 +69,26 @@
     (run-command-fn (dissoc opts :out-dir :run-command-fn))))
 
 (defn check!
-  "Delegates to ehrt.sim.interface/check-all, 1-arg arity (ground-truth
-  only -- default facility/warm-up/order-profiles) -- the SAME arity
-  bases/sim-cli's own check-command always used (P3-6 parity mount,
-  2026-08-01). :check-all-fn is injectable, same -fn convention as
-  run!'s own :run-command-fn."
+  "Delegates to ehrt.sim.interface/check-command -- the ground-truth log
+  plus whatever config the caller has (`:config`, and the `:facility`/
+  `:warm-up-seconds` an explicit caller may pass directly). Q14(a)
+  (2026-09-01): before this it called the 1-arg `check-all` arity and
+  dropped every opt, so `ehrt sim check` could not be told what facility
+  produced the log it was judging -- see `ehrt.sim.run/check-command`.
+
+  With no config opts at all, `check-command` reduces to exactly the
+  1-arg `check-all` call this delegated to before, so the flagless path
+  is byte-identical.
+
+  :check-all-fn is still injectable, same -fn convention as run!'s own
+  :run-command-fn, and still takes the log alone -- an injected checker
+  short-circuits the config step rather than being handed a config it
+  never asked for."
   ([ground-truth] (check! ground-truth {}))
-  ([ground-truth {:keys [check-all-fn] :or {check-all-fn sim/check-all}}]
-   (check-all-fn ground-truth)))
+  ([ground-truth {:keys [check-all-fn] :as opts}]
+   (if check-all-fn
+     (check-all-fn ground-truth)
+     (sim/check-command ground-truth opts))))
 
 (defn identifiers!
   "Delegates to ehrt.sim.interface/identifiers-command -- opts pass
