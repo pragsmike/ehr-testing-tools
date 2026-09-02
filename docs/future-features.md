@@ -111,6 +111,72 @@ deliberate stop rather than an oversight. This entry therefore waits on
 a decision to do transport work at all, not merely on somebody writing
 it.[^transport]
 
+## Scale ergonomics
+
+**Not every gap on this page is a fault class.** Everything above is
+about traffic that is wrong on purpose. The entries below are about
+the ergonomics of asking for a lot of traffic at once — what a
+consumer generating at scale has to do by hand today, and would
+rather not.
+
+### Stopping at a natural boundary, by event count
+
+Ask for a corpus of roughly *N* events rather than *N* patients, and
+have the run stop at the next natural boundary — an encounter closed,
+a shift ended — instead of mid-trajectory. What you get is a corpus
+sized the way you actually think about it, with no truncated patient
+at the end of it.
+
+*Today:* `--patients` counts arrivals, so sizing by event count means
+running, counting, and adjusting the patient count by hand — and the
+ratio moves with which opt-in keys are on.
+
+### A summarize command
+
+Point it at a corpus — a ground-truth log or a rendered directory —
+and get the census back: how many events of each kind, how many
+messages of each type, how many patients and encounters, over what
+span. The thing you want immediately after generating, and the thing
+you want to diff between two runs.
+
+*Today:* `ehrt sim run`'s default EDN envelope carries a run summary,
+and `--format ground-truth` piped into a frequency count of your own
+gives the per-kind census.
+
+### Progress while a long run generates
+
+A large run produces nothing observable until it produces everything.
+Progress instrumentation would say which phase is in flight and how
+far through it is, so a run that is merely slow can be told apart
+from a run that has stopped making progress.
+
+*Today:* there is no workaround. A long run is silent until it exits.
+
+### Richer capacity-exhaustion diagnostics
+
+When a run stops on `:capacity-exhausted`, the useful answer is not
+only *that* it stopped but *what would have prevented it*: how far
+over the ceiling the arrivals ran, which ward bound first, and what
+bed count or surge allowance would have absorbed them.
+
+*Today:* the error payload names the patient, the ward, and the
+census at the moment of refusal — enough to find the ward that
+filled, not enough to size the fix without another run.
+
+### Streaming output
+
+Emit as the run goes rather than accumulating a whole corpus in
+memory first, so corpus size stops being bounded by heap. This one
+enters the menu as **pending measurement** rather than as a design:
+what has been measured is that the emit phase, not the retained event
+log, is the binding constraint at the top of the range — see
+[Scale](consuming-ground-truth.md#scale). Whether streaming is the
+right answer to that is a question the measurement has not been taken
+far enough to settle.
+
+*Today:* `--format ground-truth` is the cheap path; a consumer who
+writes their own emitter is not paying the emit phase at all.
+
 ## What is not on this menu
 
 Deliberately, and these are scope decisions rather than backlog:
