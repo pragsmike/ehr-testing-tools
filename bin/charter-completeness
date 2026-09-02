@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+# Charter completeness gate (brick-charter session, 2026-09-02).
+#
+# WHAT IT CHECKS, and the reading of "exactly one charter" it encodes.
+# The session prompt says "every interface var MUST appear in exactly
+# one charter". Taken globally that reading is WRONG and the tree says
+# so: fourteen var NAMES are carried by more than one brick's interface
+# (`ok`, `ok?`, `rejected`, `rejected?`, `error`, `valid?`, `lookup`,
+# `check-all`, `gate-dir`, `gate-file`, `ManifestV1_1`,
+# `message-patient-id`, `message-timestamp-ms`, `message-type-trigger`).
+# A global uniqueness rule would make two honest charters collide over a
+# name neither invented. So the gate is PER BRICK, which is what the
+# sentence means operationally: every var on brick B's interface appears
+# exactly once in B's own charter, and nowhere else.
+#
+# It is BIDIRECTIONAL on purpose. Forward: no interface var goes
+# undocumented. Reverse: no charter bullet names a var that is not on
+# that brick's shipped interface -- the session's "no invented
+# promises" fence, mechanised. The reverse half is the half that
+# catches drift after a var is retired from an interface but left
+# standing in prose.
+#
+# ANCHORING. A var is counted only when it heads a markdown bullet as
+# "- `name`" at the START of a line -- never as a bare substring
+# anywhere in the file. That is ADR-0162's own lesson paid forward: the
+# patient-simulator charter gate first shipped with bare-substring
+# citations, and a planted marker that merely CONTAINED its own citation
+# string read as covered. A `-` bullet anchor cannot match wherever it
+# is pasted. Matching is done with awk index(), not grep regex, because
+# var names carry `?`, `!`, `*`, `+`, `.`, `<`, `>` and `-` -- every one
+# of which is a regex metacharacter, and escaping them by hand is
+# exactly the kind of quiet wrongness this gate exists to refuse.
+#
+# Exit 0 = every brick complete. Exit 1 = at least one finding, each
+# printed with the brick and var it names.
+set -uo pipefail
+cd "$(dirname "$0")/.."
+
+fail=0
+bricks=0
+vars_total=0
+
+# ---- components: interface vars must match the charter, both ways ----
+for iface in $(find components -name interface.clj | sort); do
+  brick=$(echo "$iface" | cut -d/ -f2)
+  charter="components/$brick/docs/charter.md"
+  bricks=$((bricks + 1))
+
+  if [ ! -f "$charter" ]; then
+    echo "MISSING CHARTER: $charter (brick has an interface at $iface)"
+    fail=1
+    continue
+  fi
+
+  # Top-level public vars on the interface: (defn x, (def x, (defmacro x.
+  # Private forms (defn- / def-) are excluded -- they are not the seam.
+  vars=$(grep -oP '^\((?:defn|def|defmacro) +\K[^ )\n]+' "$iface" | sort -u)
+
+  # Bullets the charter claims, in the same anchored form.
+  claimed=$(grep -oP '^- `\K[^`]+' "$charter" | sort -u)
+
+  for v in $vars; do
+    vars_total=$((vars_total + 1))
+    n=$(awk -v t="- \`$v\`" 'index($0, t) == 1 { c++ } END { print c+0 }' "$charter")
+    if [ "$n" -eq 0 ]; then
+      echo "UNDOCUMENTED: $brick/$v is on $iface but heads no bullet in $charter"
+      fail=1
+    elif [ "$n" -gt 1 ]; then
+      echo "DUPLICATED: $brick/$v heads $n bullets in $charter (expected exactly 1)"
+      fail=1
+    fi
+  done
+
+  for c in $claimed; do
+    if ! echo "$vars" | grep -qxF "$c"; then
+      echo "INVENTED: $charter claims \`$c\`, which is not a public var on $iface"
+      fail=1
+    fi
+  done
+done
+
+# ---- bases: charter required; no interface.clj exists to check against ----
+for basedir in $(find bases -maxdepth 1 -mindepth 1 -type d | sort); do
+  brick=$(basename "$basedir")
+  charter="bases/$brick/docs/charter.md"
+  bricks=$((bricks + 1))
+  if [ ! -f "$charter" ]; then
+    echo "MISSING CHARTER: $charter (base)"
+    fail=1
+  fi
+done
+
+echo "---"
+echo "bricks checked: $bricks   interface vars checked: $vars_total"
+if [ "$fail" -eq 0 ]; then
+  echo "charter completeness: OK"
+else
+  echo "charter completeness: FINDINGS ABOVE"
+fi
+exit "$fail"
