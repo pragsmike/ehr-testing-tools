@@ -33,6 +33,13 @@
 #
 # Exit 0 = every brick complete. Exit 1 = at least one finding, each
 # printed with the brick and var it names.
+# A var name may begin with `-` (`ehrt.oracle.interface/-main` is the
+# workspace's only one today). Every comparison against a var name is
+# therefore written `grep -qxF -- "$c"`: without the `--`, grep reads
+# `-main` as a bundle of options and dies "invalid max count", and the
+# reverse check reports a REAL var as INVENTED. Found live, on the last
+# brick of the last batch -- the one brick whose whole interface is a
+# `-main`.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
@@ -72,7 +79,7 @@ for iface in $(find components -name interface.clj | sort); do
   done
 
   for c in $claimed; do
-    if ! echo "$vars" | grep -qxF "$c"; then
+    if ! echo "$vars" | grep -qxF -- "$c"; then
       echo "INVENTED: $charter claims \`$c\`, which is not a public var on $iface"
       fail=1
     fi
