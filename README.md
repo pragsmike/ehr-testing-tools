@@ -248,7 +248,13 @@ not, and how to read it;
 is the path end to end, with two worked example emitters that depend on
 nothing in this repo;
 [`docs/formats.md`](docs/formats.md#the-event-log) is the wire-level
-shape; and the manual's
+shape, and it carries the counting rule with it — an event of the log
+is an entry in the **top-level vector**, and the nested
+`:pre-horizon-facts` a `:registered` event may carry are not events of
+the log even though four of their names collide with real kinds, so a
+tree-walking consumer counts a different number than this repository
+does ([Read the top-level vector only](docs/formats.md#read-the-top-level-vector-only));
+and the manual's
 [Chapter 3](docs/manual/03-a-simulated-hospital.md#the-log-underneath-every-message)
 tells it as a story.
 
