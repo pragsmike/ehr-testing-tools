@@ -391,6 +391,55 @@
                {:event :discharge :t 30 :participants (subject "P1")}]]
       (is (empty? (check/expired-patient-retains-location log))))))
 
+;; --- B2 (R-fork 2026-09-03, option C): the stale-hold invariant ----------
+;;
+;; RED-phase scaffolding, deliberate: these resolve the invariant's var
+;; dynamically so this namespace still LOADS while `check` does not yet
+;; define it -- a direct call would fail the whole namespace at compile
+;; and take every green test down with it. The GREEN commit rewrites
+;; them to direct calls.
+
+(def ^:private reinstated-hold-log
+  "The TS-5 adjacent case, reached -- the 2026-09-02 STOP record's own
+  mechanism, minimal: a same-batch :cancel-admit rewrites the subject to
+  :status :new (dissoc'ing class and location), then the
+  :cancel-transfer behind it reinstates the bed the admission's own
+  cancel had just released. From t 10 the patient is :new, class-less,
+  and holding ED-H01 -- the state no invariant judged before this one."
+  [{:event :admission :t 0 :home-ward "Emergency" :participants (subject "P1")
+    :location {:ward "Emergency" :bed "ED-H01" :placement :surge}}
+   {:event :transfer :t 5 :home-ward "Renal" :participants (subject "P1")
+    :from {:ward "Emergency" :bed "ED-H01" :placement :surge}
+    :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
+   {:event :discharge :t 10 :participants (subject "P1")}
+   {:event :cancel-admit :t 10 :cancels-event-id 0 :participants (subject "P1")}
+   {:event :cancel-transfer :t 10 :cancels-event-id 1 :home-ward "Emergency"
+    :location {:ward "Emergency" :bed "ED-H01" :placement :surge}
+    :participants (subject "P1")}])
+
+(deftest non-admitted-patients-hold-no-bed-convicts-a-reinstated-location-on-a-non-admitted-subject
+  (testing "a location reinstated onto a non-admitted subject convicts at
+            the reinstatement's own :t -- exactly one row here, because
+            the reinstating record is the log's last"
+    (let [f (resolve 'ehrt.sim-check.check/non-admitted-patients-hold-no-bed)]
+      (is (some? f) "check/non-admitted-patients-hold-no-bed is not defined yet (RED)")
+      (when (some? f)
+        (is (= [{:invariant :non-admitted-patients-hold-no-bed :patient-id "P1" :at 10}]
+               (vec (@f reinstated-hold-log))))))))
+
+(deftest non-admitted-patients-hold-no-bed-stays-silent-for-expired
+  (testing "evolve :discharge's :expired arm deliberately leaves
+            :location standing (the body stays in the bed) -- that
+            retention is expired-patient-retains-location's own row,
+            never this one's"
+    (let [f (resolve 'ehrt.sim-check.check/non-admitted-patients-hold-no-bed)]
+      (is (some? f) "check/non-admitted-patients-hold-no-bed is not defined yet (RED)")
+      (when (some? f)
+        (is (empty? (@f [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+                          :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
+                         {:event :discharge :t 30 :disposition :expired
+                          :participants (subject "P1")}])))))))
+
 ;; --- M5b: :procedure/:observation/:medication-order/:medication-end ------
 
 (def ^:private a-citation {:module "sinusitis" :state :doctor-visit})
@@ -577,6 +626,31 @@
       (is (= [{:invariant :outpatient-patients-occupy-no-bed :patient-id "P1" :at 5}]
              (check/outpatient-patients-occupy-no-bed log))))))
 
+;; --- B1 (R-fork 2026-09-03, riding on B2): the rule scoped to its visit --
+
+(def ^:private post-visit-end-outpatient-hold-log
+  "A bed granted mid-visit, held past :outpatient-visit-end -- the
+  2026-09-02 STOP record's B1 ground, minimal. 30,505 of its 30,507
+  rows were stamped after the visit had closed, against a :discharged
+  patient: rows about a stale hold, not about the visit the rule's own
+  docstring scopes it to. The t 20 record belongs to ANOTHER patient,
+  so it also witnesses that a lingering flag no longer emits for a
+  patient whose visit is over."
+  [{:event :outpatient-visit :t 0 :participants (subject "P1")}
+   {:event :transfer :t 5 :home-ward "Renal" :participants (subject "P1")
+    :from nil :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
+   {:event :outpatient-visit-end :t 10 :participants (subject "P1")}
+   {:event :observation :t 20 :participants (subject "P2")}])
+
+(deftest outpatient-patients-occupy-no-bed-stops-convicting-after-the-visit-ends
+  (testing "'for the visit's entire duration' (the docstring) means the
+            VISIT's: at :outpatient-visit-end the rule lets go, and the
+            surviving stale hold is non-admitted-patients-hold-no-bed's
+            row from that exact record on -- world-after there is
+            already :discharged plus the held bed"
+    (is (= [{:invariant :outpatient-patients-occupy-no-bed :patient-id "P1" :at 5}]
+           (vec (check/outpatient-patients-occupy-no-bed post-visit-end-outpatient-hold-log))))))
+
 ;; --- sim/ADR-0011: the warm-up mark -------------------------------------------
 
 (deftest warm-up-mark-matches-window-detects-mismarked-event
@@ -670,6 +744,17 @@
 (deftest merge-survivor-absorbs-merged-mrns-detects-wrong-active-mrn
   (let [log (update-in legit-merge-log [2] assoc :surviving-mrn "MRN999999")]
     (is (seq (check/merge-survivor-absorbs-merged-mrns log)))))
+
+(deftest non-admitted-patients-hold-no-bed-stays-silent-for-a-merged-bed-holder
+  (testing "decide :merge's never-mergeable? excludes only :new and
+            :merged, so an ADMITTED bed-holder is a legal merge target
+            and the absorbed record retains the bed the way :expired
+            does -- legit-merge-log's own P2, merged at t 10 while
+            holding RENAL-H01"
+    (let [f (resolve 'ehrt.sim-check.check/non-admitted-patients-hold-no-bed)]
+      (is (some? f) "check/non-admitted-patients-hold-no-bed is not defined yet (RED)")
+      (when (some? f)
+        (is (empty? (@f legit-merge-log)))))))
 
 (deftest no-events-after-merged-terminal-holds-for-legit-log
   (is (empty? (check/no-events-after-merged-terminal legit-merge-log))))
@@ -928,6 +1013,15 @@
 ;; They are cited by name in `ehrt.sim-check.check`'s own ADR-0169
 ;; comment, and their bodies are copied from `check.clj` at `d49f1c6`
 ;; with NOTHING changed but the name.
+;;
+;; 2026-09-03 (R-fork, B1/B2) -- one exception each way, both dated:
+;; `naive-outpatient-patients-occupy-no-bed` is no longer the d49f1c6
+;; copy, because the RULE itself was re-scoped to the open visit; its
+;; naive body is re-derived (visit-openness recomputed from the whole
+;; log prefix at every record, the naive way) rather than copied. And
+;; `naive-non-admitted-patients-hold-no-bed` joins as the naive
+;; reference for the NEW stale-hold invariant, written naive-first so
+;; the fold-with-flags implementation lands against a standing oracle.
 
 (defn- naive-no-double-occupancy [ground-truth]
   (for [{:keys [event world-after]} (fold/replay ground-truth)
@@ -943,11 +1037,36 @@
                    (or (nil? location) (nil? (:bed location))))]
     {:invariant :admitted-occupies-one-slot :patient-id patient-id :at (:t event)}))
 
+(defn- naive-visit-open?
+  "Whether `pid`'s most recent encounter opener/closer, at or before
+  record `idx`, is an `:outpatient-visit` -- the naive reading of 'the
+  open encounter is an outpatient visit', recomputed from the whole log
+  prefix at every record. The boundary kinds are `check.clj`'s own
+  `encounter-openers`/`encounter-closers`, duplicated inline the way
+  every naive body here duplicates its subject."
+  [events idx pid]
+  (->> (take (inc idx) events)
+       (filter (fn [ev]
+                 (and (contains? #{:admission :outpatient-visit
+                                   :discharge :outpatient-visit-end}
+                                 (:event ev))
+                      (some #(= pid (:patient-id %)) (:participants ev)))))
+       last :event (= :outpatient-visit)))
+
 (defn- naive-outpatient-patients-occupy-no-bed [ground-truth]
+  (let [events (vec ground-truth)]
+    (for [[idx {:keys [event world-after]}] (map-indexed vector (fold/replay ground-truth))
+          [patient-id {:keys [class location]}] world-after
+          :when (and (= class :outpatient) (some? location)
+                     (naive-visit-open? events idx patient-id))]
+      {:invariant :outpatient-patients-occupy-no-bed :patient-id patient-id :at (:t event)})))
+
+(defn- naive-non-admitted-patients-hold-no-bed [ground-truth]
   (for [{:keys [event world-after]} (fold/replay ground-truth)
-        [patient-id {:keys [class location]}] world-after
-        :when (and (= class :outpatient) (some? location))]
-    {:invariant :outpatient-patients-occupy-no-bed :patient-id patient-id :at (:t event)}))
+        [patient-id {:keys [status location]}] world-after
+        :when (and (some? location)
+                   (not (contains? #{:admitted :expired :merged} status)))]
+    {:invariant :non-admitted-patients-hold-no-bed :patient-id patient-id :at (:t event)}))
 
 (defn- naive-occupancy-within-capacity [ground-truth facility-config]
   (for [{:keys [event world-after]} (fold/replay ground-truth)
@@ -1321,3 +1440,22 @@
       (let [log (:log (last small-mutated-fixtures))]
         (is (= ["P2" "P2" "P4" "P4"]
                (mapv :patient-id (check/no-events-after-merged-terminal log))))))))
+
+;; --- B2/B1 (R-fork 2026-09-03): the two twins' own agreement fixtures ----
+;;
+;; The population-scale defspec above cannot witness either divergence:
+;; its mutated logs never carry an :outpatient-visit-end (outpatient-ize
+;; inserts openers only), and nothing in its five mutators reinstates a
+;; location onto a non-admitted subject. These two hand fixtures are the
+;; shapes the twins must agree on before the harness proper grows them.
+
+(deftest naive-and-fast-outpatient-rule-agree-on-a-post-visit-end-log
+  (is (= (vec (naive-outpatient-patients-occupy-no-bed post-visit-end-outpatient-hold-log))
+         (vec (check/outpatient-patients-occupy-no-bed post-visit-end-outpatient-hold-log)))))
+
+(deftest naive-and-fast-non-admitted-bed-hold-agree-on-a-reinstatement-log
+  (let [f (resolve 'ehrt.sim-check.check/non-admitted-patients-hold-no-bed)]
+    (is (some? f) "check/non-admitted-patients-hold-no-bed is not defined yet (RED)")
+    (when (some? f)
+      (is (= (vec (naive-non-admitted-patients-hold-no-bed reinstated-hold-log))
+             (vec (@f reinstated-hold-log)))))))
