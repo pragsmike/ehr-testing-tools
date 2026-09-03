@@ -22,6 +22,24 @@ with them.
   folding every patient ever created, `decide :discharge`'s boarder `sort-by`, and
   `last-uncancelled-index` (cannot ride either arc-0 carrier without a second code
   path, ADR-0169 F-3). Site ranking within generate NOT re-profiled.
+- OPEN **[cancel-transfer-reinstates-a-new-subject]** PRIORITY 2 -- MEASURED
+  2026-09-02 against a downstream QA calibration config
+  (`test-fixtures/downstream-calibration/`, record
+  `2026-09-02-downstream-self-check-failed.md`): a same-batch `:cancel-admit`
+  rewrites the subject to `:status :new`, which
+  `statuses-that-supersede-a-reinstatement` deliberately excludes, so the
+  `:cancel-transfer` behind it reinstates a bed onto a patient already
+  discharged from it -- the TS-5 close's "adjacent case this change
+  deliberately does not reach", reached. R-fork (2026-09-03) ruled option (C);
+  the CATALOG half landed 2026-09-03 (`non-admitted-patients-hold-no-bed`,
+  plus the outpatient rule scoped to its visit, record
+  `2026-09-03-b2-b1-stale-hold.md`), so both the 1,984- and 2,000-arrival
+  calibration runs now exit 2 naming the new invariant. WHAT REMAINS is A1,
+  the ENGINE half: admit `:new` to
+  `log-index/statuses-that-supersede-a-reinstatement` so the churn
+  `:cancel-transfer` is refused at decide time. Draw-affecting; owes its own
+  ADR and declared sweep, and flips the calibration fixture back to exit 0
+  when it lands. A2/A3 declined by the same ruling.
 - OPEN **[person-simulator]** PRIORITY 3 -- traffic-scale arc 2. New component,
   sibling charter discipline to `patient-simulator`: bespoke hazard-rate life-arc
   processes (`rulings.md#R-mix-1`), households and pregnancy->delivery
