@@ -748,16 +748,17 @@
           outcome (decide/decide (streams/one-stream (Random. 1)) 20 world2 "P1" {:type :cancel-discharge})]
       (assert-step-rejected! outcome "P1" :illegal-cancel-discharge-subject-superseded))))
 
-(deftest a-cancel-transfer-against-a-cancel-admitted-subject-is-still-applied
-  (testing "THE BOUNDARY THIS FIX DELIBERATELY DOES NOT CROSS, pinned so
-            that widening it is a decision and not a drift. `:new` is what
-            `evolve :cancel-admit` writes, and a cancel-admit is a
-            correction of the record rather than an event in the patient's
-            life -- the same reading `cancel-discharge-restores-class-even-
-            after-a-preceding-cancel-admit-stripped-it` (M6 Task 2) rests
-            on. MEASURED: the `nobed` 10^5 cell carries 2 of these beside
-            its 61 discharged-subject cancel-transfers, and this change
-            leaves those 2 alone."
+(deftest a-cancel-transfer-against-a-cancel-admitted-subject-is-rejected
+  (testing "THE BOUNDARY, CROSSED AS A DECISION AND NOT A DRIFT. This
+            test pinned the TS-5 exclusion (`:new` absent from the
+            superseding set) as `...-is-still-applied`, its own docstring
+            saying widening it must be a decision -- ADR-0177
+            (R-A1-scope, 2026-09-03) is that decision, taken after the
+            downstream calibration config reached the adjacent case and
+            left a :new subject holding a bed for the rest of the log.
+            The world here (cancel-admit with NO intervening discharge)
+            is kept as the second witness shape: even with the admission
+            merely corrected away, the reinstatement is refused."
     (let [world0 (world-of {"P1" (state/initial-patient "P1" "MRN000001")})
           world1 (admit world0 0 "P1" "Renal")
           {t-events :events} (decide/decide (streams/one-stream (Random. 1)) 10 world1 "P1"
@@ -766,9 +767,11 @@
           {ca-events :events} (decide/decide (streams/one-stream (Random. 1)) 20 world2 "P1" {:type :cancel-admit})
           world3 (fold-events world2 ca-events)
           _ (is (= :new (get-in world3 [:patients "P1" :status])) "sanity: reverted to :new")
-          {c-events :events} (decide/decide (streams/one-stream (Random. 1)) 30 world3 "P1" {:type :cancel-transfer})]
-      (is (= 1 (count c-events)))
-      (is (= :cancel-transfer (:event (first c-events)))))))
+          outcome (decide/decide (streams/one-stream (Random. 1)) 30 world3 "P1" {:type :cancel-transfer})
+          world4 (fold-events world3 (:events outcome))]
+      (assert-step-rejected! outcome "P1" :illegal-cancel-transfer-subject-superseded)
+      (is (= :new (:status (:rejected outcome))))
+      (is (nil? (get-in world4 [:patients "P1" :location]))))))
 
 (deftest a-cancel-transfer-may-not-reinstate-a-new-subject
   (testing "ADR-0177 (A1, R-A1-scope 2026-09-03): the TS-5 boundary,

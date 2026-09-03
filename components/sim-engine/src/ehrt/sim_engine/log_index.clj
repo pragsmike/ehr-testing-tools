@@ -199,28 +199,43 @@
    :cancel-discharge :discharged})
 
 (def statuses-that-supersede-a-reinstatement
-  "The three statuses that say the subject is no longer a patient the
-  hospital is holding: `:discharged` (they left), `:expired` (they
-  died), `:merged` (their record was absorbed into another's).
+  "Per cancel kind, the statuses that say the state its reinstatement
+  would restore has been superseded by a later event in the subject's
+  own life: `:discharged` (they left), `:expired` (they died),
+  `:merged` (their record was absorbed into another's) -- and, for
+  `:cancel-transfer` only, `:new` (their record was corrected away by
+  a `:cancel-admit`).
 
-  `:new` is deliberately ABSENT. It is what `evolve :cancel-admit`
-  writes, and a cancel-admit is a correction of the record rather than
-  an event in the patient's life -- `ehrt.sim-engine.engine-test/
-  cancel-discharge-restores-class-even-after-a-preceding-cancel-admit-
-  stripped-it` is the M6 Task 2 finding that says so, and it stays
-  legal here. MEASURED, so the exclusion is a decision and not an
-  oversight: the `nobed` 10^5 cell at seed 20260824 carries 2
-  cancel-transfers against a `:new` subject alongside its 61 against a
-  `:discharged` one, and this guard leaves those 2 alone -- named in
-  `.agents/session-records/2026-08-29-ts-5-superseded-cancel.md` as an
-  adjacent case this change deliberately does not reach.
+  `:new` was deliberately ABSENT, and one shared set served both
+  kinds, from TS-5 (2026-08-29) until ADR-0177 (2026-09-03). The
+  original reading: a cancel-admit is a correction of the record
+  rather than an event in the patient's life -- `ehrt.sim-engine.
+  engine-test/cancel-discharge-restores-class-even-after-a-preceding-
+  cancel-admit-stripped-it` is the M6 Task 2 finding that says so --
+  and MEASURED, the `nobed` 10^5 cell at seed 20260824 carried 2
+  cancel-transfers against a `:new` subject that the exclusion left
+  alone, named in `.agents/session-records/2026-08-29-ts-5-superseded-
+  cancel.md` as an adjacent case that change deliberately did not
+  reach. The downstream calibration config
+  (`test-fixtures/downstream-calibration/`) then REACHED it (the
+  2026-09-02 STOP record): a same-batch `:cancel-admit` +
+  `:cancel-transfer` left a `:status :new` subject holding a bed for
+  the rest of the log, the exact state `ehrt.sim-check.check/
+  non-admitted-patients-hold-no-bed` now convicts. ADR-0177
+  (R-A1-scope) reverses the exclusion for `:cancel-transfer` alone: a
+  cancel-transfer reinstates ONLY location/home-ward, so applied onto
+  a `:new` subject it re-creates that convicted state. The exclusion
+  STANDS for `:cancel-discharge`, whose undo reinstates `:admitted` +
+  bed + `:class` as a coherent whole -- M6 Task 2 stays green, which
+  is why this is a per-kind table and not one set grown by a member.
 
   `:merged` is unreachable through `run`, which ends a merged patient's
   queue before their next step is ever decided (the `:merged` branch at
   the top of the run loop). It is named anyway, for a `decide` driven
   by hand and for the reader who would otherwise have to prove the
   omission safe."
-  #{:discharged :expired :merged})
+  {:cancel-transfer #{:new :discharged :expired :merged}
+   :cancel-discharge #{:discharged :expired :merged}})
 
 (defn subject-superseded?
   "Whether the state a cancel of `kind` would reinstate onto `patient`
@@ -250,10 +265,14 @@
   could: at the same witness the board reads NIL for SURGERY-91. The
   patient is gone, not displaced, so the bed they would be reinstated
   into is genuinely empty -- which is the whole of why the double-
-  occupancy guard passes a reinstatement no one should make."
+  occupancy guard passes a reinstatement no one should make.
+
+  Since ADR-0177 the superseding set is looked up per `kind` (see
+  `statuses-that-supersede-a-reinstatement`): `:new` supersedes a
+  `:cancel-transfer` and does not supersede a `:cancel-discharge`."
   [patient kind]
   (let [status (:status patient)]
-    (and (statuses-that-supersede-a-reinstatement status)
+    (and ((statuses-that-supersede-a-reinstatement kind) status)
          (not= status (status-a-cancel-target-leaves kind)))))
 
 (defn reinstated-state
