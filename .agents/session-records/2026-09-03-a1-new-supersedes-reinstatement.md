@@ -281,6 +281,19 @@ session-records INDEX, prompts INDEX, `state-derived.md`,
 
 Final full `make test`: exit 0, 414 result lines, all
 `0 failures, 0 errors`, on the settled tree with every edit of this
-session in place. `clojure -M:poly check` runs green through the
-pre-push hook. CI verification and post-push message verification are
-appended by the close-marker commit, per the B2 precedent.
+session in place. `clojure -M:poly check` and the full-history
+gitleaks scan ran green through the pre-push hook.
+
+**CI green at `96a339e`** — run
+[33812417224](https://github.com/pragsmike/ehr-testing-tools/actions/runs/33812417224),
+`test` on `main`, success in 12m32s. Verified with `gh run watch`/`gh
+run view`, not inferred from the push
+(`rulings.md#R-session-verifies-ci-via-gh`). The run's two annotations
+are pre-existing infra deprecation notices (Node 20, setup-java v4),
+not failures.
+
+Post-push message verification: all five commits (`a7ec6f1`,
+`193a54e`, `e8016e7`, `38341c2`, `96a339e`) diffed against their own
+message files; every diff was a single trailing blank line — `git log
+--format=%B`'s own artifact, not a mismatch. All five are pure ASCII
+(`rulings.md#R-post-push-ascii`).
