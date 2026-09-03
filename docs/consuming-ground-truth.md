@@ -340,7 +340,7 @@ bin/ehrt sim run --seed 42 --patients 20 --churn --format ground-truth \
 invariants need config the log itself does not carry, and without the
 flag they are checked against the shipped defaults — see below.
 
-`sim check` runs **44 invariants** over the log and reports each one it
+`sim check` runs **45 invariants** over the log and reports each one it
 ran, by name, in `:payload :invariants-checked`. Exit 0 with `:status
 :ok` means every one held; exit 1 with `:status :rejected` and
 `:category :invariant-violation` carries a `:violations` vector naming
@@ -362,7 +362,8 @@ config-needing siblings:
 `clinical-content-only-when-admitted`
 `medication-end-references-existing-order-and-follows-it-in-time`
 `care-plan-end-references-existing-start-and-follows-it-in-time`
-`expired-patient-retains-location` `identity-fill-references-its-placeholder-registration`
+`expired-patient-retains-location` `non-admitted-patients-hold-no-bed`
+`identity-fill-references-its-placeholder-registration`
 `identification-merge-survivor-is-the-persons-prior-patient`
 `every-placeholder-registration-is-resolved-or-still-open`
 `no-resolution-after-a-placeholder-is-consumed`
@@ -378,7 +379,7 @@ config-needing siblings:
 Two things about that list that a reader will otherwise get wrong.
 
 **Without `--config`, `sim check` reads the DEFAULT facility, warm-up
-window and order profiles.** **Four** of the 44 invariants need config
+window and order profiles.** **Four** of the 45 invariants need config
 the log does not carry — `occupancy-within-capacity` and
 `surge-only-when-earlier-rungs-exhausted` need the facility,
 `warm-up-mark-matches-window` needs the warm-up window, and
@@ -411,10 +412,10 @@ check is testing what you configured — and that is the one remaining
 case where this section's old advice, *trust the run's own self-check*,
 still has nothing better to offer.
 
-**Seven of the 44 are vacuous on a log that does not opt in.** The three
+**Seven of the 45 are vacuous on a log that does not opt in.** The three
 bed-cycle invariants are no-ops on a log with no `:bed-status-change`,
 and the four scheduling invariants are no-ops on a log with no
-`:appointment` — but all 44 are still listed in
+`:appointment` — but all 45 are still listed in
 `:invariants-checked`. A green check on a thin log is a weaker statement
 than a green check on a rich one, and the report does not distinguish
 them for you. Count the kinds in your own log.
@@ -423,7 +424,7 @@ them for you. Count the kinds in your own log.
 
 **This section is the other half of the one above and is meant to be
 read with the same weight.** A green `sim check` is a statement about
-the 44 invariants in that catalog and about nothing else.
+the 45 invariants in that catalog and about nothing else.
 
 **Known-open behaviours the catalog permits by construction.**
 

@@ -982,10 +982,27 @@
                      "; the byte gate above carries the diagnostic."))))))))
 
 (def ^:private arc0-invariant-catalog
-  "The 44 invariant names `check-all` reports, in reporting order --
+  "The 45 invariant names `check-all` reports, in reporting order --
   pinned so the findings assertion below is a full-value `=` rather than
   a check of one key. Catalog drift is itself a change in what \"identical
   findings\" means, so it belongs inside the gate, not outside it.
+
+  RE-PINNED AGAIN 2026-09-03, 44 -> 45, by B2 (R-fork 2026-09-03,
+  option C; per R-catalog-pin the new name is an ADDITION with this
+  dated citation -- nothing renamed, nothing removed), and disclosed on
+  the same terms as every re-pin below. WHICH INVARIANT MOVED: none of
+  the FINDINGS. `:status` is `:ok` on all four corpora and `:events` is
+  unchanged -- 1,131 / 1,660 / 1,342 / 92 -- and the one row that
+  joined, `non-admitted-patients-hold-no-bed`, convicts nothing in any
+  of them: none of the four carries a reinstatement onto a non-admitted
+  subject (the TS-5 adjacent case B2 exists to judge; the corpus that
+  DOES carry it is `test-fixtures/downstream-calibration/` at 1,984 and
+  2,000 arrivals, deliberately unpinned). It sits directly after
+  `expired-patient-retains-location`, beside its converse pair, which
+  is where `catalog` itself puts it. The SAME commit also scoped
+  `outpatient-patients-occupy-no-bed` to its own open visit (B1) --
+  a change to what that FINDING means, moving no finding here because
+  no gated corpus holds a bed on an outpatient at all.
 
   RE-PINNED AGAIN 2026-08-29, 43 -> 44, by TS-4's consumed clause
   (`roadmap.md#ts-4-placeholder-unresolved`), and disclosed on the same
@@ -1064,6 +1081,7 @@
     medication-end-references-existing-order-and-follows-it-in-time
     care-plan-end-references-existing-start-and-follows-it-in-time
     expired-patient-retains-location
+    non-admitted-patients-hold-no-bed
     identity-fill-references-its-placeholder-registration
     identification-merge-survivor-is-the-persons-prior-patient
     every-placeholder-registration-is-resolved-or-still-open
