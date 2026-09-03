@@ -479,18 +479,41 @@
   outpatient patient was never a candidate for the occupancy board to
   include in the first place (`sim-model/occupancy-board`
   already only folds patients with a `:bed` present, so this is checked
-  here directly rather than assumed from that board's own omission)."
+  here directly rather than assumed from that board's own omission).
+
+  SCOPED TO ITS OWN VISIT (2026-09-03, R-fork B1, riding on B2): 'for
+  the visit's entire duration' had no code behind 'the visit' -- the
+  predicate read `:class` and `:location` and never asked whether the
+  outpatient visit was still open, so 30,505 of the 2026-09-02 STOP
+  record's 30,507 rows were stamped AFTER `:outpatient-visit-end`,
+  against a `:discharged` patient. A patient is in scope while their
+  most recent encounter boundary (`encounter-openers`/
+  `encounter-closers`) is an `:outpatient-visit` -- i.e. while the OPEN
+  encounter is an outpatient visit; past the boundary, a surviving hold
+  is `non-admitted-patients-hold-no-bed`'s row, from that exact record
+  on (`world-after` at the closer is already `:discharged` plus the
+  held bed, so the handoff has no gap and no overlap)."
   [ground-truth]
   (fold-records
    ground-truth
-   #{}
-   (fn [flags {:keys [event world-after]}]
-     (let [flags' (reduce (fn [fs pid] (reflag fs pid (outpatient-with-bed? (get world-after pid))))
-                          flags (participants-of event))]
-       [flags'
+   {:open #{} :flags #{}}
+   (fn [{:keys [open flags]} {:keys [event world-after]}]
+     (let [kind (:event event)
+           pids (participants-of event)
+           open' (cond
+                   (= :outpatient-visit kind) (into open pids)
+                   (or (encounter-openers kind) (encounter-closers kind)) (reduce disj open pids)
+                   :else open)
+           flags' (reduce (fn [fs pid]
+                            (reflag fs pid (and (contains? open' pid)
+                                                (outpatient-with-bed? (get world-after pid)))))
+                          flags pids)]
+       [{:open open' :flags flags'}
+        ;; Guard positive -> emit from the ORIGINAL expression over
+        ;; world-after (the ADR-0169 order-identity convention above).
         (when (seq flags')
           (for [[patient-id patient] world-after
-                :when (outpatient-with-bed? patient)]
+                :when (and (contains? open' patient-id) (outpatient-with-bed? patient))]
             {:invariant :outpatient-patients-occupy-no-bed :patient-id patient-id :at (:t event)}))]))))
 
 ;; --- GMF coverage Wave C (2026-08-02, ADR-0028, C3): :expired --------------
@@ -509,6 +532,58 @@
   (for [{:keys [event patient-id after]} (engine/replay ground-truth)
         :when (and (= :discharge (:event event)) (= :expired (:disposition event)) (nil? (:location after)))]
     {:invariant :expired-patient-retains-location :patient-id patient-id :at (:t event)}))
+
+;; --- B2 (R-fork 2026-09-03, option C): the stale-hold invariant ----------
+
+(def ^:private statuses-entitled-to-a-location
+  "The three statuses that may hold a `:location`, derived writer by
+  writer (session record 2026-09-03-b2-b1-stale-hold): `:admitted`,
+  whose bed the occupancy law DEMANDS (`admitted-occupies-one-slot`),
+  and the two absorbing terminals that RETAIN the bed the last
+  admitted-era writer gave it -- `:expired` (`evolve :discharge`'s
+  expired arm deliberately leaves `:location` standing;
+  `expired-patient-retains-location` asserts exactly that retention) and
+  `:merged` (`evolve :merge`'s merged arm touches only `:status`, and an
+  admitted bed-holder is a LEGAL merge target: `decide :merge`'s
+  `never-mergeable?` excludes only `:new` and `:merged`). Every other
+  status -- `:new`, `:discharged`, or a hand-authored patient carrying
+  no status at all -- holds no bed."
+  #{:admitted :expired :merged})
+
+(defn- non-admitted-bed-holder? [{:keys [status location]}]
+  (and (some? location)
+       (not (contains? statuses-entitled-to-a-location status))))
+
+(defn non-admitted-patients-hold-no-bed
+  "A non-admitted patient holds no bed: any patient whose `:status` is
+  outside `statuses-entitled-to-a-location` while their `:location` is
+  non-nil, at any event boundary. The complement of
+  `admitted-occupies-one-slot` (which demands the bed while `:admitted`)
+  and `expired-patient-retains-location` (which demands its retention at
+  death), closing the coverage hole the 2026-09-02 STOP record measured:
+  a same-batch `:cancel-admit` + `:cancel-transfer` leaves a
+  `:status :new` patient holding a bed for the rest of the log, and no
+  row judged that state -- it shipped CONVICTED at `--patients 2000`
+  (only because a later visit stamped `:class :outpatient` over it) and
+  CERTIFIED CLEAN at 1984, same patient, same batch instant.
+
+  Judged from the log alone, deliberately NOT via
+  `ehrt.sim-engine.log-index/subject-superseded?` -- this namespace is
+  the independent judge (the vacuous-gate note above the bed-cycle rows
+  below), and that guard's own deliberate `:new` exclusion is precisely
+  the seam under judgment here."
+  [ground-truth]
+  (fold-records
+   ground-truth
+   #{}
+   (fn [flags {:keys [event world-after]}]
+     (let [flags' (reduce (fn [fs pid] (reflag fs pid (non-admitted-bed-holder? (get world-after pid))))
+                          flags (participants-of event))]
+       [flags'
+        (when (seq flags')
+          (for [[patient-id patient] world-after
+                :when (non-admitted-bed-holder? patient)]
+            {:invariant :non-admitted-patients-hold-no-bed :patient-id patient-id :at (:t event)}))]))))
 
 
 ;; --- ARC 3B SWEEP 2 (ADR-0174 section 2(c)): the BED-STATUS CYCLE, judged
@@ -1842,6 +1917,13 @@
    ;; reporting order.
    #'care-plan-end-references-existing-start-and-follows-it-in-time
    #'expired-patient-retains-location
+   ;; B2 (R-fork 2026-09-03, option C): registered beside its converse
+   ;; pair -- `admitted-occupies-one-slot` (with the occupancy family
+   ;; above) demands the bed, the row directly above demands its
+   ;; retention at death, and this one convicts every other holder --
+   ;; rather than appended at the end, for the reason this catalog is
+   ;; documented as being in reporting order.
+   #'non-admitted-patients-hold-no-bed
    ;; ADR-0173 section 2(e) (arc 3a part 3): the person-fold family, six,
    ;; registered together and in the order the ADR tables them. Three
    ;; are over part 4's identification flow and fire on nothing this arc

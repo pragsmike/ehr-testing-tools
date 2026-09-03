@@ -392,12 +392,6 @@
       (is (empty? (check/expired-patient-retains-location log))))))
 
 ;; --- B2 (R-fork 2026-09-03, option C): the stale-hold invariant ----------
-;;
-;; RED-phase scaffolding, deliberate: these resolve the invariant's var
-;; dynamically so this namespace still LOADS while `check` does not yet
-;; define it -- a direct call would fail the whole namespace at compile
-;; and take every green test down with it. The GREEN commit rewrites
-;; them to direct calls.
 
 (def ^:private reinstated-hold-log
   "The TS-5 adjacent case, reached -- the 2026-09-02 STOP record's own
@@ -421,24 +415,19 @@
   (testing "a location reinstated onto a non-admitted subject convicts at
             the reinstatement's own :t -- exactly one row here, because
             the reinstating record is the log's last"
-    (let [f (resolve 'ehrt.sim-check.check/non-admitted-patients-hold-no-bed)]
-      (is (some? f) "check/non-admitted-patients-hold-no-bed is not defined yet (RED)")
-      (when (some? f)
-        (is (= [{:invariant :non-admitted-patients-hold-no-bed :patient-id "P1" :at 10}]
-               (vec (@f reinstated-hold-log))))))))
+    (is (= [{:invariant :non-admitted-patients-hold-no-bed :patient-id "P1" :at 10}]
+           (vec (check/non-admitted-patients-hold-no-bed reinstated-hold-log))))))
 
 (deftest non-admitted-patients-hold-no-bed-stays-silent-for-expired
   (testing "evolve :discharge's :expired arm deliberately leaves
             :location standing (the body stays in the bed) -- that
             retention is expired-patient-retains-location's own row,
             never this one's"
-    (let [f (resolve 'ehrt.sim-check.check/non-admitted-patients-hold-no-bed)]
-      (is (some? f) "check/non-admitted-patients-hold-no-bed is not defined yet (RED)")
-      (when (some? f)
-        (is (empty? (@f [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
-                          :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
-                         {:event :discharge :t 30 :disposition :expired
-                          :participants (subject "P1")}])))))))
+    (is (empty? (check/non-admitted-patients-hold-no-bed
+                 [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+                   :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
+                  {:event :discharge :t 30 :disposition :expired
+                   :participants (subject "P1")}])))))
 
 ;; --- M5b: :procedure/:observation/:medication-order/:medication-end ------
 
@@ -751,10 +740,7 @@
             and the absorbed record retains the bed the way :expired
             does -- legit-merge-log's own P2, merged at t 10 while
             holding RENAL-H01"
-    (let [f (resolve 'ehrt.sim-check.check/non-admitted-patients-hold-no-bed)]
-      (is (some? f) "check/non-admitted-patients-hold-no-bed is not defined yet (RED)")
-      (when (some? f)
-        (is (empty? (@f legit-merge-log)))))))
+    (is (empty? (check/non-admitted-patients-hold-no-bed legit-merge-log)))))
 
 (deftest no-events-after-merged-terminal-holds-for-legit-log
   (is (empty? (check/no-events-after-merged-terminal legit-merge-log))))
@@ -1199,13 +1185,52 @@
             {:event :discharge :t (+ t-max 1 (* 100 round) k)
              :participants [{:patient-id pid :role :subject}]}))))
 
+(defn- stale-holds
+  "For up to three patients the final world says are :discharged, append
+  a :cancel-transfer reinstating one of their own uncancelled
+  :transfer's location -- the TS-5 shape the engine's own
+  subject-superseded? guard refuses at decide time, injected here
+  post-hoc so `non-admitted-patients-hold-no-bed` has something to
+  convict (2026-09-03, B2). Runs LAST in `mutate`, after every
+  length-changing mutation, so the `:cancels-event-id` it writes indexes
+  the final log and `cancel-references-existing-uncancelled-event` stays
+  silent about it: this mutator means *reinstate a bed onto someone who
+  left*, not *and also dangle a reference*."
+  [log]
+  (let [log (vec log)
+        final (:world-after (last (fold/replay log)))
+        cancelled (into #{} (keep #(when (= :cancel-transfer (:event %)) (:cancels-event-id %))) log)
+        pid-of (fn [ev] (:patient-id (first (:participants ev))))
+        site-for (fn [pid]
+                   (first (keep-indexed
+                           (fn [i ev]
+                             (when (and (= :transfer (:event ev))
+                                        (some? (:location ev))
+                                        (= pid (pid-of ev))
+                                        (not (contains? cancelled i)))
+                               [i ev]))
+                           log)))
+        t-max (reduce max 0 (map :t log))
+        targets (->> final
+                     (filter (fn [[_ p]] (= :discharged (:status p))))
+                     (keep (fn [[pid _]] (site-for pid)))
+                     (take 3))]
+    (into log
+          (map-indexed (fn [k [i ev]]
+                         {:event :cancel-transfer :t (+ t-max 500 k)
+                          :cancels-event-id i
+                          :home-ward (:home-ward ev)
+                          :location (:location ev)
+                          :participants (:participants ev)})
+                       targets))))
+
 (defn- mutate
   "One log, mutated every way at once -- the invariants are independent,
-  so proving them one mutation at a time would be six times the trials
+  so proving them one mutation at a time would be many times the trials
   for strictly less coverage of their interaction."
   [log a b c]
   (-> log (collide-beds a) (strip-locations b) (outpatient-ize c)
-      duplicate-cancels zombie-events))
+      duplicate-cancels zombie-events stale-holds))
 
 (defn- tight-view
   "The same wards, re-declared at one licensed bed and no surge.
@@ -1221,13 +1246,15 @@
   [facility]
   (update facility :wards (fn [ws] (mapv #(assoc % :beds 1 :surge-slots 0) ws))))
 
-(defn- all-six
-  "The six rewritten invariants' findings, and their naive references',
-  as two parallel vectors -- compared with `=`, so ORDER is asserted.
+(defn- all-seven
+  "The six rewritten invariants' findings plus the stale-hold row's
+  (2026-09-03, B2 -- new rather than rewritten, but held to the same
+  naive-agreement obligation), and their naive references', as two
+  parallel vectors -- compared with `=`, so ORDER is asserted.
   Capacity appears TWICE: under the run's real facility (where it should
   stay silent) and under `tight-view` (where it fires in every ward)."
-  [f-double f-slot f-outp f-cap f-cancel f-merged log facility]
-  [(vec (f-double log)) (vec (f-slot log)) (vec (f-outp log))
+  [f-double f-slot f-outp f-nonadm f-cap f-cancel f-merged log facility]
+  [(vec (f-double log)) (vec (f-slot log)) (vec (f-outp log)) (vec (f-nonadm log))
    (vec (f-cap log facility)) (vec (f-cap log (tight-view facility)))
    (vec (f-cancel log)) (vec (f-merged log))])
 
@@ -1269,25 +1296,31 @@
           mutated (mutate ground-truth a b c)]
       (and (seq ground-truth)
            ;; the CLEAN log: the guards must not false-positive
-           (= (all-six naive-no-double-occupancy naive-admitted-occupies-one-slot
-                       naive-outpatient-patients-occupy-no-bed naive-occupancy-within-capacity
-                       naive-cancel-references-existing-uncancelled-event
-                       naive-no-events-after-merged-terminal ground-truth facility)
-              (all-six check/no-double-occupancy check/admitted-occupies-one-slot
-                       check/outpatient-patients-occupy-no-bed check/occupancy-within-capacity
-                       check/cancel-references-existing-uncancelled-event
-                       check/no-events-after-merged-terminal ground-truth facility))
+           (= (all-seven naive-no-double-occupancy naive-admitted-occupies-one-slot
+                         naive-outpatient-patients-occupy-no-bed
+                         naive-non-admitted-patients-hold-no-bed naive-occupancy-within-capacity
+                         naive-cancel-references-existing-uncancelled-event
+                         naive-no-events-after-merged-terminal ground-truth facility)
+              (all-seven check/no-double-occupancy check/admitted-occupies-one-slot
+                         check/outpatient-patients-occupy-no-bed
+                         check/non-admitted-patients-hold-no-bed check/occupancy-within-capacity
+                         check/cancel-references-existing-uncancelled-event
+                         check/no-events-after-merged-terminal ground-truth facility))
            ;; the MUTATED log: the emission path, with order
-           (= (all-six naive-no-double-occupancy naive-admitted-occupies-one-slot
-                       naive-outpatient-patients-occupy-no-bed naive-occupancy-within-capacity
-                       naive-cancel-references-existing-uncancelled-event
-                       naive-no-events-after-merged-terminal mutated facility)
-              (all-six check/no-double-occupancy check/admitted-occupies-one-slot
-                       check/outpatient-patients-occupy-no-bed check/occupancy-within-capacity
-                       check/cancel-references-existing-uncancelled-event
-                       check/no-events-after-merged-terminal mutated facility))))))
+           (= (all-seven naive-no-double-occupancy naive-admitted-occupies-one-slot
+                         naive-outpatient-patients-occupy-no-bed
+                         naive-non-admitted-patients-hold-no-bed naive-occupancy-within-capacity
+                         naive-cancel-references-existing-uncancelled-event
+                         naive-no-events-after-merged-terminal mutated facility)
+              (all-seven check/no-double-occupancy check/admitted-occupies-one-slot
+                         check/outpatient-patients-occupy-no-bed
+                         check/non-admitted-patients-hold-no-bed check/occupancy-within-capacity
+                         check/cancel-references-existing-uncancelled-event
+                         check/no-events-after-merged-terminal mutated facility))))))
 
-(deftest the-mutations-actually-make-all-six-invariants-fire
+(deftest the-mutations-actually-make-all-seven-invariants-fire
+  ;; Was `...-all-six-...` until 2026-09-03, when B2's stale-hold row
+  ;; and its `stale-holds` mutator joined the harness.
   (testing "ADR-0169: a comparison of two empty seqs is not an equivalence
             proof. This is the mechanism check for the defspec above --
             without it, a mutation that silently stopped inducing its
@@ -1335,6 +1368,7 @@
               [[:no-double-occupancy (check/no-double-occupancy mutated)]
                [:admitted-occupies-one-slot (check/admitted-occupies-one-slot mutated)]
                [:outpatient-patients-occupy-no-bed (check/outpatient-patients-occupy-no-bed mutated)]
+               [:non-admitted-patients-hold-no-bed (check/non-admitted-patients-hold-no-bed mutated)]
                [:occupancy-within-capacity (check/occupancy-within-capacity mutated (tight-view facility))]
                [:cancel-references-existing-uncancelled-event
                 (check/cancel-references-existing-uncancelled-event mutated)]
@@ -1355,7 +1389,7 @@
 
 (def ^:private small-mutated-fixtures
   "Every hand-written violating log this namespace already carries for
-  the six invariants, gathered so the naive/fast comparison runs over
+  the seven invariants, gathered so the naive/fast comparison runs over
   them too.
 
   These matter out of proportion to their size. A Clojure map holds
@@ -1380,6 +1414,13 @@
     :log [{:event :outpatient-visit :t 0 :participants (subject "P1")}
           {:event :transfer :t 5 :home-ward "Renal" :participants (subject "P1")
            :from nil :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}]}
+   ;; 2026-09-03 (B2/B1): the two shapes the session's own RED tests
+   ;; carry, joined here so the naive/fast agreement covers the
+   ;; small-map regime for the scoped rule and the stale-hold row too.
+   {:label :outpatient-hold-past-visit-end
+    :log post-visit-end-outpatient-hold-log}
+   {:label :reinstated-hold
+    :log reinstated-hold-log}
    {:label :cancel-phantom-target
     :log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
            :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
@@ -1426,14 +1467,16 @@
             population-scale defspec above cannot reach."
     (doseq [{:keys [label log]} small-mutated-fixtures]
       (testing (str "fixture " label)
-        (is (= (all-six naive-no-double-occupancy naive-admitted-occupies-one-slot
-                        naive-outpatient-patients-occupy-no-bed naive-occupancy-within-capacity
-                        naive-cancel-references-existing-uncancelled-event
-                        naive-no-events-after-merged-terminal log test-facility)
-               (all-six check/no-double-occupancy check/admitted-occupies-one-slot
-                        check/outpatient-patients-occupy-no-bed check/occupancy-within-capacity
-                        check/cancel-references-existing-uncancelled-event
-                        check/no-events-after-merged-terminal log test-facility)))))
+        (is (= (all-seven naive-no-double-occupancy naive-admitted-occupies-one-slot
+                          naive-outpatient-patients-occupy-no-bed
+                          naive-non-admitted-patients-hold-no-bed naive-occupancy-within-capacity
+                          naive-cancel-references-existing-uncancelled-event
+                          naive-no-events-after-merged-terminal log test-facility)
+               (all-seven check/no-double-occupancy check/admitted-occupies-one-slot
+                          check/outpatient-patients-occupy-no-bed
+                          check/non-admitted-patients-hold-no-bed check/occupancy-within-capacity
+                          check/cancel-references-existing-uncancelled-event
+                          check/no-events-after-merged-terminal log test-facility)))))
     (testing "and the interleaved-zombie fixture really does discriminate the
               two orderings -- merge-major (P2,P2,P4,P4) is NOT the log order
               (P2,P4,P2,P4), so a single forward pass would be caught"
@@ -1454,8 +1497,5 @@
          (vec (check/outpatient-patients-occupy-no-bed post-visit-end-outpatient-hold-log)))))
 
 (deftest naive-and-fast-non-admitted-bed-hold-agree-on-a-reinstatement-log
-  (let [f (resolve 'ehrt.sim-check.check/non-admitted-patients-hold-no-bed)]
-    (is (some? f) "check/non-admitted-patients-hold-no-bed is not defined yet (RED)")
-    (when (some? f)
-      (is (= (vec (naive-non-admitted-patients-hold-no-bed reinstated-hold-log))
-             (vec (@f reinstated-hold-log)))))))
+  (is (= (vec (naive-non-admitted-patients-hold-no-bed reinstated-hold-log))
+         (vec (check/non-admitted-patients-hold-no-bed reinstated-hold-log)))))
