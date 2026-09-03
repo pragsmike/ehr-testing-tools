@@ -770,6 +770,37 @@
       (is (= 1 (count c-events)))
       (is (= :cancel-transfer (:event (first c-events)))))))
 
+(deftest a-cancel-transfer-may-not-reinstate-a-new-subject
+  (testing "ADR-0177 (A1, R-A1-scope 2026-09-03): the TS-5 boundary,
+            reversed for cancel-transfer ONLY. The downstream
+            calibration batch shape (the 2026-09-02 STOP record's step
+            6): a discharge, then a :cancel-admit rewrites the subject
+            to :new, then the :cancel-transfer behind it tries to put
+            the vacated bed back. Applied, that reinstatement re-creates
+            exactly the state non-admitted-patients-hold-no-bed convicts
+            -- :status :new, no :class, a held bed, forever -- so it is
+            refused, with the subject's own status in the rejection.
+            M6 Task 2's cancel-discharge stays legal: THAT undo
+            reinstates :admitted + bed + :class as a coherent whole."
+    (let [world0 (world-of {"P1" (state/initial-patient "P1" "MRN000001")})
+          world1 (admit world0 0 "P1" "Renal")
+          {t-events :events} (decide/decide (streams/one-stream (Random. 1)) 10 world1 "P1"
+                                            {:type :transfer :location "ED"})
+          world2 (fold-events world1 t-events)
+          {d-events :events} (decide/decide (streams/one-stream (Random. 1)) 20 world2 "P1" {:type :discharge})
+          world3 (fold-events world2 d-events)
+          {ca-events :events} (decide/decide (streams/one-stream (Random. 1)) 30 world3 "P1" {:type :cancel-admit})
+          world4 (fold-events world3 ca-events)
+          _ (is (= :new (get-in world4 [:patients "P1" :status])) "sanity: cancel-admit rewrote the subject to :new")
+          _ (is (nil? (get-in world4 [:patients "P1" :location])) "sanity: and holding no bed")
+          outcome (decide/decide (streams/one-stream (Random. 1)) 40 world4 "P1" {:type :cancel-transfer})
+          world5 (fold-events world4 (:events outcome))]
+      (assert-step-rejected! outcome "P1" :illegal-cancel-transfer-subject-superseded)
+      (is (= :new (:status (:rejected outcome))) "the rejection names the superseding status")
+      (testing "and the bed is NOT reinstated -- the whole point"
+        (is (nil? (get-in world5 [:patients "P1" :location])))
+        (is (= :new (get-in world5 [:patients "P1" :status])))))))
+
 (deftest a-superseded-cancel-consumes-exactly-the-draws-the-applied-path-consumes
   (testing "THE FENCE, executable: a rejection that consumed a different
             number of draws than the path it replaces would reshuffle
