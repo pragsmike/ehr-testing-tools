@@ -320,3 +320,18 @@ added rather than reported.
    visit holds `:status :admitted` and resumes at the closer record,
    where `world-after` is already `:discharged` plus the held bed — no
    gap, no overlap, witnessed at 2,000 arrivals.
+
+## Close
+
+**CI green at `fcb79bd`** — run
+[33802957009](https://github.com/pragsmike/ehr-testing-tools/actions/runs/33802957009),
+`test` on `main`, success in 9m53s. Verified with `gh run view`, not
+inferred from the push (`rulings.md#R-session-verifies-ci-via-gh`).
+`make test` was green locally before the push, and `clojure -M:poly
+check` green through the pre-push hook.
+
+Post-push message verification: all four commits (`946be99`, `630b2ce`,
+`4f99f98`, `fcb79bd`) diffed against their own message files; every
+diff was a single trailing blank line — `git log --format=%B`'s own
+artifact, not a mismatch. All four are pure ASCII
+(`rulings.md#R-post-push-ascii`).
