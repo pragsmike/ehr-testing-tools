@@ -933,6 +933,47 @@
 ;; table's cancel-*/bed-swap/merge rows; sim/ADR-0010's cross-participant
 ;; coherence) -------------------------------------------------------------
 
+(defn every-event-is-schema-valid
+  "Every event in the log validates against the PUBLISHED event schema
+  (`ehrt.sim-engine.event-schema/Event`, the same artifact
+  `make event-schema-export` freezes and `docs/formats.md` documents for
+  consumers). ADR-0178 (R-gate).
+
+  THE CATALOG HAD 45 ROWS AND NOT ONE OF THEM ASKED WHETHER AN EVENT IS
+  A WELL-FORMED EVENT. So a `:persons` run shipped three `:registered`
+  events carrying `:window-close-t nil` -- invalid against
+  `[:window-close-t {:optional true} :int]`, because `{:optional true}`
+  permits the key to be ABSENT and not to be present-and-nil -- while
+  `check-all` reported `:ok` and the manifest went on claiming
+  `:event-schema-version \"1.8.0\"`. Nothing on the run path checked
+  whole-event validity, and the three assertions that looked like they
+  guarded the absent-vs-nil distinction all used `nil?`, which is true
+  of both. This row is what closes that, and it is registered FIRST in
+  `catalog` because every other row presumes it.
+
+  THIS IS NOT THE ENGINE AGREEING WITH ITSELF, and the distinction is
+  the one the independent-judge notes below draw. What those forbid is
+  re-asking the engine's own DECISIONS -- its fold, its bed arithmetic,
+  its supersession table -- because a gate built from the decision it
+  judges is vacuous. A schema is not a decision: it is the contract the
+  log CLAIMS to satisfy, published to consumers and frozen by its own
+  stability gate. Validating a log against the contract it advertises is
+  exactly what an independent judge does.
+
+  `:invalid-paths` carries the failing key paths (Malli's `:in`) rather
+  than whole explanations: a violation naming `[[:window-close-t]]` is
+  actionable, and a violation carrying a full `explain` of a 20-key
+  event with a nested persona is not."
+  [ground-truth]
+  (for [[idx event] (map-indexed vector ground-truth)
+        :when (not (engine/valid-event? event))]
+    {:invariant :every-event-is-schema-valid
+     :patient-id (:patient-id (first (:participants event)))
+     :at (:t event)
+     :index idx
+     :kind (:event event)
+     :invalid-paths (mapv :in (:errors (engine/explain-event event)))}))
+
 (def ^:private cancel-target-type
   "Cancel event type -> the event type it must reference."
   {:cancel-admit :admission :cancel-transfer :transfer :cancel-discharge :discharge})
@@ -942,7 +983,24 @@
   cancelled must exist in this patient's log, be the RIGHT class, and
   not already be cancelled by an earlier cancel of the same kind.
   Structural -- checks any log directly, independent of whether decide
-  itself already enforces this (docs/patient-state-model.md)."
+  itself already enforces this (docs/patient-state-model.md).
+
+  ADR-0178 (R-time) adds the FIFTH disjunct: a cancel's own `:t` may not
+  be BEFORE its target's. Until then this row had no time clause at all
+  -- unlike the two paired spans it sits beside
+  (`medication-end-references-existing-order-and-follows-it-in-time` and
+  its ADR-0166 twin) it never compared `(:t target)` with `(:t event)`,
+  so a cancel moved BEHIND its own referent broke monotonicity and
+  nothing referential. Measured rather than reasoned: the P7 derivation
+  (`.agents/session-records/2026-09-05-p7-stop-derivation.md`, finding 1)
+  timed two such sites and both convicted `:timestamps-monotone` alone,
+  which is what refused column A a fourth mutation cell under ADR-0176
+  Q5(a) and rowed this gap.
+
+  EQUALITY IS PERMITTED, deliberately. `decide :transfer-in-error` emits
+  its transfer and that transfer's cancel at ONE instant, so a strict
+  comparison here would convict the engine's own correct output; the
+  clause is `<`, not `<=`."
   [ground-truth]
   ;; ADR-0169: `cancelled-earlier?` used to re-walk the WHOLE log per
   ;; cancel -- O(C x N), 4.9% of the check phase at 10^5 and quadratic
@@ -973,6 +1031,11 @@
                        (if (or (nil? target)
                                (not= expected-type (:event target))
                                (not (some #(= patient-id (:patient-id %)) (:participants target)))
+                               ;; ADR-0178 (R-time). Guarded on a non-nil
+                               ;; target, which the first disjunct has
+                               ;; already established by the time this one
+                               ;; is asked.
+                               (< (:t event) (:t target))
                                cancelled-earlier?)
                          (conj! acc {:invariant :cancel-references-existing-uncancelled-event
                                      :patient-id patient-id :at (:t event)})
@@ -1882,7 +1945,11 @@
 (def catalog
   "The full invariant catalog needing only a ground-truth log, in
   reporting order."
-  [#'timestamps-monotone
+  [;; ADR-0178 (R-gate): FIRST, because every row after it presumes that
+   ;; the thing it is reading is a well-formed event at all. The catalog
+   ;; ran 45 rows over logs it never asked that question of.
+   #'every-event-is-schema-valid
+   #'timestamps-monotone
    #'discharge-follows-admission
    #'every-event-has-participants
    #'participant-ids-exist-in-run
