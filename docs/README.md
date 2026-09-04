@@ -32,6 +32,38 @@ Then the root [`README.md`](../README.md#quickstart)'s Quickstart —
 one command at a time, real output, nothing to install beyond the
 prerequisites in [`SETUP.md`](../SETUP.md).
 
+## I need a ground truth to check my own system against
+
+**This is the audience this workspace serves first.** You run a system
+of your own — an interface engine, an EHR inbound path, a patient
+index, a scheduling or bed-management module — and you need a
+*semantic* answer key: not sample messages, but a machine-readable
+statement of what actually happened in a simulated hospital, so you can
+assert your system agrees with it.
+
+That answer key is the ground-truth event log, and it is a published,
+versioned contract:
+
+1. [`consuming-ground-truth.md`](consuming-ground-truth.md) — the run
+   contract. How to invoke it, which configuration keys make the
+   interesting event kinds appear at all, what a green `ehrt sim check`
+   certifies, and — read with the same weight — what it explicitly does
+   not warrant.
+2. [`formats.md`](formats.md#read-the-top-level-vector-only)'s "Read the
+   top-level vector only" — the counting rule, before you write a line
+   of consuming code. It is the log's sharpest edge.
+3. [`future-features.md`](future-features.md#scale-ergonomics)'s "Scale
+   ergonomics" — where the run sizes an automated consumer reaches stop
+   being comfortable, said before you find out.
+
+`ehrt sim check` is the reference judge for that log — the same
+invariant catalog this repository holds its own output to — and
+`ehrt sim mutate` injects one named defect class into it, so you can
+prove your own checks report that class and nothing else. Pin a corpus
+you keep by its manifest's `:seeds`, `:generator`, `:stream-scheme` and
+`:event-schema-version`, plus the `--config` file by hash, and it still
+means the same thing next quarter.
+
 ## Task-first practitioner
 
 You have a task: generate test traffic, break it on purpose, gate it,

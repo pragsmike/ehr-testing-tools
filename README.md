@@ -19,6 +19,18 @@ and get plain FHIR JSON, HL7 v2 text, and machine-readable reports out
 the other end — usable from Python, SQL, or anything else. Clojure
 inside; no Clojure skills required.
 
+**Who this serves first.** Teams doing QA on a system of their own — an
+interface engine, an EHR inbound path, a patient index, a scheduling or
+bed-management module — who need a *semantic* answer key to check that
+system against, not a pile of sample messages. Every message this
+workspace emits is a projection of one ground-truth event log, and that
+log is a published, versioned contract you can assert against directly:
+derive your own invariants over the patients, encounters, appointments
+and beds it describes, use `ehrt sim check` as the reference judge, and
+use `ehrt sim mutate` to inject one named defect class and prove your
+own checks catch that class and nothing else. Start at
+[`docs/consuming-ground-truth.md`](docs/consuming-ground-truth.md).
+
 ## See it run
 
 One emergency-department shift — 100 patients arriving into a scripted

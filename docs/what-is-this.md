@@ -86,6 +86,15 @@ for the path, [formats.md](formats.md#the-event-log) for the contract).
 
 ## Audience
 
+- **Ground-truth QA teams** — the audience this workspace serves
+  first — who check their own downstream system against a semantic
+  answer key rather than against sample messages: they run
+  `ehrt sim run --format ground-truth`, derive their own invariants
+  over the patients, encounters, appointments and beds it describes,
+  and assert their system agrees. `ehrt sim check` is the reference
+  judge for that log and `ehrt sim mutate` supplies controlled
+  negatives; [`consuming-ground-truth.md`](consuming-ground-truth.md)
+  is the contract.
 - **Integration engineers** building or configuring interface engines,
   message routers, and transformation pipelines who need continuous,
   varied HL7/FHIR traffic to develop and load-test against.

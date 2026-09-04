@@ -27,8 +27,9 @@
   exemption would have covered.
 
   WHAT IS OUT OF SCOPE, and why. `docs/what-is-this.md` has its own
-  `## Audience` -- a BULLETED list of seven, zero of them carrying a
-  link. It is deliberately not gated here. The law's own text is scoped
+  `## Audience` -- a BULLETED list (seven when this docstring was
+  written, eight since the prime audience joined it 2026-09-04, and
+  only the newest carries a link). It is deliberately not gated here. The law's own text is scoped
   to `docs/dev/AUDIENCES.md`, and the two lists do different jobs: this
   one is the routing register `docs/README.md` keys off, that one
   describes who the software is for. Making the public list carry entry
