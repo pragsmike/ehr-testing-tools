@@ -373,9 +373,16 @@ one appeared, and the sentence the prompt dictated appears nowhere.
   wrong**, and the correction is a mechanism read out of the engine
   rather than another inference from a run that stopped.
 
-**CI at the pushed tip.** PLACEHOLDER_CI_RUN
+**CI at the pushed tip.** `gh run view 33879081513` -- status
+`completed`, conclusion **success**, headSha
+`2c46079d46600d4888355fc8f74111c23c535747`. Three commits pushed,
+`e1baf4d..2c46079`.
 
-**No tag paid.** `bin/post-push-verify` PLACEHOLDER_PPV
+**No tag paid.** `bin/post-push-verify e1baf4d 2c46079` reported all
+three checks OK: `origin/main` matches HEAD, every commit message in the
+range is pure ASCII, and the CI run was reported once (in_progress at
+the time, disclosed as not awaited by the script itself, and awaited to
+`success` by this session afterwards).
 
 **What it leaves open.** Nothing this session was commissioned for. Two
 things it deliberately did not begin, both named in section 9: the
