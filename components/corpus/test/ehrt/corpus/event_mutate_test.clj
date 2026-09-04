@@ -16,8 +16,8 @@
     7. L' not= L                                     it actually did something
 
   The spine session (2026-09-01) proved that loop on ONE operator. This
-  file is the same loop PARAMETERIZED over the twelve the catalog now
-  carries, so a thirteenth is a row in `loop-rows` rather than a new
+  file is the same loop PARAMETERIZED over every operator the catalog
+  carries, so the next one is a row in `loop-rows` rather than a new
   test, and a regression in any one of them names itself.
 
   THE POPULATION, and the finding that fixed it. ADR-0176 section 2(iv)
@@ -29,11 +29,24 @@
   sim path -- scheduling, identification, medication spans -- which
   those roots do not exercise.
 
-  So the population here is TWO real runs, over the two opt-in demo
-  configs that are the only distinct logs in the tree carrying candidate
-  sites at all. Both are measured clean before anything is injected, and
-  the measurement behind the choice is
-  `.agents/plans/2026-09-01-event-mutation-population-ledger.md`.
+  So the population here is THREE real runs. Two are the opt-in demo
+  configs that were, on 2026-09-01, the only distinct logs in the tree
+  carrying candidate sites at all; the measurement behind that choice is
+  `.agents/plans/2026-09-01-event-mutation-population-ledger.md`. The
+  third is `demos/scenarios/dense-7500/config.edn`, and it is here
+  because those two carry sites in only TWO of the five referential
+  carrier columns -- the other three were population gaps until P7
+  (2026-09-05) measured this config carrying all three. Every one of
+  them is measured clean before anything is injected.
+
+  THE THIRD POPULATION IS EXPENSIVE AND THE REASON IS NOT THIS FILE'S.
+  Its run is ~54 s and FLAT in `--patients` (the cost is the
+  `:persons {:count 15000 :years 20}` layer, so 20 arrivals is the
+  cheapest count that still carries every column), and each `check-all`
+  over its 18,466 events is ~45 s of which ~42 s is
+  `every-event-is-schema-valid` alone -- see `schema-valid?` below for
+  the measurement and the one-line fix, which is outside this session's
+  fence.
 
   ED-TUESDAY IS CHECKED WITH ITS OWN FACILITY, and that is not a
   convenience. `check-all`'s 1-arity defaults `facility-config` to
@@ -76,10 +89,11 @@
 (defn- config [path] (edn/read-string (slurp path)))
 
 (defn- run-log
-  [cfg seed patients]
-  (let [r (sim/run-command (merge {:seed seed :patients patients} cfg))]
-    (assert (sim/ok? r) "the population run must succeed")
-    (vec (get-in r [:payload :ground-truth]))))
+  ([cfg seed patients] (run-log cfg seed patients nil))
+  ([cfg seed patients extra]
+   (let [r (sim/run-command (merge {:seed seed :patients patients} cfg extra))]
+     (assert (sim/ok? r) "the population run must succeed")
+     (vec (get-in r [:payload :ground-truth])))))
 
 (def ^:private populations
   "Each population is a real run plus the facility `check` must be given
@@ -97,7 +111,18 @@
             {:log (run-log cfg 5 60) :facility nil}))
    :ed-tuesday
    (delay (let [cfg (config "demos/scenarios/ed-tuesday/config.edn")]
-            {:log (run-log cfg 5 40) :facility (:facility cfg)}))})
+            {:log (run-log cfg 5 40) :facility (:facility cfg)}))
+   ;; The third, and the only one carrying columns A, B2 and C.
+   ;; `--churn` is not decoration: it is what mints the cancel family at
+   ;; all, and `:churn true` is the config-key spelling of the flag. The
+   ;; site counts this population owes are 4 `:cancel-transfer`, 6
+   ;; `:medication-end` and 8 `:care-plan-end`; `:cancel-admit` and
+   ;; `:cancel-discharge` do not occur here at 20 arrivals, so column A's
+   ;; per-carrier `:target` map is exercised on one of its three keys and
+   ;; the other two are structure, not witness (P7 record, section 1).
+   :dense-7500
+   (delay (let [cfg (config "demos/scenarios/dense-7500/config.edn")]
+            {:log (run-log cfg 5 20 {:churn true}) :facility (:facility cfg)}))})
 
 (defn- pop-of [k] @(get populations k))
 
@@ -112,10 +137,38 @@
 
 ;; ---- the catalog, as loop rows -------------------------------------
 
+(def ^:private schema-valid?
+  "`engine/valid-event?`'s own predicate over `engine/Event`, with the
+  validator built ONCE.
+
+  Not a different claim and not a way around the published surface --
+  the same schema object, and `valid-event?` is literally
+  `(m/validate Event event)`. Malli builds a fresh validator on every
+  such call, and the difference is not marginal: measured this session
+  on `event-examples.edn`, 2.29 ms an event against 0.0063 ms for a
+  prebuilt validator, 365x. Over the dense-7500 log's 18,466 events
+  that is 42 s a pass against 0.12 s, and step 3 below makes one pass
+  per row.
+
+  RECORDED RATHER THAN QUIETLY WORKED AROUND. The cost is
+  `ehrt.sim-engine.event-schema/valid-event?`'s own, `check-all` pays
+  it too on every call (`every-event-is-schema-valid`, ADR-0178, which
+  runs first in the catalog), and nothing this namespace can do reaches
+  that half. The one-line fix -- bind `(m/validator Event)` once beside
+  the schema -- is `sim-engine` src and outside the P7 fence; the
+  session record names it."
+  (m/validator engine/Event))
+
 (def ^:private identity-fill-invariant
   :identity-fill-references-its-placeholder-registration)
 (def ^:private result-order-invariant
   :result-references-existing-order-and-follows-it-in-time)
+(def ^:private cancel-invariant
+  :cancel-references-existing-uncancelled-event)
+(def ^:private medication-end-invariant
+  :medication-end-references-existing-order-and-follows-it-in-time)
+(def ^:private care-plan-end-invariant
+  :care-plan-end-references-existing-start-and-follows-it-in-time)
 
 (def ^:private loop-rows
   "One row per registered event operator. `:findings` is the set the
@@ -175,7 +228,67 @@
                 :every-encounter-is-opened-and-closed-or-still-open
                 :participant-ids-exist-in-run
                 :registered-is-every-patients-first-event}
-    :effect :one-event}])
+    :effect :one-event}
+
+   ;; --- column A: :cancels-event-id on a cancellation, whose target is
+   ;;     the event class that cancellation cancels -- three carrier
+   ;;     kinds citing three DIFFERENT classes, which is the whole
+   ;;     reason `:target` may be a map. FOUR shapes, not five: the
+   ;;     field is a plain :int, so Q9(a) drops the null cell exactly as
+   ;;     it does for B1.
+   ;;
+   ;;     THE FOURTH ROW HERE COULD NOT HAVE BEEN WRITTEN BEFORE
+   ;;     2026-09-04. `cancel-references-existing-uncancelled-event` had
+   ;;     no time clause at all, so a cancel moved behind its own
+   ;;     referent convicted `:timestamps-monotone` and nothing
+   ;;     referential -- the P7 derivation measured that and REFUSED the
+   ;;     cell under Q5(a) rather than shipping an operator that could
+   ;;     not convict what it named. ADR-0178 (R-time) added the fifth
+   ;;     disjunct; this row is the cell arriving.
+   {:id :phantom-cancels-event-id :population :dense-7500
+    :findings #{cancel-invariant} :effect :one-event}
+   {:id :cross-patient-cancels-event-id :population :dense-7500
+    :findings #{cancel-invariant} :effect :one-event}
+   {:id :wrong-kind-cancels-event-id :population :dense-7500
+    :findings #{cancel-invariant} :effect :one-event}
+   {:id :inverted-span-cancels-event-id :population :dense-7500
+    :findings #{cancel-invariant :timestamps-monotone}
+    :effect :one-event :moves-t? true}
+
+   ;; --- column B2: :order-event-id on a :medication-end, whose target
+   ;;     is the :medication-order it closes. The SAME FIELD NAME as B1
+   ;;     above on a different carrier, convicted by a different
+   ;;     invariant and typed `[:maybe :int]` rather than `:int` -- so
+   ;;     all five shapes ship here where B1 gets four, and the ids
+   ;;     carry the carrier in their stem (`:slug`, operators.clj)
+   ;;     because B1's are already published without it.
+   {:id :phantom-medication-end-order-event-id :population :dense-7500
+    :findings #{medication-end-invariant} :effect :one-event}
+   {:id :null-medication-end-order-event-id :population :dense-7500
+    :findings #{medication-end-invariant} :effect :one-event}
+   {:id :cross-patient-medication-end-order-event-id :population :dense-7500
+    :findings #{medication-end-invariant} :effect :one-event}
+   {:id :wrong-kind-medication-end-order-event-id :population :dense-7500
+    :findings #{medication-end-invariant} :effect :one-event}
+   {:id :inverted-span-medication-end-order-event-id :population :dense-7500
+    :findings #{medication-end-invariant :timestamps-monotone}
+    :effect :one-event :moves-t? true}
+
+   ;; --- column C: :start-event-id on a :care-plan-end, whose target is
+   ;;     the :care-plan-start it closes -- ADR-0166's own twin span,
+   ;;     and the invariant that arc landed because nothing was asking.
+   ;;     Five shapes, `[:maybe :int]` like B2.
+   {:id :phantom-start-event-id :population :dense-7500
+    :findings #{care-plan-end-invariant} :effect :one-event}
+   {:id :null-start-event-id :population :dense-7500
+    :findings #{care-plan-end-invariant} :effect :one-event}
+   {:id :cross-patient-start-event-id :population :dense-7500
+    :findings #{care-plan-end-invariant} :effect :one-event}
+   {:id :wrong-kind-start-event-id :population :dense-7500
+    :findings #{care-plan-end-invariant} :effect :one-event}
+   {:id :inverted-span-start-event-id :population :dense-7500
+    :findings #{care-plan-end-invariant :timestamps-monotone}
+    :effect :one-event :moves-t? true}])
 
 (def ^:private seed 424242)
 
@@ -229,7 +342,7 @@
             (testing "step 7 -- it actually did something (the ADR-0165 lesson)"
               (is (not= mutant l)))
             (testing "step 3 -- Q9(a), the mutant stays schema-valid"
-              (is (every? engine/valid-event? mutant))
+              (is (every? schema-valid? mutant))
               (if moves-t?
                 (is (not (engine/run-t-monotone? mutant))
                     "an operator that moves a :t is SUPPOSED to break monotonicity -- that is the defect")
@@ -260,6 +373,26 @@
                 (is (= :invariant-violation (:category r')))
                 (is (= findings (set (map :invariant (:violations (:payload r')))))
                     "observed = declared, exactly")))))))))
+
+(deftest every-registered-event-operator-has-a-loop-row-test
+  ;; `register!` is a bare `swap! registry assoc`, so two catalog
+  ;; entries deriving the same [id version] SILENTLY REPLACE one
+  ;; another: no refusal, no gap record, and the only symptom is an
+  ;; operator quietly missing from the catalog. That is not
+  ;; hypothetical -- columns B1 and B2 both carry `:order-event-id`,
+  ;; and without `:slug` (operators.clj) B2's five entries would have
+  ;; overwritten four of B1's on the way in. This is the gate over it,
+  ;; and it is a BIJECTION rather than a count so that adding an
+  ;; operator moves no pin: a collision shows up as the registered set
+  ;; being smaller than the declared one, and a row written for an
+  ;; operator that was never registered shows up the same way.
+  (let [rows (map :id loop-rows)
+        registered (into #{} (comp (filter #(= :event (:format %))) (map :id))
+                         (operators/entries))]
+    (is (= (count rows) (count (set rows)))
+        "two loop rows naming one operator id is itself the collision")
+    (is (= (set rows) registered)
+        "every registered event operator has a loop row, and every row an operator")))
 
 ;; ---- lineage, every row (ADR-0176 section 2(iii)) -------------------
 
@@ -354,13 +487,22 @@
   `.agents/plans/2026-09-01-event-mutation-population-ledger.md`
   section 6.
 
+  EMPTY SINCE 2026-09-05, AND KEPT RATHER THAN DELETED. It carried
+  `:cancels-event-id` and `:start-event-id` until P7 measured
+  `demos/scenarios/dense-7500/config.edn` carrying both (and B2's
+  `:medication-end` carrier of `:order-event-id`, which this
+  field-keyed set could never have expressed, since B1 covered the
+  field's name). The gap KIND is not retired with the gaps: the next
+  reference field to arrive without a population belongs here, with its
+  measurement, rather than as an operator that can never fire.
+
   This set is what keeps the derivation honest: a reference field is
   either COVERED by an operator or DECLARED empty here, and a fifth one
   arriving turns this test red instead of silently going uncovered --
   which is ADR-0166's own error ledger (a referential invariant left
   unmirrored onto its structural twin for three weeks) applied one layer
   up."
-  #{:cancels-event-id :start-event-id})
+  #{})
 
 (deftest every-schema-reference-field-is-covered-or-declared-empty-test
   (let [fields (schema-reference-fields)
