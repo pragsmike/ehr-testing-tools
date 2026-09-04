@@ -290,10 +290,22 @@ deliberately did not begin.
   rather than tuning it. `:persons` throttles concurrent census; the
   config that opts into nothing is the only one that exhausts capacity.
 
-**CI at the pushed tip.**  -- status
-, conclusion **success**, headSha
-. No tag paid.
- reported all three checks OK.
+**CI at the pushed tip.** `gh run view 33865302411` -- status
+`completed`, conclusion **success**, headSha
+`7a9a994efb21901c3d825b3d6466297fe56f6ba9`. No tag paid.
+`bin/post-push-verify e57be19 7a9a994` reported all three checks OK:
+remote tip matches HEAD, every commit message in the range is pure
+ASCII, and the CI run was reported once.
+
+**Disclosed, and the second instance of the same slip.** The paragraph
+above landed MANGLED in `223d668` and is repaired here rather than
+amended away: its backtick-quoted commands were written through a
+double-quoted `wsl -e bash -lc "..."` wrapper, so the OUTER shell
+command-substituted every one of them before python ever saw the
+string. The same wrapper ate the same characters earlier in this
+session, editing `demos/scenarios/README.md`; that one was caught
+before its commit and redone through a script file, which is the rule
+this repeat should have followed too.
 
 **What it leaves open.** Section 7's ruling, and everything downstream
 of it: the Scale table, the `dense-scale-profile` row, and the ledger
