@@ -982,10 +982,28 @@
                      "; the byte gate above carries the diagnostic."))))))))
 
 (def ^:private arc0-invariant-catalog
-  "The 45 invariant names `check-all` reports, in reporting order --
+  "The 46 invariant names `check-all` reports, in reporting order --
   pinned so the findings assertion below is a full-value `=` rather than
   a check of one key. Catalog drift is itself a change in what \"identical
   findings\" means, so it belongs inside the gate, not outside it.
+
+  RE-PINNED AGAIN 2026-09-05, 45 -> 46, by ADR-0178 (R-gate; per
+  R-catalog-pin the new name is an ADDITION with this dated citation --
+  nothing renamed, nothing removed), and disclosed on the same terms as
+  every re-pin below. WHICH INVARIANT MOVED: none of the FINDINGS.
+  `:status` is `:ok` on all four corpora and `:events` is unchanged, and
+  the row that joined, `every-event-is-schema-valid`, was measured
+  SILENT on all four before it was registered: 0 invalid events of
+  1,213 / 1,774 / 1,412 / 97. It goes FIRST rather than beside a
+  neighbour, which is the one placement argument this catalog has not
+  had to make before -- a whole-event well-formedness claim is
+  presupposed by every row after it, so reporting order puts it at the
+  head. THE SAME COMMIT RANGE also gave
+  `cancel-references-existing-uncancelled-event` its missing time clause
+  (ADR-0178 R-time), which is a change to what a FINDING means rather
+  than to the roster; it moves no finding here because none of these
+  four corpora carries a cancel that precedes its own target (measured:
+  0 of 4).
 
   RE-PINNED AGAIN 2026-09-03, 44 -> 45, by B2 (R-fork 2026-09-03,
   option C; per R-catalog-pin the new name is an ADDITION with this
@@ -1066,7 +1084,8 @@
   def's own docstring anticipates: catalog drift belongs inside the
   gate, so the gate moves with the catalog and keeps asserting a
   full-value `=` rather than being weakened to a subset check."
-  '[timestamps-monotone discharge-follows-admission every-event-has-participants
+  '[every-event-is-schema-valid
+    timestamps-monotone discharge-follows-admission every-event-has-participants
     participant-ids-exist-in-run admission-only-when-no-open-encounter
     discharge-closes-an-open-encounter
     every-encounter-is-opened-and-closed-or-still-open transfer-only-when-admitted
