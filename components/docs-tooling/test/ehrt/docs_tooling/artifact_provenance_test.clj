@@ -102,10 +102,12 @@
     (testing "(b) the population is non-empty and has not silently narrowed"
       (is (seq population)
           "no generated artifact carrying mermaid was found -- the derivation has stopped matching")
-      (is (= 28 (count population))
-          (str "the converter-rendered population is " (count population) ", pinned at 28 by "
-               "ADR-0158's own measurement (docs/dev/pipeline.md, 22 use-case pages, "
-               "sim-theory-diagram.{md,mermaid}, 3 palgebra .mermaid). If an artifact was "
+      (is (= 29 (count population))
+          (str "the converter-rendered population is " (count population) ", pinned at 29: "
+               "ADR-0158's own measurement of 28 (docs/dev/pipeline.md, 22 use-case pages, "
+               "sim-theory-diagram.{md,mermaid}, 3 palgebra .mermaid) plus the 23rd use-case "
+               "page, ground-truth-as-a-test-oracle.md, added by the author ruling of "
+               "2026-09-04 (the prime audience). If an artifact was "
                "legitimately added or removed, move the pin in the same commit.\n"
                (str/join "\n" (map #(str "  " %) (sort population))))))
     (testing "(b) each names the converter that produced its diagram"
