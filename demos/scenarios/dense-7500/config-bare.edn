@@ -22,6 +22,19 @@
 ;; `.agents/session-records/2026-08-29-traffic-scale-close.md` section
 ;; 3's table, mismatches and all -- see the block above `:scheduling`.
 ;;
+;; CORRECTED 2026-09-04, the second dense-7500 session, ruling R-b.
+;; `dense-inpatient`'s five delays were SHORTENED. As first authored
+;; they gave that pathway a 1,020-minute inpatient dwell, which at this
+;; file's own one-arrival-a-minute rate is a steady-state Medicine A
+;; census near 402 against a 240-bed ward -- so `config-bare.edn` at
+;; 7,500 arrivals stopped on `:capacity-exhausted` 2,963 arrivals in and
+;; the third cell of the Scale table could not be measured at all. The
+;; WARD SIZES are the 2026-08-24 record's own facts and did NOT move;
+;; the delays are this session's own re-authoring and did. Clinical
+;; realism of the resulting dwell is explicitly not a constraint here
+;; (R-b) -- this is a throughput cell. The arithmetic is in this
+;; directory's own README, under "Why the dwells are what they are".
+;;
 ;; EVERY CODE HERE IS ALREADY IN THIS TREE, none invented: the SNOMED
 ;; and RxNorm concepts are lifted from the vendored Synthea modules
 ;; under `components/sim/resources/sim/modules/` (`injuries.json`,
@@ -42,12 +55,20 @@
 ;; byte PREFIX, ending where the nine opt-in keys begin. Both are
 ;; derived from these bytes and neither is independently authored.
 {:facility {:id :metro-general
-            ;; SIZED SO THE STEADY-STATE CENSUS NEVER REACHES THE SURGE
-            ;; RUNGS -- the spike's own sizing rule, restated: a
+            ;; SIZED SO THE STEADY-STATE CENSUS NEVER EXHAUSTS THE
+            ;; LADDER -- the spike's own sizing rule, restated: a
             ;; capacity-exhausted run measures the error path rather
             ;; than generation, and `:exhausted` HALTS a run outright
             ;; (ADR-0174). Emergency is the arrival ward; the three
             ;; inpatient wards take the transfers.
+            ;;
+            ;; NOT the stronger claim that no surge slot is ever used:
+            ;; the README's own census table puts Surgery at 173.3
+            ;; against 160 licensed beds, so `dense-surgical` reaches
+            ;; that ward's surge rung routinely and Medicine B's
+            ;; licensed beds absorb what surge does not. What the sizing
+            ;; buys is headroom in the ladder as a whole -- 273.7
+            ;; inpatient census against 680 reachable inpatient beds.
             :wards [{:id :ed :name "Emergency" :beds 180 :surge-slots 40
                      :surge-format "%s-H%02d" :class :ed :turnaround-minutes [5 15]}
                     {:id :medicine-a :name "Medicine A" :beds 200 :surge-slots 40
@@ -82,15 +103,15 @@
             ;; transfer. This is where the generate-phase work is.
             {:pathway {:name "dense-inpatient"
                        :steps [{:type :admission :location "Emergency" :reason "Acute abdominal pain"}
-                               {:type :delay :from 30 :to 90}
+                               {:type :delay :from 10 :to 30}
                                {:type :order :profile :cbc}
-                               {:type :delay :from 45 :to 120}
+                               {:type :delay :from 15 :to 45}
                                {:type :medication-order
                                 :codes [{:system :rxnorm :code "834102"
                                          :display "Penicillin V Potassium 500 MG Oral Tablet"}]
                                 :citation {:module "dense-inpatient" :state :antibiotic-start}}
                                {:type :transfer :location "Medicine A"}
-                               {:type :delay :from 120 :to 480}
+                               {:type :delay :from 30 :to 120}
                                {:type :order :profile :bmp}
                                {:type :observation
                                 :codes [{:system :loinc :code "8310-5" :display "Body temperature"}]
@@ -99,7 +120,7 @@
                                 :codes [{:system :snomed :code "385691007"
                                          :display "Fracture care (regime/therapy)"}]
                                 :citation {:module "dense-inpatient" :state :care-plan}}
-                               {:type :delay :from 240 :to 720}
+                               {:type :delay :from 60 :to 180}
                                {:type :procedure
                                 :codes [{:system :snomed :code "274474001"
                                          :display "Bone immobilization (procedure)"}]}
@@ -110,7 +131,7 @@
                                                          :display "DXA Radius and Ulna [T-score] Bone density"}]
                                                 :value -1.4 :unit "{T-score}"}]}
                                {:type :order :profile :cbc}
-                               {:type :delay :from 120 :to 360}
+                               {:type :delay :from 30 :to 90}
                                {:type :medication-order
                                 :codes [{:system :rxnorm :code "904419"
                                          :display "Alendronic acid 10 MG Oral Tablet"}]

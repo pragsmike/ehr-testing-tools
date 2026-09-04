@@ -27,25 +27,79 @@ directory instead of a dead one.
 | [`config-nobed.edn`](config-nobed.edn) | the same, **less `:bed-cycle`** | `config.edn` with exactly one line deleted |
 | [`config-bare.edn`](config-bare.edn) | the skeleton, **no opt-in key at all** | `config.edn`'s own byte PREFIX, plus a closing brace |
 
-Neither derivation is asserted; both are checked. The first is one
-command, run from the workspace root, and the exerciser runs it too:
+**Both siblings are DERIVED, and each rule is a command rather than a
+description.** Run from this directory, either line reproduces its own
+file byte for byte:
+
+```bash
+grep -v '^ :bed-cycle true$' config.edn > config-nobed.edn
+sed -n '1,/^ :module-horizon-days /p' config.edn > config-bare.edn && printf '}\n' >> config-bare.edn
+```
+
+Edit `config.edn` and re-run both lines; never edit a sibling directly.
+Neither derivation is asserted afterwards either -- both are checked,
+and `bin/demo-exerciser-dense-7500` checks them on every integration
+run. The first check is one command, run from the workspace root, and
+the exerciser runs it too:
 
 ```
 $ diff demos/scenarios/dense-7500/config.edn demos/scenarios/dense-7500/config-nobed.edn
-2092d2091
+2113d2112
 <  :bed-cycle true
 ```
 
 The second is the additive claim the 2026-08-29 record made of its own
 three scale points, re-established here: `config-bare.edn` minus its
-own closing brace and newline is byte-identical to the first **152,872
-bytes** of `config.edn`, sha-256 `02d77b97...` on both sides. The
+own closing brace and newline is byte-identical to the first **154,196
+bytes** of `config.edn`, sha-256 `5c3d7659...` on both sides. The
 exerciser re-derives that length from the files themselves rather than
 carrying the number as a literal.
 
 Population-scale, no captured trace -- see this directory's own parent
 [`README.md`](../README.md) for why. Generate the scenario's own output
 first.
+
+## Why the dwells are what they are
+
+**A pathway's delays are not clinical realism here; they are the dial
+that sets concurrent census, and they were set WRONG the first time.**
+As first committed on 2026-09-04, `dense-inpatient` held a Medicine A
+bed for a mean 1,020 minutes, and `config-bare.edn` at 7,500 arrivals
+stopped on `:capacity-exhausted` 2,963 arrivals in. The delays were
+shortened the same day (ruling R-b); the ward sizes are the 2026-08-24
+spike's own facts and did not move.
+
+The bound is Little's law, one ward at a time. `:arrival-gap 2` draws a
+uniform integer 0-2 minutes between arrivals, so **lambda = 1.00
+arrivals per minute**. The module cohort takes every eighth ordinal
+(12.5%) and the remaining 87.5% splits by weight 45 / 35 / 20, giving a
+per-pathway arrival rate of **0.394 / 0.306 / 0.175 per minute**. A
+`:delay` is a uniform integer draw in `[:from, :to]` minutes, so a
+pathway's mean dwell on a ward is the sum of the `(from + to) / 2` it
+spends there. Census is then rate times dwell:
+
+| ward | beds + surge | fed by | dwell before | census before | dwell now | census now |
+|---|---|---|---|---|---|---|
+| Emergency | 180 + 40 = 220 | all three, pre-transfer | 142.5 / 247.5 / 60 | 142.4 | 50 / 247.5 / 60 | **106.0** |
+| Medicine A | 200 + 40 = 240 | `dense-inpatient` | 1,020 | **401.6** | 255 | **100.4** |
+| Surgery | 160 + 40 = 200 | `dense-surgical` | 990 | 173.3 | 990 | **173.3** |
+| Medicine B | 200 + 40 = 240 | overflow only | -- | -- | -- | -- |
+
+**Medicine A at 401.6 against a 240-bed ward is the whole defect**, and
+it is 167% of the ward before a single overflow. The allocation ladder
+(`ehrt.sim-model.facility/allocate`) spills the excess into the other
+inpatient wards' LICENSED beds and then into ED surge, which is how a
+Medicine A overrun surfaced as Surgery 200/200 in the refusal payload.
+Shortening `dense-inpatient`'s five delays to 10-30 / 15-45 / 30-120 /
+60-180 / 30-90 puts that ward at 42% of its own capacity and the ED at
+48% of its; total inpatient census is 273.7 against 680 reachable
+inpatient beds.
+
+**This arithmetic is a mean-value bound and not a simulation.** It
+carries no variance term and no census for the module cohort, whose
+walk length is the vendored modules' business rather than this file's.
+The bound is what sizes the delays; the gate is the run, and all four
+cells below complete.
 
 ## Generate
 
@@ -98,25 +152,20 @@ IDENTICAL event and message counts.
 | `config-nobed.edn` | 7,500 | **124,999** | **168,869** | **1.3510** | 220.55 s | 1,965 MB |
 | `config.edn` | 750 | **33,274** | **41,768** | **1.2553** | 53.64 s | 1,166 MB |
 
-**`config-bare.edn` DOES NOT COMPLETE AT 7,500 ARRIVALS**, and the
-reason is capacity rather than anything wrong with the run. Both timed
-attempts stopped identically after ~42 s with
-`:capacity-exhausted` -- the run refusing an arrival it cannot place,
-patient `PID-002963-bfc158cf` for the Surgery ward, with Surgery at
-200/200 and Medicine A at 240/240 at the moment of refusal. It is
-reported BLOCKED and NOT tuned around; the cell's own row in
-[`docs/consuming-ground-truth.md`](../../../docs/consuming-ground-truth.md#scale)
-therefore still carries the 2026-08-29 programme's figure rather than a
-re-measurement.
-
-**`:persons` IS WHAT KEEPS THE CENSUS INSIDE CAPACITY, which is the
-opposite of what the three configs look like.** `config-bare.edn` is
-the cheapest of the three by every other measure and is the only one
-that stops. With `:persons` present an arrival BINDS to a person, and a
-repeat arrival of somebody already registered opens a second encounter
-rather than a fresh concurrent stay; without it, all 7,500 arrivals are
-distinct patients each holding a bed for their pathway's full dwell.
-The opt-in that looks like pure added volume is also a throttle.
+**`:scheduling` IS WHAT SPREADS THE CENSUS, and it is worth knowing
+before you cut the opt-in keys down.** `config-bare.edn` is the
+cheapest of the three by every other measure and it is the one that
+runs nearest to capacity, because a config with no `:scheduling` key
+admits every arrival the minute it walks in. With `:scheduling`
+present, `:scheduled-fraction` of the arrivals are booked instead, and
+the whole visit runs `:lead-time-days` LATER -- `decide :appointment`
+sets `scheduled-t` to the booking instant plus the lead, and the
+outcome bands mean 8% are cancelled and 15% no-show, producing no visit
+at all. At the 0.70 / [3 21] / 0.08 / 0.15 this file carries, that
+takes a 5.2-day arrival stream, defers 54% of it across a three-week
+window and drops 16% of it outright. **The opt-in that looks like pure
+added volume is also a throttle**, and the bare cell is the one running
+without it.
 
 **The bed cycle is worth a quarter of this corpus.** 166,295 events
 against 124,999 is **41,296 events, 24.8% of the whole log**, and
