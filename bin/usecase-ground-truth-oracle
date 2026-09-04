@@ -1,0 +1,172 @@
+#!/usr/bin/env bash
+# Runs docs/use-cases/ground-truth-as-a-test-oracle.md's own ```sh
+# fence, verbatim, under per-step exit-code assertions plus this page's
+# own named invariants.
+#
+# EXERCISED FROM BIRTH. The page and this script land in the same arc as
+# the use case itself -- the reader-path rule (R-F8) satisfied by
+# construction rather than retrofitted, exactly as
+# bin/usecase-custom-emitter was.
+#
+# THE PAGE IS THE PRIME AUDIENCE'S OWN (author ruling, 2026-09-04:
+# docs/dev/AUDIENCES.md segment 7), which raises what this script owes
+# it. That audience uses the ground-truth log as a semantic ORACLE for
+# QA of their own downstream system and retains corpora as versioned QA
+# assets, so the load-bearing claim on the page is not "these commands
+# run" but "the retained asset carries the same verdict the throwaway
+# pipe did". Invariant 1 below is that claim, checked byte-for-byte.
+#
+# The block between the BEGIN/END markers is read by
+# `ehrt.docs-tooling.strip-fresh` (via the exercised-sources register,
+# components/docs-tooling/resources/docs-tooling/exercised-sources.edn)
+# to prove this script and the page's own fence teach the identical
+# commands, in the identical order. Integration-tier only
+# (`make integration`), never per-push CI.
+#
+# Offline: three local sim/check invocations over a committed scenario
+# config. No artifact fetch, no network.
+set -uo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)" || exit 2
+cd -- "$repo_root" || exit 2
+
+fail() {
+  echo "FAIL: $1" >&2
+  exit 1
+}
+
+STEP=0
+LOG_DIR="$(mktemp -d)"
+trap 'rm -rf "$LOG_DIR"' EXIT
+
+# expect CODE CMD...  Asserts CMD's exit status and CAPTURES its stdout
+# BY REDIRECT into this step's own log, so a named invariant below can be
+# checked against real output rather than re-derived --
+# never `tee`, which returns its OWN exit status (ADR-0152).
+expect() {
+  local want="$1"; shift
+  STEP=$((STEP + 1))
+  "$@" > "$LOG_DIR/step-$STEP.out" 2> "$LOG_DIR/step-$STEP.err"
+  local got=$?
+  cat "$LOG_DIR/step-$STEP.out"
+  cat "$LOG_DIR/step-$STEP.err" >&2
+  if [ "$got" -ne "$want" ]; then
+    fail "'$*' exited $got, expected $want"
+  fi
+}
+
+# expect_eval CODE SNIPPET  Like expect, but for a taught line that needs a
+# SHELL -- here, the pipe on one taught line and the redirects on two
+# others. eval runs SNIPPET in this shell, and its stdout/stderr are
+# CAPTURED BY REDIRECT into this step's own log the same way expect's are,
+# so the invariants below can index step logs uniformly (never `tee`, which
+# returns its OWN exit status (ADR-0152)). This wrapper is what
+# `ehrt.docs-tooling.strip-fresh` already knows how to unwrap
+# (`expect-eval-re`); an `expect 0 bash -c '...'` spelling is NOT
+# unwrappable and would leave this row's freshness check permanently red.
+expect_eval() {
+  local want="$1" snippet="$2"
+  STEP=$((STEP + 1))
+  eval "$snippet" > "$LOG_DIR/step-$STEP.out" 2> "$LOG_DIR/step-$STEP.err"
+  local got=$?
+  cat "$LOG_DIR/step-$STEP.out"
+  cat "$LOG_DIR/step-$STEP.err" >&2
+  if [ "$got" -ne "$want" ]; then
+    fail "'$snippet' exited $got, expected $want"
+  fi
+}
+
+echo "== usecase-ground-truth-oracle: docs/use-cases/ground-truth-as-a-test-oracle.md, verbatim, asserted =="
+
+# Script-only apparatus, not a taught line: safely re-runnable. The
+# taught `mkdir -p` below is idempotent and stays exactly as the page
+# teaches it.
+rm -rf out/ground-truth-oracle
+
+# BEGIN ground-truth-oracle commands (verbatim from docs/use-cases/ground-truth-as-a-test-oracle.md)
+expect 0 mkdir -p out/ground-truth-oracle
+
+expect_eval 0 'bin/ehrt sim run --seed 42 --patients 8 --churn --config demos/scenarios/ed-tuesday/config.edn --format ground-truth | bin/ehrt sim check --config demos/scenarios/ed-tuesday/config.edn'
+
+expect_eval 0 'bin/ehrt sim run --seed 42 --patients 8 --churn --config demos/scenarios/ed-tuesday/config.edn --format ground-truth > out/ground-truth-oracle/events.edn'
+
+expect_eval 0 'bin/ehrt sim check --config demos/scenarios/ed-tuesday/config.edn < out/ground-truth-oracle/events.edn'
+# END ground-truth-oracle commands
+
+# --- named invariants, checked against the real output above ---------------
+
+piped_verdict="$LOG_DIR/step-2.out"
+events="out/ground-truth-oracle/events.edn"
+retained_verdict="$LOG_DIR/step-4.out"
+
+# 1. THE PAGE'S LOAD-BEARING CLAIM. The verdict the throwaway pipe
+#    produced and the verdict over the retained file are byte-identical.
+#    That is what makes a kept corpus a QA ASSET rather than a souvenir:
+#    the statement it carries this quarter is the statement it carried
+#    when it was made. If determinism regresses, or if reading a log from
+#    a file ever stops meaning what reading it from a pipe means, this
+#    page is teaching something false and this line is where it is caught.
+if ! diff -u "$piped_verdict" "$retained_verdict"; then
+  fail "the piped verdict and the retained asset's verdict are not identical"
+fi
+
+# 2. Both verdicts are the green one. A green check is what the page
+#    teaches a reader to expect from an unmutated log.
+grep -q ':status :ok' "$piped_verdict" \
+  || fail "the piped run's verdict is not :status :ok"
+grep -q ':status :ok' "$retained_verdict" \
+  || fail "the retained asset's verdict is not :status :ok"
+
+# 3. The catalog really is 45 invariants deep, counted out of the run's
+#    own :invariants-checked rather than out of prose. The page states
+#    that number twice -- in :get and in the strip's own comment -- so it
+#    is asserted rather than trusted.
+invariants="$(sed -n 's/.*:invariants-checked \[\([^]]*\)\].*/\1/p' "$retained_verdict" \
+  | tr ' ' '\n' | grep -c .)"
+[ "$invariants" -eq 45 ] || fail "expected 45 invariants checked, got $invariants"
+
+# 4. The FOUR config-needing invariants the strip's own comment names are
+#    among them, by name. This is the reason the taught commands pass
+#    --config to `sim check` at all, so a rename that silently dropped one
+#    would make the page's advice unfalsifiable.
+for inv in occupancy-within-capacity surge-only-when-earlier-rungs-exhausted \
+           warm-up-mark-matches-window result-analytes-match-order-profile; do
+  grep -q " $inv" "$retained_verdict" \
+    || fail "the config-needing invariant $inv is not in :invariants-checked"
+done
+
+# 5. The retained log is the BARE EDN VECTOR the page promises -- opens
+#    with the vector, not with a result envelope -- and its first event is
+#    a registration, which is the log's own law that every patient is
+#    registered before anything else happens to them.
+head -c 22 "$events" | grep -q '^\[{:event :registered' \
+  || fail "the retained log does not open as a bare vector whose first event is :registered"
+
+# 6. The four entity classes this page tells the reader to derive their
+#    own invariants over are really in the log: patients, encounters,
+#    appointments, beds. The ed-tuesday config is what makes the last two
+#    appear at all -- a bare `ehrt sim run` produces the thinnest stream
+#    this simulator has, which is the page's own warning.
+for key in ':patient-id' ':encounter-id' ':appointment-id' ':bed '; do
+  grep -q -- "$key" "$events" \
+    || fail "the log carries no $key -- the page tells a reader to derive invariants over it"
+done
+
+# 7. The run's own top-level event count for this seed and patient count,
+#    reported by the checker rather than counted by a tree-walking grep
+#    (the log's sharpest edge is that nested :pre-horizon-facts entries
+#    carry an :event key of their own and are NOT events of the log). If
+#    the engine's defaults move under this page, this catches it here
+#    rather than leaving a reader with a page that teaches the wrong size.
+grep -q ':events 300}}$' "$retained_verdict" \
+  || fail "the top-level event count for seed 42 / 8 patients / ed-tuesday changed"
+
+# Tree-clean postcondition (ADR-0005): every write path above lands
+# under the gitignored /out/.
+dirty="$(git status --porcelain)"
+if [ -n "$dirty" ]; then
+  echo "$dirty" >&2
+  fail "working tree is dirty after the run -- a taught command wrote outside out/"
+fi
+
+echo "== usecase-ground-truth-oracle: OK ($STEP steps, 7 invariants) =="

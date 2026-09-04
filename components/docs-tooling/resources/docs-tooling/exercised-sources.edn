@@ -141,6 +141,29 @@
   :env {}
   :witness {:adr "ADR-0141" :date "2026-08-16"}}
 
+ ;; THE PRIME AUDIENCE'S OWN PAGE (author ruling, 2026-09-04:
+ ;; docs/dev/AUDIENCES.md segment 7 -- teams consuming the ground-truth
+ ;; log as a semantic oracle for QA of their own downstream system).
+ ;; Exercised from birth, like the row above it, and for a sharper
+ ;; reason than symmetry: that audience retains corpora as versioned QA
+ ;; assets, so the page's load-bearing claim is that a RETAINED log
+ ;; carries the same verdict a throwaway pipe produced. The script
+ ;; checks that byte-for-byte rather than asserting it in prose.
+ ;;
+ ;; Cited to the STANDING LAW it satisfies (R-exercised-implies-gated,
+ ;; "a row here needs a live check-entry case"), not to an ADR of its
+ ;; own: the 2026-09-04 ruling writes no ADR, so the record is
+ ;; .agents/session-records/2026-09-04-prime-audience.md -- the same
+ ;; citation shape the dense-7500 row below uses.
+ {:source "docs/use-cases/ground-truth-as-a-test-oracle.md"
+  :script "bin/usecase-ground-truth-oracle"
+  :extraction :single-fence
+  :fence-lang "sh"
+  :marker-open "# BEGIN ground-truth-oracle commands (verbatim from docs/use-cases/ground-truth-as-a-test-oracle.md)"
+  :marker-close "# END ground-truth-oracle commands"
+  :env {}
+  :witness {:adr "ADR-0146" :date "2026-09-04"}}
+
  {:source "README.md"
   :script "bin/readme-what-you-get"
   :extraction :paired

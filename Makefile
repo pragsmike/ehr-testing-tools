@@ -58,6 +58,7 @@ integration:
 	bin/usecase-acceptance-qa
 	bin/usecase-regression-baselining
 	bin/usecase-custom-emitter
+	bin/usecase-ground-truth-oracle
 	bin/readme-what-you-get
 
 quickstart:
