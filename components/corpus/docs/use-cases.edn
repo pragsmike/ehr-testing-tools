@@ -20,15 +20,22 @@
  ;; full catalog by ehrt.docs-tooling.usecases/render-start-here-md;
  ;; every :case must name a real case id or the document is INVALID.
  ;;
- ;; Ordered by how many readers each question serves, not by how much
- ;; any one of them needed signposting -- the emitter author's row is
- ;; last on purpose. A "start here" table that led with the rarest
- ;; actor would be dishonest signposting for everyone else; what fixes
- ;; U-9 is that the first screen is six scannable questions instead of
- ;; twenty-two audience sentences, and that this actor ALSO has direct
- ;; routes from README's "Where to start" and docs/README.md.
+ ;; ROW 1 IS FIRST BY AUTHOR RULING (2026-09-04): teams consuming the
+ ;; ground-truth log as a semantic oracle for QA of their own downstream
+ ;; system are this workspace's PRIME audience (docs/dev/AUDIENCES.md
+ ;; segment 7), so their question leads the table. Rows 2..7 keep the
+ ;; order they already had, which is by how many readers each question
+ ;; serves rather than by how much any one of them needed signposting --
+ ;; the emitter author's row is still last on purpose. A "start here"
+ ;; table that led with the rarest actor would be dishonest signposting
+ ;; for everyone else; what fixes U-9 is that the first screen is a few
+ ;; scannable questions instead of twenty-three audience sentences, and
+ ;; that the emitter author ALSO has direct routes from README's "Where
+ ;; to start" and docs/README.md.
  :start-here
- [{:question "I need realistic FHIR test data and don't want to hand-author it"
+ [{:question "I need a semantic ground truth to check my system's behaviour against"
+   :case :ground-truth-as-a-test-oracle}
+  {:question "I need realistic FHIR test data and don't want to hand-author it"
    :case :generate-conforming-data}
   {:question "I need deterministic HL7v2 hospital traffic (admits, transfers, churn)"
    :case :generate-sim-traffic}
@@ -41,7 +48,37 @@
   {:question "I have my own message format and need this traffic in it"
    :case :custom-emitter-from-the-event-log}]
  :cases
- [{:id :generate-conforming-data
+ [{:id :ground-truth-as-a-test-oracle
+   :title "Ground truth as a test oracle for your own system"
+   :audience "Teams doing QA on a downstream system of their own -- an interface engine, an EHR inbound path, a patient index, a scheduling or bed-management module -- who need a semantic answer key to assert that system's behaviour against, rather than a pile of sample messages. This workspace's prime audience (docs/dev/AUDIENCES.md, segment 7)."
+   :bring "A system whose behaviour is defined over patients, encounters, appointments and beds, plus a seed -- and, where your facility is not the shipped default, the --config file that describes it."
+   :get "The run's whole world model as a bare EDN vector: the versioned ground-truth event log every shipped emitter is a projection of, with a stated set of guarantees and an equally explicit set of exclusions. `ehrt sim check` is the reference judge over that log -- 45 invariants, every one reported by name -- and `ehrt sim mutate` injects one named defect class into it, so you can prove your own checks report that class and nothing else."
+   :maturity :usable
+   :commands
+   {:lines ["mkdir -p out/ground-truth-oracle"
+            ""
+            "# The whole loop, in one line and nothing on disk: generate a world"
+            "# and hand it straight to the reference judge. Pass `sim check` the"
+            "# SAME --config the run used -- four of the 45 invariants need config"
+            "# the log itself does not carry, and without the flag they are checked"
+            "# against the shipped defaults instead of against your facility."
+            "bin/ehrt sim run --seed 42 --patients 8 --churn --config demos/scenarios/ed-tuesday/config.edn --format ground-truth | bin/ehrt sim check --config demos/scenarios/ed-tuesday/config.edn"
+            ""
+            "# The same run, retained. `--format ground-truth` writes the bare EDN"
+            "# vector and nothing around it, so this file IS the QA asset: pin it by"
+            "# its manifest's :seeds, :generator, :stream-scheme and"
+            "# :event-schema-version plus the --config file's hash, and it still"
+            "# means the same thing next quarter."
+            "bin/ehrt sim run --seed 42 --patients 8 --churn --config demos/scenarios/ed-tuesday/config.edn --format ground-truth > out/ground-truth-oracle/events.edn"
+            ""
+            "# The judge again, over the retained asset rather than over a pipe --"
+            "# this is the shape your CI re-runs. It reports the identical verdict."
+            "bin/ehrt sim check --config demos/scenarios/ed-tuesday/config.edn < out/ground-truth-oracle/events.edn"]
+    :note "**What the log is, and what it is not.** It is the semantic layer *underneath* every message this workspace emits -- one flat, timestamped vector of event maps describing what happened in the simulated hospital, with no message format anywhere in it. Derive your own invariants over the patients, encounters, appointments and beds it describes, then assert your system agrees. The full run contract -- the invocation, which configuration keys make which event kinds appear at all (a bare `ehrt sim run` produces the thinnest stream this simulator has), the determinism and identity models, and how far it scales -- is [consuming-ground-truth.md](../consuming-ground-truth.md). Read [formats.md's \"Read the top-level vector only\"](../formats.md#read-the-top-level-vector-only) before you write a line of consuming code: it is the log's sharpest edge and this page does not repeat it.\n\n**`ehrt sim check` is the sim-side judge, not `ehrt corpus check`.** It reads a ground-truth EDN vector on stdin and runs an invariant catalog over it -- occupancy against the facility's capacity, timestamps monotone per patient, a discharge closing an encounter an admission opened, an appointment reaching at most one terminal, a bed never double-occupied. Exit 0 with `:status :ok` means every invariant held; exit 1 with `:status :rejected` carries a `:violations` vector naming the invariant, the patient and the instant.\n\n**A green check is a statement about that catalog and nothing else.** [consuming-ground-truth.md's \"What is not warranted\"](../consuming-ground-truth.md#what-is-not-warranted) is the other half of the contract and is meant to be read with the same weight -- including that several invariants are vacuous on a log that never opted into the kinds they police, while all 45 are still listed as checked. Count the kinds in your own log.\n\n**Controlled negatives.** `ehrt sim mutate --operator-id ID --seed N` is a filter over the same vector: it injects one named defect class and declares up front which findings the checker must then report -- exactly that set, in either direction. Put it between the run and the check and you have a negative test for your own pipeline that fails loudly if your checks have gone blind. See [consuming-ground-truth.md's fault-injection section](../consuming-ground-truth.md#fault-injection-as-it-stands-today) for the catalog and the taxonomy, and [operators.md](../operators.md) for the operator ids.\n\n**This actor is witnessed in-tree, not inferred.** [`test-fixtures/downstream-calibration/PROVENANCE.md`](../../test-fixtures/downstream-calibration/PROVENANCE.md) is a downstream QA team's own controlled calibration of `ehrt sim run` -- their config vendored byte-for-byte, with the seed, reference date, flags and event-schema version it was measured at, their result table carried across verbatim, and their own qualification of it carried across too. That file is what this page cites, and it is the whole of what it cites."}
+   :equations ["generator-config × sim-engine → event-log  [EngineExecute]"
+               "event-log × invariant-catalog → pass + rejected  [Check]"]}
+
+  {:id :generate-conforming-data
    :title "Generate conforming synthetic data"
    :audience "Teams needing realistic FHIR test data without hand-authoring it, for any downstream use they choose."
    :bring "A Synthea configuration (population size, seed, clinician seed, reference date)."

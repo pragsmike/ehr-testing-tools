@@ -13,6 +13,7 @@ One question each, in the words a reader tends to arrive with. The full catalog 
 
 | If this is you | Start here |
 |---|---|
+| I need a semantic ground truth to check my system's behaviour against | [Ground truth as a test oracle for your own system](use-cases/ground-truth-as-a-test-oracle.md) |
 | I need realistic FHIR test data and don't want to hand-author it | [Generate conforming synthetic data](use-cases/generate-conforming-data.md) |
 | I need deterministic HL7v2 hospital traffic (admits, transfers, churn) | [Generate deterministic sim (HL7v2) traffic](use-cases/generate-sim-traffic.md) |
 | I need deliberately broken data, to prove my own checks catch it | [Generate controlled-fault data](use-cases/generate-controlled-fault-data.md) |
@@ -22,6 +23,7 @@ One question each, in the words a reader tends to arrive with. The full catalog 
 
 ## Every case
 
+- [Ground truth as a test oracle for your own system](use-cases/ground-truth-as-a-test-oracle.md) -- Teams doing QA on a downstream system of their own -- an interface engine, an EHR inbound path, a patient index, a scheduling or bed-management module -- who need a semantic answer key to assert that system's behaviour against, rather than a pile of sample messages. This workspace's prime audience (docs/dev/AUDIENCES.md, segment 7).
 - [Generate conforming synthetic data](use-cases/generate-conforming-data.md) -- Teams needing realistic FHIR test data without hand-authoring it, for any downstream use they choose.
 - [Generate deterministic sim (HL7v2) traffic](use-cases/generate-sim-traffic.md) -- Teams wanting deterministic, seeded HL7v2 hospital traffic (boarding, churn, cancellations, merges) as a corpus, with no cataloging step required first.
 - [Play a generated corpus back over time](use-cases/play-a-generated-corpus-back-over-time.md) -- Teams wanting to watch, demo, or load-test against hospital traffic paced the way it actually happened, not delivered all at once.

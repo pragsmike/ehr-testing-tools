@@ -82,7 +82,7 @@
   (let [data (edn/read-string (slurp "components/corpus/docs/use-cases.edn"))]
     (is (usecases/valid? data))))
 
-(deftest committed-use-cases-edn-has-twenty-two-cases-test
+(deftest committed-use-cases-edn-has-twenty-three-cases-test
   ;; 14 -> 15, SS-2 Step 5: :simulator-traffic-as-intake-source, the
   ;; new eleventh verified command strip (ruling 7).
   ;; 15 -> 16, SS-3 Step 7: :piped-hl7-traffic-as-intake-source, the
@@ -114,8 +114,17 @@
   ;; first run: the taught redirect wrote into an out/ subdirectory it
   ;; never created (the R-F5 class the battery had just fixed), so a
   ;; taught `mkdir -p` now leads the fence.
+  ;; 22 -> 23, author ruling of 2026-09-04 (the prime audience):
+  ;; :ground-truth-as-a-test-oracle, the ground-truth log used as a
+  ;; semantic oracle for QA of a consumer's OWN downstream system.
+  ;; FIRST in :cases and first in :start-here, both by that ruling's
+  ;; prominence rule -- nothing existing was renumbered, folded or
+  ;; demoted to make room. Exercised from birth, like the case above
+  ;; it: bin/usecase-ground-truth-oracle and its exercised-sources row
+  ;; land in the same arc. The record is a session record, not an ADR:
+  ;; .agents/session-records/2026-09-04-prime-audience.md.
   (let [data (edn/read-string (slurp "components/corpus/docs/use-cases.edn"))]
-    (is (= 22 (count (:cases data))))))
+    (is (= 23 (count (:cases data))))))
 
 (deftest committed-use-cases-edn-has-unique-ids-test
   (let [data (edn/read-string (slurp "components/corpus/docs/use-cases.edn"))
@@ -269,6 +278,20 @@
   ;; of a flat list. If a future edit drops it, this fails by name.
   (let [data (edn/read-string (slurp "components/corpus/docs/use-cases.edn"))]
     (is (some #(= :custom-emitter-from-the-event-log (:case %)) (:start-here data)))))
+
+(deftest committed-start-here-table-leads-with-the-prime-audiences-own-row-test
+  ;; The acceptance gate for the author ruling of 2026-09-04: the prime
+  ;; audience's question is the FIRST row of the Start here table, not
+  ;; merely present in it. Prominence was the whole of the ruling, so a
+  ;; membership assertion would gate the wrong thing -- a later edit
+  ;; that kept the row and moved it down would pass one and fail this.
+  (let [data (edn/read-string (slurp "components/corpus/docs/use-cases.edn"))]
+    (is (= :ground-truth-as-a-test-oracle (:case (first (:start-here data))))
+        (str "the prime audience's row must LEAD the Start here table (author ruling, "
+             "2026-09-04, docs/dev/AUDIENCES.md segment 7). Found "
+             (pr-str (:case (first (:start-here data))))))
+    (is (= :ground-truth-as-a-test-oracle (:id (first (:cases data))))
+        "and lead the catalog itself, for the same reason")))
 
 (deftest render-start-here-md-is-empty-when-no-rows-are-declared-test
   (is (= "" (usecases/render-start-here-md {:cases [sample-case]}))))

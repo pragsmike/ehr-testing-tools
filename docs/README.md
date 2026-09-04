@@ -56,6 +56,11 @@ versioned contract:
    ergonomics" — where the run sizes an automated consumer reaches stop
    being comfortable, said before you find out.
 
+The catalog entry for the whole job, with a paste-able strip, is
+[`use-cases/ground-truth-as-a-test-oracle.md`](use-cases/ground-truth-as-a-test-oracle.md)
+— the first row of [`use-cases.md`](use-cases.md)'s own "Start here"
+table.
+
 `ehrt sim check` is the reference judge for that log — the same
 invariant catalog this repository holds its own output to — and
 `ehrt sim mutate` injects one named defect class into it, so you can
