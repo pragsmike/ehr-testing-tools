@@ -141,16 +141,19 @@ i7-10750H, 15 GiB, OpenJDK 21.0.7, JVM defaults as shipped --
 `MaxHeapSize` 3.88 GB, `bin/ehrt` sets no JVM options). Warm-up plus
 two timed runs per cell, one JVM per run, a fresh spool target per run,
 `/usr/bin/time -v` around each; every figure below is the mean of the
-two timed runs, and both runs of every completing cell produced the
-IDENTICAL event and message counts.
+two timed runs, and both runs of every one of the four cells produced
+the IDENTICAL event and message counts. The wall is the whole
+`bin/ehrt corpus generate sim` PROCESS, JVM startup included, and not
+an in-process phase total.
 
 **The measured cells:**
 
 | cell | arrivals | events | messages | msg/event | process wall | peak RSS |
 |---|---|---|---|---|---|---|
-| `config.edn` | 7,500 | **166,295** | **224,645** | **1.3509** | 276.06 s | 2,204 MB |
-| `config-nobed.edn` | 7,500 | **124,999** | **168,869** | **1.3510** | 220.55 s | 1,965 MB |
-| `config.edn` | 750 | **33,274** | **41,768** | **1.2553** | 53.64 s | 1,166 MB |
+| `config.edn` | 7,500 | **167,190** | **222,748** | **1.3323** | 281.46 s | 2,209 MB |
+| `config-nobed.edn` | 7,500 | **125,825** | **164,217** | **1.3051** | 226.25 s | 1,866 MB |
+| `config-bare.edn` | 7,500 | **100,884** | **65,239** | **0.6467** | 144.29 s | 1,817 MB |
+| `config.edn` | 750 | **33,303** | **40,281** | **1.2095** | 53.84 s | 1,196 MB |
 
 **`:scheduling` IS WHAT SPREADS THE CENSUS, and it is worth knowing
 before you cut the opt-in keys down.** `config-bare.edn` is the
@@ -167,16 +170,17 @@ window and drops 16% of it outright. **The opt-in that looks like pure
 added volume is also a throttle**, and the bare cell is the one running
 without it.
 
-**The bed cycle is worth a quarter of this corpus.** 166,295 events
-against 124,999 is **41,296 events, 24.8% of the whole log**, and
-55,776 messages with them -- every one of it bed housekeeping, on a
+**The bed cycle is worth a quarter of this corpus.** 167,190 events
+against 125,825 is **41,365 events, 24.7% of the whole log**, and
+58,531 messages with them -- every one of it bed housekeeping, on a
 scenario that actually boards people, against `clinic-decade`'s 300
-where nobody is boarded. The msg/event ratio is unmoved to four places
-(1.3509 vs 1.3510), so the cycle adds wire traffic in exact proportion
-to the log it adds.
+where nobody is boarded. The cycle is slightly MESSAGE-RICHER than the
+log it rides on -- 1.3323 with it against 1.3051 without, so its own
+41,365 events carry **1.4150 messages each** -- which is what a
+housekeeping event lowered into its own ADT message looks like.
 
-**Messages per event is still climbing at 10^5.** 1.2553 at 750
-arrivals to 1.3509 at 7,500. Read the pair as a direction and not as a
+**Messages per event is still climbing at 10^5.** 1.2095 at 750
+arrivals to 1.3323 at 7,500. Read the pair as a direction and not as a
 decade: `:persons {:count 15000}` does not shrink with `--patients`, so
 the 750 cell carries the SAME 15,000-person demographic timeline as the
 7,500 cell with a tenth of the clinical traffic on top of it. **The two
@@ -190,11 +194,11 @@ scaling exponent is quoted from them here for that reason.
 
 | column | field | carrier | candidate sites |
 |---|---|---|---|
-| A | `:cancels-event-id` | the three cancels | **2,164** |
-| B1 | `:order-event-id` | `:result-available` | **10,196** |
-| B2 | `:order-event-id` | `:medication-end` | **4,810** |
-| C | `:start-event-id` | `:care-plan-end` | **3,449** |
-| D | `:placeholder-event-id` | `:identity-fill` | **934** |
+| A | `:cancels-event-id` | the three cancels | **2,230** |
+| B1 | `:order-event-id` | `:result-available` | **10,253** |
+| B2 | `:order-event-id` | `:medication-end` | **4,884** |
+| C | `:start-event-id` | `:care-plan-end` | **3,486** |
+| D | `:placeholder-event-id` | `:identity-fill` | **943** |
 
 This is the whole matrix, and it is why this scenario is worth more
 than its walls. Until it landed, three of those five columns were

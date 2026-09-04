@@ -152,11 +152,15 @@ echo "== demo-exerciser-dense-7500: checking the README's own witnessed figures 
 # in this file. The claim read is the "What to look for" table's own
 # `config.edn` rows, one per arrival count.
 #
-# A NOTE ON WHAT IS NOT CHECKED HERE. config-bare.edn has no row in
-# that table and none is asserted: at 7,500 arrivals it stops with
-# `:capacity-exhausted` before producing a corpus, which the README
-# says in full. Asserting a figure it cannot produce would be a gate
-# that can only ever be red.
+# A NOTE ON WHAT IS NOT CHECKED HERE. config-bare.edn and
+# config-nobed.edn both have rows in that table since 2026-09-04, and
+# neither is asserted, for a reason that has nothing to do with whether
+# they run -- both complete. The README teaches no command for either
+# sibling, so this script generates no corpus for them and has no
+# artefact to count; asserting their figures would mean adding two
+# more minutes-long runs that no reader is being taught. They are
+# re-measured by hand whenever the scenario changes, and the session
+# record of the day carries the per-run figures.
 readme_cells () {
   # $1 = the arrivals cell as the README writes it. Prints "<events> <messages>".
   grep -F "| \`config.edn\` | $1 |" demos/scenarios/dense-7500/README.md \

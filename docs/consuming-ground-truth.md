@@ -523,29 +523,62 @@ the census at the moment of refusal — and no corpus is produced and
 no self-check is run. The two fixes are the two sides of one
 inequality: **raise capacity, or lower `--patients`.**
 
+**`:scheduling` moves that ceiling further than any other key**, which
+is worth knowing before you cut a config down to size. Without it every
+arrival is admitted the minute it walks in, and `--patients` is a
+concurrency dial as much as a volume one. With it, `:scheduled-fraction`
+of the arrivals are booked instead and the whole visit runs
+`:lead-time-days` later, while `:no-show-rate` and `:cancel-rate` drop
+some of those visits outright — so the same `--patients` against the
+same facility can sit comfortably inside capacity with the key and
+exhaust it without. **`:persons` does not do this**: it resolves a
+repeat arrival to the first arrival's patient id, which merges records,
+not beds.
+
 Whatever size you settle on, the shape of what you read back does not
 change, and the one rule for reading it is formats.md's
 [Read the top-level vector only](formats.md#read-the-top-level-vector-only).
 
 Measured on the traffic-scale programme's own reference machine — WSL2,
 6c/12t i7-10750H, 15 GiB, OpenJDK 21.0.7, JVM defaults as shipped
-(`MaxHeapSize` 3.88 GB; `bin/ehrt` sets no JVM options). Full method and
-run parameters in `.agents/plans/2026-08-24-traffic-scale-program.md`'s
-appendix.
+(`MaxHeapSize` 3.88 GB; `bin/ehrt` sets no JVM options). The commands
+and the per-run figures are
+[`demos/scenarios/dense-7500/README.md`](../demos/scenarios/dense-7500/README.md);
+the 2026-08-29 programme's own method, which the three labelled
+paragraphs below still report, is in
+`.agents/plans/2026-08-24-traffic-scale-program.md`'s appendix.
 
 **10^5 events is comfortable; 10^6 is not, and the reason is the
 emitter.**
 
-| Cell | events | messages | msg/event | in-process wall |
+| Cell | events | messages | msg/event | process wall |
 |---|---|---|---|---|
-| all nine opt-in keys | 171,864 | 233,286 | **1.3574** | 270.37 s |
-| the same, less `:bed-cycle` | 129,415 | 165,946 | **1.2823** | 232.67 s |
-| no opt-in key at all | 105,214 | 67,638 | **0.643** | 118.9 s |
+| all nine opt-in keys | 167,190 | 222,748 | **1.3323** | 281.46 s |
+| the same, less `:bed-cycle` | 125,825 | 164,217 | **1.3051** | 226.25 s |
+| no opt-in key at all | 100,884 | 65,239 | **0.6467** | 144.29 s |
 
-The first two rows are the traffic-scale programme's own closing
-measurement of 2026-08-29; the third is its `old` continuity series.
-Each is one seed at one machine, sampled as warm-up plus two timed runs;
-read them as an order of magnitude, not as a benchmark.
+**All three rows are one generation of one committed configuration**,
+measured 2026-09-04: they are
+[`demos/scenarios/dense-7500/`](../demos/scenarios/dense-7500/README.md)'s
+`config.edn`, `config-nobed.edn` and `config-bare.edn` at `--seed
+20260824 --patients 7500 --churn`, and you can re-run any of them.
+Warm-up plus two timed runs per cell, one JVM per run, a fresh spool
+target per run; every figure is the mean of the two, and both runs of
+every cell produced identical event and message counts. **The wall is
+the whole `corpus generate` PROCESS** under `/usr/bin/time -v`, JVM
+startup included — so it is not comparable line-for-line with the
+in-process phase totals quoted below. One seed on one machine: read it
+as an order of magnitude, not as a benchmark.
+
+**The three paragraphs that follow are the 2026-08-29 traffic-scale
+programme's own measurement, and they are NOT re-measured.** The
+configuration they were taken on no longer exists — it lived in session
+scratch that did not survive, which is why the scenario above was
+committed in the first place — and the configuration that replaced it
+shortened one pathway's dwells (that README's *Why the dwells are what
+they are*). So their absolute figures do not reconcile with the table
+above, and what they are kept for is the direction each reports across a
+decade.
 
 **Messages per event rises with scale rather than settling.** The
 all-keys series reads **1.050 → 1.217 → 1.357** across 10^3 → 10^4 →
