@@ -113,7 +113,7 @@ The paths CI's own generated-doc freshness step diffs -- `make docsgen` writes t
 |---|---|
 | `docs/dev/pipeline.md` | 1 |
 | `docs/use-cases.md` | 1 |
-| `docs/use-cases/` | 22 |
+| `docs/use-cases/` | 23 |
 | `docs/operators.md` | 1 |
 | `docs/cli.md` | 1 |
 | `docs/formats.md` | 1 |
