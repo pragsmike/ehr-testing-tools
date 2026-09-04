@@ -1,0 +1,2116 @@
+;; demos/scenarios/dense-7500/config.edn -- the dense scale scenario,
+;; committed. Until 2026-09-04 this configuration existed only as
+;; session scratch: the 2026-08-24 throughput spike authored it with a
+;; `gen-config.py` that was never committed (that session's F1), the
+;; 2026-08-29 traffic-scale close appended nine opt-in keys to it with a
+;; `gen-v2.py` that was never committed either, and
+;; `docs/consuming-ground-truth.md`'s Scale table has cited the
+;; resulting figures ever since. The scratch did not survive a third
+;; arc. This file is that configuration re-authored from the two
+;; records' own descriptions and committed, so the table's cells have a
+;; runnable artifact under them rather than a dead directory.
+;;
+;; WHAT IS RE-AUTHORED AND WHAT IS FROZEN. The SKELETON below -- the
+;; facility, the providers, the three weighted pathways, the arrival
+;; gap, the module cohort -- comes from
+;; `.agents/session-records/2026-08-24-throughput-spike.md`'s own
+;; "The scenario, in full" section, which describes the scenario in
+;; prose and not in bytes: step COUNTS, ward sizes, weights and the
+;; cohort stride are its, the individual step contents are this
+;; session's, and the original bytes are unrecoverable. The NINE OPT-IN
+;; KEYS at the bottom are frozen verbatim to
+;; `.agents/session-records/2026-08-29-traffic-scale-close.md` section
+;; 3's table, mismatches and all -- see the block above `:scheduling`.
+;;
+;; EVERY CODE HERE IS ALREADY IN THIS TREE, none invented: the SNOMED
+;; and RxNorm concepts are lifted from the vendored Synthea modules
+;; under `components/sim/resources/sim/modules/` (`injuries.json`,
+;; `sore_throat.json`, `osteoporosis.json`), the LOINC observation code
+;; from the same, and the `:cbc`/`:bmp` order profiles are the shipped
+;; catalytic in `components/sim-engine/resources/sim-engine/
+;; order-profiles.edn`. No CPT anywhere (`sim/F4`).
+;;
+;; THE SCALE IS THE POINT. This is the only scenario in `demos/` sized
+;; for a 10^5-event corpus; `clinic-decade` and `ed-tuesday` are 200-
+;; and 100-patient scenarios a reader runs in under a minute. Expect
+;; minutes, not seconds -- see this directory's own README for measured
+;; walls, and `docs/consuming-ground-truth.md#scale` for the cells this
+;; file is the provenance of.
+;;
+;; DERIVED SIBLINGS. `config-nobed.edn` is this file with its one
+;; `:bed-cycle true` line removed; `config-bare.edn` is this file's own
+;; byte PREFIX, ending where the nine opt-in keys begin. Both are
+;; derived from these bytes and neither is independently authored.
+{:facility {:id :metro-general
+            ;; SIZED SO THE STEADY-STATE CENSUS NEVER REACHES THE SURGE
+            ;; RUNGS -- the spike's own sizing rule, restated: a
+            ;; capacity-exhausted run measures the error path rather
+            ;; than generation, and `:exhausted` HALTS a run outright
+            ;; (ADR-0174). Emergency is the arrival ward; the three
+            ;; inpatient wards take the transfers.
+            :wards [{:id :ed :name "Emergency" :beds 180 :surge-slots 40
+                     :surge-format "%s-H%02d" :class :ed :turnaround-minutes [5 15]}
+                    {:id :medicine-a :name "Medicine A" :beds 200 :surge-slots 40
+                     :surge-format "%s-H%02d" :class :inpatient :turnaround-minutes [15 30]}
+                    {:id :medicine-b :name "Medicine B" :beds 200 :surge-slots 40
+                     :surge-format "%s-H%02d" :class :inpatient :turnaround-minutes [15 30]}
+                    {:id :surgery :name "Surgery" :beds 160 :surge-slots 40
+                     :surge-format "%s-H%02d" :class :inpatient :turnaround-minutes [15 30]}]}
+ ;; FOUR PROVIDERS, BETWEEN THEM ELIGIBLE FOR ALL FOUR WARDS -- the
+ ;; spike's own F5-3 finding, which is that a ward with no eligible
+ ;; attending is a run that stops. Dr. Vance is eligible everywhere,
+ ;; the same escape the shipped `default-provider-templates` gives
+ ;; Dr. Reyes.
+ :providers [{:name {:family "Vance" :given "Ruth"} :role :attending
+              :specialty "Emergency Medicine" :wards [:ed :medicine-a :medicine-b :surgery]}
+             {:name {:family "Aoki" :given "Kenji"} :role :attending
+              :specialty "Internal Medicine" :wards [:medicine-a]}
+             {:name {:family "Ferreira" :given "Luisa"} :role :attending
+              :specialty "Hospital Medicine" :wards [:medicine-b]}
+             {:name {:family "Osei" :given "Kwame"} :role :attending
+              :specialty "General Surgery" :wards [:surgery]}]
+ ;; ~ONE ARRIVAL A MINUTE (uniform 0..2). The arrival RATE is fixed and
+ ;; only `--patients` grows, so the concurrent census is the same at
+ ;; every scale point and a log-log slope over this scenario measures
+ ;; the algorithm rather than a busier hospital -- the spike's own
+ ;; reason for holding it constant.
+ :arrival-gap 2
+ :pathways [;; The dense inpatient stay: 21 steps, and the one that
+            ;; carries every clinical step type this pathway IR has --
+            ;; two lab orders, two medication spans, a care plan, a
+            ;; procedure and a diagnostic report, bracketed by a
+            ;; transfer. This is where the generate-phase work is.
+            {:pathway {:name "dense-inpatient"
+                       :steps [{:type :admission :location "Emergency" :reason "Acute abdominal pain"}
+                               {:type :delay :from 30 :to 90}
+                               {:type :order :profile :cbc}
+                               {:type :delay :from 45 :to 120}
+                               {:type :medication-order
+                                :codes [{:system :rxnorm :code "834102"
+                                         :display "Penicillin V Potassium 500 MG Oral Tablet"}]
+                                :citation {:module "dense-inpatient" :state :antibiotic-start}}
+                               {:type :transfer :location "Medicine A"}
+                               {:type :delay :from 120 :to 480}
+                               {:type :order :profile :bmp}
+                               {:type :observation
+                                :codes [{:system :loinc :code "8310-5" :display "Body temperature"}]
+                                :value 38.4 :unit "Cel"}
+                               {:type :care-plan-start
+                                :codes [{:system :snomed :code "385691007"
+                                         :display "Fracture care (regime/therapy)"}]
+                                :citation {:module "dense-inpatient" :state :care-plan}}
+                               {:type :delay :from 240 :to 720}
+                               {:type :procedure
+                                :codes [{:system :snomed :code "274474001"
+                                         :display "Bone immobilization (procedure)"}]}
+                               {:type :diagnostic-report
+                                :codes [{:system :loinc :code "38265-5"
+                                         :display "DXA Radius and Ulna [T-score] Bone density"}]
+                                :observations [{:codes [{:system :loinc :code "38265-5"
+                                                         :display "DXA Radius and Ulna [T-score] Bone density"}]
+                                                :value -1.4 :unit "{T-score}"}]}
+                               {:type :order :profile :cbc}
+                               {:type :delay :from 120 :to 360}
+                               {:type :medication-order
+                                :codes [{:system :rxnorm :code "904419"
+                                         :display "Alendronic acid 10 MG Oral Tablet"}]
+                                :citation {:module "dense-inpatient" :state :analgesia-start}}
+                               {:type :observation
+                                :codes [{:system :loinc :code "8310-5" :display "Body temperature"}]
+                                :value 37.1 :unit "Cel"}
+                               {:type :medication-end
+                                :order-citation {:module "dense-inpatient" :state :antibiotic-start}}
+                               {:type :medication-end
+                                :order-citation {:module "dense-inpatient" :state :analgesia-start}}
+                               {:type :care-plan-end
+                                :care-plan-citation {:module "dense-inpatient" :state :care-plan}}
+                               {:type :discharge}]}
+             :weight 45}
+            ;; Worked up in the ED and sent home: 8 steps, no transfer,
+            ;; no bed on an inpatient ward.
+            {:pathway {:name "dense-fast"
+                       :steps [{:type :admission :location "Emergency" :reason "Chest pain, low risk"}
+                               {:type :delay :from 30 :to 90}
+                               {:type :order :profile :cbc}
+                               {:type :delay :from 60 :to 150}
+                               {:type :observation
+                                :codes [{:system :loinc :code "8310-5" :display "Body temperature"}]
+                                :value 36.9 :unit "Cel"}
+                               {:type :procedure
+                                :codes [{:system :snomed :code "305433001"
+                                         :display "Admission to trauma surgery department (procedure)"}]}
+                               {:type :delay :from 45 :to 120}
+                               {:type :discharge}]}
+             :weight 35}
+            ;; Taken to theatre: 12 steps, the surgical ward's own
+            ;; traffic and the second care-plan span in the pool.
+            {:pathway {:name "dense-surgical"
+                       :steps [{:type :admission :location "Emergency" :reason "Suspected appendicitis"}
+                               {:type :delay :from 30 :to 90}
+                               {:type :order :profile :cbc}
+                               {:type :transfer :location "Surgery"}
+                               {:type :delay :from 60 :to 240}
+                               {:type :procedure
+                                :codes [{:system :snomed :code "305428000"
+                                         :display "Admission to orthopedic department (procedure)"}]}
+                               {:type :delay :from 120 :to 360}
+                               {:type :care-plan-start
+                                :codes [{:system :snomed :code "225358003"
+                                         :display "Wound care (regime/therapy)"}]
+                                :citation {:module "dense-surgical" :state :care-plan}}
+                               {:type :observation
+                                :codes [{:system :loinc :code "8310-5" :display "Body temperature"}]
+                                :value 37.6 :unit "Cel"}
+                               {:type :delay :from 240 :to 960}
+                               {:type :care-plan-end
+                                :care-plan-citation {:module "dense-surgical" :state :care-plan}}
+                               {:type :discharge}]}
+             :weight 20}
+            ;; THE MODULE COHORT, EVERY EIGHTH ORDINAL. Disjoint from
+            ;; the three weighted pathways above by explicit ordinal --
+            ;; the same disjoint-cohort shape `ed-tuesday` ships, for
+            ;; the same reason: an empty pathway makes the module's own
+            ;; compiled content the whole of that patient's queue, so
+            ;; the module walk and an authored inpatient stay never
+            ;; interleave on one patient.
+            {:patient-ordinal 8 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 16 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 24 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 32 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 40 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 48 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 56 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 64 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 72 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 80 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 88 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 96 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 104 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 112 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 120 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 128 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 136 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 144 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 152 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 160 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 168 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 176 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 184 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 192 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 200 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 208 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 216 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 224 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 232 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 240 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 248 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 256 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 264 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 272 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 280 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 288 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 296 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 304 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 312 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 320 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 328 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 336 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 344 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 352 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 360 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 368 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 376 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 384 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 392 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 400 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 408 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 416 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 424 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 432 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 440 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 448 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 456 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 464 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 472 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 480 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 488 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 496 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 504 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 512 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 520 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 528 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 536 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 544 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 552 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 560 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 568 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 576 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 584 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 592 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 600 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 608 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 616 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 624 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 632 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 640 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 648 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 656 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 664 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 672 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 680 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 688 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 696 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 704 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 712 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 720 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 728 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 736 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 744 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 752 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 760 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 768 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 776 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 784 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 792 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 800 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 808 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 816 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 824 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 832 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 840 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 848 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 856 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 864 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 872 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 880 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 888 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 896 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 904 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 912 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 920 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 928 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 936 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 944 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 952 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 960 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 968 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 976 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 984 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 992 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1000 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1008 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1016 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1024 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1032 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1040 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1048 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1056 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1064 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1072 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1080 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1088 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1096 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1104 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1112 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1120 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1128 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1136 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1144 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1152 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1160 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1168 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1176 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1184 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1192 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1200 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1208 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1216 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1224 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1232 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1240 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1248 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1256 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1264 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1272 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1280 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1288 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1296 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1304 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1312 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1320 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1328 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1336 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1344 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1352 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1360 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1368 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1376 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1384 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1392 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1400 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1408 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1416 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1424 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1432 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1440 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1448 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1456 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1464 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1472 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1480 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1488 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1496 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1504 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1512 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1520 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1528 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1536 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1544 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1552 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1560 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1568 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1576 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1584 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1592 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1600 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1608 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1616 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1624 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1632 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1640 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1648 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1656 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1664 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1672 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1680 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1688 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1696 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1704 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1712 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1720 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1728 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1736 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1744 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1752 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1760 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1768 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1776 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1784 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1792 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1800 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1808 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1816 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1824 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1832 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1840 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1848 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1856 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1864 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1872 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1880 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1888 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1896 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1904 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1912 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1920 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1928 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1936 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1944 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1952 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1960 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1968 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1976 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1984 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 1992 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2000 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2008 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2016 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2024 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2032 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2040 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2048 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2056 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2064 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2072 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2080 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2088 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2096 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2104 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2112 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2120 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2128 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2136 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2144 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2152 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2160 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2168 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2176 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2184 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2192 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2200 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2208 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2216 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2224 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2232 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2240 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2248 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2256 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2264 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2272 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2280 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2288 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2296 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2304 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2312 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2320 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2328 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2336 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2344 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2352 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2360 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2368 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2376 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2384 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2392 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2400 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2408 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2416 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2424 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2432 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2440 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2448 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2456 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2464 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2472 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2480 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2488 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2496 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2504 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2512 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2520 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2528 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2536 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2544 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2552 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2560 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2568 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2576 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2584 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2592 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2600 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2608 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2616 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2624 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2632 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2640 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2648 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2656 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2664 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2672 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2680 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2688 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2696 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2704 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2712 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2720 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2728 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2736 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2744 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2752 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2760 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2768 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2776 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2784 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2792 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2800 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2808 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2816 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2824 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2832 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2840 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2848 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2856 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2864 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2872 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2880 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2888 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2896 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2904 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2912 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2920 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2928 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2936 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2944 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2952 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2960 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2968 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2976 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2984 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 2992 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3000 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3008 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3016 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3024 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3032 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3040 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3048 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3056 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3064 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3072 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3080 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3088 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3096 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3104 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3112 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3120 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3128 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3136 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3144 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3152 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3160 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3168 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3176 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3184 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3192 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3200 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3208 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3216 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3224 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3232 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3240 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3248 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3256 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3264 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3272 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3280 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3288 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3296 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3304 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3312 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3320 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3328 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3336 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3344 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3352 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3360 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3368 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3376 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3384 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3392 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3400 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3408 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3416 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3424 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3432 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3440 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3448 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3456 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3464 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3472 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3480 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3488 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3496 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3504 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3512 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3520 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3528 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3536 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3544 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3552 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3560 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3568 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3576 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3584 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3592 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3600 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3608 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3616 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3624 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3632 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3640 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3648 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3656 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3664 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3672 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3680 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3688 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3696 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3704 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3712 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3720 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3728 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3736 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3744 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3752 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3760 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3768 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3776 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3784 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3792 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3800 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3808 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3816 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3824 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3832 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3840 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3848 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3856 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3864 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3872 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3880 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3888 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3896 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3904 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3912 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3920 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3928 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3936 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3944 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3952 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3960 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3968 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3976 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3984 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 3992 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4000 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4008 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4016 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4024 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4032 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4040 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4048 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4056 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4064 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4072 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4080 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4088 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4096 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4104 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4112 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4120 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4128 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4136 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4144 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4152 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4160 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4168 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4176 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4184 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4192 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4200 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4208 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4216 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4224 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4232 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4240 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4248 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4256 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4264 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4272 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4280 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4288 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4296 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4304 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4312 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4320 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4328 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4336 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4344 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4352 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4360 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4368 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4376 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4384 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4392 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4400 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4408 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4416 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4424 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4432 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4440 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4448 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4456 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4464 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4472 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4480 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4488 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4496 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4504 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4512 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4520 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4528 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4536 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4544 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4552 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4560 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4568 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4576 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4584 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4592 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4600 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4608 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4616 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4624 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4632 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4640 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4648 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4656 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4664 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4672 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4680 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4688 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4696 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4704 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4712 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4720 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4728 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4736 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4744 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4752 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4760 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4768 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4776 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4784 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4792 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4800 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4808 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4816 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4824 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4832 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4840 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4848 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4856 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4864 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4872 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4880 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4888 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4896 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4904 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4912 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4920 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4928 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4936 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4944 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4952 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4960 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4968 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4976 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4984 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 4992 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5000 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5008 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5016 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5024 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5032 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5040 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5048 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5056 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5064 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5072 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5080 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5088 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5096 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5104 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5112 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5120 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5128 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5136 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5144 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5152 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5160 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5168 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5176 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5184 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5192 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5200 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5208 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5216 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5224 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5232 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5240 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5248 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5256 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5264 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5272 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5280 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5288 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5296 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5304 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5312 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5320 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5328 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5336 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5344 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5352 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5360 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5368 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5376 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5384 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5392 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5400 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5408 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5416 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5424 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5432 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5440 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5448 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5456 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5464 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5472 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5480 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5488 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5496 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5504 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5512 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5520 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5528 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5536 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5544 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5552 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5560 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5568 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5576 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5584 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5592 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5600 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5608 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5616 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5624 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5632 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5640 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5648 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5656 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5664 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5672 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5680 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5688 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5696 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5704 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5712 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5720 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5728 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5736 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5744 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5752 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5760 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5768 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5776 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5784 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5792 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5800 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5808 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5816 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5824 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5832 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5840 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5848 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5856 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5864 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5872 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5880 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5888 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5896 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5904 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5912 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5920 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5928 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5936 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5944 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5952 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5960 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5968 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5976 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5984 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 5992 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6000 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6008 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6016 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6024 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6032 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6040 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6048 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6056 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6064 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6072 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6080 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6088 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6096 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6104 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6112 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6120 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6128 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6136 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6144 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6152 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6160 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6168 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6176 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6184 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6192 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6200 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6208 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6216 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6224 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6232 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6240 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6248 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6256 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6264 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6272 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6280 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6288 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6296 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6304 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6312 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6320 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6328 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6336 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6344 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6352 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6360 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6368 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6376 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6384 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6392 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6400 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6408 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6416 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6424 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6432 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6440 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6448 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6456 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6464 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6472 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6480 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6488 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6496 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6504 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6512 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6520 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6528 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6536 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6544 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6552 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6560 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6568 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6576 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6584 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6592 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6600 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6608 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6616 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6624 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6632 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6640 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6648 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6656 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6664 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6672 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6680 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6688 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6696 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6704 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6712 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6720 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6728 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6736 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6744 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6752 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6760 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6768 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6776 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6784 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6792 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6800 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6808 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6816 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6824 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6832 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6840 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6848 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6856 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6864 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6872 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6880 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6888 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6896 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6904 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6912 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6920 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6928 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6936 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6944 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6952 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6960 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6968 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6976 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6984 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 6992 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7000 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7008 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7016 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7024 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7032 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7040 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7048 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7056 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7064 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7072 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7080 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7088 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7096 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7104 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7112 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7120 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7128 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7136 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7144 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7152 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7160 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7168 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7176 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7184 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7192 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7200 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7208 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7216 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7224 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7232 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7240 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7248 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7256 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7264 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7272 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7280 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7288 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7296 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7304 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7312 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7320 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7328 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7336 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7344 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7352 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7360 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7368 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7376 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7384 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7392 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7400 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7408 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7416 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7424 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7432 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7440 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7448 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7456 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7464 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7472 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7480 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7488 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 7496 :pathway {:name "module-only" :steps []}}]
+ ;; THE SEVEN TOP EMITTERS from the 2026-08-24 module census -- chosen
+ ;; for event volume per walk, not for clinical theme.
+ :modules ["sore_throat" "med_rec" "injuries" "bronchitis"
+           "metabolic_syndrome_care" "veteran_substance_abuse_treatment"
+           "sinusitis"]
+ :module-assignment [
+                     {:patient-ordinal 8 :module-id "sore_throat"}
+                     {:patient-ordinal 16 :module-id "med_rec"}
+                     {:patient-ordinal 24 :module-id "injuries"}
+                     {:patient-ordinal 32 :module-id "bronchitis"}
+                     {:patient-ordinal 40 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 48 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 56 :module-id "sinusitis"}
+                     {:patient-ordinal 64 :module-id "sore_throat"}
+                     {:patient-ordinal 72 :module-id "med_rec"}
+                     {:patient-ordinal 80 :module-id "injuries"}
+                     {:patient-ordinal 88 :module-id "bronchitis"}
+                     {:patient-ordinal 96 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 104 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 112 :module-id "sinusitis"}
+                     {:patient-ordinal 120 :module-id "sore_throat"}
+                     {:patient-ordinal 128 :module-id "med_rec"}
+                     {:patient-ordinal 136 :module-id "injuries"}
+                     {:patient-ordinal 144 :module-id "bronchitis"}
+                     {:patient-ordinal 152 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 160 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 168 :module-id "sinusitis"}
+                     {:patient-ordinal 176 :module-id "sore_throat"}
+                     {:patient-ordinal 184 :module-id "med_rec"}
+                     {:patient-ordinal 192 :module-id "injuries"}
+                     {:patient-ordinal 200 :module-id "bronchitis"}
+                     {:patient-ordinal 208 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 216 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 224 :module-id "sinusitis"}
+                     {:patient-ordinal 232 :module-id "sore_throat"}
+                     {:patient-ordinal 240 :module-id "med_rec"}
+                     {:patient-ordinal 248 :module-id "injuries"}
+                     {:patient-ordinal 256 :module-id "bronchitis"}
+                     {:patient-ordinal 264 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 272 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 280 :module-id "sinusitis"}
+                     {:patient-ordinal 288 :module-id "sore_throat"}
+                     {:patient-ordinal 296 :module-id "med_rec"}
+                     {:patient-ordinal 304 :module-id "injuries"}
+                     {:patient-ordinal 312 :module-id "bronchitis"}
+                     {:patient-ordinal 320 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 328 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 336 :module-id "sinusitis"}
+                     {:patient-ordinal 344 :module-id "sore_throat"}
+                     {:patient-ordinal 352 :module-id "med_rec"}
+                     {:patient-ordinal 360 :module-id "injuries"}
+                     {:patient-ordinal 368 :module-id "bronchitis"}
+                     {:patient-ordinal 376 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 384 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 392 :module-id "sinusitis"}
+                     {:patient-ordinal 400 :module-id "sore_throat"}
+                     {:patient-ordinal 408 :module-id "med_rec"}
+                     {:patient-ordinal 416 :module-id "injuries"}
+                     {:patient-ordinal 424 :module-id "bronchitis"}
+                     {:patient-ordinal 432 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 440 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 448 :module-id "sinusitis"}
+                     {:patient-ordinal 456 :module-id "sore_throat"}
+                     {:patient-ordinal 464 :module-id "med_rec"}
+                     {:patient-ordinal 472 :module-id "injuries"}
+                     {:patient-ordinal 480 :module-id "bronchitis"}
+                     {:patient-ordinal 488 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 496 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 504 :module-id "sinusitis"}
+                     {:patient-ordinal 512 :module-id "sore_throat"}
+                     {:patient-ordinal 520 :module-id "med_rec"}
+                     {:patient-ordinal 528 :module-id "injuries"}
+                     {:patient-ordinal 536 :module-id "bronchitis"}
+                     {:patient-ordinal 544 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 552 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 560 :module-id "sinusitis"}
+                     {:patient-ordinal 568 :module-id "sore_throat"}
+                     {:patient-ordinal 576 :module-id "med_rec"}
+                     {:patient-ordinal 584 :module-id "injuries"}
+                     {:patient-ordinal 592 :module-id "bronchitis"}
+                     {:patient-ordinal 600 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 608 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 616 :module-id "sinusitis"}
+                     {:patient-ordinal 624 :module-id "sore_throat"}
+                     {:patient-ordinal 632 :module-id "med_rec"}
+                     {:patient-ordinal 640 :module-id "injuries"}
+                     {:patient-ordinal 648 :module-id "bronchitis"}
+                     {:patient-ordinal 656 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 664 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 672 :module-id "sinusitis"}
+                     {:patient-ordinal 680 :module-id "sore_throat"}
+                     {:patient-ordinal 688 :module-id "med_rec"}
+                     {:patient-ordinal 696 :module-id "injuries"}
+                     {:patient-ordinal 704 :module-id "bronchitis"}
+                     {:patient-ordinal 712 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 720 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 728 :module-id "sinusitis"}
+                     {:patient-ordinal 736 :module-id "sore_throat"}
+                     {:patient-ordinal 744 :module-id "med_rec"}
+                     {:patient-ordinal 752 :module-id "injuries"}
+                     {:patient-ordinal 760 :module-id "bronchitis"}
+                     {:patient-ordinal 768 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 776 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 784 :module-id "sinusitis"}
+                     {:patient-ordinal 792 :module-id "sore_throat"}
+                     {:patient-ordinal 800 :module-id "med_rec"}
+                     {:patient-ordinal 808 :module-id "injuries"}
+                     {:patient-ordinal 816 :module-id "bronchitis"}
+                     {:patient-ordinal 824 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 832 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 840 :module-id "sinusitis"}
+                     {:patient-ordinal 848 :module-id "sore_throat"}
+                     {:patient-ordinal 856 :module-id "med_rec"}
+                     {:patient-ordinal 864 :module-id "injuries"}
+                     {:patient-ordinal 872 :module-id "bronchitis"}
+                     {:patient-ordinal 880 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 888 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 896 :module-id "sinusitis"}
+                     {:patient-ordinal 904 :module-id "sore_throat"}
+                     {:patient-ordinal 912 :module-id "med_rec"}
+                     {:patient-ordinal 920 :module-id "injuries"}
+                     {:patient-ordinal 928 :module-id "bronchitis"}
+                     {:patient-ordinal 936 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 944 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 952 :module-id "sinusitis"}
+                     {:patient-ordinal 960 :module-id "sore_throat"}
+                     {:patient-ordinal 968 :module-id "med_rec"}
+                     {:patient-ordinal 976 :module-id "injuries"}
+                     {:patient-ordinal 984 :module-id "bronchitis"}
+                     {:patient-ordinal 992 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 1000 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 1008 :module-id "sinusitis"}
+                     {:patient-ordinal 1016 :module-id "sore_throat"}
+                     {:patient-ordinal 1024 :module-id "med_rec"}
+                     {:patient-ordinal 1032 :module-id "injuries"}
+                     {:patient-ordinal 1040 :module-id "bronchitis"}
+                     {:patient-ordinal 1048 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 1056 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 1064 :module-id "sinusitis"}
+                     {:patient-ordinal 1072 :module-id "sore_throat"}
+                     {:patient-ordinal 1080 :module-id "med_rec"}
+                     {:patient-ordinal 1088 :module-id "injuries"}
+                     {:patient-ordinal 1096 :module-id "bronchitis"}
+                     {:patient-ordinal 1104 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 1112 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 1120 :module-id "sinusitis"}
+                     {:patient-ordinal 1128 :module-id "sore_throat"}
+                     {:patient-ordinal 1136 :module-id "med_rec"}
+                     {:patient-ordinal 1144 :module-id "injuries"}
+                     {:patient-ordinal 1152 :module-id "bronchitis"}
+                     {:patient-ordinal 1160 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 1168 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 1176 :module-id "sinusitis"}
+                     {:patient-ordinal 1184 :module-id "sore_throat"}
+                     {:patient-ordinal 1192 :module-id "med_rec"}
+                     {:patient-ordinal 1200 :module-id "injuries"}
+                     {:patient-ordinal 1208 :module-id "bronchitis"}
+                     {:patient-ordinal 1216 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 1224 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 1232 :module-id "sinusitis"}
+                     {:patient-ordinal 1240 :module-id "sore_throat"}
+                     {:patient-ordinal 1248 :module-id "med_rec"}
+                     {:patient-ordinal 1256 :module-id "injuries"}
+                     {:patient-ordinal 1264 :module-id "bronchitis"}
+                     {:patient-ordinal 1272 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 1280 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 1288 :module-id "sinusitis"}
+                     {:patient-ordinal 1296 :module-id "sore_throat"}
+                     {:patient-ordinal 1304 :module-id "med_rec"}
+                     {:patient-ordinal 1312 :module-id "injuries"}
+                     {:patient-ordinal 1320 :module-id "bronchitis"}
+                     {:patient-ordinal 1328 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 1336 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 1344 :module-id "sinusitis"}
+                     {:patient-ordinal 1352 :module-id "sore_throat"}
+                     {:patient-ordinal 1360 :module-id "med_rec"}
+                     {:patient-ordinal 1368 :module-id "injuries"}
+                     {:patient-ordinal 1376 :module-id "bronchitis"}
+                     {:patient-ordinal 1384 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 1392 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 1400 :module-id "sinusitis"}
+                     {:patient-ordinal 1408 :module-id "sore_throat"}
+                     {:patient-ordinal 1416 :module-id "med_rec"}
+                     {:patient-ordinal 1424 :module-id "injuries"}
+                     {:patient-ordinal 1432 :module-id "bronchitis"}
+                     {:patient-ordinal 1440 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 1448 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 1456 :module-id "sinusitis"}
+                     {:patient-ordinal 1464 :module-id "sore_throat"}
+                     {:patient-ordinal 1472 :module-id "med_rec"}
+                     {:patient-ordinal 1480 :module-id "injuries"}
+                     {:patient-ordinal 1488 :module-id "bronchitis"}
+                     {:patient-ordinal 1496 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 1504 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 1512 :module-id "sinusitis"}
+                     {:patient-ordinal 1520 :module-id "sore_throat"}
+                     {:patient-ordinal 1528 :module-id "med_rec"}
+                     {:patient-ordinal 1536 :module-id "injuries"}
+                     {:patient-ordinal 1544 :module-id "bronchitis"}
+                     {:patient-ordinal 1552 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 1560 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 1568 :module-id "sinusitis"}
+                     {:patient-ordinal 1576 :module-id "sore_throat"}
+                     {:patient-ordinal 1584 :module-id "med_rec"}
+                     {:patient-ordinal 1592 :module-id "injuries"}
+                     {:patient-ordinal 1600 :module-id "bronchitis"}
+                     {:patient-ordinal 1608 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 1616 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 1624 :module-id "sinusitis"}
+                     {:patient-ordinal 1632 :module-id "sore_throat"}
+                     {:patient-ordinal 1640 :module-id "med_rec"}
+                     {:patient-ordinal 1648 :module-id "injuries"}
+                     {:patient-ordinal 1656 :module-id "bronchitis"}
+                     {:patient-ordinal 1664 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 1672 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 1680 :module-id "sinusitis"}
+                     {:patient-ordinal 1688 :module-id "sore_throat"}
+                     {:patient-ordinal 1696 :module-id "med_rec"}
+                     {:patient-ordinal 1704 :module-id "injuries"}
+                     {:patient-ordinal 1712 :module-id "bronchitis"}
+                     {:patient-ordinal 1720 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 1728 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 1736 :module-id "sinusitis"}
+                     {:patient-ordinal 1744 :module-id "sore_throat"}
+                     {:patient-ordinal 1752 :module-id "med_rec"}
+                     {:patient-ordinal 1760 :module-id "injuries"}
+                     {:patient-ordinal 1768 :module-id "bronchitis"}
+                     {:patient-ordinal 1776 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 1784 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 1792 :module-id "sinusitis"}
+                     {:patient-ordinal 1800 :module-id "sore_throat"}
+                     {:patient-ordinal 1808 :module-id "med_rec"}
+                     {:patient-ordinal 1816 :module-id "injuries"}
+                     {:patient-ordinal 1824 :module-id "bronchitis"}
+                     {:patient-ordinal 1832 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 1840 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 1848 :module-id "sinusitis"}
+                     {:patient-ordinal 1856 :module-id "sore_throat"}
+                     {:patient-ordinal 1864 :module-id "med_rec"}
+                     {:patient-ordinal 1872 :module-id "injuries"}
+                     {:patient-ordinal 1880 :module-id "bronchitis"}
+                     {:patient-ordinal 1888 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 1896 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 1904 :module-id "sinusitis"}
+                     {:patient-ordinal 1912 :module-id "sore_throat"}
+                     {:patient-ordinal 1920 :module-id "med_rec"}
+                     {:patient-ordinal 1928 :module-id "injuries"}
+                     {:patient-ordinal 1936 :module-id "bronchitis"}
+                     {:patient-ordinal 1944 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 1952 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 1960 :module-id "sinusitis"}
+                     {:patient-ordinal 1968 :module-id "sore_throat"}
+                     {:patient-ordinal 1976 :module-id "med_rec"}
+                     {:patient-ordinal 1984 :module-id "injuries"}
+                     {:patient-ordinal 1992 :module-id "bronchitis"}
+                     {:patient-ordinal 2000 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 2008 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 2016 :module-id "sinusitis"}
+                     {:patient-ordinal 2024 :module-id "sore_throat"}
+                     {:patient-ordinal 2032 :module-id "med_rec"}
+                     {:patient-ordinal 2040 :module-id "injuries"}
+                     {:patient-ordinal 2048 :module-id "bronchitis"}
+                     {:patient-ordinal 2056 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 2064 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 2072 :module-id "sinusitis"}
+                     {:patient-ordinal 2080 :module-id "sore_throat"}
+                     {:patient-ordinal 2088 :module-id "med_rec"}
+                     {:patient-ordinal 2096 :module-id "injuries"}
+                     {:patient-ordinal 2104 :module-id "bronchitis"}
+                     {:patient-ordinal 2112 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 2120 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 2128 :module-id "sinusitis"}
+                     {:patient-ordinal 2136 :module-id "sore_throat"}
+                     {:patient-ordinal 2144 :module-id "med_rec"}
+                     {:patient-ordinal 2152 :module-id "injuries"}
+                     {:patient-ordinal 2160 :module-id "bronchitis"}
+                     {:patient-ordinal 2168 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 2176 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 2184 :module-id "sinusitis"}
+                     {:patient-ordinal 2192 :module-id "sore_throat"}
+                     {:patient-ordinal 2200 :module-id "med_rec"}
+                     {:patient-ordinal 2208 :module-id "injuries"}
+                     {:patient-ordinal 2216 :module-id "bronchitis"}
+                     {:patient-ordinal 2224 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 2232 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 2240 :module-id "sinusitis"}
+                     {:patient-ordinal 2248 :module-id "sore_throat"}
+                     {:patient-ordinal 2256 :module-id "med_rec"}
+                     {:patient-ordinal 2264 :module-id "injuries"}
+                     {:patient-ordinal 2272 :module-id "bronchitis"}
+                     {:patient-ordinal 2280 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 2288 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 2296 :module-id "sinusitis"}
+                     {:patient-ordinal 2304 :module-id "sore_throat"}
+                     {:patient-ordinal 2312 :module-id "med_rec"}
+                     {:patient-ordinal 2320 :module-id "injuries"}
+                     {:patient-ordinal 2328 :module-id "bronchitis"}
+                     {:patient-ordinal 2336 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 2344 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 2352 :module-id "sinusitis"}
+                     {:patient-ordinal 2360 :module-id "sore_throat"}
+                     {:patient-ordinal 2368 :module-id "med_rec"}
+                     {:patient-ordinal 2376 :module-id "injuries"}
+                     {:patient-ordinal 2384 :module-id "bronchitis"}
+                     {:patient-ordinal 2392 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 2400 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 2408 :module-id "sinusitis"}
+                     {:patient-ordinal 2416 :module-id "sore_throat"}
+                     {:patient-ordinal 2424 :module-id "med_rec"}
+                     {:patient-ordinal 2432 :module-id "injuries"}
+                     {:patient-ordinal 2440 :module-id "bronchitis"}
+                     {:patient-ordinal 2448 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 2456 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 2464 :module-id "sinusitis"}
+                     {:patient-ordinal 2472 :module-id "sore_throat"}
+                     {:patient-ordinal 2480 :module-id "med_rec"}
+                     {:patient-ordinal 2488 :module-id "injuries"}
+                     {:patient-ordinal 2496 :module-id "bronchitis"}
+                     {:patient-ordinal 2504 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 2512 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 2520 :module-id "sinusitis"}
+                     {:patient-ordinal 2528 :module-id "sore_throat"}
+                     {:patient-ordinal 2536 :module-id "med_rec"}
+                     {:patient-ordinal 2544 :module-id "injuries"}
+                     {:patient-ordinal 2552 :module-id "bronchitis"}
+                     {:patient-ordinal 2560 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 2568 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 2576 :module-id "sinusitis"}
+                     {:patient-ordinal 2584 :module-id "sore_throat"}
+                     {:patient-ordinal 2592 :module-id "med_rec"}
+                     {:patient-ordinal 2600 :module-id "injuries"}
+                     {:patient-ordinal 2608 :module-id "bronchitis"}
+                     {:patient-ordinal 2616 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 2624 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 2632 :module-id "sinusitis"}
+                     {:patient-ordinal 2640 :module-id "sore_throat"}
+                     {:patient-ordinal 2648 :module-id "med_rec"}
+                     {:patient-ordinal 2656 :module-id "injuries"}
+                     {:patient-ordinal 2664 :module-id "bronchitis"}
+                     {:patient-ordinal 2672 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 2680 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 2688 :module-id "sinusitis"}
+                     {:patient-ordinal 2696 :module-id "sore_throat"}
+                     {:patient-ordinal 2704 :module-id "med_rec"}
+                     {:patient-ordinal 2712 :module-id "injuries"}
+                     {:patient-ordinal 2720 :module-id "bronchitis"}
+                     {:patient-ordinal 2728 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 2736 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 2744 :module-id "sinusitis"}
+                     {:patient-ordinal 2752 :module-id "sore_throat"}
+                     {:patient-ordinal 2760 :module-id "med_rec"}
+                     {:patient-ordinal 2768 :module-id "injuries"}
+                     {:patient-ordinal 2776 :module-id "bronchitis"}
+                     {:patient-ordinal 2784 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 2792 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 2800 :module-id "sinusitis"}
+                     {:patient-ordinal 2808 :module-id "sore_throat"}
+                     {:patient-ordinal 2816 :module-id "med_rec"}
+                     {:patient-ordinal 2824 :module-id "injuries"}
+                     {:patient-ordinal 2832 :module-id "bronchitis"}
+                     {:patient-ordinal 2840 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 2848 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 2856 :module-id "sinusitis"}
+                     {:patient-ordinal 2864 :module-id "sore_throat"}
+                     {:patient-ordinal 2872 :module-id "med_rec"}
+                     {:patient-ordinal 2880 :module-id "injuries"}
+                     {:patient-ordinal 2888 :module-id "bronchitis"}
+                     {:patient-ordinal 2896 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 2904 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 2912 :module-id "sinusitis"}
+                     {:patient-ordinal 2920 :module-id "sore_throat"}
+                     {:patient-ordinal 2928 :module-id "med_rec"}
+                     {:patient-ordinal 2936 :module-id "injuries"}
+                     {:patient-ordinal 2944 :module-id "bronchitis"}
+                     {:patient-ordinal 2952 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 2960 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 2968 :module-id "sinusitis"}
+                     {:patient-ordinal 2976 :module-id "sore_throat"}
+                     {:patient-ordinal 2984 :module-id "med_rec"}
+                     {:patient-ordinal 2992 :module-id "injuries"}
+                     {:patient-ordinal 3000 :module-id "bronchitis"}
+                     {:patient-ordinal 3008 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 3016 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 3024 :module-id "sinusitis"}
+                     {:patient-ordinal 3032 :module-id "sore_throat"}
+                     {:patient-ordinal 3040 :module-id "med_rec"}
+                     {:patient-ordinal 3048 :module-id "injuries"}
+                     {:patient-ordinal 3056 :module-id "bronchitis"}
+                     {:patient-ordinal 3064 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 3072 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 3080 :module-id "sinusitis"}
+                     {:patient-ordinal 3088 :module-id "sore_throat"}
+                     {:patient-ordinal 3096 :module-id "med_rec"}
+                     {:patient-ordinal 3104 :module-id "injuries"}
+                     {:patient-ordinal 3112 :module-id "bronchitis"}
+                     {:patient-ordinal 3120 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 3128 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 3136 :module-id "sinusitis"}
+                     {:patient-ordinal 3144 :module-id "sore_throat"}
+                     {:patient-ordinal 3152 :module-id "med_rec"}
+                     {:patient-ordinal 3160 :module-id "injuries"}
+                     {:patient-ordinal 3168 :module-id "bronchitis"}
+                     {:patient-ordinal 3176 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 3184 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 3192 :module-id "sinusitis"}
+                     {:patient-ordinal 3200 :module-id "sore_throat"}
+                     {:patient-ordinal 3208 :module-id "med_rec"}
+                     {:patient-ordinal 3216 :module-id "injuries"}
+                     {:patient-ordinal 3224 :module-id "bronchitis"}
+                     {:patient-ordinal 3232 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 3240 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 3248 :module-id "sinusitis"}
+                     {:patient-ordinal 3256 :module-id "sore_throat"}
+                     {:patient-ordinal 3264 :module-id "med_rec"}
+                     {:patient-ordinal 3272 :module-id "injuries"}
+                     {:patient-ordinal 3280 :module-id "bronchitis"}
+                     {:patient-ordinal 3288 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 3296 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 3304 :module-id "sinusitis"}
+                     {:patient-ordinal 3312 :module-id "sore_throat"}
+                     {:patient-ordinal 3320 :module-id "med_rec"}
+                     {:patient-ordinal 3328 :module-id "injuries"}
+                     {:patient-ordinal 3336 :module-id "bronchitis"}
+                     {:patient-ordinal 3344 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 3352 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 3360 :module-id "sinusitis"}
+                     {:patient-ordinal 3368 :module-id "sore_throat"}
+                     {:patient-ordinal 3376 :module-id "med_rec"}
+                     {:patient-ordinal 3384 :module-id "injuries"}
+                     {:patient-ordinal 3392 :module-id "bronchitis"}
+                     {:patient-ordinal 3400 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 3408 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 3416 :module-id "sinusitis"}
+                     {:patient-ordinal 3424 :module-id "sore_throat"}
+                     {:patient-ordinal 3432 :module-id "med_rec"}
+                     {:patient-ordinal 3440 :module-id "injuries"}
+                     {:patient-ordinal 3448 :module-id "bronchitis"}
+                     {:patient-ordinal 3456 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 3464 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 3472 :module-id "sinusitis"}
+                     {:patient-ordinal 3480 :module-id "sore_throat"}
+                     {:patient-ordinal 3488 :module-id "med_rec"}
+                     {:patient-ordinal 3496 :module-id "injuries"}
+                     {:patient-ordinal 3504 :module-id "bronchitis"}
+                     {:patient-ordinal 3512 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 3520 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 3528 :module-id "sinusitis"}
+                     {:patient-ordinal 3536 :module-id "sore_throat"}
+                     {:patient-ordinal 3544 :module-id "med_rec"}
+                     {:patient-ordinal 3552 :module-id "injuries"}
+                     {:patient-ordinal 3560 :module-id "bronchitis"}
+                     {:patient-ordinal 3568 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 3576 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 3584 :module-id "sinusitis"}
+                     {:patient-ordinal 3592 :module-id "sore_throat"}
+                     {:patient-ordinal 3600 :module-id "med_rec"}
+                     {:patient-ordinal 3608 :module-id "injuries"}
+                     {:patient-ordinal 3616 :module-id "bronchitis"}
+                     {:patient-ordinal 3624 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 3632 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 3640 :module-id "sinusitis"}
+                     {:patient-ordinal 3648 :module-id "sore_throat"}
+                     {:patient-ordinal 3656 :module-id "med_rec"}
+                     {:patient-ordinal 3664 :module-id "injuries"}
+                     {:patient-ordinal 3672 :module-id "bronchitis"}
+                     {:patient-ordinal 3680 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 3688 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 3696 :module-id "sinusitis"}
+                     {:patient-ordinal 3704 :module-id "sore_throat"}
+                     {:patient-ordinal 3712 :module-id "med_rec"}
+                     {:patient-ordinal 3720 :module-id "injuries"}
+                     {:patient-ordinal 3728 :module-id "bronchitis"}
+                     {:patient-ordinal 3736 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 3744 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 3752 :module-id "sinusitis"}
+                     {:patient-ordinal 3760 :module-id "sore_throat"}
+                     {:patient-ordinal 3768 :module-id "med_rec"}
+                     {:patient-ordinal 3776 :module-id "injuries"}
+                     {:patient-ordinal 3784 :module-id "bronchitis"}
+                     {:patient-ordinal 3792 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 3800 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 3808 :module-id "sinusitis"}
+                     {:patient-ordinal 3816 :module-id "sore_throat"}
+                     {:patient-ordinal 3824 :module-id "med_rec"}
+                     {:patient-ordinal 3832 :module-id "injuries"}
+                     {:patient-ordinal 3840 :module-id "bronchitis"}
+                     {:patient-ordinal 3848 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 3856 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 3864 :module-id "sinusitis"}
+                     {:patient-ordinal 3872 :module-id "sore_throat"}
+                     {:patient-ordinal 3880 :module-id "med_rec"}
+                     {:patient-ordinal 3888 :module-id "injuries"}
+                     {:patient-ordinal 3896 :module-id "bronchitis"}
+                     {:patient-ordinal 3904 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 3912 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 3920 :module-id "sinusitis"}
+                     {:patient-ordinal 3928 :module-id "sore_throat"}
+                     {:patient-ordinal 3936 :module-id "med_rec"}
+                     {:patient-ordinal 3944 :module-id "injuries"}
+                     {:patient-ordinal 3952 :module-id "bronchitis"}
+                     {:patient-ordinal 3960 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 3968 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 3976 :module-id "sinusitis"}
+                     {:patient-ordinal 3984 :module-id "sore_throat"}
+                     {:patient-ordinal 3992 :module-id "med_rec"}
+                     {:patient-ordinal 4000 :module-id "injuries"}
+                     {:patient-ordinal 4008 :module-id "bronchitis"}
+                     {:patient-ordinal 4016 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 4024 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 4032 :module-id "sinusitis"}
+                     {:patient-ordinal 4040 :module-id "sore_throat"}
+                     {:patient-ordinal 4048 :module-id "med_rec"}
+                     {:patient-ordinal 4056 :module-id "injuries"}
+                     {:patient-ordinal 4064 :module-id "bronchitis"}
+                     {:patient-ordinal 4072 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 4080 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 4088 :module-id "sinusitis"}
+                     {:patient-ordinal 4096 :module-id "sore_throat"}
+                     {:patient-ordinal 4104 :module-id "med_rec"}
+                     {:patient-ordinal 4112 :module-id "injuries"}
+                     {:patient-ordinal 4120 :module-id "bronchitis"}
+                     {:patient-ordinal 4128 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 4136 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 4144 :module-id "sinusitis"}
+                     {:patient-ordinal 4152 :module-id "sore_throat"}
+                     {:patient-ordinal 4160 :module-id "med_rec"}
+                     {:patient-ordinal 4168 :module-id "injuries"}
+                     {:patient-ordinal 4176 :module-id "bronchitis"}
+                     {:patient-ordinal 4184 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 4192 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 4200 :module-id "sinusitis"}
+                     {:patient-ordinal 4208 :module-id "sore_throat"}
+                     {:patient-ordinal 4216 :module-id "med_rec"}
+                     {:patient-ordinal 4224 :module-id "injuries"}
+                     {:patient-ordinal 4232 :module-id "bronchitis"}
+                     {:patient-ordinal 4240 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 4248 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 4256 :module-id "sinusitis"}
+                     {:patient-ordinal 4264 :module-id "sore_throat"}
+                     {:patient-ordinal 4272 :module-id "med_rec"}
+                     {:patient-ordinal 4280 :module-id "injuries"}
+                     {:patient-ordinal 4288 :module-id "bronchitis"}
+                     {:patient-ordinal 4296 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 4304 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 4312 :module-id "sinusitis"}
+                     {:patient-ordinal 4320 :module-id "sore_throat"}
+                     {:patient-ordinal 4328 :module-id "med_rec"}
+                     {:patient-ordinal 4336 :module-id "injuries"}
+                     {:patient-ordinal 4344 :module-id "bronchitis"}
+                     {:patient-ordinal 4352 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 4360 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 4368 :module-id "sinusitis"}
+                     {:patient-ordinal 4376 :module-id "sore_throat"}
+                     {:patient-ordinal 4384 :module-id "med_rec"}
+                     {:patient-ordinal 4392 :module-id "injuries"}
+                     {:patient-ordinal 4400 :module-id "bronchitis"}
+                     {:patient-ordinal 4408 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 4416 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 4424 :module-id "sinusitis"}
+                     {:patient-ordinal 4432 :module-id "sore_throat"}
+                     {:patient-ordinal 4440 :module-id "med_rec"}
+                     {:patient-ordinal 4448 :module-id "injuries"}
+                     {:patient-ordinal 4456 :module-id "bronchitis"}
+                     {:patient-ordinal 4464 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 4472 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 4480 :module-id "sinusitis"}
+                     {:patient-ordinal 4488 :module-id "sore_throat"}
+                     {:patient-ordinal 4496 :module-id "med_rec"}
+                     {:patient-ordinal 4504 :module-id "injuries"}
+                     {:patient-ordinal 4512 :module-id "bronchitis"}
+                     {:patient-ordinal 4520 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 4528 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 4536 :module-id "sinusitis"}
+                     {:patient-ordinal 4544 :module-id "sore_throat"}
+                     {:patient-ordinal 4552 :module-id "med_rec"}
+                     {:patient-ordinal 4560 :module-id "injuries"}
+                     {:patient-ordinal 4568 :module-id "bronchitis"}
+                     {:patient-ordinal 4576 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 4584 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 4592 :module-id "sinusitis"}
+                     {:patient-ordinal 4600 :module-id "sore_throat"}
+                     {:patient-ordinal 4608 :module-id "med_rec"}
+                     {:patient-ordinal 4616 :module-id "injuries"}
+                     {:patient-ordinal 4624 :module-id "bronchitis"}
+                     {:patient-ordinal 4632 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 4640 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 4648 :module-id "sinusitis"}
+                     {:patient-ordinal 4656 :module-id "sore_throat"}
+                     {:patient-ordinal 4664 :module-id "med_rec"}
+                     {:patient-ordinal 4672 :module-id "injuries"}
+                     {:patient-ordinal 4680 :module-id "bronchitis"}
+                     {:patient-ordinal 4688 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 4696 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 4704 :module-id "sinusitis"}
+                     {:patient-ordinal 4712 :module-id "sore_throat"}
+                     {:patient-ordinal 4720 :module-id "med_rec"}
+                     {:patient-ordinal 4728 :module-id "injuries"}
+                     {:patient-ordinal 4736 :module-id "bronchitis"}
+                     {:patient-ordinal 4744 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 4752 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 4760 :module-id "sinusitis"}
+                     {:patient-ordinal 4768 :module-id "sore_throat"}
+                     {:patient-ordinal 4776 :module-id "med_rec"}
+                     {:patient-ordinal 4784 :module-id "injuries"}
+                     {:patient-ordinal 4792 :module-id "bronchitis"}
+                     {:patient-ordinal 4800 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 4808 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 4816 :module-id "sinusitis"}
+                     {:patient-ordinal 4824 :module-id "sore_throat"}
+                     {:patient-ordinal 4832 :module-id "med_rec"}
+                     {:patient-ordinal 4840 :module-id "injuries"}
+                     {:patient-ordinal 4848 :module-id "bronchitis"}
+                     {:patient-ordinal 4856 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 4864 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 4872 :module-id "sinusitis"}
+                     {:patient-ordinal 4880 :module-id "sore_throat"}
+                     {:patient-ordinal 4888 :module-id "med_rec"}
+                     {:patient-ordinal 4896 :module-id "injuries"}
+                     {:patient-ordinal 4904 :module-id "bronchitis"}
+                     {:patient-ordinal 4912 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 4920 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 4928 :module-id "sinusitis"}
+                     {:patient-ordinal 4936 :module-id "sore_throat"}
+                     {:patient-ordinal 4944 :module-id "med_rec"}
+                     {:patient-ordinal 4952 :module-id "injuries"}
+                     {:patient-ordinal 4960 :module-id "bronchitis"}
+                     {:patient-ordinal 4968 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 4976 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 4984 :module-id "sinusitis"}
+                     {:patient-ordinal 4992 :module-id "sore_throat"}
+                     {:patient-ordinal 5000 :module-id "med_rec"}
+                     {:patient-ordinal 5008 :module-id "injuries"}
+                     {:patient-ordinal 5016 :module-id "bronchitis"}
+                     {:patient-ordinal 5024 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 5032 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 5040 :module-id "sinusitis"}
+                     {:patient-ordinal 5048 :module-id "sore_throat"}
+                     {:patient-ordinal 5056 :module-id "med_rec"}
+                     {:patient-ordinal 5064 :module-id "injuries"}
+                     {:patient-ordinal 5072 :module-id "bronchitis"}
+                     {:patient-ordinal 5080 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 5088 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 5096 :module-id "sinusitis"}
+                     {:patient-ordinal 5104 :module-id "sore_throat"}
+                     {:patient-ordinal 5112 :module-id "med_rec"}
+                     {:patient-ordinal 5120 :module-id "injuries"}
+                     {:patient-ordinal 5128 :module-id "bronchitis"}
+                     {:patient-ordinal 5136 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 5144 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 5152 :module-id "sinusitis"}
+                     {:patient-ordinal 5160 :module-id "sore_throat"}
+                     {:patient-ordinal 5168 :module-id "med_rec"}
+                     {:patient-ordinal 5176 :module-id "injuries"}
+                     {:patient-ordinal 5184 :module-id "bronchitis"}
+                     {:patient-ordinal 5192 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 5200 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 5208 :module-id "sinusitis"}
+                     {:patient-ordinal 5216 :module-id "sore_throat"}
+                     {:patient-ordinal 5224 :module-id "med_rec"}
+                     {:patient-ordinal 5232 :module-id "injuries"}
+                     {:patient-ordinal 5240 :module-id "bronchitis"}
+                     {:patient-ordinal 5248 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 5256 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 5264 :module-id "sinusitis"}
+                     {:patient-ordinal 5272 :module-id "sore_throat"}
+                     {:patient-ordinal 5280 :module-id "med_rec"}
+                     {:patient-ordinal 5288 :module-id "injuries"}
+                     {:patient-ordinal 5296 :module-id "bronchitis"}
+                     {:patient-ordinal 5304 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 5312 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 5320 :module-id "sinusitis"}
+                     {:patient-ordinal 5328 :module-id "sore_throat"}
+                     {:patient-ordinal 5336 :module-id "med_rec"}
+                     {:patient-ordinal 5344 :module-id "injuries"}
+                     {:patient-ordinal 5352 :module-id "bronchitis"}
+                     {:patient-ordinal 5360 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 5368 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 5376 :module-id "sinusitis"}
+                     {:patient-ordinal 5384 :module-id "sore_throat"}
+                     {:patient-ordinal 5392 :module-id "med_rec"}
+                     {:patient-ordinal 5400 :module-id "injuries"}
+                     {:patient-ordinal 5408 :module-id "bronchitis"}
+                     {:patient-ordinal 5416 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 5424 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 5432 :module-id "sinusitis"}
+                     {:patient-ordinal 5440 :module-id "sore_throat"}
+                     {:patient-ordinal 5448 :module-id "med_rec"}
+                     {:patient-ordinal 5456 :module-id "injuries"}
+                     {:patient-ordinal 5464 :module-id "bronchitis"}
+                     {:patient-ordinal 5472 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 5480 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 5488 :module-id "sinusitis"}
+                     {:patient-ordinal 5496 :module-id "sore_throat"}
+                     {:patient-ordinal 5504 :module-id "med_rec"}
+                     {:patient-ordinal 5512 :module-id "injuries"}
+                     {:patient-ordinal 5520 :module-id "bronchitis"}
+                     {:patient-ordinal 5528 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 5536 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 5544 :module-id "sinusitis"}
+                     {:patient-ordinal 5552 :module-id "sore_throat"}
+                     {:patient-ordinal 5560 :module-id "med_rec"}
+                     {:patient-ordinal 5568 :module-id "injuries"}
+                     {:patient-ordinal 5576 :module-id "bronchitis"}
+                     {:patient-ordinal 5584 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 5592 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 5600 :module-id "sinusitis"}
+                     {:patient-ordinal 5608 :module-id "sore_throat"}
+                     {:patient-ordinal 5616 :module-id "med_rec"}
+                     {:patient-ordinal 5624 :module-id "injuries"}
+                     {:patient-ordinal 5632 :module-id "bronchitis"}
+                     {:patient-ordinal 5640 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 5648 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 5656 :module-id "sinusitis"}
+                     {:patient-ordinal 5664 :module-id "sore_throat"}
+                     {:patient-ordinal 5672 :module-id "med_rec"}
+                     {:patient-ordinal 5680 :module-id "injuries"}
+                     {:patient-ordinal 5688 :module-id "bronchitis"}
+                     {:patient-ordinal 5696 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 5704 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 5712 :module-id "sinusitis"}
+                     {:patient-ordinal 5720 :module-id "sore_throat"}
+                     {:patient-ordinal 5728 :module-id "med_rec"}
+                     {:patient-ordinal 5736 :module-id "injuries"}
+                     {:patient-ordinal 5744 :module-id "bronchitis"}
+                     {:patient-ordinal 5752 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 5760 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 5768 :module-id "sinusitis"}
+                     {:patient-ordinal 5776 :module-id "sore_throat"}
+                     {:patient-ordinal 5784 :module-id "med_rec"}
+                     {:patient-ordinal 5792 :module-id "injuries"}
+                     {:patient-ordinal 5800 :module-id "bronchitis"}
+                     {:patient-ordinal 5808 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 5816 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 5824 :module-id "sinusitis"}
+                     {:patient-ordinal 5832 :module-id "sore_throat"}
+                     {:patient-ordinal 5840 :module-id "med_rec"}
+                     {:patient-ordinal 5848 :module-id "injuries"}
+                     {:patient-ordinal 5856 :module-id "bronchitis"}
+                     {:patient-ordinal 5864 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 5872 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 5880 :module-id "sinusitis"}
+                     {:patient-ordinal 5888 :module-id "sore_throat"}
+                     {:patient-ordinal 5896 :module-id "med_rec"}
+                     {:patient-ordinal 5904 :module-id "injuries"}
+                     {:patient-ordinal 5912 :module-id "bronchitis"}
+                     {:patient-ordinal 5920 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 5928 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 5936 :module-id "sinusitis"}
+                     {:patient-ordinal 5944 :module-id "sore_throat"}
+                     {:patient-ordinal 5952 :module-id "med_rec"}
+                     {:patient-ordinal 5960 :module-id "injuries"}
+                     {:patient-ordinal 5968 :module-id "bronchitis"}
+                     {:patient-ordinal 5976 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 5984 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 5992 :module-id "sinusitis"}
+                     {:patient-ordinal 6000 :module-id "sore_throat"}
+                     {:patient-ordinal 6008 :module-id "med_rec"}
+                     {:patient-ordinal 6016 :module-id "injuries"}
+                     {:patient-ordinal 6024 :module-id "bronchitis"}
+                     {:patient-ordinal 6032 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 6040 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 6048 :module-id "sinusitis"}
+                     {:patient-ordinal 6056 :module-id "sore_throat"}
+                     {:patient-ordinal 6064 :module-id "med_rec"}
+                     {:patient-ordinal 6072 :module-id "injuries"}
+                     {:patient-ordinal 6080 :module-id "bronchitis"}
+                     {:patient-ordinal 6088 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 6096 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 6104 :module-id "sinusitis"}
+                     {:patient-ordinal 6112 :module-id "sore_throat"}
+                     {:patient-ordinal 6120 :module-id "med_rec"}
+                     {:patient-ordinal 6128 :module-id "injuries"}
+                     {:patient-ordinal 6136 :module-id "bronchitis"}
+                     {:patient-ordinal 6144 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 6152 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 6160 :module-id "sinusitis"}
+                     {:patient-ordinal 6168 :module-id "sore_throat"}
+                     {:patient-ordinal 6176 :module-id "med_rec"}
+                     {:patient-ordinal 6184 :module-id "injuries"}
+                     {:patient-ordinal 6192 :module-id "bronchitis"}
+                     {:patient-ordinal 6200 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 6208 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 6216 :module-id "sinusitis"}
+                     {:patient-ordinal 6224 :module-id "sore_throat"}
+                     {:patient-ordinal 6232 :module-id "med_rec"}
+                     {:patient-ordinal 6240 :module-id "injuries"}
+                     {:patient-ordinal 6248 :module-id "bronchitis"}
+                     {:patient-ordinal 6256 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 6264 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 6272 :module-id "sinusitis"}
+                     {:patient-ordinal 6280 :module-id "sore_throat"}
+                     {:patient-ordinal 6288 :module-id "med_rec"}
+                     {:patient-ordinal 6296 :module-id "injuries"}
+                     {:patient-ordinal 6304 :module-id "bronchitis"}
+                     {:patient-ordinal 6312 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 6320 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 6328 :module-id "sinusitis"}
+                     {:patient-ordinal 6336 :module-id "sore_throat"}
+                     {:patient-ordinal 6344 :module-id "med_rec"}
+                     {:patient-ordinal 6352 :module-id "injuries"}
+                     {:patient-ordinal 6360 :module-id "bronchitis"}
+                     {:patient-ordinal 6368 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 6376 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 6384 :module-id "sinusitis"}
+                     {:patient-ordinal 6392 :module-id "sore_throat"}
+                     {:patient-ordinal 6400 :module-id "med_rec"}
+                     {:patient-ordinal 6408 :module-id "injuries"}
+                     {:patient-ordinal 6416 :module-id "bronchitis"}
+                     {:patient-ordinal 6424 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 6432 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 6440 :module-id "sinusitis"}
+                     {:patient-ordinal 6448 :module-id "sore_throat"}
+                     {:patient-ordinal 6456 :module-id "med_rec"}
+                     {:patient-ordinal 6464 :module-id "injuries"}
+                     {:patient-ordinal 6472 :module-id "bronchitis"}
+                     {:patient-ordinal 6480 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 6488 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 6496 :module-id "sinusitis"}
+                     {:patient-ordinal 6504 :module-id "sore_throat"}
+                     {:patient-ordinal 6512 :module-id "med_rec"}
+                     {:patient-ordinal 6520 :module-id "injuries"}
+                     {:patient-ordinal 6528 :module-id "bronchitis"}
+                     {:patient-ordinal 6536 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 6544 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 6552 :module-id "sinusitis"}
+                     {:patient-ordinal 6560 :module-id "sore_throat"}
+                     {:patient-ordinal 6568 :module-id "med_rec"}
+                     {:patient-ordinal 6576 :module-id "injuries"}
+                     {:patient-ordinal 6584 :module-id "bronchitis"}
+                     {:patient-ordinal 6592 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 6600 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 6608 :module-id "sinusitis"}
+                     {:patient-ordinal 6616 :module-id "sore_throat"}
+                     {:patient-ordinal 6624 :module-id "med_rec"}
+                     {:patient-ordinal 6632 :module-id "injuries"}
+                     {:patient-ordinal 6640 :module-id "bronchitis"}
+                     {:patient-ordinal 6648 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 6656 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 6664 :module-id "sinusitis"}
+                     {:patient-ordinal 6672 :module-id "sore_throat"}
+                     {:patient-ordinal 6680 :module-id "med_rec"}
+                     {:patient-ordinal 6688 :module-id "injuries"}
+                     {:patient-ordinal 6696 :module-id "bronchitis"}
+                     {:patient-ordinal 6704 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 6712 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 6720 :module-id "sinusitis"}
+                     {:patient-ordinal 6728 :module-id "sore_throat"}
+                     {:patient-ordinal 6736 :module-id "med_rec"}
+                     {:patient-ordinal 6744 :module-id "injuries"}
+                     {:patient-ordinal 6752 :module-id "bronchitis"}
+                     {:patient-ordinal 6760 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 6768 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 6776 :module-id "sinusitis"}
+                     {:patient-ordinal 6784 :module-id "sore_throat"}
+                     {:patient-ordinal 6792 :module-id "med_rec"}
+                     {:patient-ordinal 6800 :module-id "injuries"}
+                     {:patient-ordinal 6808 :module-id "bronchitis"}
+                     {:patient-ordinal 6816 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 6824 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 6832 :module-id "sinusitis"}
+                     {:patient-ordinal 6840 :module-id "sore_throat"}
+                     {:patient-ordinal 6848 :module-id "med_rec"}
+                     {:patient-ordinal 6856 :module-id "injuries"}
+                     {:patient-ordinal 6864 :module-id "bronchitis"}
+                     {:patient-ordinal 6872 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 6880 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 6888 :module-id "sinusitis"}
+                     {:patient-ordinal 6896 :module-id "sore_throat"}
+                     {:patient-ordinal 6904 :module-id "med_rec"}
+                     {:patient-ordinal 6912 :module-id "injuries"}
+                     {:patient-ordinal 6920 :module-id "bronchitis"}
+                     {:patient-ordinal 6928 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 6936 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 6944 :module-id "sinusitis"}
+                     {:patient-ordinal 6952 :module-id "sore_throat"}
+                     {:patient-ordinal 6960 :module-id "med_rec"}
+                     {:patient-ordinal 6968 :module-id "injuries"}
+                     {:patient-ordinal 6976 :module-id "bronchitis"}
+                     {:patient-ordinal 6984 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 6992 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 7000 :module-id "sinusitis"}
+                     {:patient-ordinal 7008 :module-id "sore_throat"}
+                     {:patient-ordinal 7016 :module-id "med_rec"}
+                     {:patient-ordinal 7024 :module-id "injuries"}
+                     {:patient-ordinal 7032 :module-id "bronchitis"}
+                     {:patient-ordinal 7040 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 7048 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 7056 :module-id "sinusitis"}
+                     {:patient-ordinal 7064 :module-id "sore_throat"}
+                     {:patient-ordinal 7072 :module-id "med_rec"}
+                     {:patient-ordinal 7080 :module-id "injuries"}
+                     {:patient-ordinal 7088 :module-id "bronchitis"}
+                     {:patient-ordinal 7096 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 7104 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 7112 :module-id "sinusitis"}
+                     {:patient-ordinal 7120 :module-id "sore_throat"}
+                     {:patient-ordinal 7128 :module-id "med_rec"}
+                     {:patient-ordinal 7136 :module-id "injuries"}
+                     {:patient-ordinal 7144 :module-id "bronchitis"}
+                     {:patient-ordinal 7152 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 7160 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 7168 :module-id "sinusitis"}
+                     {:patient-ordinal 7176 :module-id "sore_throat"}
+                     {:patient-ordinal 7184 :module-id "med_rec"}
+                     {:patient-ordinal 7192 :module-id "injuries"}
+                     {:patient-ordinal 7200 :module-id "bronchitis"}
+                     {:patient-ordinal 7208 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 7216 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 7224 :module-id "sinusitis"}
+                     {:patient-ordinal 7232 :module-id "sore_throat"}
+                     {:patient-ordinal 7240 :module-id "med_rec"}
+                     {:patient-ordinal 7248 :module-id "injuries"}
+                     {:patient-ordinal 7256 :module-id "bronchitis"}
+                     {:patient-ordinal 7264 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 7272 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 7280 :module-id "sinusitis"}
+                     {:patient-ordinal 7288 :module-id "sore_throat"}
+                     {:patient-ordinal 7296 :module-id "med_rec"}
+                     {:patient-ordinal 7304 :module-id "injuries"}
+                     {:patient-ordinal 7312 :module-id "bronchitis"}
+                     {:patient-ordinal 7320 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 7328 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 7336 :module-id "sinusitis"}
+                     {:patient-ordinal 7344 :module-id "sore_throat"}
+                     {:patient-ordinal 7352 :module-id "med_rec"}
+                     {:patient-ordinal 7360 :module-id "injuries"}
+                     {:patient-ordinal 7368 :module-id "bronchitis"}
+                     {:patient-ordinal 7376 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 7384 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 7392 :module-id "sinusitis"}
+                     {:patient-ordinal 7400 :module-id "sore_throat"}
+                     {:patient-ordinal 7408 :module-id "med_rec"}
+                     {:patient-ordinal 7416 :module-id "injuries"}
+                     {:patient-ordinal 7424 :module-id "bronchitis"}
+                     {:patient-ordinal 7432 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 7440 :module-id "veteran_substance_abuse_treatment"}
+                     {:patient-ordinal 7448 :module-id "sinusitis"}
+                     {:patient-ordinal 7456 :module-id "sore_throat"}
+                     {:patient-ordinal 7464 :module-id "med_rec"}
+                     {:patient-ordinal 7472 :module-id "injuries"}
+                     {:patient-ordinal 7480 :module-id "bronchitis"}
+                     {:patient-ordinal 7488 :module-id "metabolic_syndrome_care"}
+                     {:patient-ordinal 7496 :module-id "veteran_substance_abuse_treatment"}]
+ ;; FIVE YEARS of module horizon. Long enough that the vendored modules'
+ ;; own multi-year arcs actually reach their later states; short enough
+ ;; that a module walk stays inside the demographic horizon below.
+ :module-horizon-days 1825
+
+ ;; ---------------------------------------------------------------
+ ;; THE NINE OPT-IN KEYS. Everything above this line is
+ ;; `config-bare.edn`, byte for byte -- the "no opt-in key at all" cell
+ ;; of `docs/consuming-ground-truth.md#scale`, and the configuration
+ ;; the 2026-08-24 spike and the 2026-08-25 arc-0 continuity series
+ ;; both ran. Everything below it is what the 2026-08-29 traffic-scale
+ ;; close appended.
+ ;;
+ ;; THE VALUES ARE FROZEN TO THAT SESSION'S OWN TABLE and are NOT
+ ;; retuned here (R-values, 2026-09-04). Two of them are disclosed
+ ;; MISMATCHES, in that record's own words, and they stay mismatched so
+ ;; that the cells this file is the provenance of remain the cells that
+ ;; were measured:
+ ;;
+ ;;   `:scheduling` -- clinic-decade's numbers, copied. Those are a
+ ;;   booked ambulatory decade's; this is an acute metro hospital, for
+ ;;   which ed-tuesday's 0.15 scheduled fraction would be the clinical
+ ;;   choice rather than 0.70.
+ ;;
+ ;;   `:chatter` -- clinic-decade's 0.25 restatements per patient-day
+ ;;   against ed-tuesday's 0.02, so this scenario carries an ambulatory
+ ;;   census rate over acute traffic and is biased toward MORE chatter
+ ;;   than its own shape would produce.
+ ;;
+ ;; `:persons :count` is the one value that is a RULE rather than a
+ ;; copy: twice the arrival count (clinic-decade's own block derives
+ ;; the factor). At 7,500 arrivals that is 15,000 people; clinic-
+ ;; decade's literal 400 would collide nearly every arrival onto an
+ ;; already-registered person. `:years` is copied.
+ :persons {:count 15000 :years 20}
+ :encounters true
+ :bed-cycle true
+ :scheduling {:scheduled-fraction 0.70
+              :lead-time-days [3 21]
+              :no-show-rate 0.15
+              :reschedule-rate 0.10
+              :cancel-rate 0.08
+              :follow-up {:rate 0.35 :interval-days [30 120]}}
+ :chatter {:demographic-update 1.0
+           :coverage-change 1.0
+           :registered 1.0
+           :restatement {:rate-per-patient-day 0.25}}
+ :charges {:price-table {"58410-2"   {:amount 148.00 :display "CBC panel"}
+                         "117015009" {:amount 62.00 :display "Throat culture"}
+                         "23426006"  {:amount 210.00 :display "Respiratory function measurement"}
+                         "441550005" {:amount 88.00 :display "Urinalysis with reflex to culture"}
+                         "ROOM-BOARD" {:amount 1875.00 :display "Room and board, per day"}}}
+ :ladders {:rungs [0.5] :order-rungs [0.25]}
+ :siu {}
+ :fan-out [{:name :adt-feed
+            :filter {:message-types #{"ADT^A01" "ADT^A02" "ADT^A03"}}
+            :msh {:receiving-app "ADT-CONSUMER" :receiving-facility "CENTRAL"}}
+           {:name :bed-feed
+            :filter {:message-types #{"ADT^A01" "ADT^A20"}
+                     :patient-classes #{:inpatient}}
+            :msh {:receiving-app "BED-MANAGEMENT" :receiving-facility "CENTRAL"}}]}
