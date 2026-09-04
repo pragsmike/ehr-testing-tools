@@ -534,8 +534,10 @@
                                   :alias-name {:family "Doe" :given "Unknown"}}]}}))
         ph (filterv #(and (= :registered (:event %)) (= :placeholder (:identity %))) gt)]
     (is (pos? (count ph)) "no placeholder was minted")
-    (is (every? #(nil? (:window-close-t %)) ph)
+    (is (every? #(not (contains? % :window-close-t)) ph)
         "an unresolved window promised a close instant it cannot keep, which is
-         what would make this placeholder judgeable and therefore a violation")
+         what would make this placeholder judgeable and therefore a violation --
+         asserted as ABSENCE, the one form that can tell the engine's intent
+         from `:window-close-t nil` (ADR-0178)")
     (is (empty? (check/every-placeholder-registration-is-resolved-or-still-open gt))
         "an unresolvable placeholder was reported as dangling")))

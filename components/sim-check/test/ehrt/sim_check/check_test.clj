@@ -695,6 +695,38 @@
              {:event :cancel-admit :t 10 :cancels-event-id 0 :participants (subject "P1")}]]
     (is (empty? (check/cancel-references-existing-uncancelled-event log)))))
 
+;; ADR-0178 (R-time): the FIFTH disjunct. Until it landed this row had no
+;; time clause at all -- unlike the two paired spans it sits beside
+;; (`medication-end-...-and-follows-it-in-time`,
+;; `care-plan-end-...-and-follows-it-in-time`, ADR-0166) it never compared
+;; `(:t target)` with `(:t event)` -- so a cancel moved BEHIND its own
+;; referent broke monotonicity and nothing referential. Measured, not
+;; reasoned: `.agents/session-records/2026-09-05-p7-stop-derivation.md`
+;; finding 1 timed two such sites and both convicted `:timestamps-monotone`
+;; alone.
+
+(deftest cancel-references-existing-uncancelled-event-detects-a-cancel-before-its-target
+  (let [log [{:event :cancel-transfer :t 10 :cancels-event-id 1 :participants (subject "P1")}
+             {:event :transfer :t 20 :home-ward "Renal" :participants (subject "P1")
+              :from {:ward "Renal" :bed "RENAL-01" :placement :licensed}
+              :location {:ward "Renal" :bed "RENAL-02" :placement :licensed}}]]
+    (testing "the target EXISTS, is the right kind and names this patient, so
+              the four original disjuncts are all silent; only the time clause
+              convicts, and it names the CANCEL's own instant"
+      (is (= [{:invariant :cancel-references-existing-uncancelled-event
+               :patient-id "P1" :at 10}]
+             (check/cancel-references-existing-uncancelled-event log))))))
+
+(deftest cancel-references-existing-uncancelled-event-permits-a-same-instant-cancel
+  (let [log [{:event :transfer :t 10 :home-ward "Renal" :participants (subject "P1")
+              :from {:ward "Renal" :bed "RENAL-01" :placement :licensed}
+              :location {:ward "Renal" :bed "RENAL-02" :placement :licensed}}
+             {:event :cancel-transfer :t 10 :cancels-event-id 0 :participants (subject "P1")}]]
+    (testing "EQUALITY is permitted, deliberately: `decide :transfer-in-error`
+              emits its transfer and that transfer's cancel at ONE instant, so a
+              strict `<=` here would convict the engine's own correct output"
+      (is (empty? (check/cancel-references-existing-uncancelled-event log))))))
+
 (deftest bed-swap-both-admitted-before-swap-detects-a-non-admitted-participant
   (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
               :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
@@ -983,6 +1015,57 @@
 (deftest engine-run-satisfies-check-all-with-persona
   (let [{:keys [ground-truth]} (run/run {:seed 5 :patients 4})]
     (is (result/ok? (check/check-all ground-truth)))))
+
+;; --- ADR-0178 (R-gate): the log validates against its own published contract
+;;
+;; The catalog had 45 rows and not one of them asked whether an event is a
+;; WELL-FORMED event. So a `:persons` run shipped `:window-close-t nil` on
+;; three `:registered` events -- invalid against
+;; `[:window-close-t {:optional true} :int]`, since `{:optional true}`
+;; permits the key to be ABSENT and not to be present-and-nil -- while
+;; `check-all` reported `:ok` and the manifest claimed
+;; `:event-schema-version "1.8.0"`.
+;;
+;; Validating against the CONTRACT is not reusing an engine decision, so
+;; the independent-judge note (`check.clj`'s own bed-cycle and
+;; `non-admitted-patients-hold-no-bed` docstrings) is satisfied: what that
+;; note forbids is re-asking the engine's fold, its bed arithmetic or its
+;; supersession table, and a schema is none of those -- it is the published
+;; artifact `make event-schema-export` freezes for consumers.
+
+(defn- a-registered
+  "A minimal SCHEMA-VALID `:registered`, the six required keys and nothing
+  else, so a test below can add exactly one bad key and know which one
+  convicted."
+  [extra]
+  (merge {:event :registered :t 0 :active-mrn "MRN000001" :persona a-persona
+          :participants (subject "P1") :warm-up false}
+         extra))
+
+(def ^:private a-placeholder
+  "ADR-0173 section 2(d)'s three placeholder keys, with a close instant the
+  window really does resolve at."
+  {:identity :placeholder
+   :alias-name {:family "Doe" :given "Unknown"}
+   :residence {:status :unknown}
+   :window-close-t 900000})
+
+(deftest every-event-is-schema-valid-holds-for-a-well-formed-log
+  (is (empty? (check/every-event-is-schema-valid
+               [(a-registered {}) (a-registered a-placeholder)])))
+  (testing "and for a placeholder whose window never resolved, which carries the
+            key not at all -- the shape `run.clj`'s `placeholder-registration`
+            emits"
+    (is (empty? (check/every-event-is-schema-valid
+                 [(a-registered (dissoc a-placeholder :window-close-t))])))))
+
+(deftest every-event-is-schema-valid-detects-a-nil-on-an-optional-int
+  (testing "the one shape three `nil?` guards could not tell from absence"
+    (is (= [{:invariant :every-event-is-schema-valid :patient-id "P1" :at 0
+             :index 1 :kind :registered :invalid-paths [[:window-close-t]]}]
+           (check/every-event-is-schema-valid
+            [(a-registered {})
+             (a-registered (assoc a-placeholder :window-close-t nil))])))))
 
 ;; --- ADR-0169 (arc 0): the naive reference oracles, and the defspec ------
 ;;

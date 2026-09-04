@@ -648,8 +648,10 @@
     (is (= 1 (count ph)))
     (is (empty? (fills gt)))
     (is (empty? (identification-merges gt)))
-    (is (nil? (:window-close-t (first ph)))
-        "an unresolved window promised a close instant it cannot keep")
+    (is (not (contains? (first ph) :window-close-t))
+        "an unresolved window promised a close instant it cannot keep -- and
+         ABSENCE is the assertion, not `nil?`, which is true of the defect
+         too (ADR-0178: the key is absent, never present-and-nil)")
     (is (< (:t (last gt)) 900000)
         "the run outlived the window, so this fixture is no longer the
          unresolved case at all")))
@@ -841,8 +843,10 @@
                                                    :events [(p4-window 0 1000 900000)])}))
         ph (placeholder-registrations gt)]
     (is (pos? (count ph)) "the window minted no placeholder, so this proves nothing")
-    (is (every? #(nil? (:window-close-t %)) ph)
-        "a window with no resolution still promised a close instant")
+    (is (every? #(not (contains? % :window-close-t)) ph)
+        "a window with no resolution still promised a close instant -- asserted
+         as ABSENCE, because `nil?` passes on `:window-close-t nil`, which is
+         the very defect ADR-0178 closes")
     (is (every? #(= {:family "Doe" :given "Unknown"} (:alias-name %)) ph)
         "the alias is still minted -- only the DUE instant is withheld")
     (testing "and a window that DOES resolve still carries its close, so nothing
