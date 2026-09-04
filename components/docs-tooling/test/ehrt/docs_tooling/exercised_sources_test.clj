@@ -35,10 +35,13 @@
 
 (deftest registry-loads-and-validates-test
   (let [rows (reg/load-registry)]
-    (is (= 16 (count rows))
-        (str "the registry's own row count, pinned: six of the sixteen arrived together in "
+    (is (= 17 (count rows))
+        (str "the registry's own row count, pinned: six of the seventeen arrived together in "
              "ADR-0149 and share one script; the sixteenth is SETUP.md's verification ladder "
-             "(ADR-0158, author ruling R4-Q4 (a) -- the front-door fence gate)"))
+             "(ADR-0158, author ruling R4-Q4 (a) -- the front-door fence gate); the "
+             "seventeenth is demos/scenarios/dense-7500, the scale scenario committed "
+             "2026-09-04 so that docs/consuming-ground-truth.md's Scale cells cite a live "
+             "artifact rather than one machine's session scratch"))
     (is (every? #(contains? #{:quickstart-fresh :demo-exerciser-fresh
                                :single-fence :paired}
                              (:extraction %))

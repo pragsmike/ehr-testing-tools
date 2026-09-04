@@ -176,6 +176,25 @@
  ;; bytes are what those commands produce. Neither half is sufficient
  ;; alone, which is exactly how this tree drifted twice unnoticed.
 
+ ;; THE SCALE SCENARIO (2026-09-04, closing the gap that
+ ;; docs/consuming-ground-truth.md's Scale table cited three cells whose
+ ;; configuration lived only in one machine's session scratch). Third
+ ;; :demo-exerciser-fresh row, and the FIRST whose exercised commands
+ ;; are minutes long rather than seconds: integration tier only, like
+ ;; both siblings, but this one is why that tier's wallclock moves.
+ {:source "demos/scenarios/dense-7500/README.md"
+  :script "bin/demo-exerciser-dense-7500"
+  :extraction :demo-exerciser-fresh
+  :marker-open "# BEGIN dense-7500 commands (verbatim from demos/scenarios/dense-7500/README.md)"
+  :marker-close "# END dense-7500 commands"
+  :env {}
+  ;; Cited to the STANDING LAW this row implements (R3, "the demos must
+  ;; be known to work, and exercised as documented"), not to an ADR of
+  ;; its own: the de-scaffold ruling of 2026-08-25 writes no ADR for a
+  ;; register decision. Record:
+  ;; .agents/session-records/2026-09-04-dense-7500-scale-cell.md
+  :witness {:adr "ADR-0113" :date "2026-09-04"}}
+
  {:source "demos/traces/boarding-transfer/README.md"
   :script "bin/regen-traces"
   :extraction :demo-exerciser-fresh

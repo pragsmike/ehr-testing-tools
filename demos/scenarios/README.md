@@ -32,6 +32,18 @@ artifact.
   total-joint-replacement seed so that closure's own content lands
   without relying on its default attribute distribution. Vendoring
   batch 2's own rider (AR-VB2-R, `notes/ADRs.md` ADR-0071).
+- [`dense-7500/`](dense-7500/) — the scale scenario, and the only one
+  here sized for a 10^5-event corpus: ~7,500 arrivals into a four-ward
+  metro hospital, three weighted pathways and a module cohort every
+  eighth ordinal, with all nine opt-in keys on. Its two siblings are cut
+  from its own bytes — `config-nobed.edn` is it less `:bed-cycle`,
+  `config-bare.edn` is its opt-in-free byte prefix — so the three of
+  them ARE the three cells
+  [`docs/consuming-ground-truth.md`](../../docs/consuming-ground-truth.md#scale)
+  tabulates. Committed 2026-09-04, when the session scratch those cells
+  had been measured on turned out not to have survived a third arc; see
+  that directory's own README. **Minutes-long runs**, unlike the two
+  above — which is why its exerciser is integration-tier.
 - [`ed-tuesday/`](ed-tuesday/) — a scripted single ED shift: five
   weighted admission/transfer/discharge pathways driving real
   inpatient census, plus a thin ambulatory module tail. Day-scale
