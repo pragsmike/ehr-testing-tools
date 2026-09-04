@@ -276,7 +276,26 @@ belong to (`rulings.md#R-full-suite-before-push`); that second run's
 result, and the CI conclusion at the pushed tip, are recorded in the
 close-marker commit.
 
-## 11. HEAD landed
+## 11. Close: the second suite run, the push, and CI
+
+**Second `make test`**, with this record, the prompt archive and the
+three regenerated indexes in the tree: **MAKE_EXIT=0**, the identical
+**4,817 tests, 25,797 assertions, 0 failures, 0 errors**. The added
+documents cost no assertion, which is the expected shape for a change
+that adds no test file.
+
+**Pushed** `e1be14d9..fc4dca33` to `origin/main`. `bin/post-push-verify`,
+all three checks: remote tip matches HEAD; every commit message in the
+range is pure ASCII; CI reported once, in progress at report time
+(AR-CI-4).
+
+**CI at the pushed tip, verified by this session:** run
+[`33892045227`](https://github.com/pragsmike/ehr-testing-tools/actions/runs/33892045227),
+`headSha` `fc4dca33`, **status `completed`, conclusion `success`**. No
+tag is paid (`rulings.md#R-tag-law`, retired) — the green run at the tip
+is the close marker.
+
+## 12. HEAD landed
 
     05e58e7 docs: the converter-rendered population pin, 28 -> 29
     3b87a9b docs: sim run --format names the ground-truth contract
