@@ -328,8 +328,23 @@
                 mother-patient-id (assoc :mother-patient-id mother-patient-id)
                 placeholder? (assoc :identity :placeholder
                                     :alias-name alias-name
-                                    :window-close-t window-close-t
-                                    :residence {:status :unknown}))]
+                                    :residence {:status :unknown})
+                ;; ADR-0178 (R-fix): `:window-close-t` gets its OWN clause,
+                ;; and the reason is that `run.clj`'s
+                ;; `placeholder-registration` deliberately OMITS the key when
+                ;; the window never resolves -- the person died inside it, so
+                ;; "the ENGINE declines to promise a close instant it already
+                ;; knows will never come". Assoc'ing it beside the other two
+                ;; UNDID that one layer down: the compiled entry has no such
+                ;; key, so the destructured `window-close-t` was nil and the
+                ;; emitted event carried `:window-close-t nil`. The schema
+                ;; says `[:window-close-t {:optional true} :int]`, and
+                ;; `{:optional true}` permits the key to be ABSENT, not to be
+                ;; present-and-nil -- so every `:persons` run shipped events
+                ;; its own manifest's `:event-schema-version "1.8.0"` claimed
+                ;; it satisfied and did not. THE KEY IS ABSENT, NEVER NIL.
+                (and placeholder? (some? window-close-t))
+                (assoc :window-close-t window-close-t))]
      :advance 0
      ;; TS-3: through the gate, never raw --
      ;; `ehrt.sim-engine.encounters/gate-compiled-encounters`'s own
