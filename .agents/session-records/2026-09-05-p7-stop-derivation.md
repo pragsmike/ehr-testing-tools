@@ -100,10 +100,15 @@ both hold. Both invariants excuse a nil reference when the patient's own
 `:registered` carries a matching `:pre-horizon-facts` citation
 (`check.clj` `pre-horizon-referent?`, and `resolving-sites`' own
 docstring warns that a column for either "would have to mirror it").
-Measurement says no site in this population reaches that branch: nulling
-or dangling the reference convicts at all 6 sampled sites of each. The
-mirroring `resolving-sites` warns about is therefore NOT owed here, and
-that is a measured result rather than an assumption.
+These four cells were therefore re-measured EXHAUSTIVELY rather than by
+sample -- every site, not 6 of them -- and nulling or dangling the
+reference convicts at **all 106 of them: 0 non-matching** (at 20
+patients, B2 6 + 6 and C 8 + 8; at 40, B2 22 + 22 and C 17 + 17). No
+site in this population reaches the excusing branch, so the mirroring
+`resolving-sites` warns about is not owed here. This is the ONE claim in
+this record that is a proof over the population rather than a sample,
+and it is the one that most needed to be: an unsampled site reaching
+that branch would have shipped a cell that fails intermittently.
 
 ## 3. Finding 1 -- `A/inverted-span` is unwitnessable, and 13 ship
 
@@ -239,7 +244,11 @@ session's own scope sentence should say it up front.
    licence and the same honesty the ledger's section 7 takes: every
    "observed = declared" above is a SAMPLE and evidence for a
    declaration, not a proof over all sites. The shipped gate asserts at
-   specific seeds. Not ratified; consistent with precedent.
+   specific seeds. ONE EXCEPTION, and it is deliberate: B2's and C's
+   `null` and `phantom` cells are measured over EVERY site (section 2),
+   because those four are the ones an unsampled site could have flipped
+   -- the pre-horizon excusing branch is a real branch in the invariant,
+   not a hypothetical. Not ratified; consistent with precedent.
 5. **Probes not promoted to `bin/`.** The ledger's section 7 rule,
    followed: that is author-licensed fence widening and nothing here
    needs to run per push. Not ratified; consistent with precedent.
