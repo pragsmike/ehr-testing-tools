@@ -86,6 +86,12 @@ with them.
   are then a `:candidate-sites` predicate and a `:fn` apiece. Do NOT invent a
   hand-scripted fixture to stand in for the population -- that is precisely the
   gap ADR-0176 section 1(e) says this arc closes.
+- OPEN **[cancel-invariant-has-no-time-clause]** PRIORITY 8 --
+  `cancel-references-existing-uncancelled-event` never compares its referent's
+  `:t` with the citing cancel's own, so `inverted-span` convicts only
+  `timestamps-monotone` there and column A is REFUSED a fourth cell under
+  ADR-0176 Q5(a): 13 shippable, not 14, its already-cancelled disjunct the shape
+  that would restore it. `.agents/session-records/2026-09-05-p7-stop-derivation.md`
 - OPEN **[cancel-discharge-reopens-an-encounter-that-never-closes]** PRIORITY 9 --
   MEASURED 2026-08-29 while tracing `roadmap.md#ts-3-outpatient-opens-over-an-encounter`,
   and it is a population fact rather than one patient's: a legal
