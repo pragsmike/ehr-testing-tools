@@ -7,7 +7,7 @@
 
 **You bring:** A system whose behaviour is defined over patients, encounters, appointments and beds, plus a seed -- and, where your facility is not the shipped default, the --config file that describes it.
 
-**You get:** The run's whole world model as a bare EDN vector: the versioned ground-truth event log every shipped emitter is a projection of, with a stated set of guarantees and an equally explicit set of exclusions. `ehrt sim check` is the reference judge over that log -- 45 invariants, every one reported by name -- and `ehrt sim mutate` injects one named defect class into it, so you can prove your own checks report that class and nothing else.
+**You get:** The run's whole world model as a bare EDN vector: the versioned ground-truth event log every shipped emitter is a projection of, with a stated set of guarantees and an equally explicit set of exclusions. `ehrt sim check` is the reference judge over that log -- 46 invariants, every one reported by name -- and `ehrt sim mutate` injects one named defect class into it, so you can prove your own checks report that class and nothing else.
 
 **Maturity:** usable
 
@@ -18,7 +18,7 @@ mkdir -p out/ground-truth-oracle
 
 # The whole loop, in one line and nothing on disk: generate a world
 # and hand it straight to the reference judge. Pass `sim check` the
-# SAME --config the run used -- four of the 45 invariants need config
+# SAME --config the run used -- four of the 46 invariants need config
 # the log itself does not carry, and without the flag they are checked
 # against the shipped defaults instead of against your facility.
 bin/ehrt sim run --seed 42 --patients 8 --churn --config demos/scenarios/ed-tuesday/config.edn --format ground-truth | bin/ehrt sim check --config demos/scenarios/ed-tuesday/config.edn

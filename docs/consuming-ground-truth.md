@@ -340,7 +340,7 @@ bin/ehrt sim run --seed 42 --patients 20 --churn --format ground-truth \
 invariants need config the log itself does not carry, and without the
 flag they are checked against the shipped defaults — see below.
 
-`sim check` runs **45 invariants** over the log and reports each one it
+`sim check` runs **46 invariants** over the log and reports each one it
 ran, by name, in `:payload :invariants-checked`. Exit 0 with `:status
 :ok` means every one held; exit 1 with `:status :rejected` and
 `:category :invariant-violation` carries a `:violations` vector naming
@@ -348,7 +348,7 @@ the invariant, the patient and the instant for each. The catalog, in
 reporting order, is `ehrt.sim-check.check/catalog` plus its three
 config-needing siblings:
 
-`timestamps-monotone` `discharge-follows-admission`
+`every-event-is-schema-valid` `timestamps-monotone` `discharge-follows-admission`
 `every-event-has-participants` `participant-ids-exist-in-run`
 `admission-only-when-no-open-encounter` `discharge-closes-an-open-encounter`
 `every-encounter-is-opened-and-closed-or-still-open` `transfer-only-when-admitted`
@@ -379,7 +379,7 @@ config-needing siblings:
 Two things about that list that a reader will otherwise get wrong.
 
 **Without `--config`, `sim check` reads the DEFAULT facility, warm-up
-window and order profiles.** **Four** of the 45 invariants need config
+window and order profiles.** **Four** of the 46 invariants need config
 the log does not carry — `occupancy-within-capacity` and
 `surge-only-when-earlier-rungs-exhausted` need the facility,
 `warm-up-mark-matches-window` needs the warm-up window, and
@@ -424,7 +424,7 @@ them for you. Count the kinds in your own log.
 
 **This section is the other half of the one above and is meant to be
 read with the same weight.** A green `sim check` is a statement about
-the 45 invariants in that catalog and about nothing else.
+the 46 invariants in that catalog and about nothing else.
 
 **Known-open behaviours the catalog permits by construction.**
 
