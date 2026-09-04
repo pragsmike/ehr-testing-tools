@@ -143,6 +143,55 @@ if [ "$(head -c 1 "$gt_file")" != "[" ]; then
 fi
 echo "  ground-truth path: $gt_file is a bare top-level vector, $(stat -c%s "$gt_file") bytes"
 
+echo "== demo-exerciser-dense-7500: checking the README's own witnessed figures =="
+
+# THE WITNESSED COUNTS, RE-DERIVED FROM THE README AT RUNTIME rather
+# than hand-copied here as bash literals -- bin/demo-exerciser-clinic-
+# decade's own discipline, and for the same reason: a future
+# re-witness edits the README and this check stays correct with no edit
+# in this file. The claim read is the "What to look for" table's own
+# `config.edn` rows, one per arrival count.
+#
+# A NOTE ON WHAT IS NOT CHECKED HERE. config-bare.edn has no row in
+# that table and none is asserted: at 7,500 arrivals it stops with
+# `:capacity-exhausted` before producing a corpus, which the README
+# says in full. Asserting a figure it cannot produce would be a gate
+# that can only ever be red.
+readme_cells () {
+  # $1 = the arrivals cell as the README writes it. Prints "<events> <messages>".
+  grep -F "| \`config.edn\` | $1 |" demos/scenarios/dense-7500/README.md \
+    | awk -F'|' '{gsub(/[ *,]/, "", $4); gsub(/[ *,]/, "", $5); print $4, $5}'
+}
+
+read -r want_events_7500 want_msgs_7500 <<< "$(readme_cells '7,500')"
+read -r want_events_750 want_msgs_750 <<< "$(readme_cells '750')"
+if [ -z "${want_events_7500:-}" ] || [ -z "${want_events_750:-}" ]; then
+  fail "witnessed figures: could not read the README's own 'What to look for' table rows -- the check below would be vacuous"
+fi
+
+got_msgs="$(find out/scenarios/dense-7500 -maxdepth 1 -name 'msg-*.hl7' | wc -l | tr -d ' ')"
+if [ "$got_msgs" -ne "$want_msgs_7500" ]; then
+  fail "witnessed figures: the 7,500 cell spooled $got_msgs messages, the README witnesses $want_msgs_7500 -- seed 20260824 determinism did not reproduce"
+fi
+echo "  witnessed figures: $got_msgs spooled messages match the README's own re-derived claim"
+
+# Both event counts in ONE JVM: parsing the 7,500 corpus's own log is
+# the expensive half and there is no reason to pay startup twice.
+WANT_EVENTS_7500="$want_events_7500" WANT_EVENTS_750="$want_events_750" \
+clojure -M:dev:test -e '
+(require (quote [clojure.edn :as edn]))
+(let [check (fn [label path want]
+              (let [got (count (edn/read-string (slurp path)))]
+                (if (= got want)
+                  (do (println (str "  witnessed figures: " label " holds " got " events, as the README witnesses")) true)
+                  (do (println (str "FAIL: " label " holds " got " events, the README witnesses " want)) false))))
+      a (check "the 7,500 corpus" "out/scenarios/dense-7500/events.edn"
+               (Long/parseLong (System/getenv "WANT_EVENTS_7500")))
+      b (check "the 750 ground-truth vector" "out/scenarios/dense-7500-750.edn"
+               (Long/parseLong (System/getenv "WANT_EVENTS_750")))]
+  (System/exit (if (and a b) 0 1)))
+' || fail "witnessed event counts did not hold (see FAIL detail above)"
+
 # Tree-clean postcondition (ADR-0005's own discipline, mirrored from
 # bin/demo-exerciser-ed-tuesday): every write path above lands under
 # the gitignored /out/ -- a full run must leave the tracked tree

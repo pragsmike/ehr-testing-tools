@@ -81,8 +81,82 @@ heap rather than the log's.
 
 ## What to look for
 
-*Measured figures land here in this session's step 5, and the exerciser
-re-derives them from this prose rather than carrying them as literals.*
+Witnessed 2026-09-04 at HEAD, seed 20260824, `--churn`, on the
+traffic-scale programme's own reference machine (WSL2, 6c/12t
+i7-10750H, 15 GiB, OpenJDK 21.0.7, JVM defaults as shipped --
+`MaxHeapSize` 3.88 GB, `bin/ehrt` sets no JVM options). Warm-up plus
+two timed runs per cell, one JVM per run, a fresh spool target per run,
+`/usr/bin/time -v` around each; every figure below is the mean of the
+two timed runs, and both runs of every completing cell produced the
+IDENTICAL event and message counts.
+
+**The measured cells:**
+
+| cell | arrivals | events | messages | msg/event | process wall | peak RSS |
+|---|---|---|---|---|---|---|
+| `config.edn` | 7,500 | **166,295** | **224,645** | **1.3509** | 276.06 s | 2,204 MB |
+| `config-nobed.edn` | 7,500 | **124,999** | **168,869** | **1.3510** | 220.55 s | 1,965 MB |
+| `config.edn` | 750 | **33,274** | **41,768** | **1.2553** | 53.64 s | 1,166 MB |
+
+**`config-bare.edn` DOES NOT COMPLETE AT 7,500 ARRIVALS**, and the
+reason is capacity rather than anything wrong with the run. Both timed
+attempts stopped identically after ~42 s with
+`:capacity-exhausted` -- the run refusing an arrival it cannot place,
+patient `PID-002963-bfc158cf` for the Surgery ward, with Surgery at
+200/200 and Medicine A at 240/240 at the moment of refusal. It is
+reported BLOCKED and NOT tuned around; the cell's own row in
+[`docs/consuming-ground-truth.md`](../../../docs/consuming-ground-truth.md#scale)
+therefore still carries the 2026-08-29 programme's figure rather than a
+re-measurement.
+
+**`:persons` IS WHAT KEEPS THE CENSUS INSIDE CAPACITY, which is the
+opposite of what the three configs look like.** `config-bare.edn` is
+the cheapest of the three by every other measure and is the only one
+that stops. With `:persons` present an arrival BINDS to a person, and a
+repeat arrival of somebody already registered opens a second encounter
+rather than a fresh concurrent stay; without it, all 7,500 arrivals are
+distinct patients each holding a bed for their pathway's full dwell.
+The opt-in that looks like pure added volume is also a throttle.
+
+**The bed cycle is worth a quarter of this corpus.** 166,295 events
+against 124,999 is **41,296 events, 24.8% of the whole log**, and
+55,776 messages with them -- every one of it bed housekeeping, on a
+scenario that actually boards people, against `clinic-decade`'s 300
+where nobody is boarded. The msg/event ratio is unmoved to four places
+(1.3509 vs 1.3510), so the cycle adds wire traffic in exact proportion
+to the log it adds.
+
+**Messages per event is still climbing at 10^5.** 1.2553 at 750
+arrivals to 1.3509 at 7,500. Read the pair as a direction and not as a
+decade: `:persons {:count 15000}` does not shrink with `--patients`, so
+the 750 cell carries the SAME 15,000-person demographic timeline as the
+7,500 cell with a tenth of the clinical traffic on top of it. **The two
+cells are not one scenario an order of magnitude apart**, and no
+scaling exponent is quoted from them here for that reason.
+
+## What to look for in the log itself
+
+**All five referential carrier columns are populated**, measured over
+`config.edn`'s own 7,500-arrival log on 2026-09-04:
+
+| column | field | carrier | candidate sites |
+|---|---|---|---|
+| A | `:cancels-event-id` | the three cancels | **2,164** |
+| B1 | `:order-event-id` | `:result-available` | **10,196** |
+| B2 | `:order-event-id` | `:medication-end` | **4,810** |
+| C | `:start-event-id` | `:care-plan-end` | **3,449** |
+| D | `:placeholder-event-id` | `:identity-fill` | **934** |
+
+This is the whole matrix, and it is why this scenario is worth more
+than its walls. Until it landed, three of those five columns were
+POPULATION GAPS -- convictable in principle, unwitnessable in practice,
+because no config in this tree produced a single candidate site for
+them
+(`.agents/plans/2026-09-01-event-mutation-population-ledger.md`
+section 6). Column A needs a cancel and neither `clinic-decade` nor
+`ed-tuesday` produces one; B2 and C need a `:medication-end` and a
+`:care-plan-end`, which the pathways here author with citations and
+neither of those two does.
 
 ## What this scenario is NOT
 
