@@ -290,6 +290,11 @@ deliberately did not begin.
   rather than tuning it. `:persons` throttles concurrent census; the
   config that opts into nothing is the only one that exhausts capacity.
 
+**CI at the pushed tip.**  -- status
+, conclusion **success**, headSha
+. No tag paid.
+ reported all three checks OK.
+
 **What it leaves open.** Section 7's ruling, and everything downstream
 of it: the Scale table, the `dense-scale-profile` row, and the ledger
 amendment.
