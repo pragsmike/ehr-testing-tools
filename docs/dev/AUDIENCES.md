@@ -20,13 +20,24 @@ name; see the ADR for the prior filename this superseded.
 This is the canonical audience register for this workspace's
 user-facing docs — [`docs/README.md`](../README.md) routes readers to
 an entry path keyed off these segments, rather than defining its own.
-Six segments arrive here with different on-ramps (pared from eight,
+
+**Segment 7 is this workspace's PRIME audience** (author ruling,
+2026-09-04). Documentation serves it first, and the features it needs
+are the prominent, easy-to-discover ones. That ruling is additive and
+nothing else: no segment here is renumbered, folded, demoted or
+deprecated by it, and no capability is removed — every other segment
+keeps the number, the entry path and the serving it had the day before.
+
+Seven segments arrive here with different on-ramps (pared from eight,
 2026-08-12, `notes/ADRs.md` ADR-0119, R4 — the header itself had drifted
 to "Seven" three segments behind actual count even before this paring;
 every segment folded away is named at its fold site below, its real
 content relocated rather than deleted; grown back to six 2026-08-17,
 `notes/ADRs.md` ADR-0146, by the one segment a cold walk found this
-register had never carried — segment 6, the emitter author):
+register had never carried — segment 6, the emitter author; grown to
+seven 2026-09-04 by author ruling — segment 7, the ground-truth QA team,
+recorded in `.agents/session-records/2026-09-04-prime-audience.md` rather
+than in an ADR, the ruling's own instruction):
 
 1. **Guide readers, arriving method-first.** They've read (or are
    reading) [the guide](https://github.com/pragsmike/ehr-testing-guide)'s
@@ -160,6 +171,65 @@ register had never carried — segment 6, the emitter author):
    *"how do I know my emitter is complete"* — the closed 21-kind
    vocabulary, checkable against their own log with
    [`bin/event-census`](../../bin/event-census).
+
+7. **The ground-truth QA team — the prime audience.** They run a
+   downstream system of their own — an interface engine, an EHR
+   inbound path, a patient index, a scheduling or bed-management
+   module — and use this workspace's ground-truth event log as the
+   **semantic oracle** they check that system's behaviour against. The
+   log is not test *input* they transform; it is the **expected
+   answer** their own system is scored against.
+
+   **What they actually do.** They run `ehrt sim run --format
+   ground-truth` and derive their own invariants over the world model
+   it carries — patients, encounters, appointments, beds — then
+   assert those invariants against what their system did with the same
+   traffic. They retain corpora as **versioned QA assets**, pinned by
+   the four-field provenance tuple (`:seeds`, `:generator`,
+   `:stream-scheme`, `:event-schema-version`, plus the `--config` file
+   by content hash —
+   [`consuming-ground-truth.md`](../consuming-ground-truth.md#provenance)),
+   so a corpus that convicted something last quarter still means the
+   same thing this quarter. They use `ehrt sim check` as a **reference
+   judge** — the invariant catalog this repository asserts over its own
+   log, which is also the calibration for what a green run does and
+   does not certify — and `ehrt sim mutate` for **controlled
+   negatives**: inject one named defect class into the log and prove
+   their own checks report that class and nothing else. And all of it
+   runs under **automation**, unattended, in someone else's CI — which
+   makes exit codes, stable heading anchors and self-explanatory error
+   text load-bearing here rather than merely nice.
+
+   **Distinct from segments 4 and 6**, the two it neighbours. Segment 4
+   never runs the CLI and reads what a run *produced*; this segment
+   runs it repeatedly, on a schedule, and cares about the run contract
+   as much as the shape contract. Segment 6 runs it once and then
+   writes an **emitter** — code that renders the log into another
+   format, with the log as the input to a transform they own. Neither
+   framing reaches what this segment needs, which is the standing right
+   to say *my system is wrong* on the strength of the log.
+
+   **Entry path**:
+   [`docs/consuming-ground-truth.md`](../consuming-ground-truth.md)
+   (the run contract — the invocation, which keys make which kinds
+   appear at all, what `ehrt sim check` certifies, and the section
+   beside it that says what is explicitly *not* warranted) →
+   [`docs/formats.md`](../formats.md#read-the-top-level-vector-only)'s
+   "Read the top-level vector only" (the counting rule, read before a
+   line of consuming code is written) →
+   [`docs/future-features.md`](../future-features.md#scale-ergonomics)'s
+   "Scale ergonomics" (where the run sizes an automated consumer
+   reaches stop being comfortable — stated up front rather than found
+   out).
+
+   **The in-tree witness for this actor**, so the register cites
+   something rather than inferring a cohort:
+   [`test-fixtures/downstream-calibration/PROVENANCE.md`](../../test-fixtures/downstream-calibration/PROVENANCE.md)
+   — a downstream QA team's own controlled calibration of `ehrt sim
+   run`, their config vendored byte-for-byte with the seed, reference
+   date, flags and event-schema version it was measured at. Their
+   report itself is channel-held; that file is what this register
+   cites, and it is the whole of what it cites.
 
 ## The constellation
 

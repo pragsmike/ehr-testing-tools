@@ -74,9 +74,12 @@
           (str "no numbered segments found under `## Audience` in " audiences-path
                " -- a link assertion over zero segments is a pass that proves nothing, which "
                "is exactly the class `rulings.md#R-empty-population-is-red` names"))
-      (is (= 6 (count segments))
-          (str "six segments today (ADR-0119 pared to five, ADR-0146 grew it back to six with "
-               "the emitter author). Found " (count segments) ": "
+      (is (= 7 (count segments))
+          (str "seven segments today (ADR-0119 pared to five, ADR-0146 grew it back to six with "
+               "the emitter author, and the author ruling of 2026-09-04 grew it to seven with "
+               "the ground-truth QA team -- segment 7, declared the PRIME audience in that "
+               "register's own preamble; no ADR, by that ruling, so the record is "
+               "`.agents/session-records/2026-09-04-prime-audience.md`). Found " (count segments) ": "
                (pr-str (map :number segments))
                ". If this moved deliberately, move it here in the same commit."))
       (is (= (range 1 (inc (count segments))) (map :number segments))
