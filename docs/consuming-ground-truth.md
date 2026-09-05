@@ -306,6 +306,26 @@ in full.
 - **An ordinary merge** carries **no** `:cause` — it is churn-injected
   duplicate-record traffic and is not an identity resolution.
 
+Either kind ends the absorbed record's stream: nothing names that
+patient-id again after its own `:merge`
+(`no-events-after-merged-terminal`). Two consequences are worth knowing
+before you fold the log, both landed 2026-09-05:
+
+- **The absorbed record gives up its bed at the merge.** If you are
+  computing census or occupancy, a merged record stops counting the
+  instant it is merged; it does not go on holding the bed it was in.
+- **A lab result still in turnaround follows the survivor.** If the
+  absorbed patient had an `:order-placed` whose result had not come back
+  yet, that `:result-available` arrives under the SURVIVOR's
+  `:active-mrn` and names the survivor as its subject — while its
+  `:order-event-id` still points at the order the absorbed record
+  placed. That is deliberate, and it is why
+  `result-references-existing-order-and-follows-it-in-time` resolves an
+  order's subject through any merge at or before the result's own `:t`.
+  The result's `:location` and `:attending` stay as they were when the
+  specimen was ordered, the same convention every order/result pair here
+  follows.
+
 A corpus is allowed to contain a placeholder that is never resolved
 because an ordinary churn merge consumed it first. That is a real MPI
 failure shape, the simulator is telling the truth about it, and it is
