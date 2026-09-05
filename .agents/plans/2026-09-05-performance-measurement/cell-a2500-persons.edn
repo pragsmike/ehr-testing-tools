@@ -69,13 +69,13 @@
             ;; licensed beds absorb what surge does not. What the sizing
             ;; buys is headroom in the ladder as a whole -- 273.7
             ;; inpatient census against 680 reachable inpatient beds.
-            :wards [{:id :ed :name "Emergency" :beds 1620 :surge-slots 360
+            :wards [{:id :ed :name "Emergency" :beds 180 :surge-slots 40
                      :surge-format "%s-H%02d" :class :ed :turnaround-minutes [5 15]}
-                    {:id :medicine-a :name "Medicine A" :beds 1800 :surge-slots 360
+                    {:id :medicine-a :name "Medicine A" :beds 200 :surge-slots 40
                      :surge-format "%s-H%02d" :class :inpatient :turnaround-minutes [15 30]}
-                    {:id :medicine-b :name "Medicine B" :beds 1800 :surge-slots 360
+                    {:id :medicine-b :name "Medicine B" :beds 200 :surge-slots 40
                      :surge-format "%s-H%02d" :class :inpatient :turnaround-minutes [15 30]}
-                    {:id :surgery :name "Surgery" :beds 1440 :surge-slots 360
+                    {:id :surgery :name "Surgery" :beds 160 :surge-slots 40
                      :surge-format "%s-H%02d" :class :inpatient :turnaround-minutes [15 30]}]}
  ;; FOUR PROVIDERS, BETWEEN THEM ELIGIBLE FOR ALL FOUR WARDS -- the
  ;; spike's own F5-3 finding, which is that a ward with no eligible
@@ -2108,6 +2108,7 @@
  ;; the factor). At 7,500 arrivals that is 15,000 people; clinic-
  ;; decade's literal 400 would collide nearly every arrival onto an
  ;; already-registered person. `:years` is copied.
+ :persons {:count 5000 :years 20}
  :encounters true
  :bed-cycle true
  :scheduling {:scheduled-fraction 0.70
