@@ -258,7 +258,41 @@ validators-once record).
 
 ## 7. Push and CI
 
-Filled in at the close-marker commit.
+Pushed `6fe6811e..99320589` to `origin/main`, six commits. The red-first
+commit e2a00f8 went out WITH its green successor 12430760, never alone
+(`rulings.md#R-red-pushed-with-green`).
+
+`bin/post-push-verify 6fe6811e 99320589`, all three checks:
+
+```
+-- 1. Remote tip vs HEAD --
+OK: origin/main (9932058905e4...) matches tip (9932058905e4...)
+-- 2. Per-commit ASCII check, 6fe6811e..99320589 --
+OK: every commit message in range is pure ASCII
+-- 3. CI run at tip --
+CI run for 9932058905e4...: status=in_progress conclusion=<pending>
+DISCLOSED: reported once, not awaited to conclusion (AR-CI-4)
+```
+
+**CI green at the pushed tip, awaited to conclusion by this session**
+(`rulings.md#R-session-verifies-ci-via-gh`, the close marker): run
+**33965913548**, `status=completed conclusion=success` at
+`9932058905e4f897463b0b0a11cbac1a652be331`. No tag was paid
+(`rulings.md#R-tag-law`, RETIRED).
+
+**Background processes, per the rider this session wrote** (SKILL.md
+step 13): every one enumerated and terminated before this marker — six
+timed gate runs and two characterisation probes, all exited on their
+own; the CI watcher stopped explicitly. `ps` at close shows nothing of
+this session's left running.
+
+## 8. AUTHOR ACTION
+
+**The `:orphan-participant` disposition** —
+`roadmap.md#orphan-participant-shape-gap`, ADR-0176 section 8. Narrow
+`:candidate-sites` again to exclude a span START, retire the operator,
+or ratify the `declared-shape-gaps` register as it landed. Until then
+the register carries it, red-if-fixed in both directions.
 
 No regression-oracle claim is made: this session changed no emitting or
 folding code, only a test tree and two documents.
