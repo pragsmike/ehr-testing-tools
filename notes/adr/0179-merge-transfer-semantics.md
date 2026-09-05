@@ -125,6 +125,14 @@ reading convicts a log the engine itself now writes, which is a
 mechanical conflict rather than a second defensible reading). Flagged
 for ratification.
 
+**Addendum, 2026-09-05 — ratified.** Author, design channel: *"R-inv is
+ratified as implemented -- transitive."* The one-hop wording in the
+Decision above was the ruling's example case, not its extent, so what
+landed IS R-inv rather than a generalization of it. The
+fix-forward-with-disclosure this section was taken under is discharged;
+no code, no invariant and no count pin moves, and the transitive
+resolution stands as the ruling's own reading.
+
 ### Payload effect, measured rather than predicted
 
 The full derivation is
@@ -280,6 +288,23 @@ corpora aims at it.
   simply never re-allocated, so the cost is ward capacity, not
   correctness — which is why this is an open item and not a defect
   report.
+
+  **Addendum, 2026-09-05 — held open.** Author, design channel: *"the
+  freed bed's housekeeping (:merge absent from
+  bed-correction-event-types) stays OPEN beside R-loc, pending the
+  downstream reply."* No engine change, and no `:bed-status-change` is
+  minted from a merge. The revisit trigger is a downstream answer to the
+  A40/census question — the same reply R-loc waits on: what a consumer's
+  own merge model does with the absorbed record's bed, given that the
+  wire-side A40 tombstone now releases it and that a census folding this
+  log stops counting the absorbed record as a bed-holder. The two items
+  move on that reply or not at all.
+
+  Filed here rather than under a heading of its own: the channel named an
+  "open-items section", and this ADR has none. Both OPEN items live where
+  the prose that raises them lives — R-loc under `### Decision`, the bed's
+  housekeeping in this bullet — so this is the section that lists the
+  bed-cycle item, and the one the addendum belongs under.
 
 ### Consequences
 
