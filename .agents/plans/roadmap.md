@@ -28,29 +28,6 @@ with them.
   22.70 s to 2.74 s and `make test` from 2,043 s to 1,235 s, so the
   `engine/replay` share above must be re-read against that wall, not the
   7.26 s one it was written for.
-- OPEN **[person-simulator]** PRIORITY 3 -- traffic-scale arc 2. New component,
-  sibling charter discipline to `patient-simulator`: bespoke hazard-rate life-arc
-  processes (`rulings.md#R-mix-1`), households and pregnancy->delivery
-  (`R-mix-2`), identification flows (`R-mix-4`), producing the demographic-delta
-  stream the engine folds. Four open questions carried for its charter ADR.
-  Was blocked on traffic-scale arc 1; UNBLOCKED 2026-08-25, when ADR-0171's
-  stream partition landed and discharged
-  `rulings.md#R-per-person-streams-before-generator-fixes`. ADR-0168 section 4.
-  CHARTERED 2026-08-25 by ADR-0172 (front door, 14 event kinds, 11 gated
-  limitations, seven rulings A-G open); arc 2b implements it once ruled.
-  COMPONENT LANDED 2026-08-25 by arc 2b under rulings A1 B1 C1 D1 E1 F1 G1:
-  all 14 kinds with a counted witness, 11 gated limitations, 18 draws per
-  person-year from the `:person` family alone, and the corpus provably
-  untouched (ruling F1). What was left on this row was the ENGINE'S FOLD --
-  nothing called the component, and nothing might until
-  `roadmap.md#engine-fold-extensions` (arc 3) landed it. THAT SENTENCE IS
-  NOW SPENT: arc 3a landed the fold across four parts (ADR-0173) and arc 3
-  closed 2026-08-27, so the engine DOES call this component and `:persons`
-  IS a config key, on in all six gated corpora. Corrected here rather than
-  left standing -- it is precisely the shape repo review 5 named, a claim
-  true when written that nothing keeps true. What remains on this row is
-  whatever the component still owes on its own terms, not a dependency on
-  a row that no longer exists.
 - OPEN **[oru-control-id-collision]** PRIORITY 4 -- `control-id-for` not
   injective over `:result-available` -- 6 live duplicate MSH-10s in seed-424242,
   1 in clinic-decade demo (sweep-3 record :290); fix moves every corpus, its own
