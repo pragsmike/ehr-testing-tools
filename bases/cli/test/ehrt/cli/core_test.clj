@@ -852,12 +852,15 @@
     (let [r (cli/sim-mutate-command {:operator-id "no-such-operator" :seed 1})]
       (is (result/rejected? r))
       (is (= :unknown-operator (:category r)))
-      ;; All TWENTY-SIX event operators, sorted -- and NONE of the ten
-      ;; file-level ones. The list grew with the catalog: twelve at the
-      ;; 2026-09-01 breadth session, twenty-six once P7 (2026-09-05)
-      ;; gave referential columns A, B2 and C a population. What is
-      ;; under test is the FILTER, which is why the whole list is
-      ;; spelled out rather than counted.
+      ;; All TWENTY-EIGHT event operators, sorted -- and NONE of the
+      ;; ten file-level ones. The list grew with the catalog: twelve at
+      ;; the 2026-09-01 breadth session, twenty-six once P7
+      ;; (2026-09-05) gave referential columns A, B2 and C a
+      ;; population, and twenty-eight later that day when R-split
+      ;; narrowed `:orphan-participant` by a log fact and gave the
+      ;; sites it dropped to two closed-start operators (ADR-0176
+      ;; addendum (c)). What is under test is the FILTER, which is why
+      ;; the whole list is spelled out rather than counted.
       (is (= [:clock-skew
               :cross-patient-cancels-event-id
               :cross-patient-medication-end-order-event-id
@@ -873,6 +876,8 @@
               :null-medication-end-order-event-id
               :null-placeholder-event-id
               :null-start-event-id
+              :orphan-closed-care-plan-start
+              :orphan-closed-medication-order
               :orphan-participant
               :phantom-cancels-event-id
               :phantom-medication-end-order-event-id
@@ -1670,14 +1675,15 @@
                                 :locator-path "entry[0].resource.gender" :out-dir (temp-dir*)})]
     (is (= :unknown-operator (:category r)) "category survives the payload extension")
     (is (contains? (set (:valid-options (:payload r))) :remove-required-element))
-    ;; THIRTY-SIX since 2026-09-05 (P7): the ten file-level operators
-    ;; plus twenty-six :format :event ones. Was twenty-two from
-    ;; 2026-09-01 (ADR-0176 and its breadth session), when three of the
-    ;; five referential carrier columns still had no population.
+    ;; THIRTY-EIGHT since 2026-09-05 (R-split): the ten file-level
+    ;; operators plus twenty-eight :format :event ones. Was thirty-six
+    ;; earlier the same day (P7 gave three referential carrier columns
+    ;; a population) and twenty-two from 2026-09-01 (ADR-0176 and its
+    ;; breadth session).
     ;; `ehrt corpus mutate` lists the whole registry here on purpose --
     ;; the hint sends the reader to `ehrt corpus operators`, which is
     ;; also the whole registry.
-    (is (= 36 (count (:valid-options (:payload r)))))
+    (is (= 38 (count (:valid-options (:payload r)))))
     (is (= "run: ehrt corpus operators" (:hint (:payload r))))))
 
 (deftest mutate-command-defaults-operator-version-to-1-test
@@ -2222,13 +2228,15 @@
 ;; options required. ----
 
 (deftest operators-command-lists-every-registered-operator-test
-  ;; Ten file-level operators, plus the twenty-six :format :event ones
-  ;; (2026-09-01, ADR-0176 -- the event-mutation catalog, spine then
-  ;; breadth; twelve then, and twenty-six since P7 gave referential
-  ;; columns A, B2 and C a population, 2026-09-05). One registry, three
-  ;; formats: Q2(a) ruled the event catalog joins this registry rather
-  ;; than forking a second one, so this verb keeps being the single
-  ;; place a consumer looks.
+  ;; Ten file-level operators, plus the twenty-eight :format :event
+  ;; ones (2026-09-01, ADR-0176 -- the event-mutation catalog, spine
+  ;; then breadth; twelve then, twenty-six once P7 gave referential
+  ;; columns A, B2 and C a population, and twenty-eight once R-split
+  ;; put a log fact in `:orphan-participant`'s site predicate and gave
+  ;; the sites it dropped to two closed-start operators, both
+  ;; 2026-09-05). One registry, three formats: Q2(a) ruled the event
+  ;; catalog joins this registry rather than forking a second one, so
+  ;; this verb keeps being the single place a consumer looks.
   ;;
   ;; Spelled out rather than counted, deliberately: this assertion is
   ;; the one place a consumer-visible catalog CHANGE has to be stated
@@ -2236,7 +2244,7 @@
   ;; a name and not as an off-by-one.
   (let [r (cli/operators-command {})]
     (is (result/ok? r))
-    (is (= 36 (count (:operators (:payload r)))))
+    (is (= 38 (count (:operators (:payload r)))))
     (is (= #{:remove-required-element :duplicate-element :invalid-code-value
              :malformed-date :wrong-type-value :blank-required-field
              :corrupt-encoding-characters :malformed-datetime-value
@@ -2257,13 +2265,14 @@
              :phantom-start-event-id :null-start-event-id
              :cross-patient-start-event-id :wrong-kind-start-event-id
              :inverted-span-start-event-id
-             :clock-skew :drop-registration :orphan-participant}
+             :clock-skew :drop-registration :orphan-participant
+             :orphan-closed-medication-order :orphan-closed-care-plan-start}
            (set (map :id (:operators (:payload r))))))))
 
 (deftest operators-command-filters-to-the-event-format-test
   (let [r (cli/operators-command {:format "event"})]
     (is (result/ok? r))
-    (is (= 26 (count (:operators (:payload r)))))
+    (is (= 28 (count (:operators (:payload r)))))
     (is (every? #(= :event (:format %)) (:operators (:payload r))))))
 
 (deftest operators-command-filters-by-format-test
@@ -2301,7 +2310,7 @@
   (with-redefs [io/file (fn [& _] (throw (ex-info "no filesystem access expected" {})))]
     (let [r (cli/operators-command {})]
       (is (result/ok? r))
-      (is (= 36 (count (:operators (:payload r))))))))
+      (is (= 38 (count (:operators (:payload r))))))))
 
 ;; ---- gate-command / gate-v2-command (`ehrt gate v2`): builds a
 ;; format-agnostic gate report over a file or directory; exit-code
