@@ -543,11 +543,20 @@
   admitted-era writer gave it -- `:expired` (`evolve :discharge`'s
   expired arm deliberately leaves `:location` standing;
   `expired-patient-retains-location` asserts exactly that retention) and
-  `:merged` (`evolve :merge`'s merged arm touches only `:status`, and an
-  admitted bed-holder is a LEGAL merge target: `decide :merge`'s
-  `never-mergeable?` excludes only `:new` and `:merged`). Every other
-  status -- `:new`, `:discharged`, or a hand-authored patient carrying
-  no status at all -- holds no bed."
+  `:merged`.
+
+  THE `:merged` ENTRY IS NOW TOLERANCE, NOT DESCRIPTION (ADR-0179
+  R-bed). It was here because `evolve :merge`'s merged arm touched only
+  `:status`, leaving an absorbed bed-holder's `:location` standing --
+  and an admitted bed-holder is a LEGAL merge target, since
+  `decide :merge`'s `never-mergeable?` excludes only `:new` and
+  `:merged`. That arm now clears `:location` and `:home-ward`, so the
+  ENGINE can no longer produce a merged bed-holder at all. The entry
+  stays because this namespace judges hand-authored logs too, and
+  removing it would create a new conviction class no ruling licenses.
+
+  Every other status -- `:new`, `:discharged`, or a hand-authored
+  patient carrying no status at all -- holds no bed."
   #{:admitted :expired :merged})
 
 (defn- non-admitted-bed-holder? [{:keys [status location]}]
@@ -1170,12 +1179,70 @@
                        (carried-encounter-is-not-the-open-one? event before patient-id)))]
     {:invariant :order-only-when-admitted :patient-id patient-id :at (:t event)}))
 
+(defn- merges-forward
+  "The `:merge` relation, absorbed patient-id -> `{:survivor .. :t ..}`.
+  At most one entry per absorbed id in any log the engine writes
+  (`decide :merge`'s own `already-merged?` guard), and the FIRST merge
+  wins in a hand-authored log that breaks that rule -- this namespace
+  judges logs it did not write."
+  [ground-truth]
+  (reduce (fn [m ev]
+            (if (= :merge (:event ev))
+              (let [by-role (fn [r] (:patient-id (first (filter #(= r (:role %)) (:participants ev)))))
+                    absorbed (by-role :merged)]
+                (if (or (nil? absorbed) (contains? m absorbed))
+                  m
+                  (assoc m absorbed {:survivor (by-role :survivor) :t (:t ev)})))
+              m))
+          {} ground-truth))
+
+(defn- resolves-through-merges?
+  "ADR-0179 R-inv: `from` IS `to`, or was merged into it by a `:merge`
+  at `:t` at or before `at`.
+
+  TRANSITIVE, which is a disclosed generalization of the ruling's own
+  one-hop wording (ADR-0179's R-inv section): a survivor is itself
+  `:admitted` and so itself mergeable, and when it is merged away the
+  run loop carries the same follow-up on again -- so a result's subject
+  can legitimately be two or more merges downstream of the order it
+  cites. The one-hop case is contained exactly.
+
+  `seen` is what makes a hand-authored merge cycle terminate rather
+  than hang; the engine cannot produce one."
+  [merges from to at]
+  (loop [pid from seen #{}]
+    (cond
+      (= pid to) true
+      (contains? seen pid) false
+      :else (let [{:keys [survivor t]} (get merges pid)]
+              (if (and survivor (<= t at))
+                (recur survivor (conj seen pid))
+                false)))))
+
 (defn result-references-existing-order-and-follows-it-in-time
   "Every :result-available event's :order-event-id is a real
   :order-placed event in this same log, for the SAME patient, at or
-  before the result's own :t (co-landing invariant, Milestone M3)."
+  before the result's own :t (co-landing invariant, Milestone M3).
+
+  \"The same patient\" is resolved THROUGH a merge as of ADR-0179 R-inv:
+  an order whose subject was merged into the result's subject by a
+  `:merge` at or before the result's own `:t` is that patient's order.
+  Without this the row convicts every log R-queue makes -- when an
+  absorbed patient is merged away inside its own order's turnaround
+  window, the pending follow-up re-queues on the survivor, so the result
+  names the survivor while the order it cites still names the absorbed
+  record. That is the fix, not a defect, and this is where the checker
+  learns to read it.
+
+  The widening is NARROW by construction: it accepts nothing on a log
+  with no `:merge`, nothing across a merge that has not happened by the
+  result's own `:t`, and nothing between two patient-ids no merge
+  joins -- which is what keeps the plain cross-patient defect, and the
+  `:cross-patient-order-event-id` mutation operator that injects it,
+  convicted exactly as before."
   [ground-truth]
-  (let [indexed (vec ground-truth)]
+  (let [indexed (vec ground-truth)
+        merges (merges-forward ground-truth)]
     (for [[idx event] (map-indexed vector indexed)
           :when (= :result-available (:event event))
           :let [target-idx (:order-event-id event)
@@ -1183,7 +1250,8 @@
                 patient-id (:patient-id (first (:participants event)))]
           :when (or (nil? target)
                     (not= :order-placed (:event target))
-                    (not (some #(= patient-id (:patient-id %)) (:participants target)))
+                    (not (some #(resolves-through-merges? merges (:patient-id %) patient-id (:t event))
+                               (:participants target)))
                     (> (:t target) (:t event)))]
       {:invariant :result-references-existing-order-and-follows-it-in-time :patient-id patient-id :at (:t event)})))
 
