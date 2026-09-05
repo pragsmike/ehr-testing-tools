@@ -68,24 +68,24 @@ a step are in `HISTORY.md` beside this file (split out by ADR-0145).
    file:line, the ones correctly left untouched named too, and why (ADR-0117).
 10. **Run `bin/post-push-verify [<base-sha>] [<tip-sha>]` after every push** —
     remote tip, per-commit ASCII over the pushed range, CI run reported once (AR-RL2-5).
-11. **Pay no tag.** `bin/tag-ceremony` and the per-arc `stable-*` tag were both
-    retired by the de-scaffold ruling of 2026-08-25
-    (`rulings.md#R-tag-law`, RETIRED). What survives is the CI check itself: the
-    session's own `gh run view <id>` concluding success at the pushed tip, id and
-    conclusion recorded in the record (`rulings.md#R-session-verifies-ci-via-gh`,
-    RETIRED as a tag condition, kept as the close marker). Release `v*` tags,
-    repo-level `gh` mutations, git surgery and placing external documents stay
-    AUTHOR ACTION — hand them to the author whatever the ceremony mode.
+11. **Pay no tag** (`rulings.md#R-tag-law`, RETIRED with `bin/tag-ceremony`, 2026-08-25).
+    What survives is the CI check itself: the session's own `gh run view <id>`
+    concluding success at the pushed tip, id and conclusion recorded in the record
+    (`rulings.md#R-session-verifies-ci-via-gh`, kept as the close marker). Release
+    `v*` tags, repo-level `gh` mutations, git surgery and placing external documents
+    stay AUTHOR ACTION — hand them to the author whatever the ceremony mode.
 12. **Stop and report on a premise mismatch.** A checkpoint whose stated premise does
     not hold against the live tree is a finding, not something to adapt around
     (`docs/dev/way-of-working.md` §2). STOP-AND-REPORT binds where two readings are
     both defensible; a mechanical conflict with one defensible reading is fix-forward
     WITH DISCLOSURE (`rulings.md#R-stop-only-on-two-defensible-readings`).
-13. **Write the session record and archive the prompt by hand** before the final
-    push — `.agents/session-records/<YYYY-MM-DD>-<slug>.md`,
-    `.agents/prompts/<YYYY-MM-DD>-<slug>.md`, and one index line in each
-    directory's `README.md` (both index gates check those lines).
-    `bin/close-scaffold` used to do this and was deleted 2026-08-25.
+13. **Write the session record and archive the prompt by hand** before the final push
+    — `.agents/session-records/<YYYY-MM-DD>-<slug>.md`,
+    `.agents/prompts/<YYYY-MM-DD>-<slug>.md`, and one index line in each directory's
+    `README.md` (both index gates check those lines). `bin/close-scaffold` used to do
+    this and was deleted 2026-08-25. Then, before the close marker, ENUMERATE AND
+    TERMINATE every background process this session started — and never hand-roll an
+    `until` waiter for one: use the harness monitor or the job's completion notification.
 14. **Cite a suite figure where it LIVES, never where it was compared.** An ADR
     records its own BASELINE, so "reconciling exactly against ADR-NNNN's X/Y/Z"
     sends a reader to a document that does not carry X/Y/Z -- the close figure is
@@ -93,9 +93,8 @@ a step are in `HISTORY.md` beside this file (split out by ADR-0145).
 15. **Update the roadmap rows this session actually changed, and nothing else**
     (`rulings.md#R-register-hygiene-at-close`). The `## Done` ledger, its 30-line cap
     and its rotation into `.agents/plans/roadmap-done-<yyyy-mm>.md` were retired
-    2026-08-25 (`rulings.md#R-done-attic-rotation`, superseded in practice); closed
-    work is the ADR record. Reading sets are no longer budget-gated, so there is
-    nothing to re-measure (`rulings.md#R-budget-stop`).
+    2026-08-25 (`rulings.md#R-done-attic-rotation`); closed work is the ADR record,
+    and reading sets are no longer budget-gated (`rulings.md#R-budget-stop`).
 16. **Over a reading-set budget, compact or STOP-AND-REPORT — never bump**
     (`rulings.md#R-budget-stop`); the ratchet baseline makes the bump unavailable.
 17. **Push a red-first commit together with its green successor, never alone**
@@ -140,7 +139,8 @@ verified, ending in a session record and an archived prompt.
       and recorded. AUTHOR ACTION items were left to the author.
 - [ ] Any regression-oracle claim names `bin/regression-oracle`'s own output.
 - [ ] The session record, the prompt archive and both README index lines were written
-      before the final push.
+      before the final push, and every background process this session started was
+      enumerated and terminated.
 - [ ] The roadmap rows this session changed were updated; no `## Done` rotation and no
       reading-set re-measurement were owed.
 - [ ] Every suite figure cited to the document that CARRIES it.
