@@ -149,6 +149,30 @@ allocation. `bin/ground-truth-bracket` is expected to DIFFER on that
 root and be IDENTICAL on the other 37 — an upper bound the bracket then
 narrows, not a prediction it confirms.
 
+**MEASURED**, `bin/ground-truth-bracket 007deea6 f79ddeea`, exit 1
+(DIFFERS, declared): **exactly one root moves, and it is
+`encounter-horizon`.** The other 37 digests are identical byte for byte
+and the three skipped batch roots are the same three on both sides. The
+upper bound was tight.
+
+What moves inside it: **170 events becomes 173**, the three additions
+all `:transfer` (25 -> 28), and every other event kind identical in
+count — 36 `:admission`, 34 `:discharge`, 27 `:demographic-update`, 20
+`:registered`, 17 `:coverage-change`, 4 `:bed-swap`, 4
+`:cancel-transfer`, 2 `:merge`, 1 `:cancel-admit`. 110 of the 173
+positions differ, and the first is index 35 — the event immediately
+after the first merge, an `:admission` at `t=36660` that takes
+`RENAL-02` (licensed) where it used to take `ED-H01` (surge).
+
+That single reclassification explains the whole cascade. The absorbed
+patient's bed becomes allocatable, so the ladder's rung-1 succeeds where
+it used to fall through to ED surge; every later admission and transfer
+inherits a different bed id, and three patients who used to board are
+placed for real, which is what the three extra `:transfer` events are.
+No event kind appears or disappears, no patient count changes, and
+nothing moves in time — the log is the same run allocating beds it now
+correctly has.
+
 **The oracle is BLIND to R-queue.** Zero absorbed patient-ids had a
 follow-up pending, in every corpus this repository gates —
 `:order-placed` and `:result-available` are equinumerous in both
@@ -158,6 +182,46 @@ follow-up half would be vacuous, the same shape
 for `engine/replay`. R-queue's proof is the hand-built run-loop test
 this ADR co-lands and nothing else, and that is stated here rather than
 left for a reader to infer from a green bracket.
+
+**The downstream-calibration fixture does not move at all.** Regenerated
+at `ceed1f5d` with the same invocation both times —
+`--seed 424242 --patients N --reference-date 2026-08-31 --churn
+--config test-fixtures/downstream-calibration/config.edn
+--format ground-truth`:
+
+| arrivals | before | after | bytes |
+|---|---|---|---|
+| 500 | `cd40af263c0c639266cd043fd2fe91b44a4fd2d6a8e66a1fc1224e3645bdb27c` | **identical** | 9,751,714 |
+| 1,000 | `b431cfffcd45d5470c719abf4586da02219934dad1856c8fdb6115e9843d5301` | **identical** | 11,966,364 |
+
+At 500 that is unsurprising — no merge there absorbs a bed-holder. At
+1,000 two do, and the output is still byte-for-byte identical, which is
+the `:bed-cycle` mechanism above showing up as a measurement rather than
+as an argument: that config runs with `:bed-cycle` on, so `free` reads
+the `:ready` gate, the released bed never becomes `:ready`, no later
+allocation sees it, and nothing downstream shifts. `encounter-horizon`
+moves and this does not, for the same one reason.
+
+Both figures also confirm ADR-0178's own prediction from the other side:
+they are **147 bytes** below the downstream team's published
+9,751,861 / 11,966,511, which is exactly their 7 `:window-close-t nil`
+pairs at 21 bytes each. `test-fixtures/downstream-calibration/
+PROVENANCE.md` still records THEIR values and is still unedited.
+
+**One thing the suite forced that this ADR did not foresee.**
+`ehrt.sim-emit-hl7.v2-replay/fold-merge` — the wire-side accumulator's
+A40 arm — declares itself "the wire-side mirror of
+`evolve :merge`'s `:merged` arm". R-bed moved that arm, so the mirror
+stopped being one, and
+`emitter-coherence-reconstructed-state-matches-the-log-fold-at-every-boundary`
+convicted on one field of one participant (`:location`
+`{:ward "Renal" :bed "RENAL-01"}` on the wire against nothing in the
+truth). The tombstone now releases the bed too. That release is an
+inference from MRG-1 rather than a read of PV1 — an A40 carries no PV1
+— and it is the same inference the function already made for
+`:status :merged`. Landed as its own commit and named here because a
+reader of R-bed would otherwise not know the consumer-side model moved
+with it.
 
 Mechanically the population is empty because the two ways to be merged
 both miss the turnaround window: an `:identification` merge consumes a
@@ -191,19 +255,31 @@ corpora aims at it.
   claim that "`evolve :merge`'s merged arm touches only `:status`" is
   corrected in the same commit, since that sentence is exactly what
   stops being true.
-- **The bed's housekeeping status. OPEN, beside R-loc.** `:merge` is
-  not in `ehrt.sim-engine.fold/bed-correction-event-types`, so a bed the
-  absorbed record newly leaves does not return to `:ready` — it stays
+- **The bed's housekeeping status, on `:bed-cycle` runs only. OPEN,
+  beside R-loc.** `:merge` is not in
+  `ehrt.sim-engine.fold/bed-correction-event-types`, so a bed the
+  absorbed record newly leaves does not return to `:ready`; it stays
   `:occupied` in the engine's own index and in `check.clj`'s
-  independent one. After R-bed the two bed-holding merges therefore
-  leave a bed no patient holds and housekeeping never reclaims. That is
-  the shape that set's own docstring calls unintended for a cancelled
-  admission ("the ward silently loses capacity"), reached from the
-  other direction. Not fixed: the ruling licenses a state change, and
-  emitting a `:bed-status-change` from a merge is a decide-layer change
-  no ruling covers. It is also the reason nothing convicts today — the
-  bed is never re-allocated to anyone, so the cost is capacity, not
-  correctness.
+  independent one.
+
+  **This bites on exactly the runs that opted into `:bed-cycle`, and on
+  no others** — a distinction measurement forced and worth stating
+  precisely. `sim-model/free`'s own two readings are the mechanism: with
+  no bed-status index (`:beds` nil, which is every run without the
+  opt-in) "free" means *nobody is in it*, read off the occupancy board,
+  so a bed R-bed releases is immediately allocatable and the fix is
+  complete. `encounter-horizon` is such a run — it carries no
+  `:bed-status-change` at all — and its 110 moved positions above are
+  that allocation happening. With the index present, "free" means
+  `:ready`, which the vacated bed never reaches, so the ward quietly
+  loses a slot for the rest of the run.
+
+  Not fixed: the ruling licenses a state change, and emitting a
+  `:bed-status-change` from a merge is a decide-layer change no ruling
+  covers. Nothing convicts either way — on the index path the bed is
+  simply never re-allocated, so the cost is ward capacity, not
+  correctness — which is why this is an open item and not a defect
+  report.
 
 ### Consequences
 
