@@ -520,6 +520,80 @@
     (testing "and nothing is declared empty that an operator actually covers"
       (is (empty? (set/intersection covered declared-population-gaps))))))
 
+;; ---- the finding vocabulary as a law (Q11(c), 2026-09-05) ----------
+;;
+;; `:expected-findings` names invariants in `check`'s own closed
+;; vocabulary -- that is what makes the loop's step 5 EQUALITY a
+;; statement at all -- and until this section landed NOTHING checked
+;; that the names are real. An operator could declare a finding `check`
+;; cannot produce, and the only symptom would be its own loop row going
+;; red, which says "this operator does not convict what it names" and
+;; not "this name does not exist".
+;;
+;; RULED Q11(c), 2026-09-05, re-ruling Q11(a). The option Q11(a)
+;; deferred was widening `ehrt.sim-check.interface` so `register!`
+;; could cross-check at registration time. It stays one var: a TEST may
+;; reach any namespace, so the law lands here and reads `check`'s own
+;; catalogs directly. `components/corpus/src` gains no edge to
+;; `components/sim-check`, and `register!` is unchanged.
+
+(defn- checker-vocabulary
+  "Every invariant name `check` can report.
+
+  RED HALF (this commit): deliberately EMPTY, so the two tests below
+  run against a vocabulary that has not been derived yet and both go
+  red for the right reason. The derivation off `check`'s four catalogs
+  lands in the next commit, which is what makes them green."
+  []
+  #{})
+
+(defn- unknown-declared-findings
+  "Every `[operator-id finding]` pair an event operator declares that
+  `check` has no invariant for. Empty is the law."
+  []
+  (let [vocab (checker-vocabulary)]
+    (into #{}
+          (comp (filter #(= :event (:format %)))
+                (mapcat (fn [e]
+                          (for [f (:expected-findings e)
+                                :when (not (contains? vocab f))]
+                            [(:id e) f]))))
+          (operators/entries))))
+
+(deftest every-declared-finding-is-an-invariant-check-can-produce-test
+  (is (seq (checker-vocabulary))
+      "the four catalogs must yield a vocabulary at all (R-empty-population-is-red)")
+  (is (= #{} (unknown-declared-findings))
+      (str "an event operator declares a finding `check` cannot produce. Either the "
+           "invariant was renamed or retired and the operator was not moved with it, "
+           "or the operator names a class this repository's own catalog does not "
+           "carry -- which is a hole in `check`, not a property of the operator "
+           "(ADR-0176 Q6(a)'s own argument, one layer up).")))
+
+(deftest an-unknown-declared-finding-is-named-not-tolerated-test
+  ;; The law above is green on a healthy tree, so this is what proves it
+  ;; can go red at all: a synthetic operator declaring an invariant that
+  ;; does not exist must be NAMED, id and finding both.
+  (let [snapshot (operators/registry-snapshot)
+        gaps-before (operators/catalog-gaps)]
+    (try
+      (let [r (operators/register!
+               {:id :dummy-unknown-finding :version "1" :format :event
+                :doc "A dummy declaring a finding no catalog row produces."
+                :contract {:type :violates :target "irrelevant"}
+                :locator-required? false :seed-consuming? true
+                :expected-findings #{:no-such-invariant}
+                :candidate-sites (fn [_events] [])
+                :fn (fn [events _site] events)})]
+        (is (kernel/ok? r)
+            "registration itself is unchanged -- Q11(c) puts the law in test, not in `register!`")
+        (is (= #{[:dummy-unknown-finding :no-such-invariant]}
+               (unknown-declared-findings))
+            "the offender, named by id and by the finding it invented"))
+      (finally
+        (operators/reset-registry! snapshot)
+        (operators/reset-catalog-gaps! gaps-before)))))
+
 ;; ---- Q6: an operator the catalog cannot convict --------------------
 
 (deftest an-unconvictable-event-operator-is-refused-and-recorded-as-a-gap-test
