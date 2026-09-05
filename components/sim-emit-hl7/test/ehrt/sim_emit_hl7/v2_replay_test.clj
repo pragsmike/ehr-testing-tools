@@ -133,8 +133,11 @@
             entry (PID-3) absorbs per the engine's own merge semantics
             (unchanged besides bootstrap), the merged-away entry
             (MRG-1) becomes a :merged tombstone that keeps its own
-            last-known fields, mirroring ehrt.sim-engine.engine's own
-            evolve :merge :merged arm exactly (only :status changes)"
+            last-known fields APART FROM THE BED, mirroring
+            ehrt.sim-engine.engine's own evolve :merge :merged arm
+            exactly -- which as of ADR-0179 R-bed releases :location and
+            :home-ward as well as setting :status. The mirror is
+            unchanged as a PRINCIPLE; what it mirrors moved"
     (let [seed 100
           p2-id (streams/patient-id-for seed 1)
           {:keys [ground-truth facility providers]}
@@ -153,9 +156,13 @@
           merged-mrn (:merged-mrn merge-event)]
       (is (= :admitted (:status (get acc survivor-mrn))))
       (is (= :merged (:status (get acc merged-mrn))))
-      (is (= (:location (get seeded-acc merged-mrn)) (:location (get acc merged-mrn)))
-          "the tombstone keeps its own last-known location, only :status flips")
-      (is (= (:attending (get seeded-acc merged-mrn)) (:attending (get acc merged-mrn))))
+      (is (some? (:location (get seeded-acc merged-mrn)))
+          "sanity: the entry really did hold a bed before the A40")
+      (is (nil? (:location (get acc merged-mrn)))
+          "ADR-0179 R-bed: the tombstone releases the bed, inferred from MRG-1 --
+           an A40 carries no PV1 to read a vacate from")
+      (is (= (:attending (get seeded-acc merged-mrn)) (:attending (get acc merged-mrn)))
+          ":attending is NOT released: the engine's own arm does not touch it either")
       (is (= (:location (get seeded-acc survivor-mrn)) (:location (get acc survivor-mrn)))
           "the survivor's own entry is untouched by the wire (PV1 rides blank on A40)"))))
 

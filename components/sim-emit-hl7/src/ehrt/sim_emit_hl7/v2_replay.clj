@@ -27,7 +27,8 @@
   and the merged-away mrn on MRG-1 -- the surviving entry absorbs (a
   no-op on the wire, since PV1 rides blank on A40 and :mrns is truth-
   only, never wire-visible); the merged-away entry becomes a tombstone
-  (`:status :merged`, every other field held over unchanged), mirroring
+  (`:status :merged` and the bed released, every other field held over
+  unchanged), mirroring
   ehrt.sim-engine.engine's own `evolve :merge` `:merged` arm exactly --
   the wire-side fold is NOT an independent invention of this shape.
   Bootstrap-from-empty holds for both: a never-seen mrn on either side of
@@ -404,9 +405,26 @@
   The surviving entry absorbs -- bootstrap-or-keep, unchanged otherwise,
   since PV1 rides blank on A40 and :mrns is truth-only (never
   wire-visible). The merged-away entry becomes a tombstone: `:status
-  :merged`, every other field held over unchanged -- the wire-side
-  mirror of ehrt.sim-engine.engine's own `evolve :merge` `:merged` arm,
-  which touches `:status` alone. A merged-away mrn never seen before
+  :merged` and the bed RELEASED, every other field held over unchanged
+  -- the wire-side mirror of ehrt.sim-engine.engine's own
+  `evolve :merge` `:merged` arm, which is what that arm now does
+  (ADR-0179 R-bed).
+
+  THE RELEASE IS AN INFERENCE FROM MRG-1, NOT A READ OF PV1, and it has
+  to be: an A40 carries no PV1 at all, so there is no vacated bed on the
+  wire to parse. It is the same inference this function already makes
+  one line up -- `:status :merged` is read off MRG-1 and nothing else --
+  extended to the one other field the merge determines. Declining to
+  make it would leave a `:merged` entry still holding a bed, which is
+  precisely the census ghost R-bed exists to kill, alive again on the
+  consumer side; and it is what
+  `emitter-coherence-reconstructed-state-matches-the-log-fold-at-every-boundary`
+  convicted the moment R-bed landed without this.
+
+  `:attending` is deliberately NOT released: the engine's arm does not
+  touch it either, and the mirror is a mirror.
+
+  A merged-away mrn never seen before
   (no persona to bootstrap from -- MRG-1 carries only the mrn string)
   still gets a minimal tombstone; the engine's own merge eligibility
   rule (`never-mergeable?`) means this path is never exercised by
@@ -417,7 +435,8 @@
         merged-mrn (message/get-field-first-value parsed "MRG" 1)
         survivor-entry (or (get acc survivor-mrn) (initial-entry pid-seg))
         merged-entry (-> (or (get acc merged-mrn) {:active-mrn merged-mrn})
-                         (assoc :status :merged))]
+                         (assoc :status :merged)
+                         (dissoc :location :home-ward))]
     (-> acc
         (assoc survivor-mrn survivor-entry)
         (assoc merged-mrn merged-entry))))
