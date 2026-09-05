@@ -82,7 +82,13 @@
             ;; sim nor sim-engine may depend on anything corpus-derived,
             ;; so no cycle) -- ADR-0176 Q2(a) names this edge by name.
             [ehrt.sim.interface :as sim]
-            [ehrt.sim-engine.interface :as engine]))
+            [ehrt.sim-engine.interface :as engine]
+            ;; NOT an interface, and deliberately so: ruling Q11(c)
+            ;; (2026-09-05) keeps `ehrt.sim-check.interface` at one var
+            ;; and puts the finding-vocabulary law in TEST, which may
+            ;; reach any namespace. `components/corpus/src` gains no
+            ;; edge to `components/sim-check` from this.
+            [ehrt.sim-check.check :as check]))
 
 ;; ---- the two populations ------------------------------------------
 
@@ -538,14 +544,26 @@
 ;; `components/sim-check`, and `register!` is unchanged.
 
 (defn- checker-vocabulary
-  "Every invariant name `check` can report.
+  "Every invariant name `check` can report, derived from its own four
+  catalogs -- `catalog`, `facility-catalog`, `warmup-catalog`,
+  `order-profiles-catalog`, the four `check-all` runs -- rather than
+  hand-listed here, so a catalog row added or retired moves this set
+  with it and no pin has to be touched.
 
-  RED HALF (this commit): deliberately EMPTY, so the two tests below
-  run against a vocabulary that has not been derived yet and both go
-  red for the right reason. The derivation off `check`'s four catalogs
-  lands in the next commit, which is what makes them green."
+  DERIVED FROM THE VAR NAME, which is exact here rather than merely
+  conventional: every catalog invariant emits `{:invariant :<its own
+  name> ...}`, measured this session at 46 catalog vars against the 46
+  distinct `:invariant` keywords the whole of `check.clj` carries, name
+  for name and set for set. It is also self-policing in this very file
+  -- `the-closed-oracle-loop-*` asserts observed = declared over REAL
+  violation keywords and the law below asserts declared is drawn from
+  this set, so a var whose emitted keyword drifted from its own name
+  turns one of the two red."
   []
-  #{})
+  (into #{}
+        (map (comp keyword :name meta))
+        (concat check/catalog check/facility-catalog
+                check/warmup-catalog check/order-profiles-catalog)))
 
 (defn- unknown-declared-findings
   "Every `[operator-id finding]` pair an event operator declares that
