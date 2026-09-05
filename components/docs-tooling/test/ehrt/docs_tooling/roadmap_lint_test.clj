@@ -21,8 +21,13 @@
       line numbers rot on every insert (the specimen this arc opened
       against, `roadmap.md:222`, addressed the latency row when it was
       written and line 237 by the time session B read it).
-    - **cap** -- six lines, maximum. The row states what remains and
-      why, and cites the ADR that holds the rest.
+    - **cap** -- `## Done` rows are capped at `done-row-cap` characters
+      (R-cap, 2026-09-05). ADR-0144 worded this as 'six lines,
+      maximum' and left it as prose with no assertion behind it; the
+      instruction FAILED TWICE and `## Done` grew nineteen rows over
+      400 characters, the longest 6,269. A gate is what an instruction
+      becomes once it has failed. Open rows still state what remains
+      and why, and cite the ADR that holds the rest.
     - **priority** -- `## Next` rows carry `PRIORITY n`, n unique and
       ascending in file order, so `head` answers 'what is next'.
 
@@ -221,6 +226,33 @@
         (is (apply distinct? ps) (str "duplicate PRIORITY value(s) in ## Next: " (vec ps)))
         (is (= ps (sort ps)) (str "## Next PRIORITY values are not ascending in file order: " (vec ps)))))))
 
+(def ^:private done-row-cap
+  "480 characters. Ruled 2026-09-05 (R-cap) after the prose form of the
+  same rule failed twice -- see the namespace docstring's `cap` bullet.
+
+  Why a CHARACTER count and not the stated line count: a roadmap row is
+  written unwrapped, one physical line, so \"six lines, maximum\" was
+  never measurable against a Done row at all. 480 is what a compacted
+  row actually needs and no more -- the status token, the slug, the ADR
+  or sha, at least one record path (which `ehrt.docs-tooling.stale-
+  path-test` then holds RESOLVABLE, this file being one of its own scan
+  roots), and one clause of outcome. Nothing else is required to
+  survive, because the rest is in the record the row cites, and a Done
+  row that re-tells its record is a second copy that can go stale
+  against it."
+  480)
+
+(deftest done-rows-are-pointers-not-ledgers-test
+  (testing "R-cap: a ## Done row is a pointer at its record, capped at done-row-cap characters"
+    (let [bad (->> (all-rows (slurp roadmap-path))
+                   (filter #(done-section? (:heading %)))
+                   (filter #(< done-row-cap (count (:text %))))
+                   (mapv #(str (count (:text %)) " chars -- " (abbrev %))))]
+      (is (empty? bad)
+          (str (count bad) " ## Done row(s) over " done-row-cap " characters -- compact each "
+               "to its status token, slug, ADR/sha, one record path and one clause of "
+               "outcome, and leave the rest in the record (R-cap): " bad)))))
+
 (deftest no-live-surface-cites-the-roadmap-by-line-number-test
   (testing "Q2(a): line-number cites rot on every insert; live surfaces cite roadmap.md#<slug>"
     (let [bad (for [path live-scan-roots
@@ -299,6 +331,25 @@
   (is (nil? (re-find dual-closure-word-pattern
                      (first-sentence "OPEN **[x]** PRIORITY 1 — what remains. The arc CLOSED earlier.")))
       "a closure word in a LATER sentence is history, not a status claim"))
+
+(deftest the-done-row-cap-is-actually-caught-test
+  (let [over (str "- CLOSED 2026-09-05 abc1234 **[over]** -- " (apply str (repeat done-row-cap "x")))
+        under "- CLOSED 2026-09-05 abc1234 **[under]** -- done. Record: `.agents/session-records/r.md`."
+        fixture (str "## Done\n" over "\n" under "\n")
+        caught (->> (all-rows fixture)
+                    (filter #(done-section? (:heading %)))
+                    (filter #(< done-row-cap (count (:text %))))
+                    (mapv #(second (re-find slug-pattern (:body %)))))]
+    (is (= ["over"] caught) "the cap catches the over-long Done row and only it")))
+
+(deftest the-done-row-cap-does-not-reach-open-rows-test
+  (testing "R-cap is a Done-section rule: an open row's own budget is ADR-0144's, unchanged"
+    (let [fixture (str "## Next (backlog)\n- OPEN **[long]** PRIORITY 1 "
+                       (apply str (repeat done-row-cap "x")) "\n")
+          caught (->> (all-rows fixture)
+                      (filter #(done-section? (:heading %)))
+                      (filter #(< done-row-cap (count (:text %)))))]
+      (is (empty? (vec caught))))))
 
 (deftest the-line-cite-pattern-is-actually-caught-test
   (is (re-find line-cite-pattern "B's first specimen is `roadmap.md:222`, the latency row"))
