@@ -288,11 +288,36 @@
   (assoc patient :location (get-in swap [(:patient-id patient) :to])))
 
 (defmethod evolve :merge
+  ;; ADR-0179 R-bed. The `:merged` arm used to set a status and nothing
+  ;; else, which is how the absorbed record kept the bed it held at the
+  ;; instant it stopped being a patient: nothing after the merge ever
+  ;; moves it again (`run`'s own M2b short-circuit ends that stream), so
+  ;; the `:location` stood for the rest of the run and both
+  ;; `no-double-occupancy` and `occupancy-within-capacity` counted it.
+  ;; Released by `dissoc`, the idiom `evolve :cancel-admit` above already
+  ;; uses -- so the keys are ABSENT rather than present-and-nil, which is
+  ;; ADR-0178's distinction drawn at the point of writing instead of
+  ;; corrected later.
+  ;;
+  ;; ADR-0179 R-queue's own precondition: `:merged-into` is the
+  ;; survivor's patient-id. It exists because the M2b branch holds the
+  ;; absorbed patient's STATE and not the merge EVENT, so the fold is the
+  ;; only place the survivor's identity can reach it from. Written on
+  ;; this one arm, read in that one place.
+  ;;
+  ;; The bed is NOT returned to housekeeping: `:merge` is not in
+  ;; `fold/bed-correction-event-types`, so the bed stays `:occupied` in
+  ;; both bed indexes and is never re-allocated. ADR-0179 records that as
+  ;; an open item beside R-loc rather than fixing it here -- the ruling
+  ;; licenses a state change, not a new emission.
   [patient {:keys [participants surviving-mrn merged-mrns]}]
-  (let [role (:role (first (filter #(= (:patient-id patient) (:patient-id %)) participants)))]
+  (let [by-role (fn [r] (first (filter #(= r (:role %)) participants)))
+        role (:role (first (filter #(= (:patient-id patient) (:patient-id %)) participants)))]
     (case role
       :survivor (-> patient (update :mrns into merged-mrns) (assoc :active-mrn surviving-mrn))
-      :merged (assoc patient :status :merged))))
+      :merged (-> patient
+                  (assoc :status :merged :merged-into (:patient-id (by-role :survivor)))
+                  (dissoc :location :home-ward)))))
 
 ;; --- sim/ADR-0012: :step-rejected -- truth about the run, never a state
 ;; transition (the attempted step never actually happened) --------------

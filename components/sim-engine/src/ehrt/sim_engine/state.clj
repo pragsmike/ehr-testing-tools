@@ -391,6 +391,13 @@
    ;; that could go vacuous by not folding it.
    [:appointment {:optional true} [:maybe AppointmentRecord]]
    [:appointments {:optional true} [:vector AppointmentRecord]]
+   ;; ADR-0179 R-queue: the survivor's patient-id, written by
+   ;; `evolve :merge`'s `:merged` arm and by nothing else. Present only
+   ;; on an absorbed record, which is also the only record that can carry
+   ;; `:status :merged`. `run`'s M2b branch is its one reader -- it needs
+   ;; the survivor's identity while holding the absorbed patient's state
+   ;; rather than the merge event.
+   [:merged-into {:optional true} :string]
    [:attributes {:optional true} [:map-of :keyword :any]]])
 
 (defn valid-patient?

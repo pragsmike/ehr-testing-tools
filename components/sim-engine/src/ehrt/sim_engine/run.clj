@@ -1297,7 +1297,53 @@
             ;; events -- the run loop's own enforcement of
             ;; no-events-after-merged-terminal, not just a check.clj
             ;; invariant asserted after the fact.
-            (recur queue' seq-no world ground-truth state-history)
+            ;;
+            ;; ADR-0179 R-queue carves ONE step type out of that
+            ;; abandonment, and only one. A `:result-followup` is not a
+            ;; step the patient is yet to take -- its event was fully
+            ;; computed, RNG and all, back in `decide :order`, and it
+            ;; rides the queue purely so it enters ground-truth at its own
+            ;; global `[t seq-no]` rather than at the order's log position
+            ;; (see `decide :order`'s own docstring). Dropping it loses a
+            ;; result that already exists, leaving an order in the log
+            ;; that nothing ever answers. So it re-queues on the SURVIVOR
+            ;; at this same `t`, with `:active-mrn` and the `:subject`
+            ;; participant rewritten -- which is what keeps
+            ;; `no-events-after-merged-terminal` true, since the absorbed
+            ;; id then appears nowhere after its own merge. Every OTHER
+            ;; queued step still dies here.
+            ;;
+            ;; `:location`/`:attending` are deliberately NOT rewritten:
+            ;; they are order-time context (ADR-0179 R-loc).
+            ;;
+            ;; The enqueue is the SAME reduce the ordinary
+            ;; `schedule-followup` path uses below, so the seq-no
+            ;; discipline that keeps the log globally t-ordered is the one
+            ;; that was already there. A survivor that has itself been
+            ;; merged away simply hits this branch again on the next pop,
+            ;; which terminates because `:merged` is absorbing and
+            ;; `decide :merge`'s `never-mergeable?` excludes it.
+            (let [survivor-id (get-in world [:patients patient-id :merged-into])
+                  survivor (get-in world [:patients survivor-id])
+                  carried (when survivor
+                            (for [{:keys [type result-event] :as s} steps
+                                  :when (= :result-followup type)]
+                              {:t t :patient-id survivor-id
+                               :steps [(assoc s :result-event
+                                              (-> result-event
+                                                  (assoc :active-mrn (:active-mrn survivor))
+                                                  (update :participants
+                                                          (fn [ps]
+                                                            (mapv #(if (= :subject (:role %))
+                                                                     (assoc % :patient-id survivor-id)
+                                                                     %)
+                                                                  ps)))))]}))
+                  [queue'' seq-no'] (reduce (fn [[q n] sf]
+                                              [(assoc q [(:t sf) n] (select-keys sf [:patient-id :steps]))
+                                               (inc n)])
+                                            [queue' seq-no]
+                                            carried)]
+              (recur queue'' seq-no' world ground-truth state-history))
             (let [{:keys [events advance exhausted schedule-followup prepend-steps]}
                   (decide/decide (assoc base-streams :patient (get streams-by-pid patient-id))
                           t world patient-id step)]
