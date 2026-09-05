@@ -322,8 +322,30 @@
  {:asset "docs/manual/assets/inject-expect-loop.svg"
   :source "components/corpus/docs/pipeline.edn"
   :trigger "regenerate by hand if pipeline.edn's Mutate/Gate stages or the worked instance's own witnessed values change"
-  :reviewed-at "31675e6e"
+  :reviewed-at "adbf6e15"
   :verdict :fresh
+  :note
+  "RE-WITNESSED 2026-09-05 (P7's pipeline rider,
+   `roadmap.md#referential-corpus-population`). The trigger fired and
+   DID NOT: pipeline.edn gained a whole new stage, `:sim-check`, and
+   neither `:mutate` nor `:gate` changed by a byte -- the diff at
+   adbf6e15 is 44 insertions and 0 deletions, all of them one stage
+   entry and its comment, inserted before `:check`.
+
+   WHAT THIS ASSET ACTUALLY DRAWS, checked rather than assumed: one
+   file-level worked instance of Mutate -> Gate. Its text is `canonical
+   file / storefront-patient.json`, `Mutate` with
+   `operator: remove-required-element` and its locator, `operator
+   catalog`, `mutant file + lineage`, the `:violates` contract naming
+   `Element.min >= 1`, `Gate`, and the `rejected :invalid` verdict with
+   the validator's own message. Not one of those is a sim-side name,
+   and the new stage is a judge over the ground-truth EVENT LOG -- a
+   different operand, a different standard, and nothing this drawing
+   depicts. Not stale.
+
+   Prior review, 2026-08-13 (ADR-0124), kept: the asset was authored
+   against pipeline.edn at 31675e6e and its witnessed values are
+   unchanged since."
   :witness {:adr "ADR-0124" :date "2026-08-13"}}
 
  {:asset "docs/manual/assets/straddle-timeline.svg"

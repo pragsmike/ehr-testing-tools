@@ -739,3 +739,54 @@ ward from 6 surge slots to 16, reads at the shell as violating
 `:occupancy-within-capacity`. The corpus is sound; the checker is
 config-starved. Rowed on `roadmap.md`; not fixed by the breadth session,
 whose fences and Q11(a) both forbid widening that surface.
+
+### 7. Dated addendum, 2026-09-05 — the population gaps are zero
+
+Entered by P7 (`roadmap.md#referential-corpus-population`). Addendum (a)
+above records that two of the five referential carrier columns had a
+population and three did not, and the ledger rowed those three as
+FOURTEEN population gaps. **All fourteen are now shipped operators**,
+and section 6 above stands unrewritten because it was true of the
+corpora that existed when it was written.
+
+**Nothing was authored to close them.** The row that carried them
+PRICED the work as corpus authoring — a scenario exercising the cancel
+family and closing its medication and care-plan spans — and that price
+was never paid. `demos/scenarios/dense-7500/config.edn`, committed
+2026-09-04 for the Scale table and for no reason connected to this,
+carries all three columns at seed 5 with `--patients 20 --churn`: 4
+`:cancel-transfer`, 6 `:medication-end`, 8 `:care-plan-end`. The
+columns turned straight into their cells, which is exactly what the
+ledger predicted would happen the day a population appeared — the
+contract, the shapes and the convicting invariants were already fixed,
+so each cell is a `:candidate-sites` predicate and a `:fn`.
+
+**One correction to section 2(i) that measurement forced, and it is a
+fourth after (a)–(c).** The section scopes the referential family to a
+column per carrier and derives one operator id per `(shape, field)`
+pair. Two columns share a field: `:order-event-id` rides both
+`:result-available` (B1) and `:medication-end` (B2), which is addendum
+(b)'s own point. Deriving ids from the field alone therefore collides,
+and `register!` is a bare `swap! registry assoc` — so B2's entries
+would have SILENTLY REPLACED four of B1's, with no refusal, no catalog
+gap and no symptom. A column now declares an optional id stem
+(`:slug`), and a bijection test between the loop rows and the
+registered event operators is the gate over it.
+
+**And one shape the ADR's `:target` could not express.** Column A's
+`:cancels-event-id` rides three cancel kinds that cancel three
+DIFFERENT event classes, so its target is not one event kind. `:target`
+is now a keyword OR a map from carrier kind to target kind, read
+through one `target-kind` helper every shape calls; a keyword column's
+per-site answer is its column-wide one, so columns D and B1 are
+unchanged by it.
+
+**Q5(a) held throughout, and refused a cell before it shipped one.**
+Column A's `inverted-span` was measured unwitnessable on this very
+population — `cancel-references-existing-uncancelled-event` had no time
+clause at all, so moving a cancel behind its referent convicted
+`:timestamps-monotone` and nothing referential — and was REFUSED rather
+than shipped as a duplicate `:clock-skew` wearing a reference field's
+name. ADR-0178 (R-time) added the fifth disjunct, and the cell ships
+because the CHECKER gained a clause, not because a corpus gained a
+site.

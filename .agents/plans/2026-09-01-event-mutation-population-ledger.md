@@ -4,6 +4,12 @@ The measurement basis for ADR-0176's operator catalog, and the record
 of which candidate operators this repository can convict TODAY versus
 which it merely could convict in principle.
 
+**CLOSED 2026-09-05: section 6's fourteen population gaps are ZERO.**
+The measurement below stands exactly as taken on 2026-09-01 — it was
+true of the corpora that existed then — and section 6a records what
+closed it. Nothing in sections 1–5 is rewritten; the population that
+closed the gaps is a config those sections never measured.
+
 Produced by event-stream mutation (P6) implementation 2, under the
 author ruling **Q10(a)** (2026-09-01): *ship operators ONLY where a
 real population exists in a generatable log; columns without one are
@@ -319,7 +325,8 @@ clinic-decade alone. Recorded rather than papered over.
 **POPULATION-GAPPED — 14 cells, convictable in principle, unwitnessable
 today.** Each names the invariant that WOULD convict it, so the day a
 population exists the operator is a predicate and a `:fn`, not a design
-question.
+question. **All fourteen SHIPPED 2026-09-05 — the measurement is in 6a
+below; this table stays exactly as it was measured.**
 
 | col | cells | invariant that would convict | why empty |
 |---|---|---|---|
@@ -338,6 +345,7 @@ suite's own dummy, as the spine left it.
 1. **The population work** — authoring or configuring corpora that emit
    cancels, `:medication-end`, and `:care-plan-end`, which is what turns
    14 population gaps into 14 operators. Rowed on `roadmap.md`.
+   **DONE 2026-09-05, and it needed no authoring at all: see 6a.**
 2. **`ehrt sim check`'s missing facility config** (section 1a) — a
    scenario that overrides `:facility` cannot be checked clean at the
    shell. Rowed on `roadmap.md`.
@@ -350,6 +358,70 @@ suite's own dummy, as the spine left it.
 5. **RNG family tag 6 (`:mutation`)** — still unreserved in
    `streams.clj` (spine record section 5); a sim-engine edit, still
    fenced out.
+
+---
+
+## 6a. The gaps close, 2026-09-05 — and the corpus was already in the tree
+
+The row that carried the fourteen forward
+(`roadmap.md#referential-corpus-population`) PRICED them as corpus
+authoring: *"a scenario or module set that exercises the cancel family
+and closes its medication and care-plan spans"*. That price was not
+paid, because it did not have to be. `demos/scenarios/dense-7500/
+config.edn` — committed 2026-09-04 for an entirely different reason,
+the Scale table's three cells — carries all three columns at seed 5,
+`--patients 20 --churn`:
+
+| col | field | carrier kinds present | sites @20 | shipped cells |
+|---|---|---|---|---|
+| **A** | `:cancels-event-id` | `:cancel-transfer` only (`:cancel-admit` and `:cancel-discharge` absent at this size) | 4 | 4 (null schema-forbidden) |
+| **B2** | `:order-event-id` on `:medication-end` | `:medication-end` | 6 | 5 |
+| **C** | `:start-event-id` | `:care-plan-end` | 8 | 5 |
+
+**14 of 14 convict exactly**, observed = declared under Q5(a) in both
+directions, with the mutated event schema-valid at every site measured
+and the parent clean (`#{}`) — so each equality is a statement about the
+operator rather than about the corpus. Column A's cells were measured
+over ALL FOUR of its sites, B2's over all six, and C's over all eight
+for the two shapes whose invariant has a pre-horizon EXCUSING branch
+(`null` and `phantom`) and six of eight for the other three. That
+exhaustiveness is deliberate and is the same one the P7 derivation
+took: 28 of 28 excusable-branch-risk sites convict, 0 reach the
+branch, so the columns do not have to mirror `check`'s excusing logic
+and `resolving-sites` stays purely structural.
+
+**The catalog is 26 operators, not 12.** 9 referential across two
+columns became 23 across five, and the three structural ones are
+unchanged.
+
+Two things this closure is NOT, stated because both were live
+possibilities when the row was written:
+
+* **It is not a hand-scripted fixture.** The row forbade one
+  explicitly, and none was written: this is a committed demo config run
+  through the real seeded path, measured clean before anything was
+  injected.
+* **Column A's fourth cell is not a population gain.** `inverted-span`
+  was measured UNWITNESSABLE on this same population on 2026-09-05 and
+  REFUSED under Q5(a) — `cancel-references-existing-uncancelled-event`
+  had no time clause, so moving a cancel behind its referent convicted
+  `:timestamps-monotone` and nothing referential. ADR-0178 (R-time)
+  added the fifth disjunct; the cell ships because the CHECKER gained a
+  clause, not because a corpus gained a site. That is the ledger's own
+  third gap kind — a shape gap — opening and closing inside one week,
+  and the record is
+  `.agents/session-records/2026-09-05-p7-stop-derivation.md` finding 1.
+
+**What the closure cost, and it is not free.** This population's run is
+~54 s and each `check-all` over its 18,466 events is ~45 s, of which
+~42 s is `every-event-is-schema-valid` alone (ADR-0178) — because
+`ehrt.sim-engine.event-schema/valid-event?` is `(m/validate Event e)`
+and Malli rebuilds the validator on every call: 2.29 ms an event
+against 0.0063 ms for a prebuilt `(m/validator Event)`, measured this
+session, 365x. The acceptance suite makes 15 such calls, so the gate
+costs ~11 minutes of wall clock for a defect whose fix is one line in
+a brick P7's fence forbade touching. Recorded here rather than left for
+the next session to rediscover.
 
 ---
 
@@ -379,3 +451,14 @@ declaration rather than the gate itself. The probes are deliberately
 NOT promoted to `bin/`: that is author-licensed fence widening
 (`bin/event-census`'s own promotion note), and nothing here needs to run
 per push.
+
+**Dated note, 2026-09-05.** Section 6a's own numbers re-derive the same
+way, with one difference and one caveat. The difference: its cells are
+measured over EVERY site rather than a stride, which the population
+affords — 4, 6 and 8 sites, against section 2a's hundreds — so 6a's
+"14 of 14 convict exactly" is a proof over that population and not a
+sample, except for column C's `cross-patient`, `wrong-kind` and
+`inverted-span`, which are 6 of 8 and are called out as such above. The
+caveat: at ~45 s a `check-all` on this log, a full re-derivation of 6a
+is roughly an hour, so re-derive the cell you doubt rather than the
+table. The probe was again not promoted to `bin/`, same rule.
