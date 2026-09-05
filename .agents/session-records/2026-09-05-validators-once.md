@@ -240,6 +240,28 @@ account for, and that is expected rather than surprising**: every
 `sim-check`, plus `event_schema_test` itself, runs `valid-event?` over
 a whole fixture log.
 
+### 7a. CI, and why it is the weaker witness
+
+Verified with `gh run view`, per
+`rulings.md#R-session-verifies-ci-via-gh`. Run `33958532397` at
+`1737bee`: **success**, one `test` job, **878 s** wall, against the
+prior run (`33939095121` at `f6eeeba`), **1,271 s**. The perf commit's
+own run (`33956722405` at `642d70a`) was **844 s**.
+
+**That pair reads well and it should not be leaned on, so the spread is
+given rather than hidden.** The last fourteen runs on `main` span 436 s
+to 1,302 s. The four between ADR-0178 landing and this fix were 872,
+898, 1,271 and 1,302 s; the two since are 844 and 878 s -- at the
+bottom of that band, but overlapping it. CI's own run-to-run variance
+is the same order as the effect, and its job does more than the suite
+(`clojure -M:poly check`, `bin/verify-nist-lock`, `make docsgen` and a
+freshness diff).
+
+**So the local before/after in section 7 is the measurement, and CI is
+the gate.** CI says the change is green. It does not, on this evidence,
+say how much faster anything got, and this record does not claim it
+does.
+
 ## 8. Roadmap
 
 `roadmap.md#performance-residual-sites` stays **OPEN** and keeps every
