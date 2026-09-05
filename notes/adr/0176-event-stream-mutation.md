@@ -790,3 +790,113 @@ than shipped as a duplicate `:clock-skew` wearing a reference field's
 name. ADR-0178 (R-time) added the fifth disjunct, and the cell ships
 because the CHECKER gained a clause, not because a corpus gained a
 site.
+
+### 8. Dated addendum, 2026-09-05 — Q11 re-ruled (c), and the catalog-wide gate finds a shape gap
+
+Entered by the Q11(c) session (`roadmap.md#event-mutation-catalog-gate`).
+
+**Q11 re-ruled (c), superseding Q11(a).** Q11(a) (2026-09-01) left
+`:expected-findings` at non-emptiness and rowed the vocabulary
+cross-check as BLOCKED, because the only shape anyone had costed for it
+was widening `ehrt.sim-check.interface` so `register!` could consult
+`check`'s catalogs at registration time — and Q14(a) then declined to
+reopen that surface, threading `--config` through the seam's existing
+arities instead. **The block was an artefact of assuming the law had to
+live in src.** A TEST may reach any namespace, so the law lands as a
+corpus-brick test reading `check`'s four catalogs directly:
+
+* `ehrt.sim-check.interface` stays ONE var. Nothing is widened, and the
+  Q14(a) precedent — honor a want through the existing seam — holds a
+  second time rather than being spent.
+* `components/corpus/src` gains no edge to `components/sim-check`. The
+  require is in `components/corpus/test`, and `clojure -M:poly check`
+  is green over it: poly's brick-boundary rule is about a brick's own
+  src, and a test tree may reach an implementation namespace.
+* `register!` is unchanged, so the refusal path Q6(a) built (an
+  unconvictable operator refused and recorded as a catalog gap) is not
+  disturbed by a law that is about NAMES rather than about emptiness.
+
+**The vocabulary is derived, not transcribed.** `checker-vocabulary`
+reads the invariant name off each var in `catalog`,
+`facility-catalog`, `warmup-catalog` and `order-profiles-catalog` — the
+four `check-all` runs — so a catalog row added or retired moves the set
+with it and no pin moves. The var-name derivation is exact rather than
+conventional, measured this session: **46 catalog vars against the 46
+distinct `:invariant` keywords the whole of `check.clj` carries, name
+for name and set for set.** It is self-policing too — the oracle loop
+asserts observed = declared over REAL violation keywords while the new
+law asserts declared ⊆ derived, so a var whose emitted keyword drifted
+from its own name turns one of the two red.
+
+**The catalog-wide gate landed with it** (section 2(iv)'s "the whole
+catalog against a fixed set of clean logs", the half addendum (a) said
+had no population). The loop now runs every `(operator, population)`
+pair that has at least one candidate site rather than the one pair each
+row names: **45 of 78 pairs are sited**, and the 33 that are not are
+printed by name on every run. The unsited set is a property of the
+corpus, not a defect — clinic-decade mints no `:medication-end`,
+ed-tuesday no cancel family — so it is reported rather than pinned;
+what IS gated is that the matrix is complete, that every row's own
+declared population is sited, and that no operator is unsited
+everywhere.
+
+**Cost, measured, and it stays in `make test`.** `clojure -M:poly test
+brick:corpus project:ehrt-cli`: 148.72 s before, 230.51 s after,
+**+81.79 s per project** — under the 120 s rule the session was given,
+so the gate does not move to `make integration`.
+
+**AND THE GATE FOUND ONE ON ITS FIRST RUN, which is a fourth correction
+to section 2(i) after (a)–(c).** `:orphan-participant` over
+`demos/scenarios/dense-7500/config.edn` convicts FIVE invariants where
+it declares four. Measured exhaustively over all 48 of that log's
+candidate sites:
+
+| sites | observed set |
+|---|---|
+| 34 | the declared four |
+| 6 | + `medication-end-references-existing-order-and-follows-it-in-time` |
+| 8 | + `care-plan-end-references-existing-start-and-follows-it-in-time` |
+
+That is a **shape gap in addendum (c)'s own sense** — an observed set
+that varies site to site — arriving on an operator addendum (c) had
+already narrowed once. The mechanism is addendum (c)'s own point 2, one
+layer further on: renaming a participant moves the event into a phantom
+patient's timeline, and the narrowing derives its site list from
+`check`'s `clinical-content-only-when-admitted`, whose kind list
+CONTAINS the span STARTS (`:medication-order`, `:care-plan-start`). So
+on a log that closes its spans — which neither calibration log does —
+the span's own referential invariant convicts as well. **The narrowing
+that made the operator honest against two logs is exactly what makes it
+dishonest against the third**, and addendum (c)'s "measured identical
+across every sampled site of both logs" was true when written and is
+not a property of the operator.
+
+**The disposition is OWED A RULING and was fenced out of the session
+that measured it** (no `operators.clj` change). Three readings, all
+defensible, which is why this is STOP-AND-REPORT rather than
+fix-forward:
+
+1. **Narrow again** — exclude a site that is the START of a span some
+   later event references. Addendum (c)'s own stated remedy
+   ("narrowing or nothing"), and the narrowest thing that keeps the
+   operator.
+2. **Retire the operator.** The "or nothing" half. Three narrowings in
+   four days is itself evidence about the shape.
+3. **Ratify the register.** Keep it as it landed and treat a measured
+   per-pair set as a legitimate declaration for a structural operator.
+
+**Widening `:expected-findings` is NOT among them, and measurement is
+why**: Q5(a) is set equality, so a five-element declaration goes red on
+clinic-decade, where only four fire. This is the same refusal Q5(a)
+made of column A's `inverted-span` before ADR-0178 gave it a clause.
+
+**What the session landed pending that ruling, disclosed as a deviation
+from its own R-wide.** R-wide said every sited pair runs the loop with
+Q5(a) equality; one does not. The pair is carried in a
+`declared-shape-gaps` register that is neither an exemption nor a
+skip: it still runs the full loop and still asserts set EQUALITY,
+against the set measured at the site the gate's seed draws, and a
+second test asserts the pair really does diverge from its declaration
+— so narrowing the operator turns the register entry itself red and
+forces its deletion. It cannot decay into a silent pass in either
+direction.

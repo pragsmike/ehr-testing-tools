@@ -56,24 +56,17 @@ with them.
   1 in clinic-decade demo (sweep-3 record :290); fix moves every corpus, its own
   declared sweep; sweep 5's fan-out must either wait for it or derive from log
   indices.
-- OPEN **[event-mutation-catalog-gate]** PRIORITY 6 -- the two live follow-ons
-  `roadmap.md#event-stream-mutation` handed forward when it closed. (1) THE
-  CATALOG-WIDE GATE, ADR-0176 section 2(iv)'s "whole catalog against a fixed set
-  of clean logs": now BUILDABLE, because
-  `.agents/plans/2026-09-01-event-mutation-population-ledger.md` gives it a
-  measured population, and now MEANINGFUL at the shell too, since
-  `ehrt sim check --config` stopped burying a mutant's own finding under
-  spurious occupancy ones. Its cost -- TWENTY-SIX operators over THREE real
-  runs since `roadmap.md#referential-corpus-population` closed 2026-09-05,
-  and the third of those is ~54 s to generate plus ~45 s a `check-all` --
-  is its own question, which is why it is a row and not a rider. (2)
-  `:expected-findings` IS STILL UNCHECKED against `check`'s own finding
-  vocabulary at registration, so an operator may declare a finding name the
-  checker cannot produce and nothing says so until the loop runs. That one is
-  BLOCKED, not merely unscheduled: it needs `ehrt.sim-check.interface` to expose
-  the vocabulary, which ruling Q11(a) deferred and Q14(a) deliberately did NOT
-  reopen (Q14 threaded config through the seam's EXISTING arities instead).
-  Needs an author ruling before it can be built.
+- OPEN **[orphan-participant-shape-gap]** PRIORITY 6 -- MEASURED 2026-09-05 by the
+  catalog-wide gate on its first run, and it is a DISPOSITION, not a diagnosis:
+  `:orphan-participant` convicts FIVE invariants over
+  `demos/scenarios/dense-7500/config.edn` where it declares four -- exhaustively,
+  34 of its 48 sites give the declared set, 6 add `medication-end-references-...`
+  and 8 add `care-plan-end-references-...`. The mechanism, the three defensible
+  readings (narrow again / retire / ratify the register) and why widening
+  `:expected-findings` is NOT among them are in `notes/adr/0176-event-stream-mutation.md`
+  section 8. Carried meanwhile in the gate's own `declared-shape-gaps`, which still
+  asserts set equality against the MEASURED set and turns red the moment the operator
+  stops diverging. Fenced out of the session that found it: `operators.clj` untouched.
 - OPEN **[cancel-discharge-reopens-an-encounter-that-never-closes]** PRIORITY 9 --
   MEASURED 2026-08-29 while tracing `roadmap.md#ts-3-outpatient-opens-over-an-encounter`,
   and it is a population fact rather than one patient's: a legal
@@ -301,6 +294,7 @@ One line a row. `CLOSED` here means "no longer a roadmap row", not "the work
 was done" -- each line says which. The section is named `## Done` because that
 is where `ehrt.docs-tooling.roadmap-lint-test` requires a `CLOSED` row to live.
 
+- CLOSED 2026-09-05 8c5379a **[event-mutation-catalog-gate]** -- DONE, both live follow-ons. (2) THE VOCABULARY CHECK, which this row recorded as BLOCKED on a Q11(a) re-ruling, is unblocked by Q11(c) (2026-09-05) and the block turns out to have been an artefact of assuming the law had to live in src: a TEST may reach any namespace, so `ehrt.sim-check.interface` stays ONE var, `components/corpus/src` gains no edge to `components/sim-check`, `register!` is unchanged, and the vocabulary is DERIVED from `check`'s four catalog vars rather than transcribed -- exact rather than conventional, 46 vars against the 46 distinct `:invariant` keywords `check.clj` carries, name for name. (1) THE CATALOG-WIDE GATE runs every (operator, population) pair with a candidate site instead of the one pair each row named: 45 of 78 sited, the other 33 reported by name every run rather than pinned. Its cost was the row's own open question and the answer is +81.79 s per project (148.72 s -> 230.51 s, `brick:corpus project:ehrt-cli`), under the 120 s rule, so it stays in `make test`. AND IT FOUND ONE ON ITS FIRST RUN, which is why it exists: `:orphan-participant` over dense-7500 is a SHAPE GAP in ADR-0176 addendum (c)'s own sense, on an operator addendum (c) had already narrowed once -- rowed at `roadmap.md#orphan-participant-shape-gap`, disposition owed a ruling, disclosed as a deviation from the session's own R-wide. ADR-0176 section 8. Record: `.agents/session-records/2026-09-05-q11c-catalog-wide-gate.md`.
 - CLOSED 2026-09-05 74c6d87 **[referential-corpus-population]** -- DONE, all 14 cells, and the corpus authoring this row PRICED was never needed: `demos/scenarios/dense-7500/config.edn` -- committed the day before for the Scale table, for no reason connected to this -- carries all three columns at seed 5 `--patients 20 --churn` (4 `:cancel-transfer`, 6 `:medication-end`, 8 `:care-plan-end`), so the catalog went 12 -> 26 with no new config, no hand-scripted fixture, and 14 of 14 convicting exactly under Q5(a) in both directions. Three mechanical corrections rode with it, each disclosed rather than absorbed -- `:target` became keyword-or-map behind one `target-kind` helper (column A's three cancel kinds cancel three different classes), a column may declare an id `:slug` because `register!` is a bare `swap! assoc` and B2 would have SILENTLY REPLACED four of B1's entries, and two consumer-facing claims about the catalog's size and coverage went false the moment it grew. Record: `.agents/session-records/2026-09-05-p7-referential-columns.md`.
 - CLOSED 2026-09-05 ADR-0178 **[cancel-invariant-has-no-time-clause]** -- DONE as R-time: the row's own diagnosis survived derivation unchanged, and the fix is the fifth disjunct, `(< (:t event) (:t target))`, guarded on the non-nil target the first disjunct already establishes. Equality is permitted deliberately -- `decide :transfer-in-error` emits its transfer and that transfer's cancel at ONE instant -- and a boundary test pins that so widening it later is a decision and not a drift. Column A's fourth mutation cell is now witnessable; SHIPPING it is `roadmap.md#referential-corpus-population`'s, not this row's, and nothing here touched the ledger or the catalog. Measured silent on all four gated corpora before registration: 0 cancels precede their own target, of 4. Record: `.agents/session-records/2026-09-05-window-close-t-absent-not-nil.md`.
 - CLOSED 2026-09-05 ADR-0178 **[window-close-t-present-as-nil]** -- CREATED AND CLOSED IN ONE ENTRY, and DISCLOSED AS CREATED: no such row existed, because the P7 derivation's finding 2 was author-held for its own session rather than rowed. Clause one, THE ENGINE: `run.clj:146` deliberately omits `:window-close-t` when a placeholder window never resolves and `decide.clj:331` re-added it unconditionally as nil, so every `:persons` config shipped `:registered` events invalid against `[:window-close-t {:optional true} :int]` while claiming `:event-schema-version "1.8.0"` -- the key is now ABSENT, never nil, and the schema is unchanged because it was always right. Clause two, THE GATE: nothing on the run path validated whole-event shape at all, so `check-all` gains `every-event-is-schema-valid` FIRST in reporting order, catalog pin 45 -> 46. Sweep UNSPENT: `bin/ground-truth-bracket` and `bin/regression-oracle` both IDENTICAL over `d55b90d..fc7a089`, because all three `:persons` oracle roots were measured to carry zero nil pairs. Record: `.agents/session-records/2026-09-05-window-close-t-absent-not-nil.md`.
