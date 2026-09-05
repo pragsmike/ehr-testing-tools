@@ -56,17 +56,6 @@ with them.
   1 in clinic-decade demo (sweep-3 record :290); fix moves every corpus, its own
   declared sweep; sweep 5's fan-out must either wait for it or derive from log
   indices.
-- OPEN **[orphan-participant-shape-gap]** PRIORITY 6 -- MEASURED 2026-09-05 by the
-  catalog-wide gate on its first run, and it is a DISPOSITION, not a diagnosis:
-  `:orphan-participant` convicts FIVE invariants over
-  `demos/scenarios/dense-7500/config.edn` where it declares four -- exhaustively,
-  34 of its 48 sites give the declared set, 6 add `medication-end-references-...`
-  and 8 add `care-plan-end-references-...`. The mechanism, the three defensible
-  readings (narrow again / retire / ratify the register) and why widening
-  `:expected-findings` is NOT among them are in `notes/adr/0176-event-stream-mutation.md`
-  section 8. Carried meanwhile in the gate's own `declared-shape-gaps`, which still
-  asserts set equality against the MEASURED set and turns red the moment the operator
-  stops diverging. Fenced out of the session that found it: `operators.clj` untouched.
 - OPEN **[cancel-discharge-reopens-an-encounter-that-never-closes]** PRIORITY 9 --
   MEASURED 2026-08-29 while tracing `roadmap.md#ts-3-outpatient-opens-over-an-encounter`,
   and it is a population fact rather than one patient's: a legal
@@ -294,6 +283,7 @@ One line a row. `CLOSED` here means "no longer a roadmap row", not "the work
 was done" -- each line says which. The section is named `## Done` because that
 is where `ehrt.docs-tooling.roadmap-lint-test` requires a `CLOSED` row to live.
 
+- CLOSED 2026-09-05 97d0c31 **[orphan-participant-shape-gap]** -- DONE under R-split, reading 1 of the three ADR-0176 section 8 offered: the fifth invariant keys on a LOG FACT -- the reattributed event is a span start some end cites -- so the fact went into the site predicate rather than a register. The 14 sites given up are taken by two new operators, catalog 26 -> 28. Record: `.agents/session-records/2026-09-05-orphan-participant-split.md`.
 - CLOSED 2026-09-05 8c5379a **[event-mutation-catalog-gate]** -- DONE, both follow-ons: the catalog-wide gate runs every sited (operator, population) pair, and the `:expected-findings` vocabulary check landed as a corpus-brick TEST, so Q11(a)'s block dissolved without widening `ehrt.sim-check.interface`. It found a shape gap on its first run: `roadmap.md#orphan-participant-shape-gap`. Record: `.agents/session-records/2026-09-05-q11c-catalog-wide-gate.md`.
 - CLOSED 2026-09-05 74c6d87 **[referential-corpus-population]** -- DONE, all 14 cells, and the corpus this row PRICED was never needed: `demos/scenarios/dense-7500/config.edn` already carried all three carrier columns, so the catalog went 12 -> 26 with no new config and 14 of 14 convicting exactly under Q5(a) in both directions. Record: `.agents/session-records/2026-09-05-p7-referential-columns.md`.
 - CLOSED 2026-09-05 ADR-0178 **[cancel-invariant-has-no-time-clause]** -- DONE as R-time: the row's diagnosis survived derivation unchanged and the fix is a fifth disjunct, `(< (:t event) (:t target))`, equality deliberately permitted and pinned by a boundary test. Column A's fourth mutation cell becomes witnessable. Record: `.agents/session-records/2026-09-05-window-close-t-absent-not-nil.md`.
