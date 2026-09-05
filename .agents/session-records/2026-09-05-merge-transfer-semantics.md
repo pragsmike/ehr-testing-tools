@@ -290,7 +290,22 @@ it lives here, not in the ADR (`build-session` SKILL item 14).
 The only commits after that tip are this record, the prompt archive and
 the regenerated indexes.
 
-## 10. Close ceremony
+## 10. CI at the pushed tip
+
+`gh run view 33982988352` -- **status `completed`, conclusion
+`success`**, head sha `1ecff673c2bfd343eabbbd9ca3f532009811afe0`, the
+tip of `007deea6..1ecff673`
+(<https://github.com/pragsmike/ehr-testing-tools/actions/runs/33982988352>).
+All three CI legs green: `poly test :all skip:integration`,
+`verify-nist-lock`, and the generated-doc freshness regen+diff. That is
+this arc's close marker (`rulings.md#R-session-verifies-ci-via-gh`); no
+tag was paid.
+
+`bin/post-push-verify 007deea6 1ecff673` reported all three of its own
+checks before that: remote tip matches, every commit message in the
+range is pure ASCII, and the CI run reported once rather than awaited.
+
+## 11. Close ceremony
 
 **Background processes started by this session, all Bash jobs, all
 completed, none left running:** the oracle digest at HEAD (three
