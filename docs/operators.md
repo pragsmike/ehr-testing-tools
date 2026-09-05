@@ -30,7 +30,9 @@ Two descriptions appear per operator, and they answer different questions. **Wha
 | [`:null-medication-end-order-event-id`](#null-medication-end-order-event-id) | — | Repoints one medication end's `:order-event-id` to nil, citing nothing at all, leaving every other field and every other event exactly as it was. |
 | [`:null-placeholder-event-id`](#null-placeholder-event-id) | — | Repoints one identity fill's `:placeholder-event-id` to nil, citing nothing at all, leaving every other field and every other event exactly as it was. |
 | [`:null-start-event-id`](#null-start-event-id) | — | Repoints one care-plan end's `:start-event-id` to nil, citing nothing at all, leaving every other field and every other event exactly as it was. |
-| [`:orphan-participant`](#orphan-participant) | — | Reattributes one clinical event to a patient the run never registered, leaving every other field and every other event exactly as it was. |
+| [`:orphan-closed-care-plan-start`](#orphan-closed-care-plan-start) | — | Reattributes one `care-plan-start` that a later care-plan end cites to a patient the run never registered, leaving every other field and every other event exactly as it was. |
+| [`:orphan-closed-medication-order`](#orphan-closed-medication-order) | — | Reattributes one `medication-order` that a later medication end cites to a patient the run never registered, leaving every other field and every other event exactly as it was. |
+| [`:orphan-participant`](#orphan-participant) | — | Reattributes one clinical event that opens no span a later event closes to a patient the run never registered, leaving every other field and every other event exactly as it was. |
 | [`:phantom-cancels-event-id`](#phantom-cancels-event-id) | — | Repoints one cancellation's `:cancels-event-id` at a log index that does not exist, leaving every other field and every other event exactly as it was. |
 | [`:phantom-medication-end-order-event-id`](#phantom-medication-end-order-event-id) | — | Repoints one medication end's `:order-event-id` at a log index that does not exist, leaving every other field and every other event exactly as it was. |
 | [`:phantom-order-event-id`](#phantom-order-event-id) | — | Repoints one result's `:order-event-id` at a log index that does not exist, leaving every other field and every other event exactly as it was. |
@@ -177,13 +179,31 @@ Repoints one care-plan end's `:start-event-id` to nil, citing nothing at all, le
 - **Contract:** `:violates` — points one care-plan end's `:start-event-id` to nil, so it cites nothing at all, violating this engine's own referential law that a care-plan end cites a real `:care-plan-start` event in the same log, for the same patient, at or before the end's own `:t` (the invariant `ehrt.sim-check.check/care-plan-end-references-existing-start-and-follows-it-in-time` states)
 - **Expected findings:** `:care-plan-end-references-existing-start-and-follows-it-in-time` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
 
-### `:orphan-participant`
+### `:orphan-closed-care-plan-start`
 
-Reattributes one clinical event to a patient the run never registered, leaving every other field and every other event exactly as it was.
+Reattributes one `care-plan-start` that a later care-plan end cites to a patient the run never registered, leaving every other field and every other event exactly as it was.
 
 - **Version:** `1` — pass as `--operator-version 1`.
 - **Locator:** not required.
-- **Contract:** `:violates` — renames the patient on one clinical event to an id the run never registered, so that content is attributed to an unknown patient, sits in no encounter, and is not preceded by an admission or a registration -- violating four of this engine's own laws at once: that clinical content happens only while a patient is admitted, that every encounter is opened and closed or still open, that every patient id named in a log belongs to a patient that log registered, and that a patient's first event is their registration
+- **Contract:** `:violates` — renames the patient on one `care-plan-start` that a later care-plan end cites, so that content is attributed to an unknown patient, sits in no encounter, and is not preceded by an admission or a registration, AND so that the two ends of the span no longer name the same patient -- violating five of this engine's own laws at once: that clinical content happens only while a patient is admitted, that every encounter is opened and closed or still open, that every patient id named in a log belongs to a patient that log registered, and that a patient's first event is their registration, and the referential law that a care-plan end cites a real `:care-plan-start` event in the same log, for the same patient, at or before the end's own `:t` (the invariant `ehrt.sim-check.check/care-plan-end-references-existing-start-and-follows-it-in-time` states)
+- **Expected findings:** `:care-plan-end-references-existing-start-and-follows-it-in-time`, `:clinical-content-only-when-admitted`, `:every-encounter-is-opened-and-closed-or-still-open`, `:participant-ids-exist-in-run`, `:registered-is-every-patients-first-event` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
+### `:orphan-closed-medication-order`
+
+Reattributes one `medication-order` that a later medication end cites to a patient the run never registered, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — renames the patient on one `medication-order` that a later medication end cites, so that content is attributed to an unknown patient, sits in no encounter, and is not preceded by an admission or a registration, AND so that the two ends of the span no longer name the same patient -- violating five of this engine's own laws at once: that clinical content happens only while a patient is admitted, that every encounter is opened and closed or still open, that every patient id named in a log belongs to a patient that log registered, and that a patient's first event is their registration, and the referential law that a medication end cites a real `:medication-order` event in the same log, for the same patient, at or before the end's own `:t` (the invariant `ehrt.sim-check.check/medication-end-references-existing-order-and-follows-it-in-time` states)
+- **Expected findings:** `:clinical-content-only-when-admitted`, `:every-encounter-is-opened-and-closed-or-still-open`, `:medication-end-references-existing-order-and-follows-it-in-time`, `:participant-ids-exist-in-run`, `:registered-is-every-patients-first-event` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
+### `:orphan-participant`
+
+Reattributes one clinical event that opens no span a later event closes to a patient the run never registered, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — renames the patient on one clinical event to an id the run never registered, so that content is attributed to an unknown patient, sits in no encounter, and is not preceded by an admission or a registration -- violating four of this engine's own laws at once: that clinical content happens only while a patient is admitted, that every encounter is opened and closed or still open, that every patient id named in a log belongs to a patient that log registered, and that a patient's first event is their registration. The event is one no end event cites, so no span is split and no span's own referential law is disturbed
 - **Expected findings:** `:clinical-content-only-when-admitted`, `:every-encounter-is-opened-and-closed-or-still-open`, `:participant-ids-exist-in-run`, `:registered-is-every-patients-first-event` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
 
 ### `:phantom-cancels-event-id`

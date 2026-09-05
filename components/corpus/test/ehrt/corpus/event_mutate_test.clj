@@ -370,9 +370,11 @@
   declared population run literally the same loop rather than two
   loops that agree by inspection.
 
-  `expected` is the row's own `:findings` everywhere except a declared
-  shape gap, where it is the set MEASURED at the site this gate's seed
-  draws -- see `declared-shape-gaps`."
+  `expected` is the row's own `:findings`, on every population, with
+  nothing in between. It was briefly the set MEASURED at the drawn site
+  for one pair carried in a `declared-shape-gaps` register; R-split
+  (2026-09-05) settled that pair in `:orphan-participant`'s own site
+  predicate instead, and the register came out with it."
   [{:keys [id effect moves-t?]} population expected]
   (let [pop (pop-of population)
         l (:log pop)
@@ -436,57 +438,6 @@
           {:id id :population p
            :sites (count ((:candidate-sites (op id)) (vec (:log (pop-of p)))))}))))
 
-(def ^:private declared-shape-gaps
-  "SHAPE GAPS, in ADR-0176 addendum (c)'s own sense and vocabulary: a
-  candidate whose observed finding set VARIES SITE TO SITE, so no set
-  can honestly be declared for it. The addendum names the kind and the
-  remedy -- *\"narrowing or nothing, never a declared set chosen from
-  the modal case\"* -- and this register is neither. It is the honest
-  place to park ONE pair whose remedy needs a ruling, keyed
-  `[operator-id population]`.
-
-  ONE ENTRY, MEASURED EXHAUSTIVELY 2026-09-05, and it is a real defect
-  awaiting a disposition rather than an exemption:
-  `:orphan-participant` was narrowed by the breadth session against
-  BOTH logs that existed then, its set measured identical at every
-  sampled site of each. `demos/scenarios/dense-7500/config.edn` is the
-  third, and over ALL FORTY-EIGHT of its candidate sites the operator
-  produces THREE distinct sets, not one:
-
-      34 sites  the declared four
-       6 sites  + :medication-end-references-existing-order-...
-       8 sites  + :care-plan-end-references-existing-start-...
-
-  The mechanism is addendum (c)'s own point 2 one layer further on.
-  Renaming a participant moves the event into a phantom patient's
-  timeline; the narrowing derives the site list from `check`'s
-  `clinical-content-only-when-admitted`, and that kind list CONTAINS
-  the span STARTS (`:medication-order`, `:care-plan-start`). So on a
-  log that closes its spans -- which the two calibration logs do not --
-  the span's own referential invariant convicts as well. The narrowing
-  that made the operator honest against two logs is precisely what
-  makes it dishonest against the third.
-
-  THE DISPOSITION IS OWED AN AUTHOR RULING and is fenced out of the
-  session that measured this (no `operators.clj` change): narrow
-  `:candidate-sites` again to exclude a site that is the START of a
-  referenced span; widen nothing (Q5(a) is equality, so a wider set
-  goes red on clinic-decade); or retire the operator. Recorded in
-  ADR-0176 and rowed, not decided here.
-
-  The entry is SELF-POLICING IN BOTH DIRECTIONS. The loop still runs in
-  full and still asserts set EQUALITY for this pair -- against the set
-  measured at the site seed 424242 draws (site 122, one of the six) --
-  and the test below additionally asserts that the pair DOES diverge
-  from its declaration. Narrow the operator and this entry turns red
-  and has to be deleted; it can never decay into a silent pass."
-  {[:orphan-participant :dense-7500]
-   #{:clinical-content-only-when-admitted
-     :every-encounter-is-opened-and-closed-or-still-open
-     :medication-end-references-existing-order-and-follows-it-in-time
-     :participant-ids-exist-in-run
-     :registered-is-every-patients-first-event}})
-
 (deftest the-closed-oracle-loop-holds-for-every-sited-pair-test
   ;; THE CATALOG-WIDE GATE (ADR-0176 section 2(iv), "the whole catalog
   ;; against a fixed set of clean logs"). Until 2026-09-05 this loop ran
@@ -499,26 +450,17 @@
   (doseq [{:keys [id population sites]} @site-matrix
           :when (pos? sites)]
     (testing (str id " over " population " (" sites " sites)")
-      (let [row (first (filter #(= id (:id %)) loop-rows))
-            gap (get declared-shape-gaps [id population])]
-        (assert-the-loop row population (or gap (:findings row)))))))
-
-(deftest every-declared-shape-gap-actually-diverges-test
-  ;; A declared gap that no longer diverges is an exemption, and an
-  ;; exemption is what this register must never decay into. Each entry
-  ;; must name a real pair, and its measured set must differ from the
-  ;; operator's declaration -- otherwise delete the entry.
-  (doseq [[[id population] observed] declared-shape-gaps]
-    (testing (str id " over " population)
       (let [row (first (filter #(= id (:id %)) loop-rows))]
-        (is (some? row) "a shape gap names an operator that has a loop row")
-        (is (pos? (:sites (first (filter #(and (= id (:id %))
-                                               (= population (:population %)))
-                                         @site-matrix))))
-            "a shape gap names a pair that is actually sited")
-        (is (not= (:findings row) observed)
-            (str id " over " population " no longer diverges from its declaration -- "
-                 "delete the declared-shape-gaps entry"))))))
+        ;; The operator's OWN declaration, on every population, with no
+        ;; register in between. Until 2026-09-05 one pair was carried in
+        ;; a `declared-shape-gaps` register that ran the loop against a
+        ;; MEASURED set instead -- `:orphan-participant` over dense-7500,
+        ;; the shape gap this gate found on its first run. R-split
+        ;; settled it in the site predicate rather than in a register,
+        ;; so the register emptied and came out: an empty register with
+        ;; a live test behind it is a scaffold, and a register that CAN
+        ;; be empty is one a later session refills.
+        (assert-the-loop row population (:findings row))))))
 
 (deftest every-operator-population-pair-is-sited-or-reported-test
   ;; "Reported by name, not skipped silently." A pair with no site is
@@ -535,10 +477,6 @@
                   (count unsited) " offer no candidate site:"))
     (doseq [{:keys [id population]} unsited]
       (println (str "  no site: " id " over " population)))
-    (doseq [[[id population] observed] declared-shape-gaps]
-      (println (str "DISCLOSURE: declared shape gap -- " id " over " population
-                    " runs the loop against a MEASURED set of " (count observed)
-                    ", not its declaration; disposition owed a ruling (ADR-0176)")))
     (testing "the matrix is complete -- every operator against every population"
       (is (= (* (count loop-rows) (count population-order)) (count m)))
       (is (= (set (map :id loop-rows)) (set (map :id m))))

@@ -717,7 +717,7 @@
         :when (or (:nilable? column) (not (:nilable-only? shape)))]
   (register! (referential-entry column shape)))
 
-;; ---- the structural three ------------------------------------------
+;; ---- the structural family -----------------------------------------
 ;;
 ;; ADR-0176 section 2(i) proposes three structural operators and gives
 ;; each ONE convicting invariant. ITS OWN DATED ADDENDUM (c) RECORDS
@@ -729,10 +729,9 @@
 ;; negotiable -- so what gives is the breadth of `:candidate-sites`,
 ;; which is exactly what a candidate-site predicate is for.
 ;;
-;; The three below are the NARROWED operators, each with a set measured
-;; identical at every sampled site of both demo logs. Each narrowing is
-;; a statement about what the operator MEANS, not a fudge to make a
-;; gate pass, and each is argued at its own definition.
+;; The operators below are the NARROWED ones. Each narrowing is a
+;; statement about what the operator MEANS, not a fudge to make a gate
+;; pass, and each is argued at its own definition.
 ;;
 ;; Two mechanisms behind the cascades are properties of the LOG FORMAT
 ;; rather than of these operators, and any later structural operator
@@ -747,6 +746,13 @@
 ;;      timeline, where every patient-scoped invariant convicts the
 ;;      phantom for having no `:registered` first event -- correct, and
 ;;      part of the declared class rather than noise around it.
+;;      IT ALSO SPLITS A SPAN, and that half is a property of the LOG
+;;      and not of the event kind: an end event's referential law reads
+;;      the patient off BOTH ends, so a reattributed START convicts a
+;;      FIFTH invariant exactly when some end cites it. See the three
+;;      orphan operators below, which is the shape ADR-0176's addendum
+;;      (c) took on 2026-09-05 once a log that closes its spans
+;;      existed to measure against.
 
 (def ^:private reference-fields
   "Every log-index reference field, for the two structural operators
@@ -907,22 +913,106 @@
   reason the phantom index is: Q3(a) spends the one draw on the site."
   "PID-ORPHANED-BY-MUTATION")
 
-(defn- orphan-participant-sites
-  "Every therapeutic-intent clinical event naming a patient.
+(def ^:private orphan-four-findings
+  "The four invariants the orphan edit convicts at EVERY site, whatever
+  the log has done with the event it lands on. Written once and shared
+  by all three orphan operators below, so the two that add a fifth are
+  visibly this set PLUS one rather than a set retyped."
+  #{:clinical-content-only-when-admitted
+    :every-encounter-is-opened-and-closed-or-still-open
+    :participant-ids-exist-in-run
+    :registered-is-every-patients-first-event})
 
-  Scoped to that class because the wider operator ADR-0176 proposes --
-  reattribute ANY event -- was measured to produce eight different
-  finding sets across sampled sites, since which invariants a phantom
-  patient trips depends entirely on what kind of event was moved into
-  their timeline. Clinical content is the class where that answer is
-  the same every time, over every site of both demo logs."
+(def ^:private orphan-four-laws
+  "Those same four in consumer-facing prose, shared for the same
+  reason: three contracts rendered into docs/operators.md that agree in
+  `:expected-findings` must not drift apart in words."
+  (str "that clinical content happens only while a patient is admitted, that "
+       "every encounter is opened and closed or still open, that every patient "
+       "id named in a log belongs to a patient that log registered, and that a "
+       "patient's first event is their registration"))
+
+(def ^:private span-columns
+  "The referential columns whose CARRIER is a span END and whose target
+  is therefore a therapeutic-intent START -- a `:medication-end` citing
+  its `:medication-order`, a `:care-plan-end` citing its
+  `:care-plan-start`.
+
+  DERIVED from `referential-columns` by that overlap rather than listed
+  a second time here, for ADR-0166's reason and the same one
+  `therapeutic-intent-kinds` is derived: a third span joining the
+  referential family joins this split with it, instead of leaving one
+  operator quietly dishonest on the next log that closes it."
+  (filterv #(contains? therapeutic-intent-kinds (:target %)) referential-columns))
+
+(defn- starts-cited-by
+  "Every log index this span column's own end events cite as their
+  start. `resolving-sites` is what \"an end citing an index\" means
+  everywhere else in this file, so it is what it means here."
+  [column events]
+  (into #{}
+        (map #(get (nth events %) (:field column)))
+        (resolving-sites column events)))
+
+(defn- orphan-site?
+  "The orphan edit's own subject: a therapeutic-intent clinical event
+  naming a patient. All three orphan operators share it, and differ
+  ONLY in what the log has done with the event."
+  [e]
+  (and (contains? therapeutic-intent-kinds (:event e))
+       (some :patient-id (:participants e))))
+
+(defn- orphan-participant-sites
+  "Every therapeutic-intent clinical event naming a patient THAT NO END
+  EVENT CITES.
+
+  Scoped to therapeutic intent because the wider operator ADR-0176
+  proposes -- reattribute ANY event -- was measured to produce eight
+  different finding sets across sampled sites, since which invariants a
+  phantom patient trips depends entirely on what kind of event was
+  moved into their timeline.
+
+  Scoped further by a LOG FACT, 2026-09-05 (R-split), and the second
+  clause is why the first was not enough. `clinical-content-only-when-
+  admitted`'s kind list -- which is where `therapeutic-intent-kinds`
+  comes from -- CONTAINS the span starts `:medication-order` and
+  `:care-plan-start`. Reattribute one of those on a log that CLOSES its
+  spans and the end's own referential law, which reads the patient off
+  both ends, convicts as a fifth. Neither calibration log closes a
+  span, so the four-set was measured identical at every sampled site of
+  both and was still not a property of the operator: `demos/scenarios/
+  dense-7500/config.edn` produced three distinct sets over its 48
+  sites (34 / 6 / 8).
+
+  The remedy is a predicate, not a wider declaration: Q5(a) is set
+  equality, so a five-element declaration goes red on a log that leaves
+  its spans open. This operator keeps its four-set by saying `no end
+  cites me` out loud; the 14 sites it gives up are taken by the two
+  operators below, one per span column, which declare the five."
   [events]
-  (vec (keep-indexed
-        (fn [i e]
-          (when (and (contains? therapeutic-intent-kinds (:event e))
-                     (some :patient-id (:participants e)))
-            i))
-        events)))
+  (let [cited (into #{} (mapcat #(starts-cited-by % events)) span-columns)]
+    (vec (keep-indexed
+          (fn [i e] (when (and (orphan-site? e) (not (cited i))) i))
+          events))))
+
+(defn- closed-start-sites
+  "Every orphan site that IS the start of a span THIS column's ends
+  cite -- one column, so exactly one span invariant joins the four, and
+  the declared set is the same at every site by construction.
+
+  The kind clause is redundant on a well-formed log (a column's ends
+  cite its own target kind) and is asked anyway: a mutant log reaching
+  this predicate has no such guarantee, and a site whose kind does not
+  match would convict the referential invariant for a different reason
+  than the one this operator declares."
+  [column events]
+  (let [cited (starts-cited-by column events)]
+    (vec (keep-indexed
+          (fn [i e] (when (and (cited i)
+                               (orphan-site? e)
+                               (= (:target column) (:event e)))
+                      i))
+          events))))
 
 (defn- orphan-participant
   [events site]
@@ -934,17 +1024,17 @@
 
 (register!
  {:id :orphan-participant :version "1" :format :event
-  :doc "Reattributes one clinical event to a patient the run never registered, leaving every other field and every other event exactly as it was."
+  :doc (str "Reattributes one clinical event that opens no span a later event "
+            "closes to a patient the run never registered, leaving every other "
+            "field and every other event exactly as it was.")
   :contract {:type :violates
              :target (str "renames the patient on one clinical event to an id the run "
                           "never registered, so that content is attributed to an unknown "
                           "patient, sits in no encounter, and is not preceded by an "
                           "admission or a registration -- violating four of this engine's "
-                          "own laws at once: that clinical content happens only while a "
-                          "patient is admitted, that every encounter is opened and closed "
-                          "or still open, that every patient id named in a log belongs to "
-                          "a patient that log registered, and that a patient's first event "
-                          "is their registration")}
+                          "own laws at once: " orphan-four-laws
+                          ". The event is one no end event cites, so no span is split and "
+                          "no span's own referential law is disturbed")}
   :locator-required? false
   :seed-consuming? true
   ;; Four members, and every one of them is part of the sentence the
@@ -953,9 +1043,40 @@
   ;; content, in no encounter, for an unknown patient whose first event
   ;; is not a registration. Q5(a) declares a SET precisely so an
   ;; operator whose defect class genuinely has four faces can say so.
-  :expected-findings #{:clinical-content-only-when-admitted
-                       :every-encounter-is-opened-and-closed-or-still-open
-                       :participant-ids-exist-in-run
-                       :registered-is-every-patients-first-event}
+  :expected-findings orphan-four-findings
   :candidate-sites orphan-participant-sites
   :fn orphan-participant})
+
+;; THE TWO CLOSED-START OPERATORS, one per span column, derived rather
+;; than written twice for the reason every derivation in this file is:
+;; a third span column joining `referential-columns` mints its third
+;; operator here with no edit. They ARE `:orphan-participant` -- same
+;; edit, same phantom id, same one-draw-on-the-site discipline (Q3(a))
+;; -- differing only in the site predicate and in the fifth invariant
+;; that predicate makes certain.
+(defn- closed-start-entry
+  [column]
+  {:id (keyword (str "orphan-closed-" (name (:target column))))
+   :version "1"
+   :format :event
+   :doc (str "Reattributes one `" (name (:target column)) "` that a later "
+             (:carrier column) " cites to a patient the run never registered, "
+             "leaving every other field and every other event exactly as it was.")
+   :contract {:type :violates
+              :target (str "renames the patient on one `" (name (:target column))
+                           "` that a later " (:carrier column) " cites, so that content "
+                           "is attributed to an unknown patient, sits in no encounter, "
+                           "and is not preceded by an admission or a registration, AND so "
+                           "that the two ends of the span no longer name the same patient "
+                           "-- violating five of this engine's own laws at once: "
+                           orphan-four-laws ", and the referential law that "
+                           (:law column) " (the invariant `ehrt.sim-check.check/"
+                           (name (:invariant column)) "` states)")}
+   :locator-required? false
+   :seed-consuming? true
+   :expected-findings (conj orphan-four-findings (:invariant column))
+   :candidate-sites (fn [events] (closed-start-sites column (vec events)))
+   :fn orphan-participant})
+
+(doseq [column span-columns]
+  (register! (closed-start-entry column)))
