@@ -202,4 +202,22 @@ banner comment above it, and nothing else.
 
 ## 7. Push and CI
 
-PENDINGPUSH
+Pushed `4cfa570c..fb6a3442` to `origin/main`, six commits, one push.
+The red-first commit `cf82f095` went out WITH its green successor
+`97d0c31e` and never alone, so no pushed commit leaves `main` red.
+
+Post-push message verification ran against all six message files: every
+diff is one trailing blank line and nothing else, which is
+`git log --format=%B`'s own formatting artifact rather than a wrapper
+dropping content.
+
+CI run `33971747368` on `fb6a3442`: **completed, success**, watched to
+conclusion with `gh run watch --exit-status` rather than sampled. The
+only annotation is the standing `setup-java v4 is deprecated` warning,
+which predates this session.
+
+## 8. AUTHOR ACTION
+
+None taken and none outstanding. No tag was placed (`stable-*` is the
+author's boundary, ADR-0003), no repo-level `gh` mutation was made, and
+no git surgery was performed.
