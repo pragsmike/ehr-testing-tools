@@ -335,50 +335,198 @@
 
 ;; ---- the loop itself, every row ------------------------------------
 
-(deftest the-closed-oracle-loop-holds-for-every-operator-test
-  (doseq [{:keys [id population findings effect moves-t?]} loop-rows]
-    (testing (str id)
-      (let [pop (pop-of population)
-            l (:log pop)
-            entry (op id)
-            r (mutate/mutate l entry seed)]
-        (is (kernel/ok? r) "step 2 -- the log must offer this operator a site")
-        (when (kernel/ok? r)
-          (let [mutant (:mutant (:payload r))]
-            (testing "step 7 -- it actually did something (the ADR-0165 lesson)"
-              (is (not= mutant l)))
-            (testing "step 3 -- Q9(a), the mutant stays schema-valid"
-              (is (every? schema-valid? mutant))
-              (if moves-t?
-                (is (not (engine/run-t-monotone? mutant))
-                    "an operator that moves a :t is SUPPOSED to break monotonicity -- that is the defect")
-                (is (engine/run-t-monotone? mutant))))
-            (testing "the structural shape of the edit"
-              (case effect
-                :one-event
-                (do (is (= (count l) (count mutant)) "one-event operators move no event")
-                    (is (= 1 (count (differing-indices l mutant)))
-                        "step 2 -- ONE site, one draw (Q3(a))")
-                    (let [site (first (differing-indices l mutant))]
-                      (is (= (pr-str (into [] (keep-indexed #(when (not= %1 site) %2) l)))
-                             (pr-str (into [] (keep-indexed #(when (not= %1 site) %2) mutant))))
-                          "byte-identity of everything the mutation did not touch")))
-                :drop
-                (is (= (dec (count l)) (count mutant))
-                    "a drop removes exactly one event")))
-            (testing "step 6 -- same seed, same mutant"
-              (is (= mutant (:mutant (:payload (mutate/mutate l entry seed))))))
-            (testing "the input is not mutated in place"
-              (is (= l (:log (pop-of population)))))
-            (testing "steps 4 and 5 -- the loop closes, on EQUALITY (Q5(a))"
-              ;; A subset check would let a cascade hide behind a
-              ;; declared finding, which is the exact failure the
-              ;; post-run injection contract (Q1(a)) exists to avoid.
-              (let [r' (check-all pop mutant)]
-                (is (kernel/rejected? r'))
-                (is (= :invariant-violation (:category r')))
-                (is (= findings (set (map :invariant (:violations (:payload r')))))
-                    "observed = declared, exactly")))))))))
+(defn- assert-the-loop
+  "ADR-0176 section 2(iv) steps 2-7, for ONE (operator, population)
+  pair. Factored out so the catalog-wide gate below and the row's own
+  declared population run literally the same loop rather than two
+  loops that agree by inspection.
+
+  `expected` is the row's own `:findings` everywhere except a declared
+  shape gap, where it is the set MEASURED at the site this gate's seed
+  draws -- see `declared-shape-gaps`."
+  [{:keys [id effect moves-t?]} population expected]
+  (let [pop (pop-of population)
+        l (:log pop)
+        entry (op id)
+        r (mutate/mutate l entry seed)]
+    (is (kernel/ok? r) "step 2 -- the log must offer this operator a site")
+    (when (kernel/ok? r)
+      (let [mutant (:mutant (:payload r))]
+        (testing "step 7 -- it actually did something (the ADR-0165 lesson)"
+          (is (not= mutant l)))
+        (testing "step 3 -- Q9(a), the mutant stays schema-valid"
+          (is (every? schema-valid? mutant))
+          (if moves-t?
+            (is (not (engine/run-t-monotone? mutant))
+                "an operator that moves a :t is SUPPOSED to break monotonicity -- that is the defect")
+            (is (engine/run-t-monotone? mutant))))
+        (testing "the structural shape of the edit"
+          (case effect
+            :one-event
+            (do (is (= (count l) (count mutant)) "one-event operators move no event")
+                (is (= 1 (count (differing-indices l mutant)))
+                    "step 2 -- ONE site, one draw (Q3(a))")
+                (let [site (first (differing-indices l mutant))]
+                  (is (= (pr-str (into [] (keep-indexed #(when (not= %1 site) %2) l)))
+                         (pr-str (into [] (keep-indexed #(when (not= %1 site) %2) mutant))))
+                      "byte-identity of everything the mutation did not touch")))
+            :drop
+            (is (= (dec (count l)) (count mutant))
+                "a drop removes exactly one event")))
+        (testing "step 6 -- same seed, same mutant"
+          (is (= mutant (:mutant (:payload (mutate/mutate l entry seed))))))
+        (testing "the input is not mutated in place"
+          (is (= l (:log (pop-of population)))))
+        (testing "steps 4 and 5 -- the loop closes, on EQUALITY (Q5(a))"
+          ;; A subset check would let a cascade hide behind a
+          ;; declared finding, which is the exact failure the
+          ;; post-run injection contract (Q1(a)) exists to avoid.
+          (let [r' (check-all pop mutant)]
+            (is (kernel/rejected? r'))
+            (is (= :invariant-violation (:category r')))
+            (is (= expected (set (map :invariant (:violations (:payload r')))))
+                "observed = declared, exactly")))))))
+
+(def ^:private population-order
+  "The populations in a fixed order, so the matrix below and every
+  report over it read the same on every run."
+  [:clinic-decade :ed-tuesday :dense-7500])
+
+(def ^:private site-matrix
+  "Every (operator, population) pair with the number of candidate sites
+  that population offers it -- MEASURED by calling the operator's own
+  `:candidate-sites` over the log, exactly as `mutate/mutate` does
+  (`mutate.clj:160`, over a vector).
+
+  A `delay` for the same reason `populations` is one: the whole matrix
+  costs three real runs, and a namespace nobody selected should pay
+  nothing."
+  (delay
+   (vec (for [{:keys [id]} loop-rows
+              p population-order]
+          {:id id :population p
+           :sites (count ((:candidate-sites (op id)) (vec (:log (pop-of p)))))}))))
+
+(def ^:private declared-shape-gaps
+  "SHAPE GAPS, in ADR-0176 addendum (c)'s own sense and vocabulary: a
+  candidate whose observed finding set VARIES SITE TO SITE, so no set
+  can honestly be declared for it. The addendum names the kind and the
+  remedy -- *\"narrowing or nothing, never a declared set chosen from
+  the modal case\"* -- and this register is neither. It is the honest
+  place to park ONE pair whose remedy needs a ruling, keyed
+  `[operator-id population]`.
+
+  ONE ENTRY, MEASURED EXHAUSTIVELY 2026-09-05, and it is a real defect
+  awaiting a disposition rather than an exemption:
+  `:orphan-participant` was narrowed by the breadth session against
+  BOTH logs that existed then, its set measured identical at every
+  sampled site of each. `demos/scenarios/dense-7500/config.edn` is the
+  third, and over ALL FORTY-EIGHT of its candidate sites the operator
+  produces THREE distinct sets, not one:
+
+      34 sites  the declared four
+       6 sites  + :medication-end-references-existing-order-...
+       8 sites  + :care-plan-end-references-existing-start-...
+
+  The mechanism is addendum (c)'s own point 2 one layer further on.
+  Renaming a participant moves the event into a phantom patient's
+  timeline; the narrowing derives the site list from `check`'s
+  `clinical-content-only-when-admitted`, and that kind list CONTAINS
+  the span STARTS (`:medication-order`, `:care-plan-start`). So on a
+  log that closes its spans -- which the two calibration logs do not --
+  the span's own referential invariant convicts as well. The narrowing
+  that made the operator honest against two logs is precisely what
+  makes it dishonest against the third.
+
+  THE DISPOSITION IS OWED AN AUTHOR RULING and is fenced out of the
+  session that measured this (no `operators.clj` change): narrow
+  `:candidate-sites` again to exclude a site that is the START of a
+  referenced span; widen nothing (Q5(a) is equality, so a wider set
+  goes red on clinic-decade); or retire the operator. Recorded in
+  ADR-0176 and rowed, not decided here.
+
+  The entry is SELF-POLICING IN BOTH DIRECTIONS. The loop still runs in
+  full and still asserts set EQUALITY for this pair -- against the set
+  measured at the site seed 424242 draws (site 122, one of the six) --
+  and the test below additionally asserts that the pair DOES diverge
+  from its declaration. Narrow the operator and this entry turns red
+  and has to be deleted; it can never decay into a silent pass."
+  {[:orphan-participant :dense-7500]
+   #{:clinical-content-only-when-admitted
+     :every-encounter-is-opened-and-closed-or-still-open
+     :medication-end-references-existing-order-and-follows-it-in-time
+     :participant-ids-exist-in-run
+     :registered-is-every-patients-first-event}})
+
+(deftest the-closed-oracle-loop-holds-for-every-sited-pair-test
+  ;; THE CATALOG-WIDE GATE (ADR-0176 section 2(iv), "the whole catalog
+  ;; against a fixed set of clean logs"). Until 2026-09-05 this loop ran
+  ;; each operator against the ONE population its row names, which
+  ;; proves the operator convicts what it declares SOMEWHERE. The
+  ;; declaration is a property of the OPERATOR, though, not of the pair
+  ;; -- so wherever a log offers a site, the same equality must hold,
+  ;; and a set that is population-dependent is an operator whose
+  ;; `:expected-findings` was read off one corpus.
+  (doseq [{:keys [id population sites]} @site-matrix
+          :when (pos? sites)]
+    (testing (str id " over " population " (" sites " sites)")
+      (let [row (first (filter #(= id (:id %)) loop-rows))
+            gap (get declared-shape-gaps [id population])]
+        (assert-the-loop row population (or gap (:findings row)))))))
+
+(deftest every-declared-shape-gap-actually-diverges-test
+  ;; A declared gap that no longer diverges is an exemption, and an
+  ;; exemption is what this register must never decay into. Each entry
+  ;; must name a real pair, and its measured set must differ from the
+  ;; operator's declaration -- otherwise delete the entry.
+  (doseq [[[id population] observed] declared-shape-gaps]
+    (testing (str id " over " population)
+      (let [row (first (filter #(= id (:id %)) loop-rows))]
+        (is (some? row) "a shape gap names an operator that has a loop row")
+        (is (pos? (:sites (first (filter #(and (= id (:id %))
+                                               (= population (:population %)))
+                                         @site-matrix))))
+            "a shape gap names a pair that is actually sited")
+        (is (not= (:findings row) observed)
+            (str id " over " population " no longer diverges from its declaration -- "
+                 "delete the declared-shape-gaps entry"))))))
+
+(deftest every-operator-population-pair-is-sited-or-reported-test
+  ;; "Reported by name, not skipped silently." A pair with no site is
+  ;; not a defect -- a log that mints no `:medication-end` offers column
+  ;; B2 nowhere to inject, and that is a property of the corpus. What
+  ;; would be a defect is the gate quietly shrinking, so the unsited
+  ;; half is PRINTED with its names on every run and the three things
+  ;; that must not change are asserted.
+  (let [m @site-matrix
+        unsited (filterv (comp zero? :sites) m)]
+    (println (str "DISCLOSURE: catalog-wide oracle loop -- "
+                  (count (filter (comp pos? :sites) m)) " of " (count m)
+                  " (operator, population) pairs are sited and run the loop; "
+                  (count unsited) " offer no candidate site:"))
+    (doseq [{:keys [id population]} unsited]
+      (println (str "  no site: " id " over " population)))
+    (doseq [[[id population] observed] declared-shape-gaps]
+      (println (str "DISCLOSURE: declared shape gap -- " id " over " population
+                    " runs the loop against a MEASURED set of " (count observed)
+                    ", not its declaration; disposition owed a ruling (ADR-0176)")))
+    (testing "the matrix is complete -- every operator against every population"
+      (is (= (* (count loop-rows) (count population-order)) (count m)))
+      (is (= (set (map :id loop-rows)) (set (map :id m))))
+      (is (= (set population-order) (set (map :population m)))))
+    (testing "every loop row's OWN declared population is sited"
+      ;; A row naming a population that offers it nothing is a row that
+      ;; was never true, and `:no-candidate-site` would only say so at
+      ;; the moment someone ran it.
+      (doseq [{:keys [id population]} loop-rows]
+        (is (pos? (:sites (first (filter #(and (= id (:id %))
+                                               (= population (:population %)))
+                                         m))))
+            (str id " declares population " population ", which offers it no site"))))
+    (testing "and no operator is unsited everywhere (R-empty-population-is-red)"
+      (doseq [id (map :id loop-rows)]
+        (is (pos? (reduce + (map :sites (filter #(= id (:id %)) m))))
+            (str id " has no candidate site in ANY population"))))))
 
 (deftest every-registered-event-operator-has-a-loop-row-test
   ;; `register!` is a bare `swap! registry assoc`, so two catalog
