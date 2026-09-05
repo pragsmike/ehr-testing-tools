@@ -661,7 +661,7 @@ Mutation injects incorrect content — the world was right, and the
 *record* is wrong. Message loss and duplication sit on the boundary and
 are a named, unresolved taxonomy question.
 
-**The event-level catalog is twenty-six operators deep.** `ehrt sim mutate`
+**The event-level catalog is twenty-eight operators deep.** `ehrt sim mutate`
 is a filter, so the loop is something you can type:
 
 ```bash

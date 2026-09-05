@@ -731,6 +731,35 @@ convicts it — too well, and ambiguously) nor a Q10 population gap (sites
 are plentiful). Its remedy is narrowing or nothing, never a declared set
 chosen from the modal case.
 
+**Dated line, 2026-09-05 — (c)'s own narrowing was narrowed again, and
+the fact it keys on is a LOG FACT rather than an event kind.** Entered
+by `roadmap.md#orphan-participant-shape-gap` under author ruling
+**R-split**. Section 8 below records what the catalog-wide gate found on
+its first run: `:orphan-participant` convicts FIVE invariants over
+`demos/scenarios/dense-7500/config.edn` where it declares four, at 14 of
+that log's 48 sites. The disposition is reading 1 of the three that
+section lists — **narrow again** — and what makes it a narrowing rather
+than a fudge is that the fifth invariant fires on a condition anyone can
+state in advance: the reattributed event is the START of a span that
+some END event CITES, and both span-end laws read the patient off both
+ends of the span. **Whether a log closes its spans is a property of the
+LOG**, not of the event's kind, which is why (c)'s kind-list narrowing
+could not reach it and why the predicate belongs in `:candidate-sites`.
+
+`:orphan-participant` now sites only where no end cites it, and keeps
+its four-set. The 14 sites it gives up are TAKEN, not dropped, by
+**`:orphan-closed-medication-order`** and
+**`:orphan-closed-care-plan-start`** — one per span column, derived from
+`referential-columns` by the same overlap that defines the problem, each
+declaring the four plus its own span invariant. Same edit, same phantom
+id, same one-draw-on-the-site discipline (Q3(a)). Q5(a) equality then
+holds per operator on EVERY population BY CONSTRUCTION rather than by
+measurement, so the provisional `declared-shape-gaps` register that
+carried the pair is empty and is deleted along with its divergence test:
+an empty register with a live test behind it is a scaffold, and a
+register that CAN be empty is one a later session refills. The event
+catalog stands at twenty-eight.
+
 **One finding outside this record's scope, recorded where it was
 found.** `check-all`'s 1-arity defaults `facility-config` to
 `sim-model/default-facility`, and `ehrt sim check` exposes no way to
@@ -884,6 +913,14 @@ fix-forward:
    four days is itself evidence about the shape.
 3. **Ratify the register.** Keep it as it landed and treat a measured
    per-pair set as a legitimate declaration for a structural operator.
+
+**Dated line, 2026-09-05, later the same day — RULED, reading 1.** The
+disposition above is no longer owed: R-split narrowed the operator by
+the log fact the fifth invariant actually keys on, and split the sites it
+gave up into two new operators. The reasoning and the
+two ids are in addendum (c)'s own dated line, section 6 — recorded there
+because that is the addendum whose narrowing this extends. The register
+described at the end of this section is gone with it.
 
 **Widening `:expected-findings` is NOT among them, and measurement is
 why**: Q5(a) is set equality, so a five-element declaration goes red on
