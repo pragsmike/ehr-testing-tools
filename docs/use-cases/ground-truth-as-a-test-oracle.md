@@ -47,7 +47,7 @@ bin/ehrt sim check --config demos/scenarios/ed-tuesday/config.edn < out/ground-t
 
 ```
 generator-config × sim-engine → event-log  [EngineExecute]
-event-log × invariant-catalog → pass + rejected  [Check]
+event-log × invariant-catalog → pass + rejected  [Sim check]
 ```
 
 ```mermaid
@@ -64,7 +64,7 @@ flowchart LR
 
     %% --- Operations (boxes; spiders use distinct shapes) ---
     EngineExecute["EngineExecute"]
-    Check["Check"]
+    Sim_check["Sim check"]
 
     %% --- Result types (terminal outputs) ---
     pass_out(["pass"])
@@ -75,17 +75,17 @@ flowchart LR
     generator_config -- generator-config --> EngineExecute
     sim_engine -- sim-engine --> EngineExecute
 
-    %% Arrow 2: Check
-    EngineExecute -- event-log --> Check
-    invariant_catalog -- invariant-catalog --> Check
-    Check -- "pass" --> pass_out
-    Check -- "rejected" --> rejected_out
+    %% Arrow 2: Sim check
+    EngineExecute -- event-log --> Sim_check
+    invariant_catalog -- invariant-catalog --> Sim_check
+    Sim_check -- "pass" --> pass_out
+    Sim_check -- "rejected" --> rejected_out
 
     %% --- Styling ---
 
     %% Operations: dark boxes (fan=blue, funnel=green, enrichment=outlined, gate=purple, external=dashed)
     style EngineExecute fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
-    style Check fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style Sim_check fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
 
     %% Source types: light rounded
     style generator_config fill:#f5f5f5,stroke:#999,color:#333

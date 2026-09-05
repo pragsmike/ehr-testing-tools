@@ -16,6 +16,7 @@ canonical-fhir-datum × operator-catalog → mutant-fhir-datum + lineage-record 
 foreign-file → catalog-entry + intake-record  [Intake]
 datum × validator-artifact × runtime × hapi-hl7v2-dep × profile-artifact → pass + rejected + indeterminate  [Gate]  {catalytic: validator-artifact, runtime, hapi-hl7v2-dep, profile-artifact}
 pass × rejected × indeterminate → report  [Report]
+event-log × invariant-catalog → pass + rejected  [Sim check]
 datum × expected-corpus × assertion-set × canonicalizer-set → pass + rejected  [Check]  {catalytic: expected-corpus, assertion-set, canonicalizer-set}
 canonical-fhir-datum × mutant-fhir-datum × foreign-file → datum  [UnionDatum]  {spider: funnel}
 ```
@@ -33,9 +34,11 @@ flowchart LR
     assertion_set(["assertion-set"])
     canonicalizer_set(["canonicalizer-set"])
     config_hash(["config-hash"])
+    event_log(["event-log"])
     expected_corpus(["expected-corpus"])
     foreign_file(["foreign-file"])
     hapi_hl7v2_dep(["hapi-hl7v2-dep"])
+    invariant_catalog(["invariant-catalog"])
     jdk_runtime(["jdk-runtime"])
     operator_catalog(["operator-catalog"])
     profile_artifact(["profile-artifact"])
@@ -51,6 +54,7 @@ flowchart LR
     Intake["Intake"]
     Gate["Gate"]
     Report["Report"]
+    Sim_check["Sim check"]
     Check["Check"]
     UnionDatum[\"UnionDatum"/]
 
@@ -93,13 +97,17 @@ flowchart LR
     Gate -- indeterminate --> Report
     Report -- "report" --> report_out
 
-    %% Arrow 7: Check
+    %% Arrow 7: Sim check
+    event_log -- event-log --> Sim_check
+    invariant_catalog -- invariant-catalog --> Sim_check
+
+    %% Arrow 8: Check
     UnionDatum -- datum --> Check
     expected_corpus -. expected-corpus .-> Check
     assertion_set -. assertion-set .-> Check
     canonicalizer_set -. canonicalizer-set .-> Check
 
-    %% Arrow 8: UnionDatum
+    %% Arrow 9: UnionDatum
     Normalize -- canonical-fhir-datum --> UnionDatum
     Mutate -- mutant-fhir-datum --> UnionDatum
     foreign_file -- foreign-file --> UnionDatum
@@ -113,6 +121,7 @@ flowchart LR
     style Intake fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style Gate fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style Report fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style Sim_check fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style Check fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style UnionDatum fill:#1b5e20,stroke:#2e7d32,color:#c8e6c9,stroke-width:2px
 
@@ -120,9 +129,11 @@ flowchart LR
     style assertion_set fill:#f5f5f5,stroke:#999,color:#333
     style canonicalizer_set fill:#f5f5f5,stroke:#999,color:#333
     style config_hash fill:#f5f5f5,stroke:#999,color:#333
+    style event_log fill:#f5f5f5,stroke:#999,color:#333
     style expected_corpus fill:#f5f5f5,stroke:#999,color:#333
     style foreign_file fill:#f5f5f5,stroke:#999,color:#333
     style hapi_hl7v2_dep fill:#f5f5f5,stroke:#999,color:#333
+    style invariant_catalog fill:#f5f5f5,stroke:#999,color:#333
     style jdk_runtime fill:#f5f5f5,stroke:#999,color:#333
     style operator_catalog fill:#f5f5f5,stroke:#999,color:#333
     style profile_artifact fill:#f5f5f5,stroke:#999,color:#333

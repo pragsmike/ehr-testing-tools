@@ -63,6 +63,50 @@
    :laws ["appends provenance: which engine, which profile, which verdicts, normalized to the finding envelope (pattern nursery #6, shared by both gate formats)"
           "diffable: judge.report/diff-reports compares two reports of the same corpus -- changed verdicts, added/removed files, appeared/disappeared codes"]}
 
+  ;; SIM CHECK IS NOT CORPUS CHECK, and until 2026-09-05 this file said
+  ;; nothing that distinguished them -- so the ground-truth-oracle use
+  ;; case's own equation labelled its judge `[Check]`, which resolves to
+  ;; the stage below: a corpus judge comparing rendered files against a
+  ;; caller's expected corpus. That is not the stage that runs. The one
+  ;; that runs reads a ground-truth EDN vector and applies an invariant
+  ;; catalog to it, and it now has a name of its own.
+  ;;
+  ;; THREE DELIBERATE SHAPES HERE, each of which a reader would
+  ;; otherwise take for an oversight:
+  ;;
+  ;; (1) `event-log` is produced by no stage in this file. The corpus
+  ;;     pipeline does not re-model the simulator, which
+  ;;     `components/sim/docs/sim-theory.edn` already does in full --
+  ;;     `:execute` is where the log comes from, under the name
+  ;;     `ground-truth-log`. It is named `event-log` here to match the
+  ;;     use case's own equations, which is the surface a reader
+  ;;     arrives from.
+  ;; (2) `invariant-catalog` is declared an INPUT and not `:catalytic`,
+  ;;     though the catalog is plainly used-not-consumed. It is stated
+  ;;     exactly as the use case's equation has always stated it, so the
+  ;;     two render identically; promoting it would need a
+  ;;     classification row in
+  ;;     `ehrt.docs-tooling.lint/catalytic-resource-targets`, which the
+  ;;     rider that added this stage was ruled not to touch.
+  ;; (3) THIS STAGE SITS BEFORE `:check` AND THE ORDER IS LOAD-BEARING.
+  ;;     `resource_equations_to_mermaid.py` resolves a resource to its
+  ;;     LAST producer, and three stages here output `pass`/`rejected`.
+  ;;     Appended after `:check` this stage silently re-drew Report's
+  ;;     two input arrows as coming from Sim check -- measured, not
+  ;;     feared. Placed before it, the rendered diagram gains this
+  ;;     stage and changes nothing else.
+  {:id :sim-check
+   :label "Sim check"
+   :kind :judge
+   :status :built
+   :inputs ["event-log" "invariant-catalog"]
+   :outputs ["pass" "rejected"]
+   :laws ["never modifies the log it judges -- the judge kind's own law, and here it is structural rather than merely observed: every invariant is a pure function of the log to a (possibly empty) sequence of violations"
+          "produces no :indeterminate, like Check and unlike Gate: an invariant either holds or names its violation with the invariant, the patient and the instant"
+          "co-landing (AGENTS.md, sim's own discipline): a new engine step type ships with its invariants in the same change, so the catalog's coverage is a property of how the engine grows rather than a periodic audit"
+          "a green verdict is a statement about THIS catalog and nothing else -- several invariants are vacuous on a log that never opted into the kinds they police, and docs/consuming-ground-truth.md's \"What is not warranted\" is the other half of the contract"]
+   :contract "The reference judge over the ground-truth event log (`ehrt.sim-check.check/check-all`, at the shell `ehrt sim check`), and the oracle half of `ehrt sim mutate`'s closed loop: an event operator declares the finding set it injects, and this stage must report that set EXACTLY, in both directions (ADR-0176 Q5(a)). Distinct from Check below in both operand and standard -- Check verifies rendered files against a caller's own expected corpus, this verifies one log against this repository's own invariant catalog, and neither can stand in for the other. Four of its invariants need configuration the log does not carry, so `--config` threads the run's facility and warm-up window; without it they are judged against the shipped defaults instead."}
+
   {:id :check
    :label "Check"
    :kind :judge
