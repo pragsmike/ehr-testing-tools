@@ -1,3 +1,52 @@
+;; Regenerated (ADR-0013's baseline-delta discipline): judge.v2's report
+;; over `--seed 42 --patients 60 --churn --emit hl7 --config
+;; projects/conformance/test-fixtures/sim-configs/full-capability.edn`,
+;; recaptured 2026-09-05 for notes/adr/0179-merge-transfer-semantics.md.
+;;
+;; Reason: ADR-0179 R-bed. `evolve :merge`'s `:merged` arm now clears
+;; :location and :home-ward, so an absorbed bed-holder stops occupying
+;; the bed it was in. This config runs with NO bed-status index, and on
+;; that path `sim-model/free` reads "free" as "nobody is in it" off the
+;; occupancy board -- so the released bed is immediately allocatable and
+;; a later admission that used to fall through to a lower rung now
+;; succeeds higher up. That is a payload move this ADR declared in
+;; advance and measured: `bin/ground-truth-bracket 007deea6 8fdadb4c`
+;; moves exactly one oracle root (encounter-horizon) for the same one
+;; reason.
+;;
+;; Reviewed delta (this session's own report):
+;;   :files-added   two -- msg-210, msg-211 (210 -> 212 messages for the
+;;                  SAME seed/patients/churn/config: freed beds let more
+;;                  boarders be placed for real, which is extra ADT
+;;                  traffic, not a new message TYPE)
+;;   :files-removed []
+;;   :changed-verdicts []
+;;   :codes-appeared []  :codes-disappeared []
+;;   :totals {:pass 212 :rejected 0 :indeterminate 0 :no-verdict 0}
+;;           (was {:pass 210 ...}) -- the verdict PICTURE is unchanged:
+;;           every message still passes at judge.v2's base-structural
+;;           tier with zero findings of any kind. Only the file count
+;;           moved.
+;;
+;; Its sibling, sim-v2-gate-baseline.edn, did NOT move and was
+;; deliberately left untouched: that loop's default pathway population
+;; contains no merge that absorbs a bed-holder, so R-bed reaches nothing
+;; in it. The full suite is what says so -- sim-gate-loop-test diffs its
+;; own fresh run against that file every run and stayed green.
+;;
+;; FORMATTING NOTE for the next regenerator: the body below is exactly
+;; `(clojure.pprint/pprint report)` with no hand-touch. The prior body
+;; had its `:config` key/value on one line where pprint wraps them onto
+;; two; that one-line reflow is in this diff and is cosmetic.
+;;
+;; sim-full-capability-gate-test.clj diffs its own fresh run against this
+;; file (judge.report/diff-reports) every run -- a changed verdict, an
+;; appeared/disappeared finding code, or a different file set is a
+;; sim-side change surfacing here, not a failure of this test. Regenerate
+;; deliberately, never hand-edit.
+;;
+;; --- Prior header, superseded above but left standing per this repo's
+;; own supersede-in-place convention ---------------------------------
 ;; projects/conformance/test-fixtures/reports/sim-v2-full-capability-baseline.edn --
 ;; the FULL-CAPABILITY baseline (notes/ADRs.md ADR-0015): judge.v2's
 ;; report over ehr-testing-sim's own
@@ -60,8 +109,9 @@
   :seed 42,
   :patients 60,
   :churn true,
-  :config "projects/conformance/test-fixtures/sim-configs/full-capability.edn"},
- :totals {:pass 210, :rejected 0, :indeterminate 0, :no-verdict 0},
+  :config
+  "projects/conformance/test-fixtures/sim-configs/full-capability.edn"},
+ :totals {:pass 212, :rejected 0, :indeterminate 0, :no-verdict 0},
  :by-code {},
  :files
  [{:path "target/sim-full-capability-gate/corpus/msg-000.hl7",
@@ -901,6 +951,14 @@
    :finding-count 0,
    :findings []}
   {:path "target/sim-full-capability-gate/corpus/msg-209.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-full-capability-gate/corpus/msg-210.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-full-capability-gate/corpus/msg-211.hl7",
    :verdict :pass,
    :finding-count 0,
    :findings []}]}
