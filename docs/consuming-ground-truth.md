@@ -661,7 +661,7 @@ Mutation injects incorrect content — the world was right, and the
 *record* is wrong. Message loss and duplication sit on the boundary and
 are a named, unresolved taxonomy question.
 
-**The event-level catalog is twelve operators deep.** `ehrt sim mutate`
+**The event-level catalog is twenty-six operators deep.** `ehrt sim mutate`
 is a filter, so the loop is something you can type:
 
 ```bash
@@ -708,17 +708,20 @@ goes *beside* the pipe rather than in it. Without the flag no file is
 written and stdout is byte-identical, so adding it to an existing
 pipeline changes only what you get, never what you had.
 
-**What is *not* there yet.** Three of the five reference columns in the
-log have no operators, and the reason is not that they are hard: no
-corpus this repository currently generates carries a single site for
-them. Nothing here emits a cancellation, a medication end, or a care
-plan end, so an operator for `:cancels-event-id`, for `:medication-end`'s
-`:order-event-id`, or for `:start-event-id` could be written and could
-never be shown to work. They are recorded as gaps, each naming the
-invariant that would convict it, rather than shipped unwitnessable.
-Mutating the vector yourself between `--format ground-truth` and your
-own consumer remains supported for anything the catalog does not reach,
-and `ehrt sim check` is still the oracle that tells you what you broke.
+**All five reference columns are covered, and three of them only since
+2026-09-05.** Until then `:cancels-event-id`, `:medication-end`'s own
+`:order-event-id` and `:start-event-id` had no operators — not because
+they were hard, but because no corpus this repository generated carried
+a single site for them, so an operator could have been written and never
+shown to work. They were recorded as gaps naming the invariant that
+would convict each, rather than shipped unwitnessable.
+`demos/scenarios/dense-7500/config.edn` at seed 5 with
+`--patients 20 --churn` carries all three — it emits cancellations,
+medication ends and care-plan ends — so each column's cells are now
+operators witnessed against a real log rather than claims. Mutating the
+vector yourself between `--format ground-truth` and your own consumer
+remains supported for anything the catalog does not reach, and
+`ehrt sim check` is still the oracle that tells you what you broke.
 
 **And three whole fault layers are missing, not just those.**
 [`future-features.md`](future-features.md) is the menu — wrong bytes

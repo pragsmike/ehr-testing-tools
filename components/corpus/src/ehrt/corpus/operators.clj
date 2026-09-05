@@ -405,19 +405,31 @@
 ;; field arrives with neither operators nor a declared population gap
 ;; behind it.
 ;;
-;; WHICH COLUMNS ARE HERE, and why the matrix has holes. Five carrier
-;; columns exist in the schema; two are below. The other three
-;; (`:cancels-event-id`, `:order-event-id` on `:medication-end`, and
-;; `:start-event-id`) have NO population -- no log this repository can
-;; generate carries a single candidate site for them, measured over
-;; both opt-in demo configs at their own documented invocations. They
-;; are POPULATION GAPS, recorded in
-;; `.agents/plans/2026-09-01-event-mutation-population-ledger.md`
-;; section 6 with the invariant that would convict each, rather than
-;; shipped as operators that can never fire. That distinction --
-;; convictable in principle but unwitnessable today -- is NOT the same
-;; thing as the unconvictable-operator refusal above, which is about a
-;; hole in `check` rather than a hole in the corpora.
+;; WHICH COLUMNS ARE HERE. ALL FIVE the event schema declares, as of
+;; 2026-09-05 -- and until that day three of them were empty. The other
+;; three (`:cancels-event-id`, `:order-event-id` on `:medication-end`,
+;; and `:start-event-id`) were POPULATION GAPS: convictable in
+;; principle, but no log this repository could generate carried a
+;; single candidate site for them, measured over both opt-in demo
+;; configs at their own documented invocations
+;; (`.agents/plans/2026-09-01-event-mutation-population-ledger.md`
+;; section 6, which named the invariant that would convict each).
+;;
+;; THE GAP CLOSED FROM THE CORPUS SIDE AND NOT FROM HERE, which is what
+;; the ledger's own "each column that gains a population turns straight
+;; into its cells' operators, because the contract, the shapes and the
+;; convicting invariants are already fixed" was a bet on.
+;; `demos/scenarios/dense-7500/config.edn` at seed 5,
+;; `--patients 20 --churn`, carries 4 `:cancel-transfer`, 6
+;; `:medication-end` and 8 `:care-plan-end`, so the three columns below
+;; are three data rows and one helper (`target-kind`) -- no new shape,
+;; no new contract, no new invariant. The bet paid.
+;;
+;; THE GAP KIND IS NOT RETIRED WITH THE GAPS. A population gap stays a
+;; different object from the unconvictable-operator refusal above,
+;; which is about a hole in `check` rather than a hole in the corpora;
+;; there are simply none open today, and the acceptance suite's own
+;; `declared-population-gaps` is empty rather than deleted.
 
 (defn- subject-id
   "The patient a log event is about: its first participant's id."
@@ -430,6 +442,37 @@
 
 ;; ---- the referential family ----------------------------------------
 
+(def ^:private cancel-target-type
+  "Cancel event kind -> the event kind it must reference.
+
+  MIRRORED from `ehrt.sim-check.check`'s own private def of the same
+  name, and mirrored rather than shared because `components/corpus` has
+  no edge to `components/sim-check` and Q11(a) keeps
+  `ehrt.sim-check.interface` un-widened. Disclosed here rather than
+  left to be discovered: this is exactly the ADR-0166 shape the
+  referential family is otherwise built to avoid, so a FOURTH cancel
+  kind arriving in `check` and not here would leave column A quietly
+  under-populated. The one thing keeping the two halves of THIS file in
+  step is that `:carrier?` and `:target` are both read off this map."
+  {:cancel-admit :admission
+   :cancel-transfer :transfer
+   :cancel-discharge :discharge})
+
+(defn- target-kind
+  "The event kind THIS carrier's reference must resolve to.
+
+  A column whose carriers all cite one kind declares `:target` as a
+  bare keyword. Column A cannot: `:cancels-event-id` rides three cancel
+  kinds that cancel three DIFFERENT event classes, and
+  `referential-entry` derives one operator id per (shape, column), so
+  those three carriers have to be ONE column. Its `:target` is
+  therefore a map, and every shape that reads a target asks this helper
+  instead of reading `:target` itself -- which is what makes the map
+  form cost the shapes nothing (P7, 2026-09-05)."
+  [column carrier]
+  (let [t (:target column)]
+    (if (keyword? t) t (get t (:event carrier)))))
+
 (def ^:private referential-columns
   "One row per CARRIER of a log-index reference, not per field name.
   `:order-event-id` appears on two event kinds convicted by DIFFERENT
@@ -437,10 +480,25 @@
   keyed by; ADR-0176 section 2(i)'s matrix arithmetic misses that and
   its own dated addendum (b) corrects it.
 
-  `:target` is the event kind the reference must resolve to. `:law` is
-  the referential law in consumer-facing prose, rendered verbatim into
-  docs/operators.md as part of each derived operator's contract target,
-  so it is written for a reader who has never seen this file."
+  `:target` is the event kind the reference must resolve to, EITHER as
+  a bare keyword or as a map from carrier event kind to target kind --
+  read through `target-kind` below, never directly, and see its
+  docstring for why column A needs the map form.
+
+  `:slug` is the stem of every derived operator id for this column,
+  defaulting to the field name. It is DECLARED where two columns share
+  a field: B1 and B2 both carry `:order-event-id`, and `register!` is a
+  bare `swap! assoc`, so two columns deriving the same `[id version]`
+  would SILENTLY REPLACE one another rather than being refused. B1
+  keeps the bare stem because its four ids are already published in
+  docs/operators.md and are what `--operator-id` takes; B2 declares its
+  own. `every-registered-event-operator-has-a-loop-row-test` is the
+  gate over that, since the overwrite has no other symptom.
+
+  `:law` is the referential law in consumer-facing prose, rendered
+  verbatim into docs/operators.md as part of each derived operator's
+  contract target, so it is written for a reader who has never seen
+  this file."
   [{:field :placeholder-event-id
     :carrier? (fn [e] (and (= :demographic-update (:event e))
                            (= :identity-fill (:cause e))))
@@ -463,7 +521,41 @@
     :nilable? false
     :invariant :result-references-existing-order-and-follows-it-in-time
     :law (str "a result cites a real `:order-placed` event in the same log, "
-              "for the same patient, at or before the result's own `:t`")}])
+              "for the same patient, at or before the result's own `:t`")}
+   {:field :cancels-event-id
+    :carrier? (fn [e] (contains? cancel-target-type (:event e)))
+    :carrier "cancellation"
+    ;; THE ONE MAP-FORM TARGET. Three carrier kinds cancelling three
+    ;; different event classes, and one column because
+    ;; `referential-entry` derives one operator id per (shape, column).
+    :target cancel-target-type
+    ;; `:int`, not `[:maybe :int]` -- so Q9(a) drops the null cell here
+    ;; for the same reason it drops B1's.
+    :nilable? false
+    :invariant :cancel-references-existing-uncancelled-event
+    :law (str "a cancellation cites a real event of the class it cancels in the "
+              "same log, for the same patient, at or before the cancellation's "
+              "own `:t`")}
+   {:field :order-event-id
+    ;; See `:slug` in this def's docstring: B1 above carries the same
+    ;; field and its ids are already published, so this column takes the
+    ;; qualified stem and B1 keeps the bare one.
+    :slug :medication-end-order-event-id
+    :carrier? (fn [e] (= :medication-end (:event e)))
+    :carrier "medication end"
+    :target :medication-order
+    :nilable? true
+    :invariant :medication-end-references-existing-order-and-follows-it-in-time
+    :law (str "a medication end cites a real `:medication-order` event in the "
+              "same log, for the same patient, at or before the end's own `:t`")}
+   {:field :start-event-id
+    :carrier? (fn [e] (= :care-plan-end (:event e)))
+    :carrier "care-plan end"
+    :target :care-plan-start
+    :nilable? true
+    :invariant :care-plan-end-references-existing-start-and-follows-it-in-time
+    :law (str "a care-plan end cites a real `:care-plan-start` event in the "
+              "same log, for the same patient, at or before the end's own `:t`")}])
 
 (defn- resolving-sites
   "Every index whose event is one of this column's carriers and whose
@@ -474,8 +566,19 @@
   none of `check`'s own excusing logic. Where an invariant HAS such
   logic (`medication-end-...` and `care-plan-end-...` both excuse a nil
   reference when the patient's own `:registered` carries a matching
-  `:pre-horizon-facts` citation), a column for it would have to mirror
-  it -- neither column here does, so neither has to."
+  `:pre-horizon-facts` citation) a mutation at an excused site would
+  convict NOTHING, and the loop's own set equality would go red rather
+  than silently pass.
+
+  COLUMNS B2 AND C ARE THOSE TWO INVARIANTS AND STILL DO NOT MIRROR IT,
+  because measurement says they do not have to: at the shipped
+  population every one of their sites resolves to a real ground-truth
+  event and none reaches the excusing branch, measured EXHAUSTIVELY
+  rather than by sample -- 106 of 106 sites convict, 0 non-matching, at
+  both 20 and 40 arrivals (P7 derivation, section 2). A structural
+  predicate plus an exhaustive measurement is a narrower claim than a
+  mirrored predicate, and it is the honest one: if a later population
+  does reach that branch, the gate says so."
   [column events]
   (let [n (count events)
         field (:field column)]
@@ -486,6 +589,23 @@
                        (< -1 (get e field) n))
               i))
           events))))
+
+(defn- wrong-kind-index
+  "The first event in the log that is NOT of the kind this carrier's
+  reference promises -- the referent the `:wrong-kind` shape repoints
+  to."
+  [column events carrier]
+  (first-index-where #(not= (target-kind column carrier) (:event %)) events))
+
+(defn- cross-patient-index
+  "The first event of the RIGHT kind belonging to some other patient
+  than this carrier's own -- the referent the `:cross-patient` shape
+  repoints to, or nil when the log holds none."
+  [column events carrier]
+  (let [p (subject-id carrier)]
+    (first-index-where #(and (= (target-kind column carrier) (:event %))
+                             (not= p (subject-id %)))
+                       events)))
 
 (def ^:private referential-shapes
   "The five defect shapes, one per disjunct of the referential
@@ -519,28 +639,26 @@
     :edit "at a real event of the right kind belonging to a DIFFERENT patient"
     :violation "at an event of the right kind belonging to a different patient"
     :sites (fn [column events]
-             (filterv (fn [i]
-                        (let [p (subject-id (nth events i))]
-                          (some? (first-index-where
-                                  #(and (= (:target column) (:event %))
-                                        (not= p (subject-id %)))
-                                  events))))
+             (filterv #(some? (cross-patient-index column events (nth events %)))
                       (resolving-sites column events)))
     :apply (fn [column events site]
-             (let [p (subject-id (nth events site))]
-               (assoc-in events [site (:field column)]
-                         (first-index-where #(and (= (:target column) (:event %))
-                                                  (not= p (subject-id %)))
-                                            events))))}
+             (assoc-in events [site (:field column)]
+                       (cross-patient-index column events (nth events site))))}
    {:shape :wrong-kind
     :edit "at a real event of the WRONG kind"
     :violation "at an event that is not of the kind the reference promises"
+    ;; Both clauses are asked PER SITE rather than once for the whole
+    ;; column, because `target-kind` is a function of the carrier: on
+    ;; column A a `:cancel-transfer` and a `:cancel-discharge` at two
+    ;; sites of the same column want two different wrong kinds. On a
+    ;; keyword-target column the per-site answer is the column-wide one,
+    ;; so D and B1 are unchanged by this.
     :sites (fn [column events]
-             (let [j (first-index-where #(not= (:target column) (:event %)) events)]
-               (if j (resolving-sites column events) [])))
+             (filterv #(some? (wrong-kind-index column events (nth events %)))
+                      (resolving-sites column events)))
     :apply (fn [column events site]
              (assoc-in events [site (:field column)]
-                       (first-index-where #(not= (:target column) (:event %)) events)))}
+                       (wrong-kind-index column events (nth events site))))}
    {:shape :inverted-span
     :edit "backwards in time, so it happens BEFORE the event it cites"
     :violation "before its own referent in time"
@@ -568,7 +686,8 @@
 
 (defn- referential-entry
   [column shape]
-  {:id (keyword (str (name (:shape shape)) "-" (name (:field column))))
+  {:id (keyword (str (name (:shape shape)) "-"
+                     (name (or (:slug column) (:field column)))))
    :version "1"
    :format :event
    :reference-field (:field column)

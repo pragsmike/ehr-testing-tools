@@ -16,17 +16,31 @@ Two descriptions appear per operator, and they answer different questions. **Wha
 | Operator | Locator | What it does |
 |---|---|---|
 | [`:clock-skew`](#clock-skew) | — | Moves one event's clock behind its own predecessor's, so that patient's log runs backwards across one step. No other field and no other event changes. |
+| [`:cross-patient-cancels-event-id`](#cross-patient-cancels-event-id) | — | Repoints one cancellation's `:cancels-event-id` at a real event of the right kind belonging to a DIFFERENT patient, leaving every other field and every other event exactly as it was. |
+| [`:cross-patient-medication-end-order-event-id`](#cross-patient-medication-end-order-event-id) | — | Repoints one medication end's `:order-event-id` at a real event of the right kind belonging to a DIFFERENT patient, leaving every other field and every other event exactly as it was. |
 | [`:cross-patient-order-event-id`](#cross-patient-order-event-id) | — | Repoints one result's `:order-event-id` at a real event of the right kind belonging to a DIFFERENT patient, leaving every other field and every other event exactly as it was. |
 | [`:cross-patient-placeholder-event-id`](#cross-patient-placeholder-event-id) | — | Repoints one identity fill's `:placeholder-event-id` at a real event of the right kind belonging to a DIFFERENT patient, leaving every other field and every other event exactly as it was. |
+| [`:cross-patient-start-event-id`](#cross-patient-start-event-id) | — | Repoints one care-plan end's `:start-event-id` at a real event of the right kind belonging to a DIFFERENT patient, leaving every other field and every other event exactly as it was. |
 | [`:drop-registration`](#drop-registration) | — | Removes one patient's `:registered` event, leaving the rest of their log in place, and renumbers every log-index reference that pointed past it so no other defect class rides along. |
+| [`:inverted-span-cancels-event-id`](#inverted-span-cancels-event-id) | — | Repoints one cancellation's `:cancels-event-id` backwards in time, so it happens BEFORE the event it cites, leaving every other field and every other event exactly as it was. |
+| [`:inverted-span-medication-end-order-event-id`](#inverted-span-medication-end-order-event-id) | — | Repoints one medication end's `:order-event-id` backwards in time, so it happens BEFORE the event it cites, leaving every other field and every other event exactly as it was. |
 | [`:inverted-span-order-event-id`](#inverted-span-order-event-id) | — | Repoints one result's `:order-event-id` backwards in time, so it happens BEFORE the event it cites, leaving every other field and every other event exactly as it was. |
 | [`:inverted-span-placeholder-event-id`](#inverted-span-placeholder-event-id) | — | Repoints one identity fill's `:placeholder-event-id` backwards in time, so it happens BEFORE the event it cites, leaving every other field and every other event exactly as it was. |
+| [`:inverted-span-start-event-id`](#inverted-span-start-event-id) | — | Repoints one care-plan end's `:start-event-id` backwards in time, so it happens BEFORE the event it cites, leaving every other field and every other event exactly as it was. |
+| [`:null-medication-end-order-event-id`](#null-medication-end-order-event-id) | — | Repoints one medication end's `:order-event-id` to nil, citing nothing at all, leaving every other field and every other event exactly as it was. |
 | [`:null-placeholder-event-id`](#null-placeholder-event-id) | — | Repoints one identity fill's `:placeholder-event-id` to nil, citing nothing at all, leaving every other field and every other event exactly as it was. |
+| [`:null-start-event-id`](#null-start-event-id) | — | Repoints one care-plan end's `:start-event-id` to nil, citing nothing at all, leaving every other field and every other event exactly as it was. |
 | [`:orphan-participant`](#orphan-participant) | — | Reattributes one clinical event to a patient the run never registered, leaving every other field and every other event exactly as it was. |
+| [`:phantom-cancels-event-id`](#phantom-cancels-event-id) | — | Repoints one cancellation's `:cancels-event-id` at a log index that does not exist, leaving every other field and every other event exactly as it was. |
+| [`:phantom-medication-end-order-event-id`](#phantom-medication-end-order-event-id) | — | Repoints one medication end's `:order-event-id` at a log index that does not exist, leaving every other field and every other event exactly as it was. |
 | [`:phantom-order-event-id`](#phantom-order-event-id) | — | Repoints one result's `:order-event-id` at a log index that does not exist, leaving every other field and every other event exactly as it was. |
 | [`:phantom-placeholder-event-id`](#phantom-placeholder-event-id) | — | Repoints one identity fill's `:placeholder-event-id` at a log index that does not exist, leaving every other field and every other event exactly as it was. |
+| [`:phantom-start-event-id`](#phantom-start-event-id) | — | Repoints one care-plan end's `:start-event-id` at a log index that does not exist, leaving every other field and every other event exactly as it was. |
+| [`:wrong-kind-cancels-event-id`](#wrong-kind-cancels-event-id) | — | Repoints one cancellation's `:cancels-event-id` at a real event of the WRONG kind, leaving every other field and every other event exactly as it was. |
+| [`:wrong-kind-medication-end-order-event-id`](#wrong-kind-medication-end-order-event-id) | — | Repoints one medication end's `:order-event-id` at a real event of the WRONG kind, leaving every other field and every other event exactly as it was. |
 | [`:wrong-kind-order-event-id`](#wrong-kind-order-event-id) | — | Repoints one result's `:order-event-id` at a real event of the WRONG kind, leaving every other field and every other event exactly as it was. |
 | [`:wrong-kind-placeholder-event-id`](#wrong-kind-placeholder-event-id) | — | Repoints one identity fill's `:placeholder-event-id` at a real event of the WRONG kind, leaving every other field and every other event exactly as it was. |
+| [`:wrong-kind-start-event-id`](#wrong-kind-start-event-id) | — | Repoints one care-plan end's `:start-event-id` at a real event of the WRONG kind, leaving every other field and every other event exactly as it was. |
 
 ### `:clock-skew`
 
@@ -36,6 +50,24 @@ Moves one event's clock behind its own predecessor's, so that patient's log runs
 - **Locator:** not required.
 - **Contract:** `:violates` — sets one event's `:t` earlier than the `:t` of the event that precedes it in the same patient's log, violating this engine's own guarantee that log order is emission order and emission order is time order, so within a patient event times never decrease (the invariant `ehrt.sim-check.check/timestamps-monotone` states)
 - **Expected findings:** `:timestamps-monotone` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
+### `:cross-patient-cancels-event-id`
+
+Repoints one cancellation's `:cancels-event-id` at a real event of the right kind belonging to a DIFFERENT patient, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — points one cancellation's `:cancels-event-id` at an event of the right kind belonging to a different patient, violating this engine's own referential law that a cancellation cites a real event of the class it cancels in the same log, for the same patient, at or before the cancellation's own `:t` (the invariant `ehrt.sim-check.check/cancel-references-existing-uncancelled-event` states)
+- **Expected findings:** `:cancel-references-existing-uncancelled-event` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
+### `:cross-patient-medication-end-order-event-id`
+
+Repoints one medication end's `:order-event-id` at a real event of the right kind belonging to a DIFFERENT patient, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — points one medication end's `:order-event-id` at an event of the right kind belonging to a different patient, violating this engine's own referential law that a medication end cites a real `:medication-order` event in the same log, for the same patient, at or before the end's own `:t` (the invariant `ehrt.sim-check.check/medication-end-references-existing-order-and-follows-it-in-time` states)
+- **Expected findings:** `:medication-end-references-existing-order-and-follows-it-in-time` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
 
 ### `:cross-patient-order-event-id`
 
@@ -55,6 +87,15 @@ Repoints one identity fill's `:placeholder-event-id` at a real event of the righ
 - **Contract:** `:violates` — points one identity fill's `:placeholder-event-id` at an event of the right kind belonging to a different patient, violating this engine's own referential law that an identity fill cites a real `:registered` event in the same log, for the same patient, carrying `:identity :placeholder`, at or before the fill's own `:t` (the invariant `ehrt.sim-check.check/identity-fill-references-its-placeholder-registration` states)
 - **Expected findings:** `:identity-fill-references-its-placeholder-registration` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
 
+### `:cross-patient-start-event-id`
+
+Repoints one care-plan end's `:start-event-id` at a real event of the right kind belonging to a DIFFERENT patient, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — points one care-plan end's `:start-event-id` at an event of the right kind belonging to a different patient, violating this engine's own referential law that a care-plan end cites a real `:care-plan-start` event in the same log, for the same patient, at or before the end's own `:t` (the invariant `ehrt.sim-check.check/care-plan-end-references-existing-start-and-follows-it-in-time` states)
+- **Expected findings:** `:care-plan-end-references-existing-start-and-follows-it-in-time` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
 ### `:drop-registration`
 
 Removes one patient's `:registered` event, leaving the rest of their log in place, and renumbers every log-index reference that pointed past it so no other defect class rides along.
@@ -63,6 +104,24 @@ Removes one patient's `:registered` event, leaving the rest of their log in plac
 - **Locator:** not required.
 - **Contract:** `:violates` — removes the `:registered` event that opens one patient's record while leaving the rest of that patient's events in place, violating this engine's own laws that every patient id named anywhere in a log belongs to a patient that log registered, and that a patient's first event is their registration (the invariants `ehrt.sim-check.check/participant-ids-exist-in-run` and `ehrt.sim-check.check/registered-is-every-patients-first-event` state)
 - **Expected findings:** `:participant-ids-exist-in-run`, `:registered-is-every-patients-first-event` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
+### `:inverted-span-cancels-event-id`
+
+Repoints one cancellation's `:cancels-event-id` backwards in time, so it happens BEFORE the event it cites, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — points one cancellation's `:cancels-event-id` before its own referent in time, violating this engine's own referential law that a cancellation cites a real event of the class it cancels in the same log, for the same patient, at or before the cancellation's own `:t` (the invariant `ehrt.sim-check.check/cancel-references-existing-uncancelled-event` states)
+- **Expected findings:** `:cancel-references-existing-uncancelled-event`, `:timestamps-monotone` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
+### `:inverted-span-medication-end-order-event-id`
+
+Repoints one medication end's `:order-event-id` backwards in time, so it happens BEFORE the event it cites, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — points one medication end's `:order-event-id` before its own referent in time, violating this engine's own referential law that a medication end cites a real `:medication-order` event in the same log, for the same patient, at or before the end's own `:t` (the invariant `ehrt.sim-check.check/medication-end-references-existing-order-and-follows-it-in-time` states)
+- **Expected findings:** `:medication-end-references-existing-order-and-follows-it-in-time`, `:timestamps-monotone` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
 
 ### `:inverted-span-order-event-id`
 
@@ -82,6 +141,24 @@ Repoints one identity fill's `:placeholder-event-id` backwards in time, so it ha
 - **Contract:** `:violates` — points one identity fill's `:placeholder-event-id` before its own referent in time, violating this engine's own referential law that an identity fill cites a real `:registered` event in the same log, for the same patient, carrying `:identity :placeholder`, at or before the fill's own `:t` (the invariant `ehrt.sim-check.check/identity-fill-references-its-placeholder-registration` states)
 - **Expected findings:** `:identity-fill-references-its-placeholder-registration`, `:timestamps-monotone` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
 
+### `:inverted-span-start-event-id`
+
+Repoints one care-plan end's `:start-event-id` backwards in time, so it happens BEFORE the event it cites, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — points one care-plan end's `:start-event-id` before its own referent in time, violating this engine's own referential law that a care-plan end cites a real `:care-plan-start` event in the same log, for the same patient, at or before the end's own `:t` (the invariant `ehrt.sim-check.check/care-plan-end-references-existing-start-and-follows-it-in-time` states)
+- **Expected findings:** `:care-plan-end-references-existing-start-and-follows-it-in-time`, `:timestamps-monotone` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
+### `:null-medication-end-order-event-id`
+
+Repoints one medication end's `:order-event-id` to nil, citing nothing at all, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — points one medication end's `:order-event-id` to nil, so it cites nothing at all, violating this engine's own referential law that a medication end cites a real `:medication-order` event in the same log, for the same patient, at or before the end's own `:t` (the invariant `ehrt.sim-check.check/medication-end-references-existing-order-and-follows-it-in-time` states)
+- **Expected findings:** `:medication-end-references-existing-order-and-follows-it-in-time` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
 ### `:null-placeholder-event-id`
 
 Repoints one identity fill's `:placeholder-event-id` to nil, citing nothing at all, leaving every other field and every other event exactly as it was.
@@ -91,6 +168,15 @@ Repoints one identity fill's `:placeholder-event-id` to nil, citing nothing at a
 - **Contract:** `:violates` — points one identity fill's `:placeholder-event-id` to nil, so it cites nothing at all, violating this engine's own referential law that an identity fill cites a real `:registered` event in the same log, for the same patient, carrying `:identity :placeholder`, at or before the fill's own `:t` (the invariant `ehrt.sim-check.check/identity-fill-references-its-placeholder-registration` states)
 - **Expected findings:** `:identity-fill-references-its-placeholder-registration` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
 
+### `:null-start-event-id`
+
+Repoints one care-plan end's `:start-event-id` to nil, citing nothing at all, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — points one care-plan end's `:start-event-id` to nil, so it cites nothing at all, violating this engine's own referential law that a care-plan end cites a real `:care-plan-start` event in the same log, for the same patient, at or before the end's own `:t` (the invariant `ehrt.sim-check.check/care-plan-end-references-existing-start-and-follows-it-in-time` states)
+- **Expected findings:** `:care-plan-end-references-existing-start-and-follows-it-in-time` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
 ### `:orphan-participant`
 
 Reattributes one clinical event to a patient the run never registered, leaving every other field and every other event exactly as it was.
@@ -99,6 +185,24 @@ Reattributes one clinical event to a patient the run never registered, leaving e
 - **Locator:** not required.
 - **Contract:** `:violates` — renames the patient on one clinical event to an id the run never registered, so that content is attributed to an unknown patient, sits in no encounter, and is not preceded by an admission or a registration -- violating four of this engine's own laws at once: that clinical content happens only while a patient is admitted, that every encounter is opened and closed or still open, that every patient id named in a log belongs to a patient that log registered, and that a patient's first event is their registration
 - **Expected findings:** `:clinical-content-only-when-admitted`, `:every-encounter-is-opened-and-closed-or-still-open`, `:participant-ids-exist-in-run`, `:registered-is-every-patients-first-event` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
+### `:phantom-cancels-event-id`
+
+Repoints one cancellation's `:cancels-event-id` at a log index that does not exist, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — points one cancellation's `:cancels-event-id` past the end of the log, where nothing is, violating this engine's own referential law that a cancellation cites a real event of the class it cancels in the same log, for the same patient, at or before the cancellation's own `:t` (the invariant `ehrt.sim-check.check/cancel-references-existing-uncancelled-event` states)
+- **Expected findings:** `:cancel-references-existing-uncancelled-event` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
+### `:phantom-medication-end-order-event-id`
+
+Repoints one medication end's `:order-event-id` at a log index that does not exist, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — points one medication end's `:order-event-id` past the end of the log, where nothing is, violating this engine's own referential law that a medication end cites a real `:medication-order` event in the same log, for the same patient, at or before the end's own `:t` (the invariant `ehrt.sim-check.check/medication-end-references-existing-order-and-follows-it-in-time` states)
+- **Expected findings:** `:medication-end-references-existing-order-and-follows-it-in-time` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
 
 ### `:phantom-order-event-id`
 
@@ -118,6 +222,33 @@ Repoints one identity fill's `:placeholder-event-id` at a log index that does no
 - **Contract:** `:violates` — points one identity fill's `:placeholder-event-id` past the end of the log, where nothing is, violating this engine's own referential law that an identity fill cites a real `:registered` event in the same log, for the same patient, carrying `:identity :placeholder`, at or before the fill's own `:t` (the invariant `ehrt.sim-check.check/identity-fill-references-its-placeholder-registration` states)
 - **Expected findings:** `:identity-fill-references-its-placeholder-registration` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
 
+### `:phantom-start-event-id`
+
+Repoints one care-plan end's `:start-event-id` at a log index that does not exist, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — points one care-plan end's `:start-event-id` past the end of the log, where nothing is, violating this engine's own referential law that a care-plan end cites a real `:care-plan-start` event in the same log, for the same patient, at or before the end's own `:t` (the invariant `ehrt.sim-check.check/care-plan-end-references-existing-start-and-follows-it-in-time` states)
+- **Expected findings:** `:care-plan-end-references-existing-start-and-follows-it-in-time` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
+### `:wrong-kind-cancels-event-id`
+
+Repoints one cancellation's `:cancels-event-id` at a real event of the WRONG kind, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — points one cancellation's `:cancels-event-id` at an event that is not of the kind the reference promises, violating this engine's own referential law that a cancellation cites a real event of the class it cancels in the same log, for the same patient, at or before the cancellation's own `:t` (the invariant `ehrt.sim-check.check/cancel-references-existing-uncancelled-event` states)
+- **Expected findings:** `:cancel-references-existing-uncancelled-event` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
+### `:wrong-kind-medication-end-order-event-id`
+
+Repoints one medication end's `:order-event-id` at a real event of the WRONG kind, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — points one medication end's `:order-event-id` at an event that is not of the kind the reference promises, violating this engine's own referential law that a medication end cites a real `:medication-order` event in the same log, for the same patient, at or before the end's own `:t` (the invariant `ehrt.sim-check.check/medication-end-references-existing-order-and-follows-it-in-time` states)
+- **Expected findings:** `:medication-end-references-existing-order-and-follows-it-in-time` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
 ### `:wrong-kind-order-event-id`
 
 Repoints one result's `:order-event-id` at a real event of the WRONG kind, leaving every other field and every other event exactly as it was.
@@ -135,6 +266,15 @@ Repoints one identity fill's `:placeholder-event-id` at a real event of the WRON
 - **Locator:** not required.
 - **Contract:** `:violates` — points one identity fill's `:placeholder-event-id` at an event that is not of the kind the reference promises, violating this engine's own referential law that an identity fill cites a real `:registered` event in the same log, for the same patient, carrying `:identity :placeholder`, at or before the fill's own `:t` (the invariant `ehrt.sim-check.check/identity-fill-references-its-placeholder-registration` states)
 - **Expected findings:** `:identity-fill-references-its-placeholder-registration` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
+
+### `:wrong-kind-start-event-id`
+
+Repoints one care-plan end's `:start-event-id` at a real event of the WRONG kind, leaving every other field and every other event exactly as it was.
+
+- **Version:** `1` — pass as `--operator-version 1`.
+- **Locator:** not required.
+- **Contract:** `:violates` — points one care-plan end's `:start-event-id` at an event that is not of the kind the reference promises, violating this engine's own referential law that a care-plan end cites a real `:care-plan-start` event in the same log, for the same patient, at or before the end's own `:t` (the invariant `ehrt.sim-check.check/care-plan-end-references-existing-start-and-follows-it-in-time` states)
+- **Expected findings:** `:care-plan-end-references-existing-start-and-follows-it-in-time` — what `ehrt sim check` reports on the mutant, exactly and nothing else.
 
 ## FHIR operators
 
