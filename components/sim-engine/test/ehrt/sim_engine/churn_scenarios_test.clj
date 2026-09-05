@@ -174,3 +174,64 @@
     (testing "exact rendered message sequence: A01 A01 A17"
       (is (= ["A01" "A01" "A17"]
              (triggers ground-truth one-bed-one-surge-facility provider-templates))))))
+
+;; --- Scenario 4: a pending result crosses the merge (ADR-0179 R-queue) -----
+;;
+;; The population ADR-0179's own step-1 census could not find anywhere: an
+;; :order whose auto-paired follow-up is still sitting in the queue when
+;; that patient is merged away. Zero of the 38 ground-truth-carrying
+;; oracle roots reach it, and neither do the downstream-calibration
+;; fixture's 48 merges at 500 arrivals or its 77 at 1,000 -- so the
+;; oracle is BLIND to R-queue and THIS TEST is the whole of its proof.
+;;
+;; Getting there is arithmetic, not luck. :cbc's turnaround is 30-90
+;; minutes (sim-engine/order-profiles.edn), so a follow-up queued at t=0
+;; is due no earlier than t=1800; P1's one-minute :delay puts its own
+;; merge at t=60, comfortably inside that window, while every other step
+;; here advances the clock by nothing at all.
+
+(defn- subject-of [ev]
+  (:patient-id (first (filter #(= :subject (:role %)) (:participants ev)))))
+
+(deftest a-pending-result-follows-the-survivor-across-a-merge
+  (let [seed 400
+        p1-id (streams/patient-id-for seed 0)
+        p2-id (streams/patient-id-for seed 1)
+        {:keys [ground-truth]} (run-scenario
+                                 seed
+                                 [{:name "p1" :steps [{:type :delay :from 1 :to 1}
+                                                      {:type :admission :location "Renal"}
+                                                      {:type :merge :with p2-id}]}
+                                  {:name "p2" :steps [{:type :admission :location "Renal"}
+                                                      {:type :order :profile :cbc}]}])
+        log (vec ground-truth)
+        events (clinical-events log)
+        merge-ev (first (filter #(= :merge (:event %)) events))
+        order-ev (first (filter #(= :order-placed (:event %)) events))
+        result-ev (first (filter #(= :result-available (:event %)) events))]
+    (testing "sanity: P2 orders, then P1 merges P2 while the result is still pending"
+      (is (some? order-ev))
+      (is (some? merge-ev))
+      (is (= p2-id (subject-of order-ev)))
+      (is (= #{[:survivor p1-id] [:merged p2-id]}
+             (set (map (juxt :role :patient-id) (:participants merge-ev)))))
+      (is (< (:t merge-ev) (+ (:t order-ev) (* 60 30)))
+          "the merge lands before the earliest turnaround the profile permits"))
+    (testing "R-queue: the result is not lost -- it lands on the SURVIVOR"
+      (is (some? result-ev) "the follow-up survived the merge")
+      (is (= p1-id (subject-of result-ev)))
+      (is (= (:surviving-mrn merge-ev) (:active-mrn result-ev))
+          "the carried result reports under the surviving MRN"))
+    (testing "and still cites the order the ABSORBED patient placed"
+      (is (= (.indexOf log order-ev) (:order-event-id result-ev))))
+    (testing "no event names the absorbed patient-id after its own merge"
+      (let [merge-idx (.indexOf log merge-ev)]
+        (is (= [] (vec (for [[i ev] (map-indexed vector log)
+                             :when (and (> i merge-idx)
+                                        (some #(= p2-id (:patient-id %)) (:participants ev)))]
+                         [(:event ev) (:t ev)]))))))
+    (testing "R-loc: :location and :attending stay order-time, untouched"
+      (is (= (:location order-ev) (:location result-ev)))
+      (is (= (:attending order-ev) (:attending result-ev))))
+    (testing "the log stays globally t-ordered"
+      (is (apply <= (map :t log))))))

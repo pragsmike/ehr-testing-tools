@@ -916,6 +916,36 @@
       (is (= #{"MRN000002"} (:mrns merged)))
       (is (= "MRN000002" (:active-mrn merged))))))
 
+(deftest merge-releases-the-absorbed-patients-bed
+  ;; ADR-0179 R-bed: the :merged arm clears :location and :home-ward, so
+  ;; the absorbed record stops holding a bed the instant it stops being a
+  ;; patient. Cleared by dissoc, the idiom `evolve :cancel-admit` already
+  ;; uses -- so the keys are ABSENT rather than present-and-nil, and both
+  ;; forms are asserted here because `nil?` alone cannot tell the two
+  ;; apart (ADR-0178's own lesson, applied at the point of writing).
+  (let [world0 (world-of {"P1" (state/initial-patient "P1" "MRN000001")
+                          "P2" (state/initial-patient "P2" "MRN000002")})
+        world1 (-> world0 (admit 0 "P1" "Renal") (admit 5 "P2" "Renal"))
+        merged-before (get-in world1 [:patients "P2"])
+        {:keys [events]} (decide/decide (streams/one-stream (Random. 1)) 10 world1 "P1" {:type :merge :with "P2"})
+        world2 (fold-events world1 events)
+        survivor (get-in world2 [:patients "P1"])
+        merged (get-in world2 [:patients "P2"])]
+    (testing "sanity: the absorbed patient really did hold a bed"
+      (is (= :admitted (:status merged-before)))
+      (is (some? (get-in merged-before [:location :bed])))
+      (is (some? (:home-ward merged-before))))
+    (testing "R-bed: the bed and the home ward are gone, absent not nil"
+      (is (nil? (:location merged)))
+      (is (nil? (:home-ward merged)))
+      (is (not (contains? merged :location)))
+      (is (not (contains? merged :home-ward))))
+    (testing "R-queue's own precondition: the absorbed record names its survivor"
+      (is (= "P1" (:merged-into merged))))
+    (testing "the survivor keeps the bed it already had, and gains no :merged-into"
+      (is (= (get-in world1 [:patients "P1" :location]) (:location survivor)))
+      (is (nil? (:merged-into survivor))))))
+
 (deftest merge-into-self-is-rejected
   (let [world0 (world-of {"P1" (state/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")

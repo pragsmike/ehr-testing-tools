@@ -843,6 +843,67 @@
   (let [log (update (legit-order-result-log) 2 assoc :t 5)] ;; before its own order's t=10
     (is (seq (check/result-references-existing-order-and-follows-it-in-time log)))))
 
+;; --- ADR-0179 R-inv: the reference resolves THROUGH a merge --------------
+
+(defn- merge-event
+  "A `:merge` absorbing `merged` into `survivor` at `t`, in the shape
+  `decide :merge` emits."
+  [t survivor merged]
+  {:event :merge :t t
+   :participants [{:patient-id survivor :role :survivor}
+                  {:patient-id merged :role :merged}]
+   :surviving-mrn "MRN000001" :merged-mrn "MRN000002" :merged-mrns #{"MRN000002"}})
+
+(defn- merged-order-result-log
+  "R-queue's own shape, as a log: P2 places the order, P1 absorbs P2, and
+  the carried follow-up reports the result under P1. The order's subject
+  and the result's subject are DIFFERENT patient-ids joined only by the
+  merge between them -- which is exactly what the pre-ADR-0179 invariant
+  convicted and what R-inv accepts."
+  []
+  [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+    :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
+   {:event :admission :t 1 :home-ward "Renal" :participants (subject "P2")
+    :location {:ward "Renal" :bed "RENAL-02" :placement :licensed}}
+   {:event :order-placed :t 10 :profile :cbc :concept (:concept cbc-profile)
+    :participants (subject "P2")}
+   (merge-event 50 "P1" "P2")
+   {:event :result-available :t 100 :profile :cbc :order-event-id 2
+    :concept (:concept cbc-profile) :participants (subject "P1") :results []}])
+
+(deftest result-reference-resolves-through-a-merge
+  (is (empty? (check/result-references-existing-order-and-follows-it-in-time
+               (merged-order-result-log)))))
+
+(deftest result-reference-through-a-merge-still-convicts-an-unrelated-patient
+  (testing "the merge that exists joins two OTHER ids -- P2's order is still
+            not P1's, and citing it is still a violation"
+    (let [log (assoc (merged-order-result-log) 3 (merge-event 50 "P3" "P4"))]
+      (is (seq (check/result-references-existing-order-and-follows-it-in-time log)))))
+  (testing "and the plain cross-patient case, with no merge in the log at all,
+            is untouched"
+    (let [log (into (subvec (merged-order-result-log) 0 3)
+                    [(peek (merged-order-result-log))])]
+      (is (seq (check/result-references-existing-order-and-follows-it-in-time log))))))
+
+(deftest result-reference-through-a-merge-respects-the-time-clause
+  (testing "a merge that has not happened yet at the result's own :t resolves
+            nothing -- R-inv's `at or before` is load-bearing"
+    (let [log (assoc (merged-order-result-log) 3 (merge-event 500 "P1" "P2"))]
+      (is (seq (check/result-references-existing-order-and-follows-it-in-time log))))))
+
+(deftest result-reference-resolves-through-a-chain-of-merges
+  (testing "a survivor is itself mergeable, so R-queue can move one carried
+            follow-up twice; the resolution is transitive (ADR-0179's own
+            disclosed generalization of R-inv)"
+    (let [log [{:event :order-placed :t 10 :profile :cbc :concept (:concept cbc-profile)
+                :participants (subject "P3")}
+               (merge-event 20 "P2" "P3")
+               (merge-event 30 "P1" "P2")
+               {:event :result-available :t 100 :profile :cbc :order-event-id 0
+                :concept (:concept cbc-profile) :participants (subject "P1") :results []}]]
+      (is (empty? (check/result-references-existing-order-and-follows-it-in-time log))))))
+
 (deftest result-analytes-match-order-profile-holds-for-legit-log
   (is (empty? (check/result-analytes-match-order-profile (legit-order-result-log) order-profiles/default-profiles))))
 
