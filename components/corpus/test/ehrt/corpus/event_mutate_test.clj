@@ -218,22 +218,51 @@
     :findings #{result-order-invariant :timestamps-monotone}
     :effect :one-event :moves-t? true}
 
-   ;; --- the structural three. ADR-0176 section 2(i) gives each ONE
+   ;; --- the structural family. ADR-0176 section 2(i) gives each ONE
    ;;     convicting invariant; its addendum (c) records all three
    ;;     claims refuted by measurement, and these are the NARROWED
-   ;;     operators that replace them, each with the set measured
-   ;;     identical at every sampled site of both logs.
+   ;;     operators that replace them.
    {:id :clock-skew :population :clinic-decade
     :findings #{:timestamps-monotone} :effect :one-event :moves-t? true}
    {:id :drop-registration :population :clinic-decade
     :findings #{:participant-ids-exist-in-run
                 :registered-is-every-patients-first-event}
     :effect :drop}
+
+   ;;     THE ORPHAN EDIT IS THREE OPERATORS, NOT ONE, and the fact it
+   ;;     splits on is a LOG FACT rather than an event kind (ADR-0176
+   ;;     addendum (c), extended 2026-09-05). Reattributing a
+   ;;     therapeutic-intent event to a patient the run never
+   ;;     registered convicts four invariants -- unless that event is
+   ;;     the START of a span some END event cites, in which case the
+   ;;     end's own referential law, which reads the SAME patient off
+   ;;     both ends, convicts as a fifth. Whether a log closes its
+   ;;     spans is a property of the log, so the operator that keeps
+   ;;     the four-set has to say `no end cites me` in its own site
+   ;;     predicate rather than in its choice of kinds. The two
+   ;;     closed-start operators below take the sites it gives up, one
+   ;;     per span column, and declare the five-set they really do
+   ;;     convict. Q5(a) equality then holds per operator on EVERY
+   ;;     population by construction.
    {:id :orphan-participant :population :clinic-decade
     :findings #{:clinical-content-only-when-admitted
                 :every-encounter-is-opened-and-closed-or-still-open
                 :participant-ids-exist-in-run
                 :registered-is-every-patients-first-event}
+    :effect :one-event}
+   {:id :orphan-closed-medication-order :population :dense-7500
+    :findings #{:clinical-content-only-when-admitted
+                :every-encounter-is-opened-and-closed-or-still-open
+                :participant-ids-exist-in-run
+                :registered-is-every-patients-first-event
+                medication-end-invariant}
+    :effect :one-event}
+   {:id :orphan-closed-care-plan-start :population :dense-7500
+    :findings #{:clinical-content-only-when-admitted
+                :every-encounter-is-opened-and-closed-or-still-open
+                :participant-ids-exist-in-run
+                :registered-is-every-patients-first-event
+                care-plan-end-invariant}
     :effect :one-event}
 
    ;; --- column A: :cancels-event-id on a cancellation, whose target is
@@ -527,6 +556,65 @@
       (doseq [id (map :id loop-rows)]
         (is (pos? (reduce + (map :sites (filter #(= id (:id %)) m))))
             (str id " has no candidate site in ANY population"))))))
+
+(defn- starts-some-end-cites
+  "Every log index that a span END event cites as its own start.
+
+  TRANSCRIBED from `check`'s two span-end invariants rather than read
+  off `operators.clj`'s own helper, deliberately: this is the gate over
+  the split, so deriving it from the code under test would make it
+  agree with a mistake. `medication-end-references-existing-order-and-
+  follows-it-in-time` reads `:order-event-id` on a `:medication-end`
+  and requires a `:medication-order` there; `care-plan-end-references-
+  existing-start-and-follows-it-in-time` reads `:start-event-id` on a
+  `:care-plan-end` and requires a `:care-plan-start`. Both then require
+  the SAME patient on both ends, which is the clause the orphan edit
+  breaks when it lands on a cited start."
+  [events]
+  (let [n (count events)]
+    (into #{}
+          (keep (fn [e]
+                  (when-let [[field kind] (case (:event e)
+                                            :medication-end [:order-event-id :medication-order]
+                                            :care-plan-end [:start-event-id :care-plan-start]
+                                            nil)]
+                    (let [i (get e field)]
+                      (when (and (int? i) (< -1 i n) (= kind (:event (nth events i))))
+                        i)))))
+          events)))
+
+(deftest no-orphan-participant-site-is-a-start-some-end-cites-test
+  ;; R-split, the narrowing half, asserted DIRECTLY and over every
+  ;; population rather than only through the loop. The loop would catch
+  ;; a violation on a log that happens to close its spans and be
+  ;; silent on one that does not, which is exactly how the shape gap
+  ;; survived two calibration logs; this says the predicate itself is
+  ;; right whatever the corpus offers.
+  (doseq [p population-order]
+    (testing (str "over " p)
+      (let [l (vec (:log (pop-of p)))
+            cited (starts-some-end-cites l)
+            sites ((:candidate-sites (op :orphan-participant)) l)
+            bad (filterv cited sites)]
+        (is (empty? bad)
+            (str ":orphan-participant sites on " (count bad) " start(s) an end event cites, "
+                 "where the span's own referential invariant convicts as a fifth: " bad))))))
+
+(deftest every-closed-start-operator-sites-only-on-cited-starts-test
+  ;; R-split's other half, and the reason the four-set operator can
+  ;; keep its declaration: the sites it gave up are not dropped, they
+  ;; are taken by the two operators that declare what they convict.
+  (doseq [[id kind] {:orphan-closed-medication-order :medication-order
+                     :orphan-closed-care-plan-start :care-plan-start}]
+    (testing (str id)
+      (doseq [p population-order]
+        (let [l (vec (:log (pop-of p)))
+              cited (starts-some-end-cites l)
+              sites ((:candidate-sites (op id)) l)]
+          (is (every? cited sites)
+              (str id " over " p " sites on a start no end cites"))
+          (is (every? #(= kind (:event (nth l %))) sites)
+              (str id " over " p " sites on an event that is not a " kind)))))))
 
 (deftest every-registered-event-operator-has-a-loop-row-test
   ;; `register!` is a bare `swap! registry assoc`, so two catalog
