@@ -241,3 +241,4 @@ append-only, never-reassigned rule stands.
 - **ADR-0176** — event-stream mutation: the operator catalog, the injection contract, and the closed oracle loop — [`0176-event-stream-mutation.md`](adr/0176-event-stream-mutation.md) — Proposed
 - **ADR-0177** — `:new` supersedes a cancel-transfer reinstatement, and does not supersede a cancel-discharge — [`0177-new-supersedes-a-cancel-transfer-reinstatement.md`](adr/0177-new-supersedes-a-cancel-transfer-reinstatement.md) — Accepted
 - **ADR-0178** — `:window-close-t` is ABSENT, never nil, and the run path validates its own schema — [`0178-window-close-t-absent-not-nil.md`](adr/0178-window-close-t-absent-not-nil.md) — Accepted
+- **ADR-0179** — a merge releases the bed and carries the pending result across — [`0179-merge-transfer-semantics.md`](adr/0179-merge-transfer-semantics.md) — Accepted
