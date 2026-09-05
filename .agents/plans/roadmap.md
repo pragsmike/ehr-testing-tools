@@ -22,6 +22,12 @@ with them.
   folding every patient ever created, `decide :discharge`'s boarder `sort-by`, and
   `last-uncancelled-index` (cannot ride either arc-0 carrier without a second code
   path, ADR-0169 F-3). Site ranking within generate NOT re-profiled.
+  PARTLY PAID 2026-09-05 (`642d70a`): the per-call `m/validate` compile behind
+  `valid-event?`/`valid-persona?`/`valid-ground-truth?` is hoisted to a
+  validator built once at load, taking `check-all` on dense-7500 @20 from
+  22.70 s to 2.74 s and `make test` from 2,043 s to 1,235 s, so the
+  `engine/replay` share above must be re-read against that wall, not the
+  7.26 s one it was written for.
 - OPEN **[person-simulator]** PRIORITY 3 -- traffic-scale arc 2. New component,
   sibling charter discipline to `patient-simulator`: bespoke hazard-rate life-arc
   processes (`rulings.md#R-mix-1`), households and pregnancy->delivery
