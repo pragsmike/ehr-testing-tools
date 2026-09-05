@@ -1054,9 +1054,48 @@
   be a per-event constraint."
   [:vector Event])
 
-(defn valid-event? [event] (m/validate Event event))
+;; --- The compiled validators, built ONCE at load ---------------------------
+;;
+;; `m/validate` COMPILES ITS SCHEMA ON EVERY CALL, and for a schema
+;; this size the compile dominates the validation. Measured 2026-09-05
+;; on this file's own `event-examples.edn`, warmed, in one JVM:
+;; 1.0136 ms per `(m/validate Event e)`. The dense-7500 log at 20
+;; arrivals is 18,466 events, so that per-call compile alone accounted
+;; for 18.7 s of the 22.7 s that log's `check-all` took -- and ADR-0178
+;; put `every-event-is-schema-valid` FIRST in the catalog
+;; (`sim_check/check.clj`), so every `check-all` in the workspace and
+;; every `ehrt sim check` a consumer runs paid it once per event.
+;; The before/after table is in
+;; `.agents/session-records/2026-09-05-validators-once.md`.
+;;
+;; THE SCHEMAS ARE UNCHANGED AND SO IS THE ANSWER. `m/validator` is
+;; `m/validate`'s own compilation step, hoisted -- the same schema
+;; object, the same predicate, decided the same way. That is why this
+;; change owes no red: it states no new rule, and a compiled validator
+;; DISAGREEING with the interpreted one would be a malli defect rather
+;; than a fix. What says it does not disagree is the regression
+;; bracket, recorded with the numbers.
+;;
+;; WHY THESE TWO SCHEMAS AND NOT THE OTHER ~50 `m/validate` SITES in
+;; the tree (`sim-model/persona.clj`'s `valid-persona?` is the third,
+;; and the same one line): these are the ones called PER RECORD over a
+;; stream. Every other site validates a config, a manifest, a registry
+;; or a report -- once per run, where a per-call compile is
+;; unmeasurable. The session record lists all of them with a line
+;; number and that classification, so the next hot one is recognised
+;; rather than rediscovered.
+;;
+;; `explain-event` DELIBERATELY STAYS INTERPRETED. It runs only on
+;; events that have already failed -- `every-event-is-schema-valid`
+;; calls it per VIOLATION, not per event -- so it is cold by
+;; construction, and `m/explain` has no `m/validator` analogue that
+;; returns the same explanation.
+(def ^:private event-validator (m/validator Event))
+(def ^:private ground-truth-validator (m/validator GroundTruth))
+
+(defn valid-event? [event] (event-validator event))
 (defn explain-event [event] (m/explain Event event))
-(defn valid-ground-truth? [ground-truth] (m/validate GroundTruth ground-truth))
+(defn valid-ground-truth? [ground-truth] (ground-truth-validator ground-truth))
 
 (defn run-t-monotone?
   "The RUN-level time property: within one run, event times never

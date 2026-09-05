@@ -136,7 +136,21 @@
    ;; `:socioeconomic-category` already get).
    [:state {:optional true} :string]])
 
-(defn valid-persona? [p] (m/validate Persona p))
+;; `Persona`'s validator, built ONCE at load -- the same one-line
+;; change `sim-engine/event_schema.clj` makes for `Event` and
+;; `GroundTruth`, made here for the same reason and measured the same
+;; day. `valid-persona?` is called per RECORD, not per run:
+;; `sim_check/check.clj`'s `registered-persona-is-schema-valid` runs it
+;; on every `:registered` event in a log (2,015 of them in the
+;; dense-7500 log at 20 arrivals), and `m/validate` recompiles `Persona`
+;; on each of those calls. The schema is smaller than `Event`, so the
+;; saving is smaller too -- 0.0239 ms a call before -- and it is the
+;; same defect, so it is fixed rather than left as the one hot site
+;; that was noticed and skipped. `explain-persona` stays interpreted:
+;; it runs only on a persona that already failed.
+(def ^:private persona-validator (m/validator Persona))
+
+(defn valid-persona? [p] (persona-validator p))
 (defn explain-persona [p] (m/explain Persona p))
 
 ;; --- Sampling primitives ---------------------------------------------------
