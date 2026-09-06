@@ -25,6 +25,23 @@ cannot be omitted from the arc by being left off a list. Seventeen cells
 are PRESENT, twenty-two OMITTED; section 3 carries a cone prediction for
 each of the twenty-two.
 
+**ADDENDUM, 2026-09-06 — the closure has grown past this census, and
+this file's own arithmetic is unchanged by it.** ADR-0180 site 1 added a
+FOURTEENTH concern to `fold/full-algebra`, `:boarder-index`, the first
+of the generate-quadratic program's indexes to ride `apply-events`. It
+is not a cell of the thirty-nine: this census's inventory, matrix,
+cones and 38-of-39 arithmetic are all about the apply-unification arc's
+own thirteen and stay exactly as written. What the new concern DOES
+change is the closure a projection is a subset of, and
+`ehrt.sim-engine.apply-projection-test` — the gate whose whole contract
+is that a projection cannot gain or lose a concern without a commit
+that moves a row here — now transcribes both: `census-arc-thirteen`,
+this file's section-1 inventory, and `census-full-algebra`, that set
+plus ADR-0180's. Site 1 opts in; sites 2 and 3 do not, under that
+charter's contract that each of its indexes is guarded by its own
+projection membership and by nothing else. A later index from the same
+program lands the same way, and this addendum is where it says so.
+
 ## 0. The three sites, at this sha
 
 | # | site | home | span |

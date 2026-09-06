@@ -16,11 +16,19 @@
   `full-algebra`:
 
   * site 1, `ehrt.sim-engine.run`'s in-loop fold -- `run-loop-projection`,
-    THIRTEEN of thirteen, the ruled end state;
-  * site 2, `replay` below -- `replay-projection`, twelve of thirteen;
+    FOURTEEN of fourteen, the ruled end state;
+  * site 2, `replay` below -- `replay-projection`, twelve of fourteen;
   * site 3, `ehrt.sim-engine.log-index/reinstated-state`'s fallback --
-    `reinstated-projection`, THIRTEEN of thirteen and its OWN literal
-    since stage 2's de-alias commit, not site 2's by value.
+    `reinstated-projection`, THIRTEEN of fourteen and its OWN literal
+    since stage 2's de-alias commit.
+
+  THE FOURTEENTH IS ADR-0180'S, not the apply-unification arc's:
+  `:boarder-index`, site 1 of the generate-quadratic program, added
+  2026-09-06. Every count above that used to read thirteen has moved by
+  exactly one, and the two counts that did NOT move are the statement --
+  sites 2 and 3 do not opt in, under the charter's own contract that an
+  index is guarded by its projection membership and by nothing else, so
+  a site that never reads one pays nothing for it.
 
   THOSE THREE COUNTS WERE STALE FROM STAGE 2 AND ARE CORRECTED HERE
   rather than left standing: they read 11/3/by-value, which was the
@@ -141,6 +149,88 @@
             beds
             (filter :patient-id (:participants ev)))))
 
+(defn boarder-entry
+  "A patient's BOARDER MEMBERSHIP, computed from ONE patient state and
+  nothing else: `[home-ward [admitted-at patient-id]]` when that state
+  is a boarder, nil when it is not.
+
+  The predicate is `ehrt.sim-engine.decide/waiting-boarder`'s own
+  filter, term for term -- `:admitted`, a non-nil location ward, and a
+  location ward that is not the home ward -- and the key is that
+  function's own `sort-by` key, `[(:admitted-at p) pid]`. That key is a
+  TOTAL order because of the `patient-id` tiebreak, and the totality is
+  what makes an index legal here at all: it is why a from-scratch scan
+  of an UNORDERED `:patients` map and an ordered set agree by
+  construction rather than by luck. An index keyed on `:admitted-at`
+  alone would be a different function that happens to agree on logs
+  with no simultaneous admissions (ADR-0180 site 1's equivalence
+  argument, written before this session rather than asserted after it).
+
+  ADR-0180's R-membership-from-post-state: membership is RECOMPUTED
+  from a patient state, never derived from which event just happened.
+  There is no add/remove logic per event kind here, so there is no
+  eviction case to enumerate and none to miss."
+  [pid p]
+  (let [located (get-in p [:location :ward])]
+    (when (and (= :admitted (:status p))
+               (some? located)
+               (not= (:home-ward p) located))
+      [(:home-ward p) [(:admitted-at p) pid]])))
+
+(defn update-boarders
+  "The boarder index, folded one event forward (ADR-0180 site 1):
+  `home-ward -> sorted-set of [admitted-at patient-id]`.
+
+  ONE rule and no others: for each of this event's patient
+  participants, take `boarder-entry` of its PRE-event state and of its
+  POST-event state and reconcile the two. A membership that did not
+  change writes nothing; one that did retires the old key and files the
+  new. THE OLD KEY COMES FROM THE PRE-STATE and not from the set,
+  because `:home-ward` and `:admitted-at` can both move under one
+  event, and a key rebuilt from the post-state would strand the entry
+  it was supposed to retire.
+
+  Only participants are considered, and that is soundness rather than
+  an optimisation: `evolve` folds an event into exactly its
+  participants' states (sim/ADR-0010), so no other patient's
+  `:status`, `:location`, `:home-ward` or `:admitted-at` can have moved
+  under it. That is the same pre/post pair, and the same argument,
+  `update-beds` above already runs on."
+  [index patients-before patients-after participants]
+  (reduce (fn [idx {:keys [patient-id]}]
+            (let [before (boarder-entry patient-id (get patients-before patient-id))
+                  after (boarder-entry patient-id (get patients-after patient-id))]
+              (if (= before after)
+                idx
+                (cond-> idx
+                  before (update (first before) (fnil disj (sorted-set)) (second before))
+                  after (update (first after) (fnil conj (sorted-set)) (second after))))))
+          (or index {})
+          participants))
+
+(defn first-boarder
+  "THE INDEX'S ANSWER to `decide`'s `waiting-boarder` question: the
+  longest-waiting boarder of `ward-name`, excluding `excluded-id`, or
+  nil when the ward has none.
+
+  IDENTITY of this id is the obligation, nil-vs-non-nil included -- not
+  \"a legal boarder\", which is a strictly weaker claim an index can
+  satisfy while moving every byte after it. A stale entry an index
+  failed to evict emits a `:transfer` where the scan emitted nothing,
+  and a missing entry drops one; both reshuffle everything downstream,
+  because a non-nil answer takes a branch that draws twice (ADR-0180
+  site 1: `bed-ready-location` on the world stream and `vacate-bed` on
+  the facility stream).
+
+  The exclusion stays a CALLER-SIDE filter over the ordered answer
+  rather than a second index, for the reason the same section gives:
+  the two callers pass different worlds and different exclusions, and
+  both worlds have the same `:patients`, so one carrier serves both. At
+  most one entry can carry `excluded-id`, so this reads at most two."
+  [world excluded-id ward-name]
+  (some (fn [[_ pid]] (when-not (= pid excluded-id) pid))
+        (get (:boarder-index world) ward-name)))
+
 (def reinstatable-event-types
   "The event classes a cancel decide reinstates state FROM, and therefore
   the only ones `run`'s `:reinstate-index` records (ADR-0169).
@@ -187,27 +277,38 @@
 ;; commit each, against the census's own cone predictions.
 
 (def full-algebra
-  "The THIRTEEN concerns the three apply sites perform between them --
-  the census's section 1 inventory, as the vocabulary a projection is a
-  subset of. Their grains are not uniform and the census says so:
+  "The FOURTEEN concerns the three apply sites perform between them --
+  the apply-unification census's section 1 inventory of THIRTEEN, plus
+  `:boarder-index`, which ADR-0180 site 1 added on 2026-09-06 as the
+  first of the generate-quadratic program's indexes to ride this fold
+  -- as the vocabulary a projection is a subset of. Their grains are not uniform and the census says so:
   `:encounter-stamp`/`:warm-up-mark` are DECORATIONS (a pre-pass over
   the batch, off the world as it stands BEFORE it);
   `:log-mirror`/`:log-accumulator`/`:state-history` are PER-BATCH (a
   post-pass off the world as it stands AFTER it -- which is why
   `:state-history` appends the post-BATCH state, not the post-event
-  one, census correction C2); the remaining eight are per-event.
+  one, census correction C2); the remaining NINE are per-event,
+  `:boarder-index` among them.
 
   `apply-events` reads this set for nothing: it is the closure the
   three projections below are subsets of, and the population
-  `ehrt.sim-engine.apply-projection-test` checks them against."
+  `ehrt.sim-engine.apply-projection-test` checks them against.
+
+  ADR-0180'S CONTRACT FOR EVERY INDEX IT ADDS, and the reason this set
+  can grow without the two projections below growing with it: each new
+  index is guarded by its own projection-membership test and by nothing
+  else, which is what keeps a site that does not opt in paying nothing
+  for an index it never reads. Site 1 opts into `:boarder-index`; sites
+  2 and 3 do not, and a boarder index is in neither a replay entry nor
+  a patient state."
   #{:encounter-stamp :warm-up-mark :log-ordinal :reinstate-index
     :citation-index :registration-index :patient-bootstrap
-    :patient-state :bed-index :log-mirror :log-accumulator
+    :patient-state :bed-index :boarder-index :log-mirror :log-accumulator
     :state-history :replay-entries})
 
 (def run-loop-projection
   "Census site 1 -- `ehrt.sim-engine.run`'s in-loop fold. THE FULL
-  THIRTEEN, and the first of the three sites to reach the ruled end
+  FOURTEEN, and the first of the three sites to reach the ruled end
   state. Stage 2 enabled its two omitted pairs in census order,
   `:patient-bootstrap` then `:replay-entries`, both section 3a and both
   predicted INERT.
@@ -220,6 +321,14 @@
   unchanged. IF IT EVER FIRES, that is worth more than the pair -- it
   means an unregistered participant reached the log.
 
+  `:boarder-index` is the fourteenth and the one pair here that is NOT
+  inert: it is the whole point of ADR-0180 site 1, and this is the only
+  site that reads it. `decide :discharge` and `decide :bed-ready` ask
+  `waiting-boarder` its question against the world this fold returns,
+  which is why the carrier can be here at all -- the pre-event and
+  post-event patient maps both exist at this point and nowhere later,
+  the same sentence the bed index is here under.
+
   `:replay-entries` is inert here for a different reason -- not that its
   branch never fires, but that nothing READS what it accumulates.
   `final-result` merges `:ground-truth`, `:state-history`, `:facility`
@@ -231,9 +340,23 @@
   full-algebra)
 
 (def replay-projection
-  "Census site 2 -- `replay` below. THREE of the thirteen at stage 1,
-  TWELVE since ruling A1(b) added the decoration `:encounter-stamp` to
+  "Census site 2 -- `replay` below. TWELVE OF FOURTEEN, and twelve of
+  the apply-unification arc's own THIRTEEN: three at stage 1, twelve
+  once ruling A1(b) added the decoration `:encounter-stamp` to
   the eight INERT pairs stage 2 enabled one commit each in census order.
+
+  THE FOURTEENTH IS ADR-0180'S `:boarder-index` (site 1, 2026-09-06)
+  AND THIS SITE DOES NOT OPT IN. `replay` returns ENTRIES; a boarder
+  index is not in one, and nothing at this site would read it. The
+  charter's contract is that each of its indexes is guarded by its own
+  projection membership and by nothing else, precisely so that a site
+  which does not opt in pays nothing for an index it never reads -- and
+  this site is 50.97% of the check phase (`.agents/plans/2026-09-05-
+  performance-measurement/measurements.md:274-281`), which is what makes
+  paying nothing the load-bearing half of that sentence rather than a
+  formality. It is NOT the arc's thirty-ninth cell and does not touch
+  that count: the omission the next paragraphs are about is a different
+  one, ruled for a different reason.
   Each bullet below names why that pair moved no output -- the cone the
   census's section 3b predicted, as the commit that took it found it,
   except the first, whose cone predicted a MOVE and was refuted by
@@ -355,9 +478,9 @@
   below relative to its site-2 twin. Stage 2 enabled its nine INERT
   pairs one commit each in census order, and ruling A1(b) added the
   tenth, the DECORATION `:encounter-stamp`, whose OUTPUT-MOVING
-  prediction measurement refuted -- so this projection is now FULL
-  PRODUCT, all thirteen, the same end state site 1 has held since stage
-  2's first span:
+  prediction measurement refuted -- so this projection holds all
+  THIRTEEN of the apply-unification arc's own concerns, the ruled end
+  state of that arc, which site 1 has held since stage 2's first span:
 
   * `:encounter-stamp` -- THE ONE PAIR SECTION 3c PREDICTED
     OUTPUT-MOVING HERE, and the prediction is REFUTED BY MEASUREMENT.
@@ -425,12 +548,22 @@
     `:replay-entries` already returns, and this site reads ONE element
     of that. Builds from a nil seed; no slot.
 
-  THERE IS NOTHING IT DOES NOT GET. Site 3 names every one of the
-  thirteen, which is the ruled end state of the whole unification arc,
-  and it is the SECOND of the three sites to reach it -- site 2 keeps
+  * `:boarder-index` -- ADR-0180 site 1, 2026-09-06, and the ONE
+    concern of the fourteen this site does not name. Inert twice over
+    for the reasons its two neighbours here are: `reinstated-state`
+    returns a PATIENT STATE and a boarder index is not in one, and this
+    site's world is `{:patients {}}` so there would be nothing in it to
+    index. Not opting in is what the charter's own contract asks for --
+    an index is guarded by its projection membership and by nothing
+    else, so a site that never reads one pays nothing for it.
+
+  THERE IS NOTHING OF THE UNIFICATION ARC'S OWN THAT IT DOES NOT GET.
+  Site 3 names every one of that arc's thirteen, its ruled end state,
+  and it was the SECOND of the three sites to reach it -- site 2 keeps
   one measured, permanent omission, `:warm-up-mark`, for a reason that
   does not apply here (`replay-projection` above, and record section
-  4d)."
+  4d). ADR-0180's fourteenth is a different question and is answered
+  above."
   #{:encounter-stamp :warm-up-mark :log-ordinal :reinstate-index
     :citation-index :registration-index :patient-bootstrap
     :patient-state :bed-index :log-mirror :log-accumulator
@@ -455,7 +588,13 @@
   `:log-mirror` needs no slot of its own -- it publishes into
   `(:world acc')` under `:ground-truth`, which is where a mid-run
   `decide` reads the log back from. `:log-ordinal` needs none either:
-  its base is derived from `(:world acc)` on entry.
+  its base is derived from `(:world acc)` on entry. Nor do the two
+  world-carried indexes, `:bed-index` and `:boarder-index`: each reads
+  and writes its own key of `(:world acc)`, and `:boarder-index`
+  tolerates that key's ABSENCE on entry, which is what makes the run
+  loop's first batch legal against a seeded world that carries no index
+  yet (`ehrt.sim-engine.run`'s `init-world` seeds every patient
+  `:status :new`, so the index it does not carry is the empty one).
 
   THE ORDER IS `run`'s, unchanged, and that is what makes stage 1
   output-identical by construction rather than by assertion: decorate
@@ -559,7 +698,19 @@
                     [(cond-> w-next
                        (and (projection :bed-index) (:beds w-next))
                        (assoc :beds (update-beds (:beds w-next) ev
-                                                 (:patients w) (:patients w-next))))
+                                                 (:patients w) (:patients w-next)))
+
+                       ;; ADR-0180 site 1: the boarder index, off the
+                       ;; SAME pre/post participant pair the bed index
+                       ;; above reads, and guarded by its projection
+                       ;; membership and by NOTHING else -- the
+                       ;; charter's own contract, and the reason sites 2
+                       ;; and 3 can decline it and pay nothing.
+                       (projection :boarder-index)
+                       (assoc :boarder-index
+                              (update-boarders (:boarder-index w-next)
+                                               (:patients w) (:patients w-next)
+                                               participants)))
                      ridx' cidx' gidx' entries']))
                 [world (:reinstate-index world) (:citation-index world)
                  (:registration-index world) (:entries acc)]
