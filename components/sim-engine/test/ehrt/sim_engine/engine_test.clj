@@ -160,6 +160,43 @@
   [{:id "1234567893" :name {:family "Chen" :given "A"} :role :attending
     :specialty "Nephrology" :wards [:renal :ed]}])
 
+(defn- fold-events
+  "Test helper: applies `events` to `world` THROUGH THE CHOKE POINT --
+  `fold/apply-events`, which IS `run`'s own in-loop fold since the
+  application-path unification -- with an explicit declared projection,
+  exactly as the three shipped apply sites do.
+
+  REWRITTEN 2026-09-06 (ADR-0180 site 1), AND THE REASON IS THE POINT.
+  It used to hand-roll the fold: evolve every named participant, append
+  the batch to `:ground-truth`, done. That was a faithful copy of the
+  loop for as long as those were the only two things the loop did to a
+  world -- and it silently stopped being one the moment the loop gained
+  a fourteenth concern. Scripted tests that drive `decide` against a
+  world this helper built were then asking `waiting-boarder` a question
+  against a world carrying no `:boarder-index`, and getting nil. A
+  hand-rolled fold is a SECOND DEFINITION of what applying an event
+  means; calling the choke point cannot drift from the first.
+
+  The projection is the four concerns a scripted `decide`/`evolve` test
+  needs: bootstrap (so a participant not in the map is seeded rather
+  than nil-evolved), the patient-state fold, the boarder index the
+  bed-ready coupling reads, and the log mirror the cancel-family decides
+  query. It is NOT `run-loop-projection`: the decorations and the two
+  transient accumulators want slots and parameters a scripted test has
+  no source for, which is the whole reason a projection is a declared
+  subset rather than an all-or-nothing switch.
+
+  ONE PRE-EXISTING DEFECT GOES WITH THE REWRITE, disclosed rather than
+  absorbed: the hand-rolled version mapped over `(:participants ev)`
+  unfiltered, so a `:bed-status-change` -- whose participant names a BED
+  and carries `:patient-id` nil -- would have evolved a phantom
+  nil-keyed patient. No test here emits one, so it never fired; the
+  choke point filters, so it now cannot."
+  [world events]
+  (:world (fold/apply-events {:world world} events
+                             #{:patient-bootstrap :patient-state
+                               :boarder-index :log-mirror})))
+
 (deftest bed-ready-transfer-scripted-two-patients
   (testing "B boards in ED surge because Renal's one bed is taken; A's
             discharge frees RENAL-01, which bed-ready-transfers B out
@@ -168,16 +205,15 @@
     (let [world0 {:patients {"P1" (state/initial-patient "P1" "MRN000001")
                               "P2" (state/initial-patient "P2" "MRN000002")}
                   :facility crowded-facility
-                  :providers test-providers}
+                  :providers test-providers
+                  :ground-truth []}
           rng (Random. 1)
           {a-events :events} (decide/decide (streams/one-stream rng) 0 world0 "P1"
                                              {:type :admission :location "Renal"})
-          world1 (update-in world0 [:patients "P1"]
-                             #(reduce evolve/evolve % a-events))
+          world1 (fold-events world0 a-events)
           {b-events :events} (decide/decide (streams/one-stream rng) 10 world1 "P2"
                                              {:type :admission :location "Renal"})
-          world2 (update-in world1 [:patients "P2"]
-                             #(reduce evolve/evolve % b-events))
+          world2 (fold-events world1 b-events)
           b-after-admission (get-in world2 [:patients "P2"])]
       (testing "A got the one licensed bed"
         (is (= {:ward "Renal" :bed "RENAL-01" :placement :licensed}
@@ -198,9 +234,7 @@
             (is (= 100 (:t transfer)))
             (is (= "Renal" (get-in transfer [:location :ward])))
             (is (= "RENAL-01" (get-in transfer [:location :bed])))
-            (let [world3 (-> world2
-                             (update-in [:patients "P1"] #(reduce evolve/evolve % [(first discharge-events)]))
-                             (update-in [:patients "P2"] #(reduce evolve/evolve % [transfer])))]
+            (let [world3 (fold-events world2 discharge-events)]
               (testing "B is no longer boarding"
                 (is (= "Renal" (get-in world3 [:patients "P2" :home-ward])))
                 (is (= "Renal" (get-in world3 [:patients "P2" :location :ward])))))))))))
@@ -444,20 +478,18 @@
             :surge-format "%s-H%02d" :class :inpatient}]})
 
 (defn- advance
-  "Decide one step and fold its events into `world` the way run/run's
-  own loop does -- every participant of every emitted event evolved, and
-  the event appended to :ground-truth (which the churn decides query).
-  The multi-patient driver a hand-built sequence needs; the scripted
-  bed-ready test above folds by hand because it only ever moves one
-  patient at a time."
+  "Decide one step and apply its events through `fold-events` above --
+  the choke point, which IS `run`'s own loop fold. The multi-patient
+  driver a hand-built sequence needs.
+
+  Its second sentence used to read \"folds its events into `world` the
+  way run/run's own loop does\" and then re-implement that fold inline;
+  the scripted bed-ready test above carried a third copy. Both now call
+  the one definition (ADR-0180 site 1, and `fold-events`' own docstring
+  for why a copy is not a shortcut)."
   [world rng t patient-id step]
   (let [{:keys [events]} (decide/decide (streams/one-stream rng) t world patient-id step)]
-    (reduce (fn [w ev]
-              (reduce (fn [w' pid] (update-in w' [:patients pid] evolve/evolve ev))
-                      (update w :ground-truth (fnil conj []) ev)
-                      (map :patient-id (:participants ev))))
-            world
-            events)))
+    (fold-events world events)))
 
 (deftest bed-ready-transfer-obeys-the-allocation-ladder
   (testing "ADR-0153 (roadmap.md#surge-policy-self-check-202, census S-5):
@@ -533,19 +565,6 @@
   [patients]
   {:patients patients :facility churn-facility :providers churn-providers :ground-truth []
    :order-profiles order-profiles/default-profiles})
-
-(defn- fold-events
-  "Test helper: applies `events` to `world`'s patients (every named
-  participant, sim/ADR-0010) and appends them to `world`'s :ground-truth --
-  mirrors what run/run's loop does each iteration, for scripted
-  multi-step tests that drive decide/evolve directly."
-  [world events]
-  (-> (reduce (fn [w ev]
-                (reduce (fn [w2 {:keys [patient-id]}]
-                          (update-in w2 [:patients patient-id] evolve/evolve ev))
-                        w (:participants ev)))
-              world events)
-      (update :ground-truth into events)))
 
 (defn- admit
   "Scripted-test helper: decides+folds an :admission for `patient-id`,
@@ -1521,12 +1540,13 @@
     (let [world0 {:patients {"P1" (state/initial-patient "P1" "MRN000001")
                               "P2" (state/initial-patient "P2" "MRN000002")}
                   :facility crowded-facility
-                  :providers test-providers}
+                  :providers test-providers
+                  :ground-truth []}
           rng (Random. 1)
           {a-events :events} (decide/decide (streams/one-stream rng) 0 world0 "P1" {:type :admission :location "Renal"})
-          world1 (update-in world0 [:patients "P1"] #(reduce evolve/evolve % a-events))
+          world1 (fold-events world0 a-events)
           {b-events :events} (decide/decide (streams/one-stream rng) 10 world1 "P2" {:type :admission :location "Renal"})
-          world2 (update-in world1 [:patients "P2"] #(reduce evolve/evolve % b-events))]
+          world2 (fold-events world1 b-events)]
       (is (boarding? (get-in world2 [:patients "P2"])) "P2 boards in ED surge, waiting for Renal")
       (let [{:keys [events]} (decide/decide (streams/one-stream rng) 100 world2 "P1"
                                             {:type :discharge :disposition :expired :codes death-codes})]

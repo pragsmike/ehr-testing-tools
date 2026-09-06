@@ -104,6 +104,7 @@
   (:require [ehrt.sim-model.interface :as sim-model]
             [ehrt.patient-simulator.interface :as patient-simulator]
             [ehrt.sim-engine.encounters :as encounters]
+            [ehrt.sim-engine.fold :as fold]
             [ehrt.sim-engine.log-index :as log-index]
             [ehrt.sim-engine.order-profiles :as order-profiles]
             [ehrt.sim-engine.state :as state]
@@ -978,16 +979,38 @@
   cannot reorder the rest. Where a false boarder was outranking a real
   one, the real one now gets the bed, which is the correction itself
   and not a side effect of it. `bin/ground-truth-bracket` is what says
-  whether any shipped corpus was reaching this at all."
+  whether any shipped corpus was reaching this at all.
+
+  IT NO LONGER SCANS (ADR-0180 site 1, 2026-09-06). The predicate and
+  the order described above are still the DEFINITION of the answer --
+  they are what a reader asking what a boarder IS should read -- but
+  they are no longer recomputed here per call. `fold/apply-events`
+  maintains `:boarder-index`, `home-ward -> sorted-set of [admitted-at
+  patient-id]`, off the same pre/post participant pair the bed index
+  reads, and this function is now the ORDERED LOOKUP over it. The
+  excluded id stays a caller-side filter over that answer rather than a
+  second index: the two call sites pass different worlds -- `decide
+  :bed-ready`'s differs only in one bed's status -- and a
+  `:patients`-derived index is blind to that difference, so one carrier
+  serves both.
+
+  WHY IT WAS WORTH MOVING. The scan was O(P) plus an O(k log k) sort,
+  once per `:discharge` and once per `:bed-ready`, and at the top of the
+  measured decade it was 30.54% of the whole generate phase
+  (`.agents/plans/2026-09-05-performance-measurement/measurements.md`).
+  It draws nothing itself -- the paragraph above still holds -- but its
+  ANSWER is draw-affecting: a non-nil id takes a branch that draws
+  twice, so IDENTITY of the id, and nil-vs-non-nil, are both
+  obligations rather than niceties.
+
+  THE SCAN IS NOT GONE, IT MOVED. `ehrt.sim-engine.boarder-index-test`
+  keeps this body verbatim as `naive-waiting-boarder`
+  (`rulings.md#R-move-not-improve`), and a pinned-seed property asserts
+  the two agree at EVERY replay entry, for every ward, with and without
+  an excluded id. That duplication is a permanent, declared cost -- the
+  same one ADR-0169's six `naive-*` invariant bodies are."
   [world excluded-id ward-name]
-  (->> (:patients world)
-       (remove (fn [[pid _]] (= pid excluded-id)))
-       (filter (fn [[_ p]] (and (= :admitted (:status p))
-                                (some? (get-in p [:location :ward]))
-                                (not= (:home-ward p) (get-in p [:location :ward]))
-                                (= ward-name (:home-ward p)))))
-       (sort-by (fn [[pid p]] [(:admitted-at p) pid]))
-       ffirst))
+  (fold/first-boarder world excluded-id ward-name))
 
 (defn- appointment-ref-field
   "What an opener carrying a scheduled arrival's own appointment merges

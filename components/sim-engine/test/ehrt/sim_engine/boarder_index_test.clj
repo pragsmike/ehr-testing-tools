@@ -230,3 +230,37 @@
       (is (nil? (:boarder-index (:world (fold/apply-events {:world seeded} []
                                                             #{:patient-state :boarder-index}))))
           "an empty batch opens no index at all -- the concern is per-EVENT"))))
+
+(deftest the-bed-flip-decide-bed-ready-makes-is-patients-identical
+  (testing "THE SECOND CALLER'S ARGUMENT, shown irrelevant rather than
+            argued to be. `decide :discharge` asks its question against
+            `world` and excludes the discharging patient; `decide
+            :bed-ready` asks against `world'`, which is `(assoc-in world
+            [:beds bed :status] :ready)` -- the bed whose readiness is
+            the occasion -- and excludes nobody. ADR-0180 site 1 rests
+            on ONE carrier serving both, which holds only if that flip
+            is invisible to a `:patients`-derived index. It is: the flip
+            touches `:beds`, and neither the index nor the scan it
+            replaces reads a bed."
+    (let [profile (into {} (map (fn [[k _]] [k 0.4])) churn/default-churn-profile)
+          {:keys [ground-truth]} (run/run {:seed 20260906 :patients 20
+                                           :arrival-gap 20
+                                           :facility boarding-facility
+                                           :pathway stay
+                                           :churn-profile profile
+                                           :bed-cycle true})
+          sampled (take-nth 5 (rest (worlds ground-truth)))]
+      (is (seq sampled) "the corpus produced worlds to check")
+      (doseq [w sampled]
+        (let [with-beds (assoc w :beds {"RENAL-01" {:status :cleaning :since-t 0}})
+              flipped (assoc-in with-beds [:beds "RENAL-01" :status] :ready)]
+          (is (= (:patients with-beds) (:patients flipped))
+              "the flip is :beds-only -- :patients is untouched")
+          (is (= (:boarder-index with-beds) (:boarder-index flipped))
+              "and so, therefore, is the index derived from it")
+          (doseq [ward (wards-in-play w)]
+            (is (= [(naive-waiting-boarder with-beds nil ward)
+                    (fold/first-boarder with-beds nil ward)]
+                   [(naive-waiting-boarder flipped nil ward)
+                    (fold/first-boarder flipped nil ward)])
+                (str "ward " ward ": both functions answer the same on both worlds"))))))))
