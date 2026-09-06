@@ -31,7 +31,15 @@ with them.
   `fold/apply-events`, with the from-scratch definition kept as the gate that
   proves the index equal at every replay entry. R-order sequences them, one
   session each, every commit bracket-proven: (1) `decide :discharge`'s
-  `waiting-boarder` 30.54%, rowed by ADR-0169 at ~7.9%; (2) `run/select-person`
+  `waiting-boarder` 30.54%, rowed by ADR-0169 at ~7.9% -- **LANDED
+  2026-09-06 at `75b4a868`**, inclusive share at 7,500 arrivals 25.23%
+  -> 0.00% (zero of 12,013 samples) and generate 256.15 s -> 189.79 s on
+  that cell, -26.7% corrected, both logs byte-identical and the bracket
+  IDENTICAL on all 38 roots; `apply-events` took 2.2 points of the 25.2
+  as the index's own cost, and the three sites below RISE in share
+  because the denominator shrank, not because anything regressed
+  (`.agents/plans/2026-09-05-performance-measurement/measurements.md`,
+  the 2026-09-06 site-1 section); (2) `run/select-person`
   19.98%, rowed separately as `roadmap.md#select-person-arrival-quadratic`;
   (3) `sim-model/occupancy-board` 17.11%, rowed at 8.1%; (4)
   `log-index/last-uncancelled-index` 10.78% and flat, the one F-3 left

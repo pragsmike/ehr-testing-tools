@@ -479,3 +479,85 @@ and `cancel-moves-bed` equals `:cancel-transfer`**, on all eight cells.
 That is the census agreeing with the vocabulary rather than a separate
 fact, and it is here as a check on the instrument: an off-by-one in the
 before/after comparison would break the identity.
+
+## Site 1 measured, 2026-09-06 -- `waiting-boarder` rides the fold
+
+ADR-0180 site 1 landed at `75b4a868`, over a baseline of `bba3a63c`.
+`decide`'s `waiting-boarder` is no longer a scan of `(:patients world)`:
+`fold/apply-events` maintains `:boarder-index` and the function is an
+ordered lookup over it. Output-identical by construction and by
+measurement -- both cells below reproduced their pre-change log
+BYTE-FOR-BYTE, and `bin/ground-truth-bracket` reported IDENTICAL on all
+38 digested roots at both commits.
+
+### Wall
+
+**These are not the decade table's figures and must not be read against
+them.** The decade above is the MEAN OF TWO timed JVMs per cell; these
+are ONE each, generate only, taken on this session's machine under this
+session's load. The `a7500-persons` baseline here is 256.15 s where the
+committed table records 235.09 s for the same cell and seed -- same
+code, different day. The comparison that carries anything is
+before-against-after WITHIN this session, and that pair was run back to
+back, same script, same warm-up shape.
+
+| cell | before | after | delta | corrected delta |
+|---|---|---|---|---|
+| `a7500-persons` | 256.15 s | **189.79 s** | -66.36 s, **-25.9%** | **-26.7%** |
+| `a2500-nopersons` | 34.85 s | **30.08 s** | -4.77 s, **-13.7%** | **-17.8%** |
+
+`corrected` subtracts the 8.0 s fixed `sim run` startup cost measured
+above -- the only column that says anything about the algorithm, and at
+the small cell it is the difference between -13.7% and -17.8%.
+
+**Both logs are byte-identical across the change.** `a7500-persons`
+sha256 `3018299a0e0299c40ba73580793c8135674e8f988f9c332d18eedd45b70d3bd3`
+and `a2500-nopersons`
+`c22d65730b9006b1593de94461200084d2f4865b8cbd47c4893db5df98a55208`,
+before and after.
+
+**The index is not free in memory, and the smaller cell says so more
+honestly than the larger.** Peak RSS at `a7500-persons` went 2,006 ->
+2,151 MB (+145 MB, +7.2%); at `a2500-nopersons`, 945 -> 949 MB (+4 MB).
+One sorted set per home ward holding one short vector per boarder is a
+small structure, and a single-JVM RSS reading at a 3.88 GB heap is a
+noisy instrument -- so the honest statement is that the index costs
+memory in the direction and rough magnitude expected, not that it costs
+exactly 145 MB.
+
+### Profile
+
+One JFR recording per side at 7,500 arrivals, `--stack-depth 2048`,
+same script and same cell as the decade profile above
+(`raw/a7500-persons.gen.profile.md` before,
+`raw/a7500-persons-site1.gen.profile.md` after; 19,012 and 12,013
+`jdk.ExecutionSample` samples). Inclusive share, so the columns do not
+sum.
+
+| site | before | after |
+|---|---|---|
+| `decide :discharge`'s `waiting-boarder` | 25.23% | **0.00%** |
+| `decide` (the whole dispatch) | 62.02% | 47.22% |
+| `fold/apply-events` | 7.56% | **9.76%** |
+| `run/select-person` | 14.17% | 19.17% |
+| `sim-model/occupancy-board` | 11.65% | 12.51% |
+| `log-index/last-uncancelled-index` | 10.29% | 14.68% |
+
+**0.00% is zero samples, not a rounding.** Not one of 12,013 samples
+was taken anywhere beneath `waiting-boarder`, and it is gone from the
+innermost-project-frame table too, where it had been the top row at
+12.67%. That table's new top row is `select-person` at 16.14%.
+
+**`apply-events` rose 2.2 points and that is the index's own cost,
+charged where the charter said it would be.** The site did not become
+free; its work moved from a per-call O(P) scan to a per-event O(log k)
+update, and 25.23 points became 2.2.
+
+**THE THREE RISING ROWS ARE NOT REGRESSIONS.** Every one of them is a
+share of a smaller denominator: the phase itself shrank by a quarter,
+so a site whose absolute cost did not move gains share. `select-person`
+went 14.17% -> 19.17% having done exactly the same work, and it is
+`roadmap.md#select-person-arrival-quadratic`, site 2 of this same
+program. What the table says is that the remaining three sites are now
+a LARGER fraction of a smaller wall, which is what R-order predicted
+and the reason it sequenced them.
