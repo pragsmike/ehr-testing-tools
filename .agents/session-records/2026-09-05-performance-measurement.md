@@ -192,3 +192,11 @@ three profile/aggregate batches, one census batch, one `make test`).
 **All five ran to completion and none was left running**; no `sleep`
 waiter was hand-rolled against a job, and each was waited on through the
 harness. No server, watcher or daemon was started at any point.
+
+## 8. Close
+
+Pushed `3114dbfe..3f786c08`, seven commits. `bin/post-push-verify`:
+remote tip matches HEAD, every commit message in range pure ASCII.
+**CI run 34008092622 concluded `success` at
+`3f786c08be80ba9af9053626a662b0051b6bbe93`.** No tag was paid — CI green
+at the tip is the close marker.
