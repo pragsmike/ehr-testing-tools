@@ -1,17 +1,16 @@
 # Future features — the torture kit
 
-This page is a menu, not a plan. Everything on it is a thing this
+This page is a menu, not a plan: everything on it is something this
 workspace does **not** do yet, written down so you can tell whether
-waiting for it is reasonable and so nobody builds around a capability
-that isn't here. Nothing below has a date, and nothing below is a
-commitment.
+waiting for it is reasonable and nobody builds around a capability that
+isn't here. Nothing below has a date or is a commitment.
 
 **What the menu is for.** If you run an HL7-handling system — an
 interface engine, a receiving EHR, an MPI, an archive — the question
-you actually have is *"what breaks it?"* Correct traffic answers only
-half of that. The other half is a torture kit: traffic that is wrong on
-purpose, in a way you chose, so that what your system does about it is
-a measurement rather than a surprise.
+you actually have is *"what breaks it?"* Correct traffic answers half of
+that. The other half is a torture kit: traffic wrong on purpose, in a
+way you chose, so what your system does about it is a measurement rather
+than a surprise.
 
 Faults live at three layers, and the whole point of separating them is
 that **a receiver that handles one correctly can still be wrong about
@@ -113,66 +112,74 @@ it.[^transport]
 
 ## Scale ergonomics
 
-**Not every gap on this page is a fault class.** Everything above is
-about traffic that is wrong on purpose. The entries below are about
-the ergonomics of asking for a lot of traffic at once — what a
-consumer generating at scale has to do by hand today, and would
-rather not.
+**Not every gap here is a fault class.** Everything above is traffic
+that is wrong on purpose; below are the ergonomics of asking for a lot
+of it at once — what generating at scale costs you by hand today.
 
 ### Stopping at a natural boundary, by event count
 
-Ask for a corpus of roughly *N* events rather than *N* patients, and
-have the run stop at the next natural boundary — an encounter closed,
-a shift ended — instead of mid-trajectory. What you get is a corpus
-sized the way you actually think about it, with no truncated patient
-at the end of it.
+Ask for roughly *N* events rather than *N* patients, and have the run
+stop at the next natural boundary — an encounter closed, a shift ended —
+rather than mid-trajectory: a corpus sized the way you think about it,
+with no truncated patient at the end.
 
 *Today:* `--patients` counts arrivals, so sizing by event count means
-running, counting, and adjusting the patient count by hand — and the
-ratio moves with which opt-in keys are on.
+running, counting and adjusting by hand — and the ratio moves with which
+opt-in keys are on.
 
-### A summarize command
+### A summarize command, and a scenario inventory
 
-Point it at a corpus — a ground-truth log or a rendered directory —
-and get the census back: how many events of each kind, how many
-messages of each type, how many patients and encounters, over what
-span. The thing you want immediately after generating, and the thing
-you want to diff between two runs.
+Point it at a corpus and get the census back: how many events of each
+kind, how many messages of each type, how many patients and encounters,
+over what span — the thing you want immediately after generating, and
+the thing you want to diff between two runs.
 
-*Today:* `ehrt sim run`'s default EDN envelope carries a run summary,
-and `--format ground-truth` piped into a frequency count of your own
-gives the per-kind census.
+**The harder half is the inventory.** A count says a corpus holds 2,850
+merges; it does not say whether any absorbed a patient who was holding
+a bed, or whether a result ever landed after its own subject was merged
+away — and those decide whether a corpus can exercise the case you are
+about to write a test for. One 533,147-event run here holds 33,681
+results and **zero** landing post-merge, so that case is not reachable
+by generating more. The inventory is the fixed set of columns that says
+so: results landing after their subject moved, was discharged or was
+merged; merges absorbing a bed-holder; cancels reinstating a bed; peak
+ward census against capacity.
+
+*Today:* the EDN envelope carries a run summary, and `--format
+ground-truth` piped into a frequency count gives the per-kind census.
+The inventory half has no shipped path — run once, by hand, from a
+script over `replay`'s projection
+(`.agents/plans/2026-09-05-performance-measurement/`).
 
 ### Progress while a long run generates
 
 A large run produces nothing observable until it produces everything.
-Progress instrumentation would say which phase is in flight and how
-far through it is, so a run that is merely slow can be told apart
-from a run that has stopped making progress.
+Progress instrumentation would say which phase is in flight and how far
+through it is, so a run that is merely slow can be told apart from one
+that has stopped — at the top of the measured range that silence lasts
+**39 minutes**.
 
 *Today:* there is no workaround. A long run is silent until it exits.
 
 ### Richer capacity-exhaustion diagnostics
 
-When a run stops on `:capacity-exhausted`, the useful answer is not
-only *that* it stopped but *what would have prevented it*: how far
-over the ceiling the arrivals ran, which ward bound first, and what
-bed count or surge allowance would have absorbed them.
+When a run stops on `:capacity-exhausted`, the useful answer is not only
+*that* it stopped but *what would have prevented it*: how far over the
+ceiling the arrivals ran, which ward bound first, and what bed count or
+surge allowance would have absorbed them.
 
-*Today:* the error payload names the patient, the ward, and the
-census at the moment of refusal — enough to find the ward that
-filled, not enough to size the fix without another run.
+*Today:* the payload names the patient, the ward and the census at
+refusal — enough to find the ward that filled, not enough to size the
+fix without another run.
 
 ### Streaming output
 
-Emit as the run goes rather than accumulating a whole corpus in
-memory first, so corpus size stops being bounded by heap. This one
-enters the menu as **pending measurement** rather than as a design:
-what has been measured is that the emit phase, not the retained event
-log, is the binding constraint at the top of the range — see
-[Scale](consuming-ground-truth.md#scale). Whether streaming is the
-right answer to that is a question the measurement has not been taken
-far enough to settle.
+Emit as the run goes rather than accumulating a whole corpus in memory
+first, so corpus size stops being bounded by heap. The measurement cuts
+both ways: with an emitter running the emit phase binds first
+([Scale](consuming-ground-truth.md#scale)); with **no emitter at all**,
+on `--format ground-truth`, the retained log still reaches the shipped
+3.88 GB ceiling on its own at ~533,000 events.
 
 *Today:* `--format ground-truth` is the cheap path; a consumer who
 writes their own emitter is not paying the emit phase at all.

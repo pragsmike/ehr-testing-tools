@@ -17,17 +17,31 @@ with them.
 
 ## Next (backlog, no session scheduled)
 - OPEN **[performance-residual-sites]** PRIORITY 1 -- what ADR-0169 saw and left
-  (`rulings.md#R-move-not-improve`): the **14 independent `engine/replay` calls**
-  in `check.clj` (~40% of the post-arc-0 7.26 s check phase), `occupancy-board`
-  folding every patient ever created, `decide :discharge`'s boarder `sort-by`, and
-  `last-uncancelled-index` (cannot ride either arc-0 carrier without a second code
-  path, ADR-0169 F-3). Site ranking within generate NOT re-profiled.
-  PARTLY PAID 2026-09-05 (`642d70a`): the per-call `m/validate` compile behind
-  `valid-event?`/`valid-persona?`/`valid-ground-truth?` is hoisted to a
-  validator built once at load, taking `check-all` on dense-7500 @20 from
-  22.70 s to 2.74 s and `make test` from 2,043 s to 1,235 s, so the
-  `engine/replay` share above must be re-read against that wall, not the
-  7.26 s one it was written for.
+  (`rulings.md#R-move-not-improve`), RE-MEASURED 2026-09-05 at `3114dbfe` over a
+  2,500 / 7,500 / 22,500-arrival decade on committed cells, generate and check
+  timed separately as `sim run --format ground-truth` piped into `sim check` --
+  the prime audience's invocation, which nothing had measured
+  (`.agents/plans/2026-09-05-performance-measurement/measurements.md`; the
+  2026-08-29 figures it replaces died in scratch, which is why it is committed).
+  **CHECK IS NO LONGER THE QUADRATIC**: startup-corrected decade slope 1.03-1.04
+  against ADR-0169's 1.814, and `occupancy-within-capacity` is 4.08% of the phase
+  against its 54.9% -- arc 0 and `642d70a` both landed. The **14 `engine/replay`
+  calls** are confirmed and understated at **50.97%** of check, but check is
+  130.57 s against generate's 2,329.46 s at 533,147 events, **5.3% of the pair's
+  wall**, so the whole win there is ~65 s.
+  **GENERATE IS THE QUADRATIC, AND STEEPENING**: decade slope 1.851, local slope
+  1.59 at the bottom rising to **2.12** at the top, so a single exponent
+  understates the next decade. Ranked by measured inclusive share of the 22,500
+  generate phase, each a RECOMMENDATION FOR A RULING and not a decision
+  (`R-measure-first` scopes that session to measurement): (1) `decide
+  :discharge`'s `waiting-boarder` **30.54%**, rowed by ADR-0169 at ~7.9%;
+  (2) `run/select-person` **19.98%**, a full-pool `filterv` per arrival that is
+  O(arrivals^2) under the provenance's own 2x-`:persons` rule and is **on no list
+  at all** -- it needs a row before it needs a fix; (3) `occupancy-board`
+  **17.11%**, rowed at 8.1%; (4) `last-uncancelled-index` **10.78%** and flat,
+  the least urgent of the four despite being the one F-3 left admissible.
+  67,500 arrivals is unreachable on shipped defaults, measured and not
+  extrapolated: 3,973 MB peak RSS against a 3.88 GB `MaxHeapSize`.
 - OPEN **[oru-control-id-collision]** PRIORITY 4 -- `control-id-for` not
   injective over `:result-available` -- 6 live duplicate MSH-10s in seed-424242,
   1 in clinic-decade demo (sweep-3 record :290); fix moves every corpus, its own
