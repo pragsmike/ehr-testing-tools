@@ -340,6 +340,12 @@ log yields the same counts.
 | `a22500-nopersons` | 431,677 | 34,677 | 13,838 | 4,125 | **0** | 2,520 | 142 | 6,842 | 187 | 6,486 |
 | `a22500-persons` | 533,147 | 33,681 | 13,459 | 3,979 | **0** | 2,850 | 167 | 6,599 | 174 | 6,252 |
 
+> **The three result columns above are SUPERSEDED — see
+> [Correction, 2026-09-06](#correction-2026-09-06--the-merge-columns-predicate-was-wrong-and-the-column-is-not-zero)
+> below.** The other eight columns are unchanged and were re-derived
+> from the same logs. The table is kept as written because it is what
+> this session found with the predicate it had.
+
 A result's `:location` is stamped **at order time** — `decide.clj` says
 so in its own words at the `result-event` binding — so comparing it
 against the subject's state as the result LANDS is exactly "what
@@ -348,6 +354,13 @@ most-specific-first so a post-merge result is not also counted as a
 merely-moved one.
 
 ### The merge column is zero on every cell, and that is the finding
+
+> **SUPERSEDED 2026-09-06. The zero was the predicate, not the corpus,
+> and this section's conclusion — that the gap is structural — is
+> WITHDRAWN.** Kept verbatim below because the reasoning it models is
+> the reasoning that produced the error: every sentence in it is
+> sound given the column, and the column was measuring the wrong
+> thing. See the correction that follows it.
 
 `.agents/plans/2026-09-01-event-mutation-population-ledger.md` recorded
 that the gated corpora contain **no result pending at a merge**, so the
@@ -375,6 +388,83 @@ what makes the zero meaningful rather than merely small: **merges
 absorbing a bed-holder** go 40 → 68 → 167, and **cancels reinstating a
 bed** 14 → 51 → 187, so the census is not silent about the neighbouring
 cases.
+
+### Correction, 2026-09-06 — the merge column's predicate was wrong, and the column is not zero
+
+Re-derived this session (ADR-0180's charter session) over the SAME
+eight logs, still in `~/perf-out`, with the same driver and the same
+heap. Nothing about the corpus moved; the instrument did.
+
+**What the predicate was.** `scenario_census.clj` counted a
+`:result-available` whose own subject's status at the event was
+`:merged`. ADR-0179's **R-queue** makes that unsatisfiable rather than
+rare: a pending result FOLLOWS the survivor, so the subject a result
+lands on is by construction the record that did NOT disappear, and a
+log where it were `:merged` is one R-queue forbids. The column was
+asking for a state the engine cannot produce, and it correctly answered
+zero on every corpus at every scale.
+
+**What the predicate is now.** R-inv's own condition, which is what
+`result-references-existing-order-and-follows-it-in-time` had to be
+widened to accept: a result whose **cited order names a different
+subject**, joined to the result's own subject by a `:merge` at `:t` at
+or before the result's `:t`. Derived from ADR-0179's wording rather
+than borrowed from `check.clj` — those two functions are private there,
+and this namespace's own population-closure rule is that an instrument
+sourced from the checker can only confirm the checker agrees with
+itself.
+
+The census now takes the log alongside `replay`'s entries, because
+`:order-event-id` is an INDEX into the log and no per-entry projection
+can resolve it. It is still pure over the log.
+
+| cell | events | results | after move | after discharge | **after merge** | merges | merge absorbs a bed-holder | cancels | reinstates a bed | moves a bed |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `a2500-nopersons` | 43,103 | 3,398 | 1,372 | 400 | **15** | 266 | 40 | 759 | 14 | 731 |
+| `a2500-persons` | 53,942 | 3,289 | 1,332 | 372 | **16** | 303 | 38 | 711 | 19 | 680 |
+| `a7500-nopersons` | 131,410 | 10,406 | 4,219 | 1,252 | **20** | 778 | 68 | 2,277 | 51 | 2,176 |
+| `a7500-persons` | 167,197 | 10,274 | 4,174 | 1,198 | **21** | 891 | 68 | 2,251 | 51 | 2,146 |
+| `a7500-w3-persons` | 167,184 | 10,274 | 4,181 | 1,198 | **21** | 891 | 68 | 2,281 | 51 | 2,176 |
+| `a7500-w9-persons` | 167,212 | 10,274 | 4,181 | 1,198 | **21** | 891 | 68 | 2,295 | 51 | 2,190 |
+| `a22500-nopersons` | 431,677 | 34,677 | 13,813 | 4,120 | **30** | 2,520 | 142 | 6,842 | 187 | 6,486 |
+| `a22500-persons` | 533,147 | 33,681 | 13,428 | 3,967 | **43** | 2,850 | 167 | 6,599 | 174 | 6,252 |
+
+**The 7,500 persons cell reads 21, and 21 is the number ADR-0179's own
+addendum independently derived** — by a different route, on the same
+configuration (`cell-a7500-persons.edn` is
+`demos/scenarios/dense-7500/config.edn` byte for byte, which
+`derive-cells.sh` asserts as its strongest check, and the run
+parameters are the same `--seed 20260824 --patients 7500 --churn`).
+That addendum counted the results whose cited order names a different
+subject directly off the log and got 21, of which 21 resolve through a
+merge; this instrument folds `replay` and gets 21. Two instruments, one
+answer.
+
+**Every cell reconciles exactly, which is the check on the fix.** The
+column's population came out of the two columns to its left, and the
+arithmetic closes on all eight: `after move` and `after discharge` each
+lose exactly the results that are now counted as crossing a merge —
+14+1=15, 13+3=16, 16+4=20, 13+8=21, 13+8=21, 13+8=21, 25+5=30,
+31+12=43. The eight columns from `merges` rightward are **identical**
+to the original table, digit for digit, which is what says the change
+reached only the result arm.
+
+**The finding inverts.** The merge column is not zero and never was:
+it grows 15/16 → 20/21 → 30/43 across the decade, and the corpus
+reaches the scenario at every scale measured, down to 2,500 arrivals.
+What was reported as a structural gap — "something in the ordering
+makes the two mutually exclusive" — was a gap in the instrument.
+`.agents/plans/2026-09-01-event-mutation-population-ledger.md`'s and
+ADR-0179's own zero-population claims are NOT corrected by this: those
+were counted over the 38 oracle roots and the downstream fixture at 500
+and 1,000, they used the referential predicate, and they are true
+there. This corrects one instrument on one set of eight cells.
+
+**The ~40% ratio below survives** and is restated here rather than
+edited in place: after-move against all results is 40.5% at 2,500,
+40.6% at 7,500 and 39.9% at 22,500 on the persons cells, against the
+40.8 / 40.8 / 40.0 the next section reports. The reclassified results
+are three per thousand.
 
 ### Two ratios that hold across the decade
 
