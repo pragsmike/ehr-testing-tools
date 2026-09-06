@@ -299,4 +299,29 @@ was `228e2c62`.
 
 ## 9. CI
 
-Filled in at close.
+All four commits went out in ONE push, so GitHub Actions ran once, at the tip.
+Verified with `gh run view` rather than assumed:
+
+| commit | run | conclusion |
+|---|---|---|
+| `08a41efd` (tip, covering `28fe10b5`, `5ac15dce`, `edecb970`) | 34065721441 | **success** |
+
+`bin/post-push-verify` ran immediately after the push: remote tip matches HEAD,
+every commit message in `228e2c62..08a41efd` is pure ASCII, and the CI run was
+reported once rather than awaited (AR-CI-4) — this section is where it was
+awaited. `gitleaks` scanned 1,482 commits and 43.94 MB at the push hook and
+found no leaks. Each of the four pushed messages was diffed against the file
+that produced it; every diff was exactly one trailing blank line, which is
+`git log --format=%B`'s own formatting artefact and not a mismatch.
+
+**`gh run watch --exit-status` REPORTED COMPLETE WHILE THE RUN WAS
+`in_progress`** — the same premature-notification shape section 4 records for
+`make test`, twice in one session and on two different commands. The
+conclusion above is `gh run view`'s own `status`/`conclusion` pair, polled
+until it read `completed success`, not the watcher's exit code.
+
+CI green at the tip is the marker this arc closed; no tag was paid (the
+de-scaffold ruling, 2026-08-25). ADR-0180's four sites are done, and with them
+the generate-quadratic program's site work; the one row left on
+`roadmap.md#performance-residual-sites` is check's fourteen `engine/replay`
+calls, which R-order puts last.
