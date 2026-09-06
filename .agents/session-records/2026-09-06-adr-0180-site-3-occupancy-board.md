@@ -280,4 +280,19 @@ green with `gh run view`. Baseline for every bracket in this session was
 
 ## 9. CI
 
-Filled in at close.
+All five commits went out in ONE push, so GitHub Actions ran once, at the tip.
+Verified with `gh run watch --exit-status` and `gh run view` rather than assumed:
+
+| commit | run | conclusion |
+|---|---|---|
+| `eaa5fdd6` (tip, covering `cd653c70`, `24f7915e`, `b66da365`, `ff8c81ae`) | 34058358488 | **success** |
+
+`bin/post-push-verify` ran immediately after the push: remote tip matches HEAD,
+every commit message in `2149db0a..eaa5fdd6` is pure ASCII, and the CI run was
+reported once rather than awaited (AR-CI-4) — this section is where it was
+awaited. Each of the five pushed messages was diffed against the file that
+produced it; every diff was exactly one trailing blank line, which is
+`git log --format=%B`'s own formatting artefact and not a mismatch.
+
+CI green at the tip is the marker this arc closed; no tag was paid (the
+de-scaffold ruling, 2026-08-25).
