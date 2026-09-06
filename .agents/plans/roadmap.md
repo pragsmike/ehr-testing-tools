@@ -30,25 +30,25 @@ with them.
   R-fold-carrier fixes all four the same way: an index maintained at
   `fold/apply-events`, with the from-scratch definition kept as the gate that
   proves the index equal at every replay entry. R-order sequences them, one
-  session each, every commit bracket-proven: (1) `decide :discharge`'s
-  `waiting-boarder` 30.54%, rowed by ADR-0169 at ~7.9% -- **LANDED
-  2026-09-06 at `75b4a868`**, inclusive share at 7,500 arrivals 25.23%
-  -> 0.00% (zero of 12,013 samples) and generate 256.15 s -> 189.79 s on
-  that cell, -26.7% corrected, both logs byte-identical and the bracket
-  IDENTICAL on all 38 roots; `apply-events` took 2.2 points of the 25.2
-  as the index's own cost, and the three sites below RISE in share
-  because the denominator shrank, not because anything regressed
-  (`.agents/plans/2026-09-05-performance-measurement/measurements.md`,
-  the 2026-09-06 site-1 section); (2) `run/select-person` 19.98% --
-  **LANDED 2026-09-06 at `03db90a4`**, inclusive share 19.17% -> 0.01%
-  (one of 10,914 samples) and generate 195.48 s -> 158.90 s on the same
-  cell, -19.5% corrected, both logs byte-identical and the bracket
-  IDENTICAL on all 38 roots; the `a2500-nopersons` control moved -1.0%,
-  the flatness a person-path index owes, against site 1's -13.7% on that
-  same cell (same file, the 2026-09-06 site-2 section);
-  (3) `sim-model/occupancy-board` 17.11%, rowed at 8.1%; (4)
-  `log-index/last-uncancelled-index` 10.78% and flat, the one F-3 left
-  admissible. Check's fourteen `engine/replay` calls (50.97% of check, 2.7% of
+  session each; ALL THREE LANDED SO FAR shipped with both cell logs
+  byte-identical and `bin/ground-truth-bracket` IDENTICAL on all 38 roots,
+  and each carries its own dated section in that measurements file rather
+  than repeating it here. (1) `decide :discharge`'s `waiting-boarder`
+  30.54%, rowed by ADR-0169 at ~7.9% -- **LANDED 2026-09-06 at
+  `75b4a868`**, inclusive share at 7,500 arrivals 25.23% -> 0.00% and
+  -26.7% corrected wall, `apply-events` taking 2.2 of the 25.2 points as
+  the index's own cost. (2) `run/select-person` 19.98% -- **LANDED
+  2026-09-06 at `03db90a4`**, 19.17% -> 0.01% and -19.5%; the
+  `a2500-nopersons` CONTROL moved -1.0%, the flatness a person-path index
+  owes. (3) `sim-model/occupancy-board` 17.11%, rowed at 8.1% -- **LANDED
+  2026-09-06 at `24f7915e`**, 17.87% -> **0.00%** (zero of 9,238 samples)
+  and -18.1%, `apply-events` taking 2.4 of the 17.9; `a2500-nopersons` is
+  NOT a control here -- the board is on the shared path and that cell
+  moved -2.1%, small because the site is quadratic in arrivals and it has
+  a third of them. Every unlanded site RISES in share as the denominator
+  shrinks, which is what R-order predicted rather than a regression.
+  (4) `log-index/last-uncancelled-index` 10.78% and flat, the one F-3 left
+  admissible -- now the largest named site under `decide` at 21.63%. Check's fourteen `engine/replay` calls (50.97% of check, 2.7% of
   the pair, worth ~65 s) come last. The ADR carries each site's scan, its
   replacing index, its draw- or allocation-affecting verdict and its
   equivalence argument, and names what is out of scope. 67,500 arrivals is

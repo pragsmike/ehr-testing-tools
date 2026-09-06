@@ -650,3 +650,107 @@ so because the denominator shrank, and every one of them is doing
 exactly the work it did before -- the same reading the site-1 section
 made of its own three rising rows, and the same reason R-order
 sequenced these sites rather than fixing them together.
+
+## Site 3 measured, 2026-09-06 -- `occupancy-board` rides the fold
+
+ADR-0180 site 3 landed at `24f7915e`, over a baseline of `2149db0a` --
+site 2's own close, so the "before" column here is the code the section
+above ends at. `sim-model/occupancy-board` is no longer an `into {}`
+over the whole `:patients` map per placement: `fold/apply-events`
+maintains the same map as `:board` off each event's own pre/post
+participant pair, and the five sites that rebuilt it read the index --
+four in `decide` plus
+`log-index/bed-reoccupied-by-someone-else?`. `bed-ready-location`'s
+second query shape, `(occupancy-board (dissoc (:patients world)
+patient-id))`, is answered by masking that one index rather than by a
+second one. Output-identical by construction and by measurement: both
+cells below reproduced their pre-change log BYTE-FOR-BYTE, and
+`bin/ground-truth-bracket` reported IDENTICAL on all 38 digested roots
+at both commits.
+
+### Wall
+
+**Same caution as the two sections above.** One timed JVM per cell,
+generate only, this session's machine and load. This session's
+`a7500-persons` baseline reads 164.70 s where the site-2 section
+measured 158.90 s at the very commit this one baselines against -- a
+3.7% spread on identical code, which is the size of the noise any single
+figure here carries. Only before-against-after within this session says
+anything, and that pair was run back to back, same script, same warm-up
+shape.
+
+| cell | before | after | delta | corrected delta |
+|---|---|---|---|---|
+| `a7500-persons` | 164.70 s | **136.32 s** | -28.38 s, **-17.2%** | **-18.1%** |
+| `a2500-nopersons` | 30.25 s | 29.61 s | -0.64 s, -2.1% | -2.9% |
+
+`corrected` subtracts the 8.0 s fixed `sim run` startup measured above.
+
+**THE SMALL CELL IS NOT A CONTROL HERE, AND ITS FLATNESS IS NOT THE
+RESULT.** Site 2's `a2500-nopersons` row was a control: that cell has no
+`:persons`, so the code site 2 replaced was never called at all. The
+board is on the SHARED path and this cell does run it -- the -2.1% is a
+real if small win, and the reason it is small is the shape of the
+defect. The scan is O(patients) per placement over a `:patients` map
+that is the whole arrival population from t 0, so its total cost goes as
+arrivals squared: at 2,500 arrivals against 7,500 that is a ninth of the
+work spread over a wall a fifth the size. A quadratic site pays back in
+proportion to the square, which is exactly why this program is
+sequenced by share at the TOP cell.
+
+**Both logs are byte-identical across the change.** `a7500-persons`
+sha256 `3018299a0e0299c40ba73580793c8135674e8f988f9c332d18eedd45b70d3bd3`
+and `a2500-nopersons`
+`c22d65730b9006b1593de94461200084d2f4865b8cbd47c4893db5df98a55208`,
+before and after -- the same two digests the site-1 and site-2 sections
+record, which makes them a five-commit-long byte-identity chain.
+
+**Peak RSS fell at the large cell and rose at the small one**, again:
+2,248 -> 2,197 MB at `a7500-persons`, 959 -> 1,102 MB at
+`a2500-nopersons`. Recorded, not claimed, for the reason the section
+above gives at length -- a single-JVM RSS reading against a 3.88 GB heap
+cannot carry a claim of that size, and the cell that moved 15% the wrong
+way while doing strictly less allocation is the demonstration rather
+than an anomaly.
+
+### Profile
+
+One JFR recording per side at 7,500 arrivals, `--stack-depth 2048`, same
+script and cell as above. The BEFORE column is
+`raw/a7500-persons-site2.gen.profile.md` -- site 2's own after-profile,
+recorded the same day on this machine at the commit this session
+baselines against -- rather than a fresh recording of identical code.
+After is `raw/a7500-persons-site3.gen.profile.md`; 10,914 and 9,238
+`jdk.ExecutionSample` samples. Inclusive share, so the columns do not
+sum.
+
+| site | before | after |
+|---|---|---|
+| `sim-model/occupancy-board` | 17.87% | **0.00%** |
+| `decide` (the whole dispatch) | 59.44% | 51.17% |
+| `log-index/last-uncancelled-index` | 17.63% | 21.63% |
+| `fold/apply-events` | 13.06% | 15.43% |
+| `person-simulator` | 12.01% | 15.33% |
+| `run/select-person` | 0.01% | 0.01% |
+| `decide :discharge`'s boarder sort-by | 0.01% | 0.01% |
+
+**0.00% is ZERO samples of 9,238**, and the site is gone from the
+innermost-project-frame table, where it had held the top two rows it
+appears in at all -- `occupancy_board$fn` 11.87% and
+`occupancy_board.invokeStatic` 5.83%, 17.70 points between them. That
+table's new top row is `last_uncancelled_index$fn` at 9.76%, which is
+site 4.
+
+**`apply-events` ABSORBED PART OF IT, and that is the index's own cost
+charged where the charter said it would be**: 13.06% -> 15.43%, with
+`fold$apply_events$fn` appearing in the innermost table at 4.76%. 17.9
+points became 2.4. This is site 1's pattern and not site 2's -- site 2's
+sweep was O(n) once at `prelude` and had no row to appear in, while both
+in-fold indexes are per-event work that lands in the fold's own frame.
+
+**Every other row that rises is doing exactly the work it did before.**
+The denominator shrank by a sixth, and `licensed-bed-ids` newly appears
+in the innermost table at 3.30% for the same reason -- `allocate`'s id
+derivation was always there, behind a board scan that is no longer in
+front of it. The one remaining site, `last-uncancelled-index`, is now
+the largest named site under `decide` and is site 4 of this program.
