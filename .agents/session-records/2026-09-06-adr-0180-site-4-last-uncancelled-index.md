@@ -286,9 +286,21 @@ two timed cell-pair runs (before, after), one timed `a22500-nopersons` generate,
 one JFR profile run, and the `make test` runs of section 6. Everything else —
 `bin/preflight`, two `make state-derived` runs, and several throwaway
 `clojure -M:dev:test` probes (the namespace smoke runs, the corpus-shape probes,
-the negative control) — ran in the foreground. Several `sleep` waiters were
-moved off the foreground by the harness when they outran their timeouts; each
-exited on its own. None was left running at close.
+the negative control) — ran in the foreground.
+
+**AND SEVENTY-TWO BACKGROUND `sleep` WAITERS, WHICH SHOULD NOT HAVE EXISTED.**
+The skill says it in as many words — "never hand-roll an `until` waiter for one:
+use the harness monitor or the job's completion notification" — and this session
+hand-rolled the same thing in a slower shape, one background `sleep` per poll of
+a running suite, bracket, cell or CI run. It compounded with the finding in
+section 4: because the completion notifications for those waiters arrived faster
+than the work they were watching, each one woke the session into another poll,
+so the count grew rather than the wall shrinking. `pkill -x sleep` at close
+terminated all 72 and left no `java` and no `make`; `ps` confirmed zero of each.
+The right instrument for the next session of this shape is the harness monitor,
+and the sentence this paragraph replaces — inherited unread from the site-3
+record, which really did only have a few — is what a template copied without
+being re-read looks like.
 
 ## 8. HEAD landed
 
