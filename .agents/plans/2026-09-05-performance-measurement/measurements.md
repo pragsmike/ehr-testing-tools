@@ -178,7 +178,132 @@ the difference.
 
 ## Profiles
 
-<!-- PROFILES -->
+Recorded with JFR — zero new dependency, the recorder ships in the JVM
+and `jfr` is a JDK 21 tool — by
+[`profile-cell.sh`](profile-cell.sh), which also writes the aggregated
+tables. Full tables per phase are in [`raw/`](raw/):
+`a7500-persons.gen.profile.md`, `a22500-persons.gen.profile.md`,
+`a7500-persons.check.profile.md`,
+`a22500-persons.checkdeep.profile.md`.
+
+**The `.jfr` recordings themselves are NOT committed** — 197 MB and
+25 MB, against the 5 MB ceiling this session was given. The aggregated
+tables are, and `profile-cell.sh` regenerates them from a fresh
+recording.
+
+### Two traps this profile fell into first, both worth stating
+
+**`jfr print` truncates every stack to FIVE frames by default.** Not
+the recording — the printer. A first aggregation run over these exact
+recordings reported `replay` at **0.00%** of the check phase, and the
+reading "arc 0 removed it entirely" was available and completely wrong:
+the tool was showing the top five frames of each sample, and `replay`
+sits far below that. `--stack-depth 2048` is in the script for this
+reason and the figures below are all taken with it. **An inclusive
+profile of Clojure taken at the default depth is not a weak measurement,
+it is a wrong one**, and it fails in the direction of declaring outer
+frames free.
+
+**The recording's own `stackdepth` is 64 by default**, which is a
+separate cap and a real one for Clojure. The check phase was re-recorded
+at `stackdepth=2048` (`raw/a22500-persons.checkdeep.profile.md`) to
+check whether the outer frames were being lost; they were not — 50.98%
+against 50.97% for `apply-events` between the two recordings, so the
+default depth was adequate here. The generate profile was NOT
+re-recorded deep (forty minutes) and carries that as a caveat: its
+innermost-frame table is unaffected either way.
+
+### Generate — where the time actually is
+
+Inclusive share: the fraction of samples taken anywhere beneath the
+named function. **Shares do not sum to 100%** — a sample inside
+`occupancy-board` under `decide` counts in both, which is the point.
+
+| site | 7,500 | **22,500** | ADR-0169's figure |
+|---|---|---|---|
+| `decide` (the whole dispatch) | 62.02% | **70.35%** | — |
+| `decide :discharge`'s `waiting-boarder` | 25.23% | **30.54%** | ~7.9%, rowed OUT |
+| `run/select-person` | 14.17% | **19.98%** | **on no list at all** |
+| `sim-model/occupancy-board` | 11.65% | **17.11%** | 8.1%, rowed OUT |
+| `log-index/last-uncancelled-index` | 10.29% | **10.78%** | 5.9%, F-3 |
+| `person-simulator` (what `:persons` costs) | 7.18% | 4.10% | — |
+| in-run self-check (`sim-check`) | 9.88% | 3.52% | — |
+| `fold/replay` | 6.52% | 2.32% | — |
+| `patient-simulator` (the module walk) | 2.30% | 0.79% | — |
+| malli | 1.96% | 0.54% | — |
+
+**The three sites that are RISING are the three ADR-0169 declined to
+fix.** `waiting-boarder`, `occupancy-board` and `last-uncancelled-index`
+were rowed OUT under `rulings.md#R-move-not-improve` at estimated shares
+of 7.9%, 8.1% and 5.9%. Measured at the top of the decade they are
+**30.54%, 17.11% and 10.78%** — between two and four times their
+estimates, and two of the three are still climbing between 7,500 and
+22,500. The estimates were made by inspection; these are samples.
+
+**`run/select-person` is a site nobody has named**, and at 19.98% it
+is the second-largest in the generate phase. It is a `filterv` over the
+WHOLE person population, taken once per arrival, to drop people whose
+death instant has passed (`run.clj`, `select-person`). The provenance
+config makes `:persons :count` **2× the arrival count** by rule, so
+that filter is O(arrivals × persons) = **O(arrivals²)** by construction
+— which is exactly the shape of the accelerating curve in the slope
+table above, and it is absent from ADR-0169 because ADR-0169 profiled a
+configuration in which the person layer did not yet exist.
+
+Self-time (top frame) is in the `raw/` tables and is deliberately not
+reproduced here: its top entries are `KeywordLookupSite$1.get` at
+12.58% and `Util.equiv` at 9.62%, which are true and name no site. The
+`raw/` files also carry a third table attributing each sample to its
+innermost `ehrt.` frame, which is the truncation-immune version of the
+one above.
+
+### Check — the roadmap's replay claim, measured
+
+| site | share of the check phase |
+|---|---|
+| `sim-check`, whole namespace | **78.23%** |
+| **the `engine/replay` calls** | **50.97%** |
+| `fold/apply-events` (what `replay` is now a projection of) | 50.98% |
+| `evolve` (the per-event patient fold) | 8.56% |
+| `occupancy-within-capacity` | **4.08%** |
+| malli (after the `642d70a` hoist) | 1.38% |
+
+**`roadmap.md#performance-residual-sites` is confirmed and slightly
+understated.** It says the 14 independent `engine/replay` calls are
+"~40% of the post-arc-0 7.26 s check phase". At 533,147 events they are
+**50.97%**, and `apply-events` at 50.98% shows that essentially all of
+`replay`'s cost is the fold it is now a projection of rather than
+anything around it.
+
+**`occupancy-within-capacity` was 54.9% of the check phase for ADR-0169
+and is 4.08% now.** Arc 0 did what it was commissioned to do, and this
+is the number that says so.
+
+### What this ranks, as a recommendation for a ruling and not a decision
+
+**The check phase is no longer where the money is.** It is 130.57 s
+against generate's 2,329.46 s at the same cell — **5.3% of the pair's
+wall** — and it is linear, so it does not get worse. Removing 13 of the
+14 replay folds is a real win of roughly **65 s**, and it is worth
+about one twentieth of what the same effort buys in generate.
+
+Ranked by measured share of the top-of-decade generate phase:
+
+1. **`decide :discharge`'s `waiting-boarder` — 30.54%.** A `filter` plus
+   `sort-by` over every patient, per discharge, to find one boarder.
+2. **`run/select-person` — 19.98%.** A full pool `filterv` per arrival,
+   O(arrivals²) under the provenance's own `:persons` rule. **Not on any
+   existing list**, so it needs a row before it needs a fix.
+3. **`sim-model/occupancy-board` — 17.11%.** Folds every patient ever
+   created because `init-world` seeds `:patients` with all of them.
+4. **`last-uncancelled-index` — 10.78%**, and flat, so it is the least
+   urgent of the four despite being the one ADR-0169 F-3 left admissible.
+5. **The 14 `engine/replay` calls in `check.clj` — 50.97% of check**,
+   which is 2.7% of the pair.
+
+Nothing above is enacted. `rulings.md#R-measure-first` scopes this
+session to measurement, and items 1-3 are all draw-affecting or
+allocation-affecting changes that need their own equivalence proof.
 
 ## Scenario census
 
