@@ -242,3 +242,4 @@ append-only, never-reassigned rule stands.
 - **ADR-0177** — `:new` supersedes a cancel-transfer reinstatement, and does not supersede a cancel-discharge — [`0177-new-supersedes-a-cancel-transfer-reinstatement.md`](adr/0177-new-supersedes-a-cancel-transfer-reinstatement.md) — Accepted
 - **ADR-0178** — `:window-close-t` is ABSENT, never nil, and the run path validates its own schema — [`0178-window-close-t-absent-not-nil.md`](adr/0178-window-close-t-absent-not-nil.md) — Accepted
 - **ADR-0179** — a merge releases the bed and carries the pending result across — [`0179-merge-transfer-semantics.md`](adr/0179-merge-transfer-semantics.md) — Accepted
+- **ADR-0180** — indexes ride the fold: the generate-quadratic program — [`0180-indexes-ride-the-fold.md`](adr/0180-indexes-ride-the-fold.md) — Accepted
