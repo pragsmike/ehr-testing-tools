@@ -386,3 +386,55 @@ BEFORE they land, so that a table which does move says so.
 
 **Nothing here is enacted.** This ADR is the charter and its rows; the
 sites are five sessions that have not run.
+
+### Dated corrections
+
+**2026-09-06 — two corrections from site 3's session**
+(R-min-clamp-correction, and R-pins for the second -- both ratified in
+the design channel 2026-09-06, like the four above).
+Neither changes a decision. Both change a sentence a later reader would
+otherwise take on trust, which is what a charter owes once sessions have
+run against it. The sections above are left as they stood, and this
+section is where they are read against.
+
+**1. Section 2's `min` clamp is DEFENSIVE, not load-bearing.** That
+section says the clamp "at a draw very close to 1.0 is what keeps the
+index in range". Site 2's session probed it directly and it never fires:
+for `draw` the largest value `.nextDouble` can return
+(`Math/nextDown 1.0`), `(long (* draw n))` was `< n` for every `n` in
+1..200,000 — zero hits in IEEE-754 double arithmetic
+(`.agents/session-records/2026-09-06-adr-0180-site-2-select-person.md`
+section 5). **THE CLAMP STAYS**, and nothing was changed on the strength
+of the finding: R-move-not-improve says the body moves character for
+character, and it did. What survives of the original sentence is its
+second half — "it moves with the site or the site changes behaviour at
+the boundary" — which was always the load-bearing claim. What is
+withdrawn is the first half's implication that the engine currently
+depends on it.
+
+**2. Section 3's five call-site line cites, refreshed.** They were
+written on 2026-09-05 and were 23 lines stale by the time site 3's
+session opened, which is the ordinary fate of a line cite in a file
+under edit. As of `24f7915e` — the commit that repointed them — the five
+sites read the index rather than rebuilding the board, and are:
+
+| site | cited here as | at `24f7915e` |
+|---|---|---|
+| `decide :admission` | `decide.clj:1010` | `decide.clj:1047` |
+| `decide :transfer` | `decide.clj:1063` | `decide.clj:1102` |
+| `decide`'s `bed-ready-location` (the `dissoc` query) | `decide.clj:1136` | `decide.clj:1184` |
+| `decide :transfer-in-error` | `decide.clj:1341` | `decide.clj:1390` |
+| `log-index/bed-reoccupied-by-someone-else?` | `log_index.clj:182` | `log_index.clj:193` |
+
+**AND SECTION 3'S CENSUS OF THEM WAS ONE SHORT.** It says "Four call
+sites in `decide` and one in `log_index.clj:182`"; there is a SIXTH,
+`ehrt.sim-check.check`'s `surge-only-when-earlier-rungs-exhausted`
+(`check.clj:935` at the time this ADR was written, unmoved by site 3).
+It is in the CHECK phase and calls the definition over a replay entry's
+`:world-before`, not over a world — and since `replay` deliberately does
+not carry `:board`, it is a site the index does not reach and correctly
+still rebuilds. The omission changed no decision, because that site was
+never in scope; it is recorded because a reader counting call sites
+against the tree would otherwise find one this record does not mention,
+and because it is the reason the definition stays live code rather than
+becoming a test-only reference.
