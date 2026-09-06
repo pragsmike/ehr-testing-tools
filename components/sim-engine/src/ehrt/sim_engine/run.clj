@@ -1281,6 +1281,20 @@
                                          [(pid-for i) (state/initial-patient (pid-for i) (mrn-for i))]))
                     :facility facility
                     :providers materialized-providers
+                    ;; ADR-0180 site 3: the occupancy board's SEED, and
+                    ;; the one in-fold index this world has to carry
+                    ;; rather than wait for. `fold/apply-events` opens
+                    ;; `:board` on the first batch, but `decide` runs
+                    ;; BEFORE that batch and `sim-model/free` calls the
+                    ;; board as a PREDICATE -- `(remove board ids)` on a
+                    ;; missing one throws rather than reading empty,
+                    ;; which is why `:boarder-index` needs no seed here
+                    ;; and this does. `{}` is what these patients' board
+                    ;; actually IS: every one of them is
+                    ;; `state/initial-patient`, which names no location,
+                    ;; so the seed is the definition's own answer at t 0
+                    ;; and not a stand-in for it.
+                    :board {}
                     :order-profiles order-profiles
                     :persona-config persona-config
                     :module-horizon-days module-horizon-days

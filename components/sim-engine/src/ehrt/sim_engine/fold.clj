@@ -231,6 +231,106 @@
   (some (fn [[_ pid]] (when-not (= pid excluded-id) pid))
         (get (:boarder-index world) ward-name)))
 
+(defn bed-of
+  "A patient's BOARD MEMBERSHIP, computed from ONE patient state and
+  nothing else: the bed that state names, or nil.
+
+  It is `sim-model/occupancy-board`'s own `keep` body with the
+  patient-id half dropped, term for term -- including the ABSENCE of a
+  status test, which is the definition's own choice being mirrored
+  rather than a simplification an index took on the way past. The board
+  keeps every patient whose `:location` names a bed, whatever their
+  `:status`, and so does this.
+
+  ADR-0180's R-membership-from-post-state, the same way `boarder-entry`
+  above satisfies it: membership is RECOMPUTED from a patient state and
+  never derived from which event just happened, so there is no
+  add/remove case per event kind to enumerate and none to miss."
+  [p]
+  (get-in p [:location :bed]))
+
+(defn update-board
+  "The occupancy board, folded one event forward (ADR-0180 site 3):
+  `bed-id -> patient-id`, whose from-scratch definition is
+  `sim-model/occupancy-board` and stays that.
+
+  ONE rule and no others, `update-boarders`' own: for each of this
+  event's patient participants, take `bed-of` of its PRE-event state and
+  of its POST-event state and reconcile the two. A bed that did not move
+  writes nothing; one that did retires the old key and files the new.
+
+  THE RETIREMENT IS GUARDED BY THE VALUE -- `(= patient-id (get idx
+  before))` -- and the guard is LOAD-BEARING, not defensive. A
+  `:bed-swap`'s two participants exchange beds under ONE event, so
+  whichever is reconciled first files its new bed over a key the other
+  participant still legitimately holds; unguarded, the second would then
+  retire the key the first had just filed and the pair would come out
+  one bed short. Guarded, that stale-looking write is corrected by the
+  other participant's own `assoc` and the board lands exactly where a
+  from-scratch scan of the post-event map lands -- in either participant
+  order. The same argument covers a vacate paired with an arrival into
+  the bed being vacated.
+
+  Only participants are considered, and that is soundness rather than an
+  optimisation, for the reason `update-boarders` above gives: `evolve`
+  folds an event into exactly its participants' states (sim/ADR-0010),
+  so no other patient's `:location` can have moved under it. That is the
+  same pre/post pair, and the same argument, `update-beds` runs on.
+
+  ON A DOUBLE-OCCUPANCY WORLD THE TWO ANSWERS DIVERGE, and this is
+  NAMED, NOT FIXED (ADR-0180's R-double-occupancy). `occupancy-board`'s
+  `into {}` keeps whichever of two patients sharing a bed comes LAST in
+  the `:patients` map's own seq order; this index keeps whichever wrote
+  the bed last in EVENT order. `ehrt.sim-check.check`'s
+  `no-double-occupancy` convicts any log that reaches that state, so it
+  is unreachable in a log the checker passes -- the index is specified
+  on no-double-occupancy worlds and the equality law quantifies over
+  generated logs. On an input the checker would have convicted anyway it
+  answers a hash order's question with an event order's answer, which is
+  said here rather than left for a reader to discover."
+  [index patients-before patients-after participants]
+  (reduce (fn [idx {:keys [patient-id]}]
+            (let [before (bed-of (get patients-before patient-id))
+                  after (bed-of (get patients-after patient-id))]
+              (if (= before after)
+                idx
+                (cond-> idx
+                  (and before (= patient-id (get idx before))) (dissoc before)
+                  after (assoc after patient-id)))))
+          (or index {})
+          participants))
+
+(defn board-without
+  "THE INDEX'S ANSWER to `decide`'s SECOND board question: the board as
+  it stands with `patient-id` removed from `:patients` --
+  `bed-ready-location`'s own `(sim-model/occupancy-board (dissoc
+  (:patients world) patient-id))`, which asks which beds are held once
+  the patient whose discharge is the occasion is out of the way.
+
+  A SECOND QUERY SHAPE IS WHERE AN INDEX MOST EASILY DIVERGES FROM ITS
+  DEFINITION -- ADR-0180 site 3 says exactly that about this call site
+  -- so it is written as a MASK over the one index rather than as a
+  second index. A patient holds at most one bed (`:location` carries a
+  single `:bed`), so at most one entry of the board can name them, and
+  dropping their own bed's key when the board agrees they hold it is the
+  whole of the removal.
+
+  THE VALUE GUARD IS WHAT MAKES IT EXACT rather than defensive, in the
+  same sense `update-board`'s is: where the board names some OTHER
+  occupant of `patient-id`'s bed, that occupant is still there after the
+  `dissoc`, so leaving the key is what the definition does. The residual
+  divergence runs the other way and is R-double-occupancy's: where the
+  board names `patient-id` and a second patient shares the bed, the
+  definition keeps the bed under that second patient's id and this mask
+  drops the key. Unreachable in a log `no-double-occupancy` passes;
+  written down because it is not unreachable in one it convicts."
+  [world patient-id]
+  (let [board (:board world)
+        bed (bed-of (get-in world [:patients patient-id]))]
+    (if (and bed (= patient-id (get board bed)))
+      (dissoc board bed)
+      board)))
+
 (def reinstatable-event-types
   "The event classes a cancel decide reinstates state FROM, and therefore
   the only ones `run`'s `:reinstate-index` records (ADR-0169).
@@ -300,11 +400,19 @@
   else, which is what keeps a site that does not opt in paying nothing
   for an index it never reads. Site 1 opts into `:boarder-index`; sites
   2 and 3 do not, and a boarder index is in neither a replay entry nor
-  a patient state."
+  a patient state.
+
+  AND `:board` MAKES IT FIFTEEN -- ADR-0180 site 3, 2026-09-06, the
+  occupancy board `bed-id -> patient-id` that `sim-model/occupancy-
+  board` recomputes from the whole `:patients` map on demand. It rides
+  this fold under exactly the contract the paragraph above states, and
+  the two sites that decline it decline it for the same two reasons:
+  `replay` returns entries and `reinstated-state` returns a patient
+  state, and an occupancy board is in neither."
   #{:encounter-stamp :warm-up-mark :log-ordinal :reinstate-index
     :citation-index :registration-index :patient-bootstrap
-    :patient-state :bed-index :boarder-index :log-mirror :log-accumulator
-    :state-history :replay-entries})
+    :patient-state :bed-index :boarder-index :board :log-mirror
+    :log-accumulator :state-history :replay-entries})
 
 (def run-loop-projection
   "Census site 1 -- `ehrt.sim-engine.run`'s in-loop fold. THE FULL
@@ -328,6 +436,17 @@
   which is why the carrier can be here at all -- the pre-event and
   post-event patient maps both exist at this point and nowhere later,
   the same sentence the bed index is here under.
+
+  `:board` IS THE FIFTEENTH AND IS NOT INERT EITHER, for the same shape
+  of reason (ADR-0180 site 3). Four `decide` methods and
+  `log-index/bed-reoccupied-by-someone-else?` ask their occupancy
+  question against the world this fold returns, and until site 3 each of
+  them rebuilt the whole board from `(:patients world)` to ask it. THIS
+  SITE ALONE MUST SEED IT: `decide` runs BEFORE the batch that would
+  open the index, and `sim-model/free`'s `(remove board ids)` is not
+  defined on a missing one, so `run`'s `init-world` carries `:board {}`
+  -- which is the board its own seeded patients actually have, every one
+  of them `state/initial-patient` and naming no location.
 
   `:replay-entries` is inert here for a different reason -- not that its
   branch never fires, but that nothing READS what it accumulates.
@@ -357,6 +476,16 @@
   formality. It is NOT the arc's thirty-ninth cell and does not touch
   that count: the omission the next paragraphs are about is a different
   one, ruled for a different reason.
+
+  NOR THE FIFTEENTH, `:board` (ADR-0180 site 3, 2026-09-06), and the
+  sentence above is the whole argument again with one noun changed: this
+  site returns ENTRIES, an occupancy board is not in one, and it is
+  50.97% of the check phase. `ehrt.sim-check.check`'s own
+  `surge-only-when-earlier-rungs-exhausted` does ask the board's
+  question over these entries -- and asks it of `sim-model/occupancy-
+  board`, the DEFINITION, against a replay entry's `:world-before`
+  rather than of an index this site would have had to carry. It is not
+  one of the arc's thirty-nine cells either.
   Each bullet below names why that pair moved no output -- the cone the
   census's section 3b predicted, as the commit that took it found it,
   except the first, whose cone predicted a MOVE and was refuted by
@@ -557,6 +686,17 @@
     an index is guarded by its projection membership and by nothing
     else, so a site that never reads one pays nothing for it.
 
+  * `:board` -- ADR-0180 site 3, 2026-09-06, the fifteenth, and inert
+    twice over for the two reasons its site-1 twin above is: a
+    `reinstated-state` is a PATIENT STATE and an occupancy board is not
+    in one, and this site's world is `{:patients {}}` so there would be
+    nothing in it to index. The reinstatement's own bed question is
+    asked separately against the LIVE board, which is
+    `bed-reoccupied-by-someone-else?` -- and since site 3 that function
+    reads the run world's `:board` rather than rebuilding the
+    definition, which changes nothing here: the world it reads is
+    `run`'s, never this fallback's.
+
   THERE IS NOTHING OF THE UNIFICATION ARC'S OWN THAT IT DOES NOT GET.
   Site 3 names every one of that arc's thirteen, its ruled end state,
   and it was the SECOND of the three sites to reach it -- site 2 keeps
@@ -589,12 +729,18 @@
   `(:world acc')` under `:ground-truth`, which is where a mid-run
   `decide` reads the log back from. `:log-ordinal` needs none either:
   its base is derived from `(:world acc)` on entry. Nor do the two
-  world-carried indexes, `:bed-index` and `:boarder-index`: each reads
-  and writes its own key of `(:world acc)`, and `:boarder-index`
-  tolerates that key's ABSENCE on entry, which is what makes the run
+  world-carried indexes, `:bed-index`, `:boarder-index` and `:board`:
+  each reads and writes its own key of `(:world acc)`, and the latter
+  two tolerate that key's ABSENCE on entry, which is what makes the run
   loop's first batch legal against a seeded world that carries no index
   yet (`ehrt.sim-engine.run`'s `init-world` seeds every patient
   `:status :new`, so the index it does not carry is the empty one).
+  `:board` is nonetheless SEEDED at that call site and `:boarder-index`
+  is not, and the asymmetry is a property of the READERS rather than of
+  the concerns: `first-boarder` reads a missing key as nil, which is the
+  answer, while `sim-model/free` calls the board as a predicate and a
+  missing one would throw. `run` decides its first `:admission` before
+  the batch that would open either index.
 
   THE ORDER IS `run`'s, unchanged, and that is what makes stage 1
   output-identical by construction rather than by assertion: decorate
@@ -710,7 +856,17 @@
                        (assoc :boarder-index
                               (update-boarders (:boarder-index w-next)
                                                (:patients w) (:patients w-next)
-                                               participants)))
+                                               participants))
+
+                       ;; ADR-0180 site 3: the occupancy board, off the
+                       ;; SAME pre/post participant pair the two indexes
+                       ;; above read -- a third map built in this one
+                       ;; pass, not a third pass over `:patients`.
+                       (projection :board)
+                       (assoc :board
+                              (update-board (:board w-next)
+                                            (:patients w) (:patients w-next)
+                                            participants)))
                      ridx' cidx' gidx' entries']))
                 [world (:reinstate-index world) (:citation-index world)
                  (:registration-index world) (:entries acc)]
