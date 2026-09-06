@@ -22,36 +22,32 @@ with them.
   (`.agents/plans/2026-09-05-performance-measurement/measurements.md`). CHECK IS
   NO LONGER THE QUADRATIC: corrected decade slope 1.03-1.04 against ADR-0169's
   1.814, and the whole phase is 130.57 s against generate's 2,329.46 s at
-  533,147 events -- 5.3% of the pair's wall. GENERATE IS, and is steepening:
-  corrected decade slope 1.851, local slope 1.587 at the bottom rising to 2.116
-  at the top, so one exponent understates the next decade. FOUR SITES OF ONE
-  SHAPE -- a per-event or per-arrival scan over a population that is only ever
-  appended to -- are 78.4 points of inclusive share at 22,500 arrivals, and
-  R-fold-carrier fixes all four the same way: an index maintained at
-  `fold/apply-events`, with the from-scratch definition kept as the gate that
-  proves the index equal at every replay entry. R-order sequences them, one
-  session each; ALL THREE LANDED SO FAR shipped with both cell logs
-  byte-identical and `bin/ground-truth-bracket` IDENTICAL on all 38 roots,
-  and each carries its own dated section in that measurements file rather
-  than repeating it here. (1) `decide :discharge`'s `waiting-boarder`
-  30.54%, rowed by ADR-0169 at ~7.9% -- **LANDED 2026-09-06 at
-  `75b4a868`**, inclusive share at 7,500 arrivals 25.23% -> 0.00% and
-  -26.7% corrected wall, `apply-events` taking 2.2 of the 25.2 points as
-  the index's own cost. (2) `run/select-person` 19.98% -- **LANDED
-  2026-09-06 at `03db90a4`**, 19.17% -> 0.01% and -19.5%; the
-  `a2500-nopersons` CONTROL moved -1.0%, the flatness a person-path index
-  owes. (3) `sim-model/occupancy-board` 17.11%, rowed at 8.1% -- **LANDED
-  2026-09-06 at `24f7915e`**, 17.87% -> **0.00%** (zero of 9,238 samples)
-  and -18.1%, `apply-events` taking 2.4 of the 17.9; `a2500-nopersons` is
-  NOT a control here -- the board is on the shared path and that cell
-  moved -2.1%, small because the site is quadratic in arrivals and it has
-  a third of them. Every unlanded site RISES in share as the denominator
-  shrinks, which is what R-order predicted rather than a regression.
-  (4) `log-index/last-uncancelled-index` 10.78% and flat, the one F-3 left
-  admissible -- now the largest named site under `decide` at 21.63%. Check's fourteen `engine/replay` calls (50.97% of check, 2.7% of
-  the pair, worth ~65 s) come last. The ADR carries each site's scan, its
-  replacing index, its draw- or allocation-affecting verdict and its
-  equivalence argument, and names what is out of scope. 67,500 arrivals is
+  533,147 events -- 5.3% of the pair's wall. GENERATE WAS, and was steepening:
+  corrected decade slope 1.851, local slope 1.587 at the bottom rising to
+  2.116 at the top. FOUR SITES OF ONE SHAPE -- a per-event or per-arrival
+  scan over a population only ever appended to -- were 78.4 points of
+  inclusive share at 22,500 arrivals, and R-fold-carrier fixed all four the
+  same way: an index maintained at `fold/apply-events`, with the
+  from-scratch definition kept as the gate proving it equal at every replay
+  entry. R-order sequenced them one session each and **ALL FOUR LANDED
+  2026-09-06** -- `waiting-boarder` `75b4a868`, `select-person` `03db90a4`,
+  `occupancy-board` `24f7915e`, `last-uncancelled-index` `5ac15dce` -- every
+  commit with both cell logs byte-identical and `bin/ground-truth-bracket`
+  IDENTICAL on all 38 roots, a seven-commit byte-identity chain, each
+  session's detail in its own dated section of that measurements file.
+  CUMULATIVELY at 7,500 arrivals each of the four
+  is now 0.00%-0.01% inclusive share where it was 25.23%, 19.17%, 17.87% and
+  21.63% at the head of its own session, `apply-events` absorbed the lot at
+  7.56% -> 20.05%, and the cell went 256.15 s -> 112.29 s, **-58.0%
+  corrected** (`a2500-nopersons` 34.85 s -> 26.92 s, -29.5%) -- a LOWER
+  BOUND, since every re-baseline read 3-6% higher than the previous
+  session's after on identical code. AT THE TOP OF THE DECADE, one timed
+  generate: `a22500-nopersons` **1,472.56 s -> 396.18 s**, a 3.7x speedup
+  over a log BYTE-IDENTICAL to the committed 2026-09-05 digest -- 431,677
+  events agreeing to the byte, an order of magnitude past what the 38
+  oracle roots and the two bracketed cells reach. The one row left is
+  check's fourteen `engine/replay` calls (50.97% of check, 2.7% of the pair,
+  worth ~65 s), which R-order puts last. 67,500 arrivals is
   unreachable on shipped defaults for a separate reason this program does not
   address: 3,973 MB peak RSS against a 3.88 GB `MaxHeapSize`, measured and not
   extrapolated.

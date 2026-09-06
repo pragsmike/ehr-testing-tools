@@ -754,3 +754,168 @@ in the innermost table at 3.30% for the same reason -- `allocate`'s id
 derivation was always there, behind a board scan that is no longer in
 front of it. The one remaining site, `last-uncancelled-index`, is now
 the largest named site under `decide` and is site 4 of this program.
+
+## Site 4 measured, 2026-09-06 -- `last-uncancelled-index` rides the fold
+
+ADR-0180 site 4 landed at `5ac15dce`, over a baseline of `228e2c62` --
+site 3's own close, so the "before" column here is the code the section
+above ends at. `log-index/last-uncancelled-index` no longer makes two
+whole-log passes per cancel decide: `fold/apply-events` maintains the two
+maps it used to build on every call as `:cancel-index` -- `[patient-id
+event-type]` -> that patient's log indices of that type in log order, and
+`cancel-type` -> the set of indices that class of cancel has consumed --
+and the function is the ordered lookup over them, `fold/last-uncancelled`.
+Output-identical by construction and by measurement: both cells below
+reproduced their pre-change log BYTE-FOR-BYTE, and
+`bin/ground-truth-bracket` reported IDENTICAL on all 38 digested roots at
+both commits.
+
+### Wall
+
+**Same caution as the three sections above.** One timed JVM per cell,
+generate only, this session's machine and load. This session's
+`a7500-persons` baseline reads 144.77 s where the site-3 section measured
+136.32 s at the very commit this one baselines against -- a 6.2% spread on
+identical code, the largest of the four sessions' and the same instrument
+noise every one of them recorded. Only before-against-after within this
+session says anything, and that pair was run back to back, same script,
+same warm-up shape.
+
+| cell | before | after | delta | corrected delta |
+|---|---|---|---|---|
+| `a7500-persons` | 144.77 s | **112.29 s** | -32.48 s, **-22.4%** | **-23.7%** |
+| `a2500-nopersons` | 30.44 s | **26.92 s** | -3.52 s, -11.6% | **-15.7%** |
+
+`corrected` subtracts the 8.0 s fixed `sim run` startup measured above.
+
+**THE SMALL CELL IS NOT A CONTROL HERE EITHER**, and its -15.7% is the
+largest small-cell move of the four sessions. The cancel decides are on
+the SHARED path -- `:persons` has nothing to do with them -- so this cell
+runs the site in full. It moves proportionally less than the large one for
+the reason the site-3 section gives about its own: the scan was O(N) in
+the LOG per cancel decide and the number of cancel decides is itself
+proportional to the log, so its total cost goes as events squared. A third
+of the arrivals is roughly a ninth of the work spread over a fifth of the
+wall.
+
+**Both logs are byte-identical across the change.** `a7500-persons` sha256
+`3018299a0e0299c40ba73580793c8135674e8f988f9c332d18eedd45b70d3bd3` and
+`a2500-nopersons`
+`c22d65730b9006b1593de94461200084d2f4865b8cbd47c4893db5df98a55208`, before
+and after -- the same two digests the site-1, site-2 and site-3 sections
+record, which makes them a SEVEN-COMMIT byte-identity chain spanning the
+whole program.
+
+**Peak RSS rose at both cells this time**: 2,064 -> 2,303 MB at
+`a7500-persons` (+11.6%) and 884 -> 903 MB at `a2500-nopersons` (+2.1%).
+Recorded, not claimed, for the fourth session running -- and this is the
+one site where a rise is the EXPECTED direction rather than a puzzle.
+`:cancel-index` is the only one of ADR-0180's four indexes that NEVER
+EVICTS: a log index is immutable once written, so the index only grows,
+holding one integer per event per patient participant for the whole run.
+The other three reconcile a membership and can shrink.
+
+### Profile
+
+One JFR recording per side at 7,500 arrivals, `--stack-depth 2048`, same
+script and cell as above. The BEFORE column is
+`raw/a7500-persons-site3.gen.profile.md` -- site 3's own after-profile,
+recorded the same day on this machine at the commit this session baselines
+against -- rather than a fresh recording of identical code. After is
+`raw/a7500-persons-site4.gen.profile.md`; 9,238 and 7,470
+`jdk.ExecutionSample` samples. Inclusive share, so the columns do not sum.
+
+| site | before | after |
+|---|---|---|
+| `log-index/last-uncancelled-index` | 21.63% | **0.00%** |
+| `decide` (the whole dispatch) | 51.17% | 36.85% |
+| `fold/apply-events` | 15.43% | 20.05% |
+| `person-simulator` | 15.33% | 20.19% |
+| `patient-simulator` | 4.48% | 6.06% |
+| `evolve` | 2.87% | 3.16% |
+| `sim-model/occupancy-board` | 0.00% | 0.00% |
+| `run/select-person` | 0.01% | 0.03% |
+| `decide :discharge`'s boarder sort-by | 0.01% | 0.01% |
+
+**0.00% is ZERO samples of 7,470**, and `last_uncancelled_index$fn` -- the
+TOP ROW of the innermost-project-frame table after site 3, at 9.76% -- is
+gone from that table entirely. The frame itself is still on the stack of
+every cancel decide, because the function still exists and still answers
+the question; nothing samples beneath it any more.
+
+**`apply-events` absorbed 4.6 points of the 21.6**, 15.43% -> 20.05%: the
+index's own cost charged where the charter said it would be, and the same
+pattern sites 1 and 3 recorded for the same reason -- an in-fold index is
+per-event work that lands in the fold's own frame. `fold$apply_events$fn`
+and its two children hold 6.35%, 2.62% and 1.75% of the innermost table.
+
+**Every other row that rises is doing exactly the work it did before.**
+The denominator shrank by a fifth and `person-simulator`,
+`patient-simulator` and `evolve` rise by about that fifth. `decide` is the
+exception and FALLS, 51.17% -> 36.85%, because the work removed was inside
+it.
+
+### The program, site by site
+
+ADR-0180's four sites are done. Each row's detail is that site's own dated
+section above. Shares are inclusive share of the generate phase at 7,500
+arrivals, each measured against the profile its own session baselined on
+-- so the four "before" figures have four different denominators and are
+NOT additive.
+
+| site | landed | share before | after | cell wall, corrected |
+|---|---|---|---|---|
+| 1 `decide :discharge`'s `waiting-boarder` | `75b4a868` | 25.23% | 0.00% | -26.7% |
+| 2 `run/select-person` | `03db90a4` | 19.17% | 0.01% | -19.5% |
+| 3 `sim-model/occupancy-board` | `24f7915e` | 17.87% | 0.00% | -18.1% |
+| 4 `log-index/last-uncancelled-index` | `5ac15dce` | 21.63% | 0.00% | -23.7% |
+
+**Cumulatively, which is the figure the roadmap row now carries**: the
+`a7500-persons` cell went **256.15 s -> 112.29 s**, -143.86 s and **-58.0%
+corrected**; `a2500-nopersons` went **34.85 s -> 26.92 s**, **-29.5%
+corrected**. `fold/apply-events` went 7.56% -> 20.05%, which is the three
+in-fold indexes' whole cost, charged in one place and against a
+denominator less than half the size it was.
+
+**THE CUMULATIVE FIGURE IS A LOWER BOUND, NOT A BEST CASE.** Each session
+re-baselined, and every re-baseline read HIGHER than the previous
+session's after: 189.79 -> 195.48, 158.90 -> 164.70, 136.32 -> 144.77, a
+drift of +3.0%, +3.7% and +6.2% on identical code. The machine got slower
+across the day, so measuring the first session's before against the last
+session's after understates the four sites by whatever that drift is
+worth.
+
+### 22,500 arrivals: the program measured at the top of the decade
+
+ONE timed generate of `a22500-nopersons`, this session's machine, at
+`5ac15dce`.
+
+| | generate | peak RSS | bytes | sha256 |
+|---|---|---|---|---|
+| decade table, 2026-09-05 at `3114dbfe` | 1,472.56 s | 3,732 MB | 174,866,696 | `7d105743...78e0a` |
+| this session, at `5ac15dce` | **396.18 s** | 3,599 MB | 174,866,696 | `7d105743...78e0a` |
+
+**THE LOG IS BYTE-IDENTICAL TO THE COMMITTED DIGEST**, and that is the
+half of this row that carries a claim rather than an impression.
+`raw/a22500-nopersons.sha256` records
+`7d105743ebd3ac118e035bb7ca9acb9a6491bfb3a8cc7cab95a5626924478e0a` from
+2026-09-05, both of that session's two timed JVMs; this session's single
+JVM produced the same digest over the same 174,866,696 bytes. So the whole
+four-site program is output-identical AT THE TOP OF THE MEASURED DECADE
+and not only on the two cells each session bracketed -- a 431,677-event
+log, an order of magnitude past the 38 oracle roots and the two cells,
+agreeing to the byte.
+
+**The WALL half is an order of magnitude and nothing finer.** The two
+figures differ in protocol as well as in code: the decade row is the MEAN
+OF TWO timed JVMs taken with `run-cells.sh`'s own warm-up, and this is ONE
+JVM whose page cache was warmed by the 7,500 profile run before it. Read
+as such it is -1,076.38 s, **-73.1%**, a 3.7x speedup on identical output
+at the cell where the four sites summed to 78.4 points of inclusive share.
+The within-session before/after pairs above remain the only figures in
+this document precise enough to attribute.
+
+**Peak RSS FELL here**, 3,732 -> 3,599 MB, where both 2026-09-06 cells
+rose. Recorded, not explained: a single-JVM RSS reading against a 3.88 GB
+`MaxHeapSize` is a measurement of when the collector chose to run, and
+this session has now seen it move both ways on the same change.
