@@ -573,12 +573,14 @@ emitter.**
 
 | Cell | events | messages | msg/event | process wall |
 |---|---|---|---|---|
-| all nine opt-in keys | 167,190 | 222,748 | **1.3323** | 281.46 s |
-| the same, less `:bed-cycle` | 125,825 | 164,217 | **1.3051** | 226.25 s |
-| no opt-in key at all | 100,884 | 65,239 | **0.6467** | 144.29 s |
+| all nine opt-in keys | 167,197 | 222,819 | **1.3327** | 278.64 s |
+| the same, less `:bed-cycle` | 125,642 | 165,466 | **1.3170** | 231.14 s |
+| no opt-in key at all | 100,868 | 65,457 | **0.6489** | 142.12 s |
 
 **All three rows are one generation of one committed configuration**,
-measured 2026-09-04: they are
+re-measured 2026-09-06 at `4ddf62c2`, after the merge-transfer
+ruling[^adr-0179] moved all three (the scenario README names the
+movement and links its derivation): they are
 [`demos/scenarios/dense-7500/`](../demos/scenarios/dense-7500/README.md)'s
 `config.edn`, `config-nobed.edn` and `config-bare.edn` at `--seed
 20260824 --patients 7500 --churn`, and you can re-run any of them.
@@ -760,3 +762,5 @@ different faults rather than three ways of saying the same thing.
 - `ehrt.sim-model.config` — the five emission-key schemas
 - `ehrt.sim-check.check/catalog` — the invariant catalog
 - `demos/scenarios/ed-tuesday/config.edn` and `demos/scenarios/clinic-decade/config.edn` — the authored examples
+
+[^adr-0179]: Design record [ADR-0179](../notes/ADRs.md).

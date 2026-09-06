@@ -317,3 +317,61 @@ corpora aims at it.
 - A result carried across a merge reports under the survivor's MRN with
   the absorbed patient's order-time `:location`/`:attending` (R-loc).
   Flagged above as the one thing this ADR asks rather than answers.
+
+### Addendum, 2026-09-06 — the declared list was oracle-scoped, and R-queue is not blind on `dense-7500`
+
+The declared change above — *"exactly one root moves, and it is
+`encounter-horizon`"* — is `bin/ground-truth-bracket`'s verdict, and
+that script's manifest digests the **oracle roots** and nothing else.
+The committed demo scenarios are not oracle roots, so the list was
+never a statement about them. One of them moved, and it took a session
+of its own to find out, because the divergence surfaced as a stale
+figure rather than as a red gate:
+`demos/scenarios/dense-7500/` at `--seed 20260824 --patients 7500
+--churn` against its `config.edn` goes from **167,190 events at
+`007deea6` to 167,197 at `28bf36b4`**, both re-derived this session in
+separate clones. Per kind:
+
+| kind | `007deea6` | `28bf36b4` | delta |
+|---|---:|---:|---:|
+| `:result-available` | 10,253 | 10,274 | **+21** |
+| `:cancel-transfer` | 2,125 | 2,146 | **+21** |
+| `:transfer` | 7,338 | 7,340 | **+2** |
+| `:bed-status-change` | 41,415 | 41,399 | **-16** |
+| `:step-rejected` | 200 | 179 | **-21** |
+
+R-bed accounts for the four allocation-side kinds, the same mechanism
+`encounter-horizon` showed at a twentieth of the scale: the 68 merges
+this scenario's census records as absorbing a bed-holder now release
+those beds, so 21 transfer steps that used to be rejected for want of
+one are admitted instead, two more complete as real placements, and the
+bed-status ladder shortens by 16 rungs.
+
+**The `:result-available` column is R-queue, and it is the first
+non-empty population in this tree.** *"The oracle is BLIND to
+R-queue"* above stays exactly true as scoped — over the 38 oracle roots
+and the downstream fixture at 500 and 1,000, the count really is zero,
+and R-queue's proof there really is the hand-built run-loop test. It is
+not a claim about every committed configuration, and `dense-7500` is
+the counterexample: **21** results whose cited order names a different
+subject, all 21 resolving through a `:merge` at `:t` at or before the
+result's own `:t` with the survivor as the result's subject — R-inv's
+condition exactly — and `:order-placed` / `:result-available` become
+equinumerous at **10,274**. Before R-queue this scenario silently lost
+21 already-drawn results at `run.clj:1289`; after it, none.
+
+All four of the scenario's committed cells move, each with its own
+`007deea6` baseline re-derived rather than attributed, and they do not
+share a sign: `config-nobed.edn` LOSES 183 events (no housekeeping
+ladder to shorten, so R-bed arrives purely as different allocations)
+and `config-bare.edn` 16, while the 750-arrival cell GAINS 3. **That
+750 cell is the cleanest witness R-queue has:** `:order-placed` is
+1,028 on both sides, nothing else in the log moves at all, and its
+entire delta is three results that used to be dropped. All four cells
+become order/result-equinumerous, and none of them was before -- 21,
+20, 70 and 3 results recovered.
+
+Derivation, with the byte-level path check that had to come first:
+[`.agents/plans/2026-09-05-7-event-divergence.md`](../../.agents/plans/2026-09-05-7-event-divergence.md).
+Nothing in the Decision moves; this records a population the payload
+section could not see.

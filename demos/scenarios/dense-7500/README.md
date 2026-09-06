@@ -135,25 +135,39 @@ heap rather than the log's.
 
 ## What to look for
 
-Witnessed 2026-09-04 at HEAD, seed 20260824, `--churn`, on the
+Witnessed 2026-09-06 at `4ddf62c2`, seed 20260824, `--churn`, on the
 traffic-scale programme's own reference machine (WSL2, 6c/12t
 i7-10750H, 15 GiB, OpenJDK 21.0.7, JVM defaults as shipped --
-`MaxHeapSize` 3.88 GB, `bin/ehrt` sets no JVM options). Warm-up plus
-two timed runs per cell, one JVM per run, a fresh spool target per run,
-`/usr/bin/time -v` around each; every figure below is the mean of the
-two timed runs, and both runs of every one of the four cells produced
-the IDENTICAL event and message counts. The wall is the whole
-`bin/ehrt corpus generate sim` PROCESS, JVM startup included, and not
-an in-process phase total.
+`MaxHeapSize` 3.88 GB, `bin/ehrt` sets no JVM options). One warm-up
+run, then two timed runs per cell, one JVM per run, a fresh spool
+target per run, `/usr/bin/time -v` around each; every figure below is
+the mean of the two timed runs, and both runs of every one of the four
+cells produced the IDENTICAL event and message counts. The wall is the
+whole `bin/ehrt corpus generate sim` PROCESS, JVM startup included, and
+not an in-process phase total.
+
+**These cells were re-measured after ADR-0179**, which releases the bed
+an absorbed record was holding at the instant of a merge and carries a
+pending result across to the survivor. Every one of the four moved, and
+not all in the same direction -- the all-keys cell by **+7** events,
+`config-nobed.edn` by **-183**, `config-bare.edn` by **-16**, the 750
+cell by **+3** -- because `--churn` merges bed-holders in all of them.
+Those four deltas are DERIVED and not attributed: all four cells were
+regenerated at `007deea6`, the commit before ADR-0179's first code
+commit, and all four reproduced the figures this file carried before to
+the event, which also settles that ADR-0178 (landed between the
+2026-09-04 measurement and `007deea6`) moved no count here. The
+per-event derivation is
+[`.agents/plans/2026-09-05-7-event-divergence.md`](../../../.agents/plans/2026-09-05-7-event-divergence.md).
 
 **The measured cells:**
 
 | cell | arrivals | events | messages | msg/event | process wall | peak RSS |
 |---|---|---|---|---|---|---|
-| `config.edn` | 7,500 | **167,190** | **222,748** | **1.3323** | 281.46 s | 2,209 MB |
-| `config-nobed.edn` | 7,500 | **125,825** | **164,217** | **1.3051** | 226.25 s | 1,866 MB |
-| `config-bare.edn` | 7,500 | **100,884** | **65,239** | **0.6467** | 144.29 s | 1,817 MB |
-| `config.edn` | 750 | **33,303** | **40,281** | **1.2095** | 53.84 s | 1,196 MB |
+| `config.edn` | 7,500 | **167,197** | **222,819** | **1.3327** | 278.64 s | 2,415 MB |
+| `config-nobed.edn` | 7,500 | **125,642** | **165,466** | **1.3170** | 231.14 s | 2,178 MB |
+| `config-bare.edn` | 7,500 | **100,868** | **65,457** | **0.6489** | 142.12 s | 1,780 MB |
+| `config.edn` | 750 | **33,306** | **40,291** | **1.2097** | 54.37 s | 1,228 MB |
 
 **`:scheduling` IS WHAT SPREADS THE CENSUS, and it is worth knowing
 before you cut the opt-in keys down.** `config-bare.edn` is the
@@ -170,17 +184,17 @@ window and drops 16% of it outright. **The opt-in that looks like pure
 added volume is also a throttle**, and the bare cell is the one running
 without it.
 
-**The bed cycle is worth a quarter of this corpus.** 167,190 events
-against 125,825 is **41,365 events, 24.7% of the whole log**, and
-58,531 messages with them -- every one of it bed housekeeping, on a
+**The bed cycle is worth a quarter of this corpus.** 167,197 events
+against 125,642 is **41,555 events, 24.9% of the whole log**, and
+57,353 messages with them -- every one of it bed housekeeping, on a
 scenario that actually boards people, against `clinic-decade`'s 300
 where nobody is boarded. The cycle is slightly MESSAGE-RICHER than the
-log it rides on -- 1.3323 with it against 1.3051 without, so its own
-41,365 events carry **1.4150 messages each** -- which is what a
+log it rides on -- 1.3327 with it against 1.3170 without, so its own
+41,555 events carry **1.3802 messages each** -- which is what a
 housekeeping event lowered into its own ADT message looks like.
 
-**Messages per event is still climbing at 10^5.** 1.2095 at 750
-arrivals to 1.3323 at 7,500. Read the pair as a direction and not as a
+**Messages per event is still climbing at 10^5.** 1.2097 at 750
+arrivals to 1.3327 at 7,500. Read the pair as a direction and not as a
 decade: `:persons {:count 15000}` does not shrink with `--patients`, so
 the 750 cell carries the SAME 15,000-person demographic timeline as the
 7,500 cell with a tenth of the clinical traffic on top of it. **The two
@@ -189,16 +203,23 @@ scaling exponent is quoted from them here for that reason.
 
 ## What to look for in the log itself
 
-**All five referential carrier columns are populated**, measured over
-`config.edn`'s own 7,500-arrival log on 2026-09-04:
+**All five referential carrier columns are populated**, counted with
+`ehrt.corpus.operators`' own `carrier?` predicates over `config.edn`'s
+7,500-arrival log, re-measured 2026-09-06 at `4ddf62c2` (A and B1 moved
+under ADR-0179; the other three did not):
 
 | column | field | carrier | candidate sites |
 |---|---|---|---|
-| A | `:cancels-event-id` | the three cancels | **2,230** |
-| B1 | `:order-event-id` | `:result-available` | **10,253** |
+| A | `:cancels-event-id` | the three cancels | **2,251** |
+| B1 | `:order-event-id` | `:result-available` | **10,274** |
 | B2 | `:order-event-id` | `:medication-end` | **4,884** |
 | C | `:start-event-id` | `:care-plan-end` | **3,486** |
 | D | `:placeholder-event-id` | `:identity-fill` | **943** |
+
+B1 is now equinumerous with `:order-placed`, which it was not before:
+ADR-0179's R-queue carries a result whose subject was merged away over
+to the survivor instead of dropping it, and this scenario has **21** of
+them -- the first non-empty population for that ruling in this tree.
 
 This is the whole matrix, and it is why this scenario is worth more
 than its walls. Until it landed, three of those five columns were

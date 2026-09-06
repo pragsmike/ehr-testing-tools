@@ -161,7 +161,19 @@ the decade. Both variants carry the same slope to within 0.02, so
 `:persons` is a large constant factor on the same curve rather than a
 second curve.
 
-## An unexplained 7-event divergence, recorded and not chased
+## A 7-event divergence, recorded and not chased -- RESOLVED 2026-09-06
+
+**Resolution, added 2026-09-06.** It was a VERSION delta and not a path
+divergence, derived in
+[`../2026-09-05-7-event-divergence.md`](../2026-09-05-7-event-divergence.md):
+at one tip the two invocations are byte-identical (`sim run --format
+ground-truth` is `corpus generate sim`'s `events.edn` plus a trailing
+newline), and the README's 167,190 is reproduced to the event at
+`007deea6`, the commit before ADR-0179. The whole +7 is that ADR --
+and with it, the first non-empty R-queue population in this tree. The
+section below stands as this session wrote it.
+
+## The divergence as this session recorded it
 
 `demos/scenarios/dense-7500/README.md` reports **167,190** events for
 `corpus generate sim` at `--seed 20260824 --patients 7500 --churn`

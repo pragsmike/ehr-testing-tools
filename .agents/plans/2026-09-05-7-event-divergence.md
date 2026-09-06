@@ -143,6 +143,79 @@ SUBJECT's state as it lands; R-queue rewrites the subject to the
 survivor, so a carried result is a result about a patient who was never
 merged. The two instruments are asking different questions.
 
+## 3. The other three cells, baselined rather than attributed
+
+Section 2 settles the all-keys 7,500 cell. The scenario has three more,
+and step 3's re-measurement moves all of them, so each got its own
+`007deea6` baseline — same second clone, same `sim run --format
+ground-truth`, counts only:
+
+| cell | README, 2026-09-04 | `007deea6`, re-derived | `28bf36b4` | delta |
+|---|---:|---:|---:|---:|
+| `config.edn` @ 7,500 | 167,190 | **167,190** | 167,197 | **+7** |
+| `config-nobed.edn` @ 7,500 | 125,825 | **125,825** | 125,642 | **-183** |
+| `config-bare.edn` @ 7,500 | 100,884 | **100,884** | 100,868 | **-16** |
+| `config.edn` @ 750 | 33,303 | **33,303** | 33,306 | **+3** |
+
+**All four reproduce the README's own figures to the event.** That
+makes every delta a derivation rather than an attribution, and it
+settles a question the `963902d..007deea6` diff raises: ADR-0178
+(`:window-close-t` absent, never nil) landed between the 2026-09-04
+measurement and `007deea6`, touching `decide.clj` and the event schema,
+and was a live candidate for part of the movement. It moved no count on
+any of the four cells.
+
+### The deltas do not share a sign, and the small ones are not the small effects
+
+| kind | all-keys 7,500 | less `:bed-cycle` | bare | 750 |
+|---|---:|---:|---:|---:|
+| `:result-available` | +21 | +1 | **+87** | **+3** |
+| `:step-rejected` | -21 | -7 | **-224** | 0 |
+| `:cancel-transfer` | +21 | +2 | **+222** | 0 |
+| `:transfer` | +2 | -33 | -123 | 0 |
+| `:bed-status-change` | -16 | — | — | 0 |
+| net | **+7** | **-183** | **-16** | **+3** |
+
+(A dash means the kind does not exist in that cell at all -- `:bed-status-change`
+is the bed cycle's own housekeeping and only `config.edn` turns it on.
+The `config-nobed.edn` column has 22 moving kinds of 27, and the bare column
+16 of 21; only the five above are shown. The 750 column is complete: it has
+exactly ONE moving kind.)
+
+**The 750 cell is the cleanest demonstration of R-queue in the tree.**
+`:order-placed` is 1,028 on both sides and nothing else moves at all —
+its entire three-event delta is three results that used to be dropped
+at `run.clj:1289` and are now carried to the survivor. No bed in that
+cell is reallocated in a way that reaches another patient, so R-bed
+contributes nothing and R-queue is visible on its own.
+
+**Every one of the four cells becomes order/result-equinumerous**, and
+none of them was before:
+
+| cell | `:order-placed` | `:result-available` at `007deea6` | at `28bf36b4` | results recovered |
+|---|---:|---:|---:|---:|
+| all-keys 7,500 | 10,274 | 10,253 | **10,274** | **21** |
+| less `:bed-cycle` | 10,282 | 10,281 (of 10,301 orders) | **10,282** | **20** |
+| bare | 12,389 | 12,302 (of 12,372 orders) | **12,389** | **70** |
+| 750 | 1,028 | 1,025 | **1,028** | **3** |
+
+The two middle rows need reading with care: `config-nobed.edn` and
+`config-bare.edn` also move their ORDER counts (-19 and +17), because
+their bed allocations differ and the patients who get admitted differ
+with them. The recovered-results column is the order/result deficit
+that closes, not a subtraction between the two `:result-available`
+columns.
+
+**`config-nobed.edn` LOSES 183 events on balance**, which is the one
+result that looks wrong at a glance. With `:bed-cycle` off there is no
+housekeeping ladder for a freed bed to shorten, so R-bed's effect
+arrives entirely as different allocations: 7 fewer admissions, 33 fewer
+transfers, 4 fewer merges and 38 fewer demographic updates, against
+which R-queue's single recovered result cannot balance. Read the four
+cells as one mechanism reaching four differently-configured scenarios,
+not as four independent measurements — the sign of the net is a
+property of the config, and only the per-kind columns say what happened.
+
 ## What this record does not do
 
 It changes no engine code, proposes none, and takes no position on
