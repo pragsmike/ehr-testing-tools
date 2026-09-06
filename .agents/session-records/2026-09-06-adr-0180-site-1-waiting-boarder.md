@@ -202,3 +202,20 @@ section 5 — ran in the foreground. None was left running at close.
 land on top of it, and a close-marker commit follows once CI is verified
 green with `gh run view`. Baseline for every bracket in this session was
 `bba3a63c`.
+
+## 9. CI
+
+All four commits went out in ONE push, so GitHub Actions ran once, at
+the tip. Verified with `gh run view` rather than assumed:
+
+| commit | run | conclusion |
+|---|---|---|
+| `69459421` (tip, covering `c424e373`, `75b4a868`, `e23a2789`) | 34035159696 | **success** |
+
+`bin/post-push-verify` ran immediately after the push: remote tip matches
+HEAD, every commit message in `bba3a63c..69459421` is pure ASCII, and the
+CI run was reported once rather than awaited (AR-CI-4) — this section is
+where it was awaited.
+
+CI green at the tip is the marker this arc closed; no tag was paid (the
+de-scaffold ruling, 2026-08-25).
