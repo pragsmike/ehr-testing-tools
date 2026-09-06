@@ -39,8 +39,13 @@ with them.
   as the index's own cost, and the three sites below RISE in share
   because the denominator shrank, not because anything regressed
   (`.agents/plans/2026-09-05-performance-measurement/measurements.md`,
-  the 2026-09-06 site-1 section); (2) `run/select-person`
-  19.98%, rowed separately as `roadmap.md#select-person-arrival-quadratic`;
+  the 2026-09-06 site-1 section); (2) `run/select-person` 19.98% --
+  **LANDED 2026-09-06 at `03db90a4`**, inclusive share 19.17% -> 0.01%
+  (one of 10,914 samples) and generate 195.48 s -> 158.90 s on the same
+  cell, -19.5% corrected, both logs byte-identical and the bracket
+  IDENTICAL on all 38 roots; the `a2500-nopersons` control moved -1.0%,
+  the flatness a person-path index owes, against site 1's -13.7% on that
+  same cell (same file, the 2026-09-06 site-2 section);
   (3) `sim-model/occupancy-board` 17.11%, rowed at 8.1%; (4)
   `log-index/last-uncancelled-index` 10.78% and flat, the one F-3 left
   admissible. Check's fourteen `engine/replay` calls (50.97% of check, 2.7% of
@@ -50,21 +55,6 @@ with them.
   unreachable on shipped defaults for a separate reason this program does not
   address: 3,973 MB peak RSS against a 3.88 GB `MaxHeapSize`, measured and not
   extrapolated.
-- OPEN **[select-person-arrival-quadratic]** PRIORITY 2 -- `select-person`
-  (`components/sim-engine/src/ehrt/sim_engine/run.clj`) is a `filterv` over the
-  WHOLE person population, taken once per arrival to drop people whose death
-  instant has passed, and the provenance makes `:persons :count` twice the
-  arrival count BY RULE -- so the site is O(arrivals^2) by construction. At
-  19.98% of the top-of-decade generate phase it is the second-largest site
-  there, and it was on no list at all until this row, because ADR-0169 profiled
-  a configuration in which the person layer did not yet exist
-  (`.agents/plans/2026-09-05-performance-measurement/measurements.md:216-240`).
-  Site 2 of `roadmap.md#performance-residual-sites`; ADR-0180 carries the scan,
-  the index, the equivalence argument, and the two things a session here must
-  not miss -- it is the ONLY one of the four whose index content is read BY the
-  draw (both the candidate count and the candidate ORDER feed the `nth`), and
-  its carrier is `prelude`'s own t-ascending arrival sweep rather than
-  `fold/apply-events`, a disclosed narrowing of R-fold-carrier's location.
 - OPEN **[dense-7500-gate-gaps]** PRIORITY 3 -- two gates ADR-0180's
   R-gate-gaps commissions, neither of them site work. (a) THE EXERCISER IS NOT
   IN A MAKE TARGET: `bin/demo-exerciser-dense-7500` exists and is wired into
@@ -309,6 +299,7 @@ One line a row. `CLOSED` here means "no longer a roadmap row", not "the work
 was done" -- each line says which. The section is named `## Done` because that
 is where `ehrt.docs-tooling.roadmap-lint-test` requires a `CLOSED` row to live.
 
+- CLOSED 2026-09-06 03db90a4 **[select-person-arrival-quadratic]** -- DONE, site 2 of `roadmap.md#performance-residual-sites`. `prelude` builds ONE `alive-sweep` (a Fenwick tree over population indices, evicted by a cursor over deaths sorted by instant) and `select-person` reads its count and `k`th survivor. 19.17% -> 0.01% of generate, -19.5% wall, cell logs byte-identical, bracket IDENTICAL. Record: `.agents/session-records/2026-09-06-adr-0180-site-2-select-person.md`.
 - CLOSED 2026-09-05 97d0c31 **[orphan-participant-shape-gap]** -- DONE under R-split, reading 1 of the three ADR-0176 section 8 offered: the fifth invariant keys on a LOG FACT -- the reattributed event is a span start some end cites -- so the fact went into the site predicate rather than a register. The 14 sites given up are taken by two new operators, catalog 26 -> 28. Record: `.agents/session-records/2026-09-05-orphan-participant-split.md`.
 - CLOSED 2026-09-05 8c5379a **[event-mutation-catalog-gate]** -- DONE, both follow-ons: the catalog-wide gate runs every sited (operator, population) pair, and the `:expected-findings` vocabulary check landed as a corpus-brick TEST, so Q11(a)'s block dissolved without widening `ehrt.sim-check.interface`. It found a shape gap on its first run: `roadmap.md#orphan-participant-shape-gap`. Record: `.agents/session-records/2026-09-05-q11c-catalog-wide-gate.md`.
 - CLOSED 2026-09-05 74c6d87 **[referential-corpus-population]** -- DONE, all 14 cells, and the corpus this row PRICED was never needed: `demos/scenarios/dense-7500/config.edn` already carried all three carrier columns, so the catalog went 12 -> 26 with no new config and 14 of 14 convicting exactly under Q5(a) in both directions. Record: `.agents/session-records/2026-09-05-p7-referential-columns.md`.

@@ -561,3 +561,92 @@ went 14.17% -> 19.17% having done exactly the same work, and it is
 program. What the table says is that the remaining three sites are now
 a LARGER fraction of a smaller wall, which is what R-order predicted
 and the reason it sequenced them.
+
+## Site 2 measured, 2026-09-06 -- `select-person` rides a rank/select sweep
+
+ADR-0180 site 2 landed at `03db90a4`, over a baseline of `d9088a91` --
+which is site 1's own close, so the "before" column here is the code the
+section above ends at, not the code it starts from. `run/select-person`
+is no longer a `filterv` over the whole `:population` per arrival:
+`prelude` builds one `alive-sweep` for the whole arrival vector and the
+function reads its count and its `k`th survivor. Output-identical by
+construction and by measurement -- both cells below reproduced their
+pre-change log BYTE-FOR-BYTE, and `bin/ground-truth-bracket` reported
+IDENTICAL on all 38 digested roots at both commits.
+
+### Wall
+
+**Same caution as the site-1 section, and it bites harder here.** These
+are ONE timed JVM per cell, generate only, this session's machine and
+load. The `a7500-persons` cell reads 195.48 s at the SAME COMMIT where
+the section above measured 189.79 s -- a 3% spread on identical code,
+which is the size of the noise any single-JVM figure here carries. Only
+before-against-after within this session says anything, and that pair
+was run back to back, same script, same warm-up shape.
+
+| cell | before | after | delta | corrected delta |
+|---|---|---|---|---|
+| `a7500-persons` | 195.48 s | **158.90 s** | -36.58 s, **-18.7%** | **-19.5%** |
+| `a2500-nopersons` | 29.74 s | 29.45 s | -0.29 s, -1.0% | -1.3% |
+
+`corrected` subtracts the 8.0 s fixed `sim run` startup measured above.
+
+**`a2500-nopersons` IS THE NEGATIVE CONTROL AND ITS FLATNESS IS THE
+RESULT.** That cell has no `:persons` key at all, so `select-person` is
+never called and no sweep is ever built -- `prelude`'s `bindings` takes
+its all-nil arm. A change confined to the person path must move that
+cell by nothing, and -1.0% on a single JVM is nothing. Site 1's index
+sat on the shared path and moved the same cell by -13.7%; the contrast
+between the two rows is what says each index is where its charter put
+it.
+
+**Both logs are byte-identical across the change.** `a7500-persons`
+sha256 `3018299a0e0299c40ba73580793c8135674e8f988f9c332d18eedd45b70d3bd3`
+and `a2500-nopersons`
+`c22d65730b9006b1593de94461200084d2f4865b8cbd47c4893db5df98a55208`,
+before and after -- the same two digests the site-1 section records,
+which makes them a three-commit-long byte-identity chain rather than a
+pair.
+
+**Peak RSS fell at the large cell and rose at the small one**: 2,389 ->
+2,034 MB at `a7500-persons`, 928 -> 1,091 MB at `a2500-nopersons`. The
+direction at the large cell is plausible on its own account -- the
+`filterv` allocated a fresh vector of up to 15,000 person maps per
+arrival and the sweep allocates one `long[]` for the run -- but the
+small cell moved the OTHER way while executing none of this code at all,
+which is exactly the demonstration that a single-JVM RSS reading against
+a 3.88 GB heap cannot carry a claim of this size. Recorded, not claimed.
+
+### Profile
+
+One JFR recording per side at 7,500 arrivals, `--stack-depth 2048`, same
+script and cell as above. The BEFORE column is
+`raw/a7500-persons-site1.gen.profile.md` -- site 1's own after-profile,
+recorded the same day on this machine at the commit this session
+baselines against -- rather than a fresh recording of identical code.
+After is `raw/a7500-persons-site2.gen.profile.md`; 12,013 and 10,914
+`jdk.ExecutionSample` samples. Inclusive share, so the columns do not
+sum.
+
+| site | before | after |
+|---|---|---|
+| `run/select-person` | 19.17% | **0.01%** |
+| `decide` (the whole dispatch) | 47.22% | 59.44% |
+| `sim-model/occupancy-board` | 12.51% | 17.87% |
+| `log-index/last-uncancelled-index` | 14.68% | 17.63% |
+| `fold/apply-events` | 9.76% | 13.06% |
+| `person-simulator` | 11.08% | 12.01% |
+
+**0.01% is ONE sample of 10,914**, and the site is gone from the
+innermost-project-frame table, where it had been the top row at 16.14%.
+That table's new top row is `occupancy-board`'s own inner function at
+11.87% -- site 3 of this program.
+
+**Nothing here absorbed the 19 points the way `apply-events` absorbed
+site 1's.** The sweep's whole cost is O(n) once at `prelude` plus
+O(log n) per arrival, and at this cell that is beneath the sampler's
+floor: there is no row for it to appear in. The four rows that rise do
+so because the denominator shrank, and every one of them is doing
+exactly the work it did before -- the same reading the site-1 section
+made of its own three rising rows, and the same reason R-order
+sequenced these sites rather than fixing them together.
