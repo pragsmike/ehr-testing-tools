@@ -17,18 +17,25 @@
 # 15,000 across the whole decade. Both halves of that were wrong, and
 # both were corrected on measured evidence rather than on review:
 #
-#   THE WARD SCALING BOUGHT NOTHING. Its stated purpose was to keep a
-#   cell off `:capacity-exhausted`, and the scenario census puts peak
-#   census at 30.0% / 22.5% / 27.5% of the x1 wards with Medicine B
-#   never used at all. `:arrival-gap 2` fixes the arrival RATE and only
-#   `--patients` grows, so concurrent census does not grow across the
-#   decade -- the provenance says so itself. Worse, ward scale is not a
-#   free parameter: more beds is a different bed vocabulary, a
-#   different `allocate` result and therefore a DIFFERENT LOG, so three
-#   points at three facility sizes are three experiments rather than
-#   one experiment at three sizes. The decade is now x1 throughout and
-#   ward scale is a SEPARATE axis, measured at one fixed arrival count
-#   where it means something.
+#   THE WARD SCALING WAS SET ASIDE FOR THE WRONG REASON FIRST, and
+#   the corrected reason is the one that holds. The first cut read the
+#   7,500 census -- peak ward census 30.0% / 22.5% / 27.5% of the x1
+#   wards -- as proof that no cell could ever exhaust the ladder. The
+#   22,500 census refutes that: Emergency 67.3% and Surgery 72.5%, more
+#   than double, because a 5.2-simulated-day run against a
+#   `:module-horizon-days` of 1,825 is nowhere near steady state and the
+#   module cohort is still accumulating. Nothing halted, so every cell
+#   measured is valid -- but the prompt's ward headroom was a real
+#   precaution, not a redundant one.
+#
+#   THE DECADE IS STILL x1, on the argument that never depended on
+#   capacity: ward scale is not a free parameter. More beds is a
+#   different bed vocabulary, a different `allocate` result and
+#   therefore a DIFFERENT LOG -- 167,197 / 167,184 / 167,212 events at
+#   x1 / x3 / x9 on otherwise identical inputs. Three points at three
+#   facility sizes are three experiments rather than one experiment at
+#   three sizes, so ward scale is a SEPARATE axis here, measured at one
+#   fixed arrival count where the answer means something.
 #
 #   HOLDING `:persons` AT 15,000 BROKE THE RUN. The provenance makes
 #   that value a RULE -- twice the arrival count -- and says in its own

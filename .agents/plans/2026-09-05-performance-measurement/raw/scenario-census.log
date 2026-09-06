@@ -1,0 +1,155 @@
+== a2500-nopersons ==
+{:capacity
+ {"Emergency" 220, "Medicine A" 240, "Medicine B" 240, "Surgery" 200},
+ :events 43103,
+ :result-after-merge 0,
+ :merge-absorbs-bed-holder 40,
+ :result-after-move 1386,
+ :result-after-discharge 401,
+ :cancel-moves-bed 731,
+ :peak {"Emergency" 56, "Surgery" 57, "Medicine A" 40},
+ :cancels 759,
+ :merges 266,
+ :log "/home/mg/perf-out/a2500-nopersons.run1.edn",
+ :peak-vs-capacity
+ {"Emergency" {:peak 56, :capacity 220, :pct 25.5},
+  "Surgery" {:peak 57, :capacity 200, :pct 28.5},
+  "Medicine A" {:peak 40, :capacity 240, :pct 16.7}},
+ :cancel-reinstates-bed 14,
+ :results 3398}
+== a2500-persons ==
+{:capacity
+ {"Emergency" 220, "Medicine A" 240, "Medicine B" 240, "Surgery" 200},
+ :events 53942,
+ :result-after-merge 0,
+ :merge-absorbs-bed-holder 38,
+ :result-after-move 1345,
+ :result-after-discharge 375,
+ :cancel-moves-bed 680,
+ :peak {"Emergency" 49, "Surgery" 48, "Medicine A" 40},
+ :cancels 711,
+ :merges 303,
+ :log "/home/mg/perf-out/a2500-persons.run1.edn",
+ :peak-vs-capacity
+ {"Emergency" {:peak 49, :capacity 220, :pct 22.3},
+  "Surgery" {:peak 48, :capacity 200, :pct 24.0},
+  "Medicine A" {:peak 40, :capacity 240, :pct 16.7}},
+ :cancel-reinstates-bed 19,
+ :results 3289}
+== a7500-nopersons ==
+{:capacity
+ {"Emergency" 220, "Medicine A" 240, "Medicine B" 240, "Surgery" 200},
+ :events 131410,
+ :result-after-merge 0,
+ :merge-absorbs-bed-holder 68,
+ :result-after-move 4235,
+ :result-after-discharge 1256,
+ :cancel-moves-bed 2176,
+ :peak {"Emergency" 61, "Medicine A" 56, "Surgery" 63},
+ :cancels 2277,
+ :merges 778,
+ :log "/home/mg/perf-out/a7500-nopersons.run1.edn",
+ :peak-vs-capacity
+ {"Emergency" {:peak 61, :capacity 220, :pct 27.7},
+  "Medicine A" {:peak 56, :capacity 240, :pct 23.3},
+  "Surgery" {:peak 63, :capacity 200, :pct 31.5}},
+ :cancel-reinstates-bed 51,
+ :results 10406}
+== a7500-persons ==
+{:capacity
+ {"Emergency" 220, "Medicine A" 240, "Medicine B" 240, "Surgery" 200},
+ :events 167197,
+ :result-after-merge 0,
+ :merge-absorbs-bed-holder 68,
+ :result-after-move 4187,
+ :result-after-discharge 1206,
+ :cancel-moves-bed 2146,
+ :peak {"Emergency" 66, "Medicine A" 54, "Surgery" 55},
+ :cancels 2251,
+ :merges 891,
+ :log "/home/mg/perf-out/a7500-persons.run1.edn",
+ :peak-vs-capacity
+ {"Emergency" {:peak 66, :capacity 220, :pct 30.0},
+  "Medicine A" {:peak 54, :capacity 240, :pct 22.5},
+  "Surgery" {:peak 55, :capacity 200, :pct 27.5}},
+ :cancel-reinstates-bed 51,
+ :results 10274}
+== a7500-w3-persons ==
+{:capacity
+ {"Emergency" 660, "Medicine A" 720, "Medicine B" 720, "Surgery" 600},
+ :events 167184,
+ :result-after-merge 0,
+ :merge-absorbs-bed-holder 68,
+ :result-after-move 4194,
+ :result-after-discharge 1206,
+ :cancel-moves-bed 2176,
+ :peak {"Emergency" 69, "Medicine A" 53, "Surgery" 56},
+ :cancels 2281,
+ :merges 891,
+ :log "/home/mg/perf-out/a7500-w3-persons.run1.edn",
+ :peak-vs-capacity
+ {"Emergency" {:peak 69, :capacity 660, :pct 10.5},
+  "Medicine A" {:peak 53, :capacity 720, :pct 7.4},
+  "Surgery" {:peak 56, :capacity 600, :pct 9.3}},
+ :cancel-reinstates-bed 51,
+ :results 10274}
+== a7500-w9-persons ==
+{:capacity
+ {"Emergency" 1980,
+  "Medicine A" 2160,
+  "Medicine B" 2160,
+  "Surgery" 1800},
+ :events 167212,
+ :result-after-merge 0,
+ :merge-absorbs-bed-holder 68,
+ :result-after-move 4194,
+ :result-after-discharge 1206,
+ :cancel-moves-bed 2190,
+ :peak {"Emergency" 70, "Medicine A" 54, "Surgery" 54},
+ :cancels 2295,
+ :merges 891,
+ :log "/home/mg/perf-out/a7500-w9-persons.run1.edn",
+ :peak-vs-capacity
+ {"Emergency" {:peak 70, :capacity 1980, :pct 3.5},
+  "Medicine A" {:peak 54, :capacity 2160, :pct 2.5},
+  "Surgery" {:peak 54, :capacity 1800, :pct 3.0}},
+ :cancel-reinstates-bed 51,
+ :results 10274}
+== a22500-nopersons ==
+{:capacity
+ {"Emergency" 220, "Medicine A" 240, "Medicine B" 240, "Surgery" 200},
+ :events 431677,
+ :result-after-merge 0,
+ :merge-absorbs-bed-holder 142,
+ :result-after-move 13838,
+ :result-after-discharge 4125,
+ :cancel-moves-bed 6486,
+ :peak {"Emergency" 148, "Surgery" 145, "Medicine A" 116},
+ :cancels 6842,
+ :merges 2520,
+ :log "/home/mg/perf-out/a22500-nopersons.run1.edn",
+ :peak-vs-capacity
+ {"Emergency" {:peak 148, :capacity 220, :pct 67.3},
+  "Surgery" {:peak 145, :capacity 200, :pct 72.5},
+  "Medicine A" {:peak 116, :capacity 240, :pct 48.3}},
+ :cancel-reinstates-bed 187,
+ :results 34677}
+== a22500-persons ==
+{:capacity
+ {"Emergency" 220, "Medicine A" 240, "Medicine B" 240, "Surgery" 200},
+ :events 533147,
+ :result-after-merge 0,
+ :merge-absorbs-bed-holder 167,
+ :result-after-move 13459,
+ :result-after-discharge 3979,
+ :cancel-moves-bed 6252,
+ :peak {"Emergency" 131, "Medicine A" 117, "Surgery" 132},
+ :cancels 6599,
+ :merges 2850,
+ :log "/home/mg/perf-out/a22500-persons.run1.edn",
+ :peak-vs-capacity
+ {"Emergency" {:peak 131, :capacity 220, :pct 59.5},
+  "Medicine A" {:peak 117, :capacity 240, :pct 48.8},
+  "Surgery" {:peak 132, :capacity 200, :pct 66.0}},
+ :cancel-reinstates-bed 174,
+ :results 33681}

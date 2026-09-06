@@ -307,4 +307,73 @@ allocation-affecting changes that need their own equivalence proof.
 
 ## Scenario census
 
-<!-- CENSUS -->
+Not how long a cell took, but which SITUATIONS it contains — whether a
+corpus this size reaches the cases the invariant catalog and the
+mutation operators are written against. Produced by
+[`scenario-census.sh`](scenario-census.sh) over
+[`census-src/ehrt/perf/scenario_census.clj`](census-src/ehrt/perf/scenario_census.clj),
+which folds `replay`'s own projection — the same
+`{:event :before :after :world-before :world-after}` records
+`check.clj`'s invariants read — and is **pure over the log**: the same
+log yields the same counts.
+
+| cell | events | results | after move | after discharge | **after merge** | merges | merge absorbs a bed-holder | cancels | reinstates a bed | moves a bed |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `a2500-nopersons` | 43,103 | 3,398 | 1,386 | 401 | **0** | 266 | 40 | 759 | 14 | 731 |
+| `a2500-persons` | 53,942 | 3,289 | 1,345 | 375 | **0** | 303 | 38 | 711 | 19 | 680 |
+| `a7500-nopersons` | 131,410 | 10,406 | 4,235 | 1,256 | **0** | 778 | 68 | 2,277 | 51 | 2,176 |
+| `a7500-persons` | 167,197 | 10,274 | 4,187 | 1,206 | **0** | 891 | 68 | 2,251 | 51 | 2,146 |
+| `a7500-w3-persons` | 167,184 | 10,274 | 4,194 | 1,206 | **0** | 891 | 68 | 2,281 | 51 | 2,176 |
+| `a7500-w9-persons` | 167,212 | 10,274 | 4,194 | 1,206 | **0** | 891 | 68 | 2,295 | 51 | 2,190 |
+| `a22500-nopersons` | 431,677 | 34,677 | 13,838 | 4,125 | **0** | 2,520 | 142 | 6,842 | 187 | 6,486 |
+| `a22500-persons` | 533,147 | 33,681 | 13,459 | 3,979 | **0** | 2,850 | 167 | 6,599 | 174 | 6,252 |
+
+A result's `:location` is stamped **at order time** — `decide.clj` says
+so in its own words at the `result-event` binding — so comparing it
+against the subject's state as the result LANDS is exactly "what
+changed during the turnaround". The three columns are ordered
+most-specific-first so a post-merge result is not also counted as a
+merely-moved one.
+
+### The merge column is zero on every cell, and that is the finding
+
+`.agents/plans/2026-09-01-event-mutation-population-ledger.md` recorded
+that the gated corpora contain **no result pending at a merge**, so the
+bracket that would convict a defect there is blind, and ADR-0179's own
+step-1 census (`.agents/plans/2026-09-05-adr-0179-merge-census.md`)
+found the same zero across all 38 ground-truth-carrying oracle roots and
+in the downstream fixture at 500 and 1,000 arrivals.
+
+**It is still zero at 533,147 events**, in a corpus with **2,850
+merges** of which **167 absorb a patient who was holding a bed**. That
+is roughly 12× the largest population either of those records reached,
+and it does not produce one witness.
+
+So the gap is **structural, not a matter of scale**, and generating a
+bigger corpus is not the way to close it. Something in the ordering
+makes the two mutually exclusive — the obvious candidate being that a
+patient with a `:result-followup` queued is not a merge candidate, or
+that the merge resolves the queue before the result can land. **This is
+named, not diagnosed**: `R-measure-first` scopes this session to
+measurement, and which of those it is wants a reading of the merge
+decide path rather than another run.
+
+The rest of the columns are healthy and grow with the corpus, which is
+what makes the zero meaningful rather than merely small: **merges
+absorbing a bed-holder** go 40 → 68 → 167, and **cancels reinstating a
+bed** 14 → 51 → 187, so the census is not silent about the neighbouring
+cases.
+
+### Two ratios that hold across the decade
+
+**Results landing after their subject moved are ~40% of all results**,
+at every cell: 40.8% at 2,500, 40.8% at 7,500, 40.0% at 22,500. A
+consumer that assumes a result's PV1 context is where the patient is
+NOW is wrong about two results in five, at every scale this simulator
+has been run at.
+
+**`cancel-reinstates-bed` equals the `:cancel-discharge` count exactly,
+and `cancel-moves-bed` equals `:cancel-transfer`**, on all eight cells.
+That is the census agreeing with the vocabulary rather than a separate
+fact, and it is here as a check on the instrument: an off-by-one in the
+before/after comparison would break the identity.

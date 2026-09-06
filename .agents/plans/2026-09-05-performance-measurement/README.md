@@ -82,28 +82,56 @@ naming all six violations with the patient id and log index, and exited
 2. An out-of-contract configuration produced a refusal and no corpus,
 which is the behaviour the self-check exists for.
 
-## Ward scale is a separate axis, and the census is why
+## Ward scale is a separate axis, and NOT for the reason first written
 
 The session prompt specified the decade as 7,500 / 22,500 / 67,500
 arrivals with the wards scaled ×1 / ×3 / ×9, for a stated reason: *so
-no cell halts on `:capacity-exhausted`*. **That condition is already
-met at ×1**, and [`measurements.md`](measurements.md) carries the
-census that proves it — peak census 30.0% / 22.5% / 27.5% of the ×1
-wards, with Medicine B never used at all.
+no cell halts on `:capacity-exhausted`*.
 
-Scaling with the arrivals would also have cost the measurement its
-meaning. `:arrival-gap 2` fixes the arrival RATE and only `--patients`
-grows, so concurrent census does not grow across the decade — the
-provenance was built that way on purpose and says so. And ward scale is
-not a free parameter: more beds is a different bed vocabulary, a
-different `allocate` result and therefore a DIFFERENT LOG. Three points
-at three facility sizes are three experiments, not one experiment at
-three sizes.
+**That reason was sound, and this directory's first cut said otherwise
+on one cell's evidence.** The 7,500 census put peak ward census at
+30.0% / 22.5% / 27.5% of the ×1 wards, which read as enormous headroom,
+and the provenance's own design note — arrival RATE is fixed by
+`:arrival-gap 2`, so census should be constant however many arrivals
+follow — appeared to settle it. The 22,500 census settles it the other
+way:
 
-So the decade is ×1 throughout, and the ward scale is measured at one
-fixed arrival count where the answer means something
+| ward | 2,500 | 7,500 | **22,500** |
+|---|---|---|---|
+| Emergency | 25.5% | 30.0% | **67.3%** |
+| Surgery | 28.5% | 31.5% | **72.5%** |
+| Medicine A | 16.7% | 23.3% | **48.3%** |
+
+(`:persons`-off cells, so the three are one series.) **Census more than
+doubles between 7,500 and 22,500**, and the fixed-rate argument does not
+save it: the run is not in steady state at these lengths. 7,500
+arrivals is 5.2 simulated days against a `:module-horizon-days` of
+1,825, so the module cohort's long trajectories are still accumulating
+and the census is still filling. Surgery at **72.5%** at 22,500 is the
+last comfortable cell, and the prompt's pairing of 67,500 with ×9 wards
+looks well judged rather than redundant.
+
+**Nothing halted.** All eight cells exited 0, so every figure in
+[`measurements.md`](measurements.md) is taken on a facility with room
+to spare. What is retracted is the CLAIM that scaling was pointless,
+not any measurement.
+
+**The decade is still ×1, and the reason is the other one.** Ward scale
+is not a free parameter: more beds is a different bed vocabulary, a
+different `allocate` result, and therefore a different log —
+`measurements.md`'s facility axis measures 167,197 / 167,184 / 167,212
+events at ×1 / ×3 / ×9 on otherwise identical inputs. Three points
+taken at three facility sizes are three experiments, not one experiment
+at three sizes, and a log-log slope across them measures nothing in
+particular. That argument never depended on the capacity one
 (`rulings.md#R-stop-only-on-two-defensible-readings` — a mechanical
 conflict with one defensible reading is fix-forward with disclosure).
+
+Worth keeping in view for whoever takes the fix session: the ×3 and ×9
+cells hold peak census at 69 and 70 against the ×1 cell's 66, so
+**adding beds does not change how many patients are in them.** Census
+here is demand-driven, and the ladder's headroom is the only thing ward
+scale buys.
 
 ## Running one
 
