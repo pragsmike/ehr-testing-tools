@@ -707,6 +707,32 @@
       (testing "the NEWBORN's own encounter is untouched by that refusal"
         (is (some? (first (filter :mother-patient-id gt))))))))
 
+(deftest the-arrival-pool-is-the-input-population-and-nothing-the-run-mints-test
+  ;; ADR-0180 site 2 rests on the population being FIXED before the
+  ;; arrival sweep starts -- the fact its charter says a session should
+  ;; ASSERT rather than assume, because a shrink-only index over a
+  ;; GROWING population would be wrong from the first insertion.
+  ;;
+  ;; The person stream does mint people mid-run: a delivery's newborn is
+  ;; one, and `prelude` gives them a patient and a persona out of
+  ;; `newborn-personas`. What this test says is that none of them ever
+  ;; enters the set an arrival selects from -- the candidate pool is
+  ;; `(:population persons)` as handed in, read once, and nothing else.
+  (let [config {:seed p4-seed :patients 4 :arrival-gap 100
+                :pathway {:name "empty" :steps []}
+                :facility p4-facility
+                :persons (assoc p4-pool :events (vec p4-delivery))}
+        gt (:ground-truth (run/run config))
+        bindings (:bindings (run/person-plan config))]
+    (testing "the run really did mint a person the input population never held"
+      (is (= ["q-a"] (mapv :person-id (:population p4-pool))))
+      (is (some? (first (filter :mother-patient-id gt)))
+          "no newborn -- this fixture no longer mints a person mid-run, so the
+           assertion below has nothing to exclude"))
+    (testing "and every arrival still bound inside the input population"
+      (is (= 4 (count bindings)))
+      (is (= #{"q-a"} (set (remove nil? bindings)))))))
+
 ;; --- 2(c): the occupational-injury hook ----------------------------------
 
 (deftest an-occupational-injury-presents-at-the-ed-test

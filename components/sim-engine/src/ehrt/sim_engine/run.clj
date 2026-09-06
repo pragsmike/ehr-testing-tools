@@ -6,7 +6,10 @@
   Six forms: `pop-min`, `placeholder-registration`, `select-person`,
   `prelude`, `person-plan` and `run`. With them gone `engine.clj` holds
   no executable code of its own: it is a PURE FACADE of forty-three
-  delegating defs and nine `moved to` comment blocks.
+  delegating defs and nine `moved to` comment blocks. FIVE MORE FORMS
+  stand here that were never `engine.clj`'s -- `alive-sweep`,
+  `sweep-advance!`, `sweep-nth` and their two Fenwick primitives, the
+  rank/select index ADR-0180 site 2 gave the arrival sweep.
 
   THE NAME. `ehrt.sim-engine.run` shadows nothing: `clojure.core` has a
   `run!` but no `run`, so `(defn run ...)` here needs no
@@ -144,6 +147,143 @@
   [entry window]
   (cond-> (assoc entry :identity :placeholder :alias-name (:alias-name window))
     (some? (:branch window)) (assoc :window-close-t (:until-t window))))
+
+;; --- ADR-0180 site 2: the arrival sweep's rank/select index ----------------
+;;
+;; `select-person` below re-filters the WHOLE population once per arrival,
+;; and `:persons :count` is twice the arrival count by rule, so the site is
+;; O(arrivals^2) BY CONSTRUCTION and 19.98% of top-of-decade generate
+;; (`.agents/plans/2026-09-05-performance-measurement/measurements.md`).
+;; ADR-0180 section 2 replaces that filter with ONE pass: the alive set
+;; only ever SHRINKS -- `prelude`'s `arrivals` is t-ascending by
+;; construction and the population is fixed before the sweep starts -- so
+;; each death is applied once by a cursor that advances as `t` does.
+;;
+;; THE THREE SWEEP FORMS ARE PUBLIC so `ehrt.sim-engine.alive-sweep-test`
+;; can keep `select-person`'s own `filterv` verbatim as the reference they
+;; are proven equal to at EVERY arrival (ADR-0180's law, and
+;; `rulings.md#R-move-not-improve`).
+
+(defn- fenwick-ones
+  "A Fenwick (binary-indexed) tree over `n` slots with every slot ONE,
+  built in O(n) rather than by n updates: the node at 1-based `i` covers
+  exactly `lowbit(i)` leaves, and at t0 every leaf under it is a one.
+
+  The tree is 1-based while slot indices are 0-based -- the offset both
+  functions below carry, and what makes the `lowbit` walk terminate."
+  ^longs [^long n]
+  (let [tree (long-array (inc n))]
+    (dotimes [k n]
+      (let [i (inc k)]
+        (aset tree i (long (bit-and i (- i))))))
+    tree))
+
+(defn- fenwick-clear!
+  "Drops slot `i` (0-based) from `tree`: one subtraction per ancestor,
+  O(log n). Called once per death over a whole sweep, never per arrival."
+  [^longs tree ^long n ^long i]
+  (loop [j (inc i)]
+    (when (<= j n)
+      (aset tree j (dec (aget tree j)))
+      (recur (+ j (bit-and j (- j)))))))
+
+(defn alive-sweep
+  "The structure `select-person` reads instead of re-filtering the pool.
+
+  IT ANSWERS EXACTLY TWO QUESTIONS, because those are the only two the
+  `filterv` was ever asked: how many people are alive at instant `t`
+  (`sweep-advance!`), and who is the `k`th of them IN THE POPULATION'S
+  OWN INDEX ORDER (`sweep-nth`). Order is half the function rather than
+  an incidental property of a filter -- the one uniform resolves
+  POSITIONALLY through `nth`, so a structure answering the same count in
+  a different order would rebind arrivals and move every byte after them.
+
+  `population` is read ONCE, here. `alive` is `person-id -> that person's
+  own death instant`, read exactly as `select-person` reads it: a person
+  absent from it never dies.
+
+  THE ARRAY IS MUTABLE AND NOTHING ESCAPES -- built here, read by the two
+  functions below, dropped when `prelude` returns its bindings. That is
+  ADR-0180 R-positional's own carve-out, and it is an ARRAY rather than an
+  atom or a volatile because the sim family's `src` carries neither
+  (`docs/dev/simulator-architecture.md` section 3's census, gated by
+  `ehrt.docs-tooling.sim-purity-lint-test`)."
+  [population alive]
+  (let [n (count population)
+        ids (mapv :person-id population)
+        ;; every death, ascending by instant, as [instant slot]. Ties are
+        ;; harmless: everyone sharing an instant is evicted at the same
+        ;; `t`, so their relative order here cannot be observed.
+        deaths (vec (sort-by first
+                             (keep-indexed (fn [i pid]
+                                             (when-some [d (get alive pid)] [d i]))
+                                           ids)))
+        ;; slot 0: how many deaths the cursor has applied.
+        ;; slot 1: how many people are alive at the cursor's instant.
+        ^longs state (long-array 2)]
+    (aset state 1 (long n))
+    {:ids ids
+     :n n
+     :deaths deaths
+     :tree (fenwick-ones n)
+     :state state
+     ;; the descent's first stride: the largest power of two <= n.
+     :top (Long/highestOneBit (long (max 1 n)))}))
+
+(defn sweep-advance!
+  "Advances `sweep` to arrival instant `t` and returns how many people are
+  alive there -- `(count (filterv alive? population))`, and nothing else.
+
+  THE HALF-OPEN CONVENTION MOVED HERE VERBATIM and is not re-derived. The
+  shipped filter keeps a person iff `(or (nil? d) (> d t))`, so the
+  eviction test is its exact complement, `(<= d t)`: a person whose death
+  instant IS `t` is dead at it. `prelude`'s hook minting states the same
+  convention a second time and cites `select-person` as its source (see
+  `alive-at?` below) -- a carrier reading `>=` at one of those two sites
+  and `>` at the other would be self-consistent and wrong.
+
+  MONOTONE, WHICH IS WHAT MAKES IT ONE PASS. `t` never decreases across a
+  run, so the cursor only moves forward and every death is applied exactly
+  once over the whole sweep. Advancing twice at the same `t` is a no-op
+  returning the same count, which is what lets a caller -- or a test --
+  read the alive set after a selection has already advanced it."
+  [sweep t]
+  (let [^longs tree (:tree sweep)
+        ^longs state (:state sweep)
+        n (long (:n sweep))
+        deaths (:deaths sweep)
+        m (count deaths)]
+    (loop [c (aget state 0)
+           live (aget state 1)]
+      (if (and (< c m) (<= (first (nth deaths c)) t))
+        (do (fenwick-clear! tree n (second (nth deaths c)))
+            (recur (inc c) (dec live)))
+        (do (aset state 0 c)
+            (aset state 1 live)
+            live)))))
+
+(defn sweep-nth
+  "The `k`th ALIVE person's id, 0-based, in the population's own index
+  order -- the `(nth candidates k)` the shipped filter answers, without
+  the filter.
+
+  A Fenwick descent, O(log n) against the filter's O(n). `k` must be in
+  `[0, (sweep-advance! sweep t))`; `select-person`'s `min` clamp is what
+  guarantees that, and the clamp stays at the call site because it is part
+  of that function rather than a guard on this one."
+  [sweep k]
+  (let [^longs tree (:tree sweep)
+        n (long (:n sweep))]
+    (loop [pos 0
+           pw (long (:top sweep))
+           rem (inc (long k))]
+      (if (zero? pw)
+        (nth (:ids sweep) pos)
+        (let [nxt (+ pos pw)
+              node (if (<= nxt n) (aget tree nxt) 0)]
+          (if (and (<= nxt n) (< node rem))
+            (recur nxt (bit-shift-right pw 1) (- rem node))
+            (recur pos (bit-shift-right pw 1) rem)))))))
 
 (defn- select-person
   "A1: ONE uniform from the `:world` stream picks this arrival's person
