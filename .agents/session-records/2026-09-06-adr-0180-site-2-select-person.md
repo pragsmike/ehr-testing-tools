@@ -226,4 +226,19 @@ on top of it, and a close-marker commit follows once CI is verified green with
 
 ## 9. CI
 
-Filled in below once verified with `gh run view` rather than assumed.
+All five commits went out in ONE push, so GitHub Actions ran once, at the tip.
+Verified with `gh run view` rather than assumed:
+
+| commit | run | conclusion |
+|---|---|---|
+| `8cc2d187` (tip, covering `1e15f2d3`, `03db90a4`, `59994ef5`) | 34045391743 | **success** |
+
+`bin/post-push-verify` ran immediately after the push: remote tip matches HEAD,
+every commit message in `d9088a91..8cc2d187` is pure ASCII, and the CI run was
+reported once rather than awaited (AR-CI-4) -- this section is where it was
+awaited.
+
+CI green at the tip is the marker this arc closed; no tag was paid (the
+de-scaffold ruling, 2026-08-25). Site 3, `sim-model/occupancy-board`, is next
+under R-order, and this session's own after-profile is its baseline: it is now
+the top row of the innermost-project-frame table at 11.87%.
