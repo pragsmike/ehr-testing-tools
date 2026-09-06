@@ -84,8 +84,8 @@ computes before its loop starts"* — the whole `bindings` vector is
 built over the arrival instants before a single event has been folded.
 There is no `apply-events` at that point to hang an index off.
 
-Fix-forward with disclosure (`rulings.md#R-stop-only-on-two-defensible-
-readings`: one defensible reading, so this is not a stop). The ruling's
+Fix-forward with disclosure: one defensible reading, so this is not a
+stop (`rulings.md#R-stop-only-on-two-defensible-readings`). The ruling's
 **law** — a maintained index whose from-scratch definition is kept as
 the gate — applies to all four sites unchanged. Its **location**
 applies to three; `select-person`'s carrier is `prelude`'s own

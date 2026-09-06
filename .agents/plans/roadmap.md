@@ -16,32 +16,59 @@ record it names. The six-line row cap and the `## Done` rotation both went
 with them.
 
 ## Next (backlog, no session scheduled)
-- OPEN **[performance-residual-sites]** PRIORITY 1 -- what ADR-0169 saw and left
-  (`rulings.md#R-move-not-improve`), RE-MEASURED 2026-09-05 at `3114dbfe` over a
-  2,500 / 7,500 / 22,500-arrival decade on committed cells, generate and check
-  timed separately as `sim run --format ground-truth` piped into `sim check` --
-  the prime audience's invocation, which nothing had measured
-  (`.agents/plans/2026-09-05-performance-measurement/measurements.md`; the
-  2026-08-29 figures it replaces died in scratch, which is why it is committed).
-  **CHECK IS NO LONGER THE QUADRATIC**: startup-corrected decade slope 1.03-1.04
-  against ADR-0169's 1.814, and `occupancy-within-capacity` is 4.08% of the phase
-  against its 54.9% -- arc 0 and `642d70a` both landed. The **14 `engine/replay`
-  calls** are confirmed and understated at **50.97%** of check, but check is
-  130.57 s against generate's 2,329.46 s at 533,147 events, **5.3% of the pair's
-  wall**, so the whole win there is ~65 s.
-  **GENERATE IS THE QUADRATIC, AND STEEPENING**: decade slope 1.851, local slope
-  1.59 at the bottom rising to **2.12** at the top, so a single exponent
-  understates the next decade. Ranked by measured inclusive share of the 22,500
-  generate phase, each a RECOMMENDATION FOR A RULING and not a decision
-  (`R-measure-first` scopes that session to measurement): (1) `decide
-  :discharge`'s `waiting-boarder` **30.54%**, rowed by ADR-0169 at ~7.9%;
-  (2) `run/select-person` **19.98%**, a full-pool `filterv` per arrival that is
-  O(arrivals^2) under the provenance's own 2x-`:persons` rule and is **on no list
-  at all** -- it needs a row before it needs a fix; (3) `occupancy-board`
-  **17.11%**, rowed at 8.1%; (4) `last-uncancelled-index` **10.78%** and flat,
-  the least urgent of the four despite being the one F-3 left admissible.
-  67,500 arrivals is unreachable on shipped defaults, measured and not
-  extrapolated: 3,973 MB peak RSS against a 3.88 GB `MaxHeapSize`.
+- OPEN **[performance-residual-sites]** PRIORITY 1 -- the generate-quadratic
+  program, chartered by ADR-0180 (`notes/adr/0180-indexes-ride-the-fold.md`)
+  over the 2026-09-05 re-measurement at `3114dbfe`
+  (`.agents/plans/2026-09-05-performance-measurement/measurements.md`). CHECK IS
+  NO LONGER THE QUADRATIC: corrected decade slope 1.03-1.04 against ADR-0169's
+  1.814, and the whole phase is 130.57 s against generate's 2,329.46 s at
+  533,147 events -- 5.3% of the pair's wall. GENERATE IS, and is steepening:
+  corrected decade slope 1.851, local slope 1.587 at the bottom rising to 2.116
+  at the top, so one exponent understates the next decade. FOUR SITES OF ONE
+  SHAPE -- a per-event or per-arrival scan over a population that is only ever
+  appended to -- are 78.4 points of inclusive share at 22,500 arrivals, and
+  R-fold-carrier fixes all four the same way: an index maintained at
+  `fold/apply-events`, with the from-scratch definition kept as the gate that
+  proves the index equal at every replay entry. R-order sequences them, one
+  session each, every commit bracket-proven: (1) `decide :discharge`'s
+  `waiting-boarder` 30.54%, rowed by ADR-0169 at ~7.9%; (2) `run/select-person`
+  19.98%, rowed separately as `roadmap.md#select-person-arrival-quadratic`;
+  (3) `sim-model/occupancy-board` 17.11%, rowed at 8.1%; (4)
+  `log-index/last-uncancelled-index` 10.78% and flat, the one F-3 left
+  admissible. Check's fourteen `engine/replay` calls (50.97% of check, 2.7% of
+  the pair, worth ~65 s) come last. The ADR carries each site's scan, its
+  replacing index, its draw- or allocation-affecting verdict and its
+  equivalence argument, and names what is out of scope. 67,500 arrivals is
+  unreachable on shipped defaults for a separate reason this program does not
+  address: 3,973 MB peak RSS against a 3.88 GB `MaxHeapSize`, measured and not
+  extrapolated.
+- OPEN **[select-person-arrival-quadratic]** PRIORITY 2 -- `select-person`
+  (`components/sim-engine/src/ehrt/sim_engine/run.clj`) is a `filterv` over the
+  WHOLE person population, taken once per arrival to drop people whose death
+  instant has passed, and the provenance makes `:persons :count` twice the
+  arrival count BY RULE -- so the site is O(arrivals^2) by construction. At
+  19.98% of the top-of-decade generate phase it is the second-largest site
+  there, and it was on no list at all until this row, because ADR-0169 profiled
+  a configuration in which the person layer did not yet exist
+  (`.agents/plans/2026-09-05-performance-measurement/measurements.md:216-240`).
+  Site 2 of `roadmap.md#performance-residual-sites`; ADR-0180 carries the scan,
+  the index, the equivalence argument, and the two things a session here must
+  not miss -- it is the ONLY one of the four whose index content is read BY the
+  draw (both the candidate count and the candidate ORDER feed the `nth`), and
+  its carrier is `prelude`'s own t-ascending arrival sweep rather than
+  `fold/apply-events`, a disclosed narrowing of R-fold-carrier's location.
+- OPEN **[dense-7500-gate-gaps]** PRIORITY 3 -- two gates ADR-0180's
+  R-gate-gaps commissions, neither of them site work. (a) THE EXERCISER IS NOT
+  IN A MAKE TARGET: `bin/demo-exerciser-dense-7500` exists and is wired into
+  neither `make test` nor `make integration`, so the only committed
+  configuration in this tree with a non-empty R-queue population -- the 21
+  results ADR-0179's own addendum recovered -- is exercised by hand or not at
+  all. (b) THE SCALE TABLE IS UNGATED: `docs/consuming-ground-truth.md`'s three
+  Scale cells are that same unwired scenario's, they moved under ADR-0179, and
+  they were re-measured by hand at `4ddf62c2` because nothing failed when they
+  did. Gate the table BEFORE the four generate sites land -- those sites must
+  move no figure in it, which is exactly the claim a gate would carry and prose
+  cannot. Record: `.agents/session-records/2026-09-06-adr-0180-charter.md`.
 - OPEN **[oru-control-id-collision]** PRIORITY 4 -- `control-id-for` not
   injective over `:result-available` -- 6 live duplicate MSH-10s in seed-424242,
   1 in clinic-decade demo (sweep-3 record :290); fix moves every corpus, its own
