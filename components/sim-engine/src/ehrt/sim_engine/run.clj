@@ -302,17 +302,21 @@
 
   Without the filter an arrival could land on a person whose own
   `:person-death` already fired, which is a defect with a wire face: a
-  registration for somebody the ground truth says is dead."
-  [^Random rng population alive t]
-  (let [candidates (filterv (fn [{:keys [person-id]}]
-                              (let [d (get alive person-id)]
-                                (or (nil? d) (> d t))))
-                            population)
+  registration for somebody the ground truth says is dead.
+
+  ADR-0180 SITE 2: THE FILTER IS GONE AND THE FUNCTION IS UNCHANGED.
+  `sweep` (`alive-sweep` above) answers the same count and the same
+  positional candidate the `filterv` answered, over the population's own
+  index order. The draw is still taken unconditionally, at the same point
+  in the `:world` sequence, before anything is decided with it; and the
+  `min` clamp below is the shipped one, character for character.
+  `ehrt.sim-engine.alive-sweep-test` keeps the filter verbatim and proves
+  the two agree at every arrival, the selected id included."
+  [^Random rng sweep t]
+  (let [candidates (sweep-advance! sweep t)
         draw (.nextDouble rng)]
-    (when (seq candidates)
-      (:person-id (nth candidates
-                       (min (dec (count candidates))
-                            (long (* draw (count candidates)))))))))
+    (when (pos? candidates)
+      (sweep-nth sweep (min (dec candidates) (long (* draw candidates)))))))
 
 (defn- prelude
   "Everything `run` computes before its loop starts, in ONE place because
@@ -382,9 +386,14 @@
         ;; ADR-0173 section 2(a), ruling A1. AFTER the arrival gaps, so a
         ;; run with no `:persons` leaves this stream exactly where it has
         ;; always stood by the time the loop's own `:world` draws start.
+        ;; ADR-0180 site 2: ONE sweep for the whole arrival vector, built
+        ;; here because this `mapv` IS its carrier -- `arrivals` is
+        ;; t-ascending and the population is fixed, which is exactly the
+        ;; pair of facts a shrink-only index needs, and neither is true
+        ;; anywhere else a carrier could have stood.
         bindings (if persons
-                   (mapv (fn [t] (select-person world-rng (:population persons) (:alive persons) t))
-                         arrivals)
+                   (let [sweep (alive-sweep (:population persons) (:alive persons))]
+                     (mapv (fn [t] (select-person world-rng sweep t)) arrivals))
                    (vec (repeat patients nil)))
         ;; ARC 3B SWEEP 3 (ADR-0174 section 2(b)): the scheduled-vs-walk-in
         ;; SPLIT, on `:world`, in ORDINAL ORDER, AFTER the person-selection

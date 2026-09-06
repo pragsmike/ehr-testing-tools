@@ -76,20 +76,20 @@
                        (min (dec (count candidates))
                             (long (* draw (count candidates)))))))))
 
-(defn- sweep-select
-  "THE SAME BODY with its one filter replaced by the sweep's two answers
-  and NOTHING else touched -- the draw in the same place and taken
-  unconditionally, the `min` clamp character for character, the
-  positional read where the `nth` was.
+(def ^:private sweep-select
+  "THE SHIPPED SELECTOR ITSELF, now that the site reads the sweep.
 
-  It stands here rather than in `run.clj` because ADR-0180 site 2 lands
-  the sweep and its law BEFORE the site reads it: this is what
-  `select-person` becomes at the repoint, provable one commit early."
-  [^Random rng sweep t]
-  (let [candidates (run/sweep-advance! sweep t)
-        draw (.nextDouble rng)]
-    (when (pos? candidates)
-      (run/sweep-nth sweep (min (dec candidates) (long (* draw candidates)))))))
+  Until the repoint this was a TRANSCRIPTION here -- `select-person`'s
+  body with its one filter replaced and nothing else touched -- so that
+  the law could be proved one commit before the site moved. The
+  transcription is now retired rather than kept: a second copy of the
+  site is exactly the drift `rulings.md#R-test-fold` names, and the
+  reference this namespace owes is the FILTER (`naive-candidates` and
+  `naive-select` above), not the replacement.
+
+  The var is private, which is why this is `#'`: `bed_cycle_test`'s own
+  `#'check/bed-transitions` is the same idiom."
+  #'run/select-person)
 
 ;; --- the corpus -----------------------------------------------------------
 
