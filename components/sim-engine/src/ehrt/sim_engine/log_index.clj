@@ -1,6 +1,6 @@
 (ns ehrt.sim-engine.log-index
-  "Queries over the ground-truth log: the whole-log scans a `decide`
-  reaches for when it needs to know what ALREADY HAPPENED, and the
+  "Queries over the ground-truth log: what a `decide` reaches for when
+  it needs to know what ALREADY HAPPENED, and the
   reinstatement machinery the two reinstating cancels are built on --
   `engine.clj`'s sixth extraction under
   `roadmap.md#engine-namespace-extraction-and-apply-unification` (the
@@ -57,12 +57,26 @@
   and `reinstated-projection` inside `reinstated-state`, plus the two
   delegating defs stage 1 left here, and since ADR-0180 site 3
   `board-without`'s sibling read inside `bed-reoccupied-by-someone-
-  else?`. It was TWO until that session: the second was
-  `sim-model/occupancy-board`, which that function called to rebuild the
-  whole board for one lookup and which it now reads off the world as
-  `:board`. Nothing else in the moved text resolved in `engine.clj` at
-  all: `evolve`, `state` and `streams` are absent from this cluster
-  entirely.
+  else?`, and since site 4 `last-uncancelled` inside
+  `last-uncancelled-index` itself. It was TWO until site 3: the second
+  was `sim-model/occupancy-board`, which `bed-reoccupied-by-someone-
+  else?` called to rebuild the whole board for one lookup and which it
+  now reads off the world as `:board`. Nothing else in the moved text
+  resolved in `engine.clj` at all: `evolve`, `state` and `streams` are
+  absent from this cluster entirely.
+
+  TWO OF THESE QUERIES NO LONGER SCAN, which is why the opening sentence
+  above says 'what a decide reaches for' rather than 'the whole-log
+  scans' it said until 2026-09-06. ADR-0169 gave `last-cited-index` a
+  `:citation-index` lookup WITH a scan fallback for hand-built worlds;
+  ADR-0180 site 4 gave `last-uncancelled-index` a `:cancel-index` lookup
+  with NO fallback and a `world` parameter where it took a
+  `ground-truth`. The difference between those two shapes is ADR-0169
+  F-3's own condition and not a style choice -- this namespace holds
+  exactly ONE implementation of the last-uncancelled answer, and the
+  scan it replaced lives in `ehrt.sim-engine.cancel-index-test` as
+  `naive-last-uncancelled-index`. `events-for-patient` still scans, and
+  is the form here the opening sentence describes without qualification.
 
   COVERAGE, disclosed rather than implied: the oracle's 41 roots reach
   no cancel decide, and the gated corpora resolve zero citations, so a
@@ -96,24 +110,55 @@
   fold/reinstatable-event-types)
 
 (defn last-uncancelled-index
-  "Index into `ground-truth` of the most recent `event-type` event
-  naming `patient-id` that is NOT already the target of an earlier
+  "Index into the log of the most recent `event-type` event naming
+  `patient-id` that is NOT already the target of an earlier
   `cancel-type` event -- the applicability query the event-validity
   table's cancel-* row asks ('the event class being cancelled must
   exist in this patient's log and not already be cancelled'). nil when
   no such event exists, which decide turns into a structured rejection
-  rather than a throw."
-  [ground-truth patient-id event-type cancel-type]
-  (let [already-cancelled (into #{}
-                                (comp (filter #(= cancel-type (:event %)))
-                                      (map :cancels-event-id))
-                                ground-truth)]
-    (last (keep-indexed (fn [i ev]
-                          (when (and (= event-type (:event ev))
-                                     (some #(= patient-id (:patient-id %)) (:participants ev))
-                                     (not (already-cancelled i)))
-                            i))
-                        ground-truth))))
+  rather than a throw.
+
+  IT NO LONGER SCANS (ADR-0180 site 4, 2026-09-06), AND THAT IS WHY IT
+  TAKES A `world` WHERE IT TOOK A `ground-truth`. The sentence above is
+  still the DEFINITION of the answer -- what a reader asking what this
+  query means should read -- but it is not recomputed here per call.
+  `fold/apply-events` maintains `:cancel-index`, the two maps the scan
+  rebuilt EVERY time: `[patient-id event-type]` -> that patient's own
+  log indices of that type in log order, and `cancel-type` -> the set of
+  indices that class of cancel has consumed. This function is the
+  ordered lookup over them, `fold/last-uncancelled`.
+
+  WHY IT WAS WORTH MOVING. The scan made TWO whole-log passes PER CALL
+  -- one to build the consumed set, one `keep-indexed` to find the last
+  match -- once per cancel decide, and at the top of the measured decade
+  it was 10.78% of the whole generate phase, rising to 21.63% as sites 1
+  to 3 removed the work in front of it
+  (`.agents/plans/2026-09-05-performance-measurement/measurements.md`).
+  It draws nothing and allocates no bed, so it owes no draw-ORDER
+  argument -- but its ANSWER is written into the emitted event as
+  `:cancels-event-id`, and a nil where the scan returned an integer
+  turns a legal cancel into a `:step-rejected`, which moves every draw
+  after it. IDENTITY, nil included, is the obligation.
+
+  THERE IS NO FALLBACK, and its absence is ADR-0169 F-3's own condition
+  rather than a preference: that finding admitted this site to the index
+  family 'only if the same carrier answers its query without a second
+  code path', so `src` holds exactly ONE implementation of this answer.
+  `fold/last-uncancelled` THROWS on a world carrying no index
+  (`rulings.md#R-raw-read`) rather than rebuilding, because nil is this
+  query's own 'no such event' answer and a missing index read as nil
+  would silently reject a legal cancel. `run`'s `init-world` seeds it.
+
+  THE SCAN IS NOT GONE, IT MOVED. `ehrt.sim-engine.cancel-index-test`
+  keeps this body verbatim as `naive-last-uncancelled-index`
+  (`rulings.md#R-move-not-improve`), and a pinned-seed property asserts
+  the two agree at EVERY intermediate world of a churn-bearing generated
+  log, for every patient and every one of the three (event-type,
+  cancel-type) pairs `decide` asks. That duplication is a permanent,
+  declared cost -- the same one ADR-0169's six `naive-*` invariant
+  bodies and sites 1 and 3's own reference implementations are."
+  [world patient-id event-type cancel-type]
+  (fold/last-uncancelled world patient-id event-type cancel-type))
 
 (def cited-opening-event-types
   "MOVED to `ehrt.sim-engine.fold` with `reinstatable-event-types`

@@ -163,10 +163,15 @@
   `init-world` seed, and a world that drives `decide` before any fold
   has to carry it -- `decide` READS the occupancy board rather than
   rebuilding it, and `sim-model/free` calls the board as a PREDICATE, so
-  a missing one throws rather than reading empty."
+  a missing one throws rather than reading empty.
+
+  ADR-0180 site 4 adds `:cancel-index {}` one step further on: the three
+  cancel decides this file scripts read that index, and
+  `fold/last-uncancelled` throws on a world without one rather than
+  rebuilding the scan."
   [patients]
   {:patients patients :facility churn-facility :providers churn-providers
-   :ground-truth [] :board {}})
+   :ground-truth [] :board {} :cancel-index {}})
 
 (defn- fold-events
   "Applies `events` to `world` THROUGH THE CHOKE POINT --
@@ -204,7 +209,8 @@
   [world events]
   (:world (fold/apply-events {:world world} events
                              #{:patient-bootstrap :patient-state
-                               :boarder-index :board :log-mirror})))
+                               :boarder-index :board :cancel-index
+                               :log-ordinal :log-mirror})))
 
 (defn- admit
   [world t patient-id location]
@@ -377,6 +383,13 @@
                   ;; occupancy board is READ off the world now, and
                   ;; `sim-model/free` calls it as a PREDICATE.
                   :board {}
+                  ;; ADR-0180 site 4: and the cancel index, because the
+                  ;; `:cancel-transfer` two lines down reads it --
+                  ;; `fold/last-uncancelled` throws on a world without
+                  ;; one rather than rebuilding the scan. It is that
+                  ;; cancel's REJECTION this test wants, and a rejection
+                  ;; is still an answer the index has to give.
+                  :cancel-index {}
                   :facility churn-facility :providers churn-providers :ground-truth []}
           world1 (admit world0 0 "P1" "Renal")
           {:keys [events]} (decide/decide (streams/one-stream (Random. 1)) 10 world1 "P1" {:type :cancel-transfer})

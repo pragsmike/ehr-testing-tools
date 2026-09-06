@@ -1373,8 +1373,11 @@
 
 (defmethod decide :cancel-admit
   [_streams t world patient-id step]
-  (let [ground-truth (:ground-truth world)
-        idx (log-index/last-uncancelled-index ground-truth patient-id :admission :cancel-admit)]
+  ;; ADR-0180 site 4: the maintained index, read not rebuilt -- and this
+  ;; method needs the LOG for nothing else, so its `ground-truth`
+  ;; binding went with the scan. The two reinstating cancels below keep
+  ;; theirs, because `reinstated-state` still takes it.
+  (let [idx (log-index/last-uncancelled-index world patient-id :admission :cancel-admit)]
     (if (nil? idx)
       (rejected-outcome :illegal-cancel-admit patient-id t step nil)
       (let [patient (get-in world [:patients patient-id])]
@@ -1666,10 +1669,11 @@
         ;; patients walking the same module cite identically, and an
         ;; unfiltered `last` over the whole log hands this end whichever
         ;; patient's order came LAST. The participant predicate is the
-        ;; one `ehrt.sim-engine.log-index/last-uncancelled-index`
-        ;; already uses for exactly this reason, and the one
-        ;; check.clj's own medication-end invariant tests the
-        ;; resolved target against.
+        ;; one the last-uncancelled query already used for exactly this
+        ;; reason -- it lives in `fold/update-cancel-index` since
+        ;; ADR-0180 site 4 folded that query into an index, and it is
+        ;; the same predicate check.clj's own medication-end invariant
+        ;; tests the resolved target against.
         order-event-id (log-index/last-cited-index world ground-truth :medication-order
                                                    patient-id order-citation)]
     ;; M6 Task 1: `:order-citation` now rides the event itself, alongside
@@ -1716,7 +1720,8 @@
 (defmethod decide :cancel-transfer
   [_streams t world patient-id step]
   (let [ground-truth (:ground-truth world)
-        idx (log-index/last-uncancelled-index ground-truth patient-id :transfer :cancel-transfer)]
+        ;; ADR-0180 site 4: the maintained index, read not rebuilt.
+        idx (log-index/last-uncancelled-index world patient-id :transfer :cancel-transfer)]
     (if (nil? idx)
       (rejected-outcome :illegal-cancel-transfer patient-id t step nil)
       (let [patient (get-in world [:patients patient-id])
@@ -1747,7 +1752,8 @@
 (defmethod decide :cancel-discharge
   [_streams t world patient-id step]
   (let [ground-truth (:ground-truth world)
-        idx (log-index/last-uncancelled-index ground-truth patient-id :discharge :cancel-discharge)]
+        ;; ADR-0180 site 4: the maintained index, read not rebuilt.
+        idx (log-index/last-uncancelled-index world patient-id :discharge :cancel-discharge)]
     (if (nil? idx)
       (rejected-outcome :illegal-cancel-discharge patient-id t step nil)
       (let [patient (get-in world [:patients patient-id])

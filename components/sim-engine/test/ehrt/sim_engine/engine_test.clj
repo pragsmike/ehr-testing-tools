@@ -177,13 +177,21 @@
   hand-rolled fold is a SECOND DEFINITION of what applying an event
   means; calling the choke point cannot drift from the first.
 
-  The projection is the FIVE concerns a scripted `decide`/`evolve` test
+  The projection is the SEVEN concerns a scripted `decide`/`evolve` test
   needs: bootstrap (so a participant not in the map is seeded rather
   than nil-evolved), the patient-state fold, the boarder index the
   bed-ready coupling reads, the occupancy board every allocating decide
   reads (ADR-0180 site 3, added 2026-09-06 for the same reason the
-  boarder index was added the same day), and the log mirror the
-  cancel-family decides query. It is NOT `run-loop-projection`: the
+  boarder index was added the same day), the log mirror the reinstating
+  cancels query, and the PAIR ADR-0180 site 4 added together the same
+  day again -- `:cancel-index`, which the three cancel decides now read
+  instead of scanning that mirror, and `:log-ordinal`, without which
+  they would read the WRONG INDEX rather than none. This helper folds
+  ONE BATCH AT A TIME, and `:log-ordinal` is what makes the index number
+  each event by its position in the whole log rather than by its
+  position in its own batch; a scripted test that admits and then
+  transfers would otherwise file both at 0 and its cancel would name the
+  admission. It is NOT `run-loop-projection`: the
   decorations and the two transient accumulators want slots and
   parameters a scripted test has no source for, which is the whole
   reason a projection is a declared subset rather than an
@@ -198,7 +206,8 @@
   [world events]
   (:world (fold/apply-events {:world world} events
                              #{:patient-bootstrap :patient-state
-                               :boarder-index :board :log-mirror})))
+                               :boarder-index :board :cancel-index
+                               :log-ordinal :log-mirror})))
 
 (deftest bed-ready-transfer-scripted-two-patients
   (testing "B boards in ED surge because Renal's one bed is taken; A's
@@ -520,6 +529,14 @@
                   ;; PREDICATE, so a missing one throws. `{}` is what
                   ;; these freshly seeded patients' board IS.
                   :board {}
+                  ;; ADR-0180 site 4: and the cancel index, because this
+                  ;; scenario drives a `:cancel-admit` below --
+                  ;; `fold/last-uncancelled` throws on a world without
+                  ;; one rather than rebuilding the scan. The two other
+                  ;; hand-built worlds in this file drive no cancel and
+                  ;; get no seed, which is the guard-by-membership
+                  ;; contract showing through on the READER side.
+                  :cancel-index {}
                   :patients {"P1" (state/initial-patient "P1" "MRN000001")
                              "P2" (state/initial-patient "P2" "MRN000002")
                              "P3" (state/initial-patient "P3" "MRN000003")}}
@@ -583,10 +600,17 @@
   that drives `decide` before any fold has to carry it -- `decide` reads
   the board instead of rebuilding it, and `sim-model/free` calls it as a
   PREDICATE, so a missing one throws rather than reading empty. `{}` is
-  what these freshly seeded patients' board actually is."
+  what these freshly seeded patients' board actually is.
+
+  ADR-0180 site 4 adds `:cancel-index {}` for the same reason one step
+  further on: the three cancel decides read that index and
+  `fold/last-uncancelled` THROWS on a world without one rather than
+  rebuilding the scan. `{}` is again the answer rather than a stand-in
+  -- no event has been logged, so no patient has a cancellable one."
   [patients]
   {:patients patients :facility churn-facility :providers churn-providers :ground-truth []
    :board {}
+   :cancel-index {}
    :order-profiles order-profiles/default-profiles})
 
 (defn- admit
