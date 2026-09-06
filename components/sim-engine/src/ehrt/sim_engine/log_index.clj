@@ -52,13 +52,16 @@
   is the treatment
   the `encounters` and `fold` moves gave their own.
 
-  Two edges, both taken DIRECTLY into the namespace that owns them
-  rather than back through `engine.clj`'s delegating defs: `fold` --
-  `apply-events` and `reinstated-projection` inside `reinstated-state`,
-  plus the two delegating defs stage 1 left here -- and
-  `sim-model/occupancy-board` inside `bed-reoccupied-by-someone-else?`.
-  Nothing else in the moved text resolved in `engine.clj` at all:
-  `evolve`, `state` and `streams` are absent from this cluster
+  ONE edge, taken DIRECTLY into the namespace that owns it rather than
+  back through `engine.clj`'s delegating defs: `fold` -- `apply-events`
+  and `reinstated-projection` inside `reinstated-state`, plus the two
+  delegating defs stage 1 left here, and since ADR-0180 site 3
+  `board-without`'s sibling read inside `bed-reoccupied-by-someone-
+  else?`. It was TWO until that session: the second was
+  `sim-model/occupancy-board`, which that function called to rebuild the
+  whole board for one lookup and which it now reads off the world as
+  `:board`. Nothing else in the moved text resolved in `engine.clj` at
+  all: `evolve`, `state` and `streams` are absent from this cluster
   entirely.
 
   COVERAGE, disclosed rather than implied: the oracle's 41 roots reach
@@ -70,8 +73,7 @@
   replay-would-hand-back` and `citation-resolution-matches-the-whole-
   log-scan`, the two post-hoc equivalence proofs ADR-0169 left
   standing."
-  (:require [ehrt.sim-engine.fold :as fold]
-            [ehrt.sim-model.interface :as sim-model]))
+  (:require [ehrt.sim-engine.fold :as fold]))
 
 (defn events-for-patient
   "Every event `patient-id` participates in, in log order -- the
@@ -176,10 +178,19 @@
   legitimately claimed it in the meantime. Reinstating into an
   occupied bed would violate no-double-occupancy, so this is checked
   against the LIVE occupancy board (world, not the log) at decide-time
-  -- the same board :admission/:transfer already consult."
+  -- the same board :admission/:transfer already consult.
+
+  ADR-0180 site 3 made that last clause literal. This used to rebuild
+  its own copy with `sim-model/occupancy-board` for a single `get`; it
+  now reads the `:board` those methods read, maintained at
+  `fold/apply-events`. THIS SITE IS WHY VALUE EQUALITY IS OWED and not
+  just key-set equality: everywhere else the board is a PREDICATE over a
+  derived id list, and here its value is an occupant id compared against
+  `patient-id`. `ehrt.sim-engine.board-index-test` asserts the whole map
+  for that reason."
   [world patient-id location]
   (when-let [bed (:bed location)]
-    (let [occupant (get (sim-model/occupancy-board (:patients world)) bed)]
+    (let [occupant (get (:board world) bed)]
       (and (some? occupant) (not= occupant patient-id)))))
 
 (def status-a-cancel-target-leaves

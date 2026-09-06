@@ -177,14 +177,17 @@
   hand-rolled fold is a SECOND DEFINITION of what applying an event
   means; calling the choke point cannot drift from the first.
 
-  The projection is the four concerns a scripted `decide`/`evolve` test
+  The projection is the FIVE concerns a scripted `decide`/`evolve` test
   needs: bootstrap (so a participant not in the map is seeded rather
   than nil-evolved), the patient-state fold, the boarder index the
-  bed-ready coupling reads, and the log mirror the cancel-family decides
-  query. It is NOT `run-loop-projection`: the decorations and the two
-  transient accumulators want slots and parameters a scripted test has
-  no source for, which is the whole reason a projection is a declared
-  subset rather than an all-or-nothing switch.
+  bed-ready coupling reads, the occupancy board every allocating decide
+  reads (ADR-0180 site 3, added 2026-09-06 for the same reason the
+  boarder index was added the same day), and the log mirror the
+  cancel-family decides query. It is NOT `run-loop-projection`: the
+  decorations and the two transient accumulators want slots and
+  parameters a scripted test has no source for, which is the whole
+  reason a projection is a declared subset rather than an
+  all-or-nothing switch.
 
   ONE PRE-EXISTING DEFECT GOES WITH THE REWRITE, disclosed rather than
   absorbed: the hand-rolled version mapped over `(:participants ev)`
@@ -195,7 +198,7 @@
   [world events]
   (:world (fold/apply-events {:world world} events
                              #{:patient-bootstrap :patient-state
-                               :boarder-index :log-mirror})))
+                               :boarder-index :board :log-mirror})))
 
 (deftest bed-ready-transfer-scripted-two-patients
   (testing "B boards in ED surge because Renal's one bed is taken; A's
@@ -206,7 +209,14 @@
                               "P2" (state/initial-patient "P2" "MRN000002")}
                   :facility crowded-facility
                   :providers test-providers
-                  :ground-truth []}
+                  :ground-truth []
+                  ;; ADR-0180 site 3: `run`'s `init-world` seeds
+                  ;; `:board {}` and a world driving `decide` directly
+                  ;; must too -- `decide` reads the board rather than
+                  ;; rebuilding it, and `sim-model/free` calls it as a
+                  ;; PREDICATE, so a missing one throws. `{}` is what
+                  ;; these freshly seeded patients' board IS.
+                  :board {}}
           rng (Random. 1)
           {a-events :events} (decide/decide (streams/one-stream rng) 0 world0 "P1"
                                              {:type :admission :location "Renal"})
@@ -503,6 +513,13 @@
           world0 {:facility one-bed-one-surge-facility
                   :providers test-providers
                   :ground-truth []
+                  ;; ADR-0180 site 3: `run`'s `init-world` seeds
+                  ;; `:board {}` and a world driving `decide` directly
+                  ;; must too -- `decide` reads the board rather than
+                  ;; rebuilding it, and `sim-model/free` calls it as a
+                  ;; PREDICATE, so a missing one throws. `{}` is what
+                  ;; these freshly seeded patients' board IS.
+                  :board {}
                   :patients {"P1" (state/initial-patient "P1" "MRN000001")
                              "P2" (state/initial-patient "P2" "MRN000002")
                              "P3" (state/initial-patient "P3" "MRN000003")}}
@@ -562,8 +579,14 @@
     :specialty "Nephrology" :wards [:renal :ed]}])
 
 (defn- world-of
+  "ADR-0180 site 3: `:board {}` is `run`'s `init-world` seed, and a world
+  that drives `decide` before any fold has to carry it -- `decide` reads
+  the board instead of rebuilding it, and `sim-model/free` calls it as a
+  PREDICATE, so a missing one throws rather than reading empty. `{}` is
+  what these freshly seeded patients' board actually is."
   [patients]
   {:patients patients :facility churn-facility :providers churn-providers :ground-truth []
+   :board {}
    :order-profiles order-profiles/default-profiles})
 
 (defn- admit
@@ -1541,7 +1564,14 @@
                               "P2" (state/initial-patient "P2" "MRN000002")}
                   :facility crowded-facility
                   :providers test-providers
-                  :ground-truth []}
+                  :ground-truth []
+                  ;; ADR-0180 site 3: `run`'s `init-world` seeds
+                  ;; `:board {}` and a world driving `decide` directly
+                  ;; must too -- `decide` reads the board rather than
+                  ;; rebuilding it, and `sim-model/free` calls it as a
+                  ;; PREDICATE, so a missing one throws. `{}` is what
+                  ;; these freshly seeded patients' board IS.
+                  :board {}}
           rng (Random. 1)
           {a-events :events} (decide/decide (streams/one-stream rng) 0 world0 "P1" {:type :admission :location "Renal"})
           world1 (fold-events world0 a-events)

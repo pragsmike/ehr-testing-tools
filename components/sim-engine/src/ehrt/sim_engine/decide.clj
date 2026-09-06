@@ -850,11 +850,15 @@
 ;; every licensed bed and surge slot born `:ready`. It is the one place
 ;; arc 3b keeps state the log cannot re-derive, and the asymmetry is
 ;; deliberate and worth stating IN THE CODE rather than leaving for a
-;; reader to notice: `occupancy-board`'s consistency law -- recomputing
-;; from `patients` from scratch always equals this -- still holds for the
-;; OCCUPIED half (`:occupied` iff some patient's `:location` names the
-;; bed), while `:dirty`, `:cleaning` and `:ready` have no patient to be
-;; derived from at all. That is what ADR-0174's "world-level" means.
+;; reader to notice: `occupancy-board`'s consistency law -- a board
+;; recomputed from `patients` from scratch always equals this -- still
+;; holds for the OCCUPIED half (`:occupied` iff some patient's
+;; `:location` names the bed), while `:dirty`, `:cleaning` and `:ready`
+;; have no patient to be derived from at all. That is what ADR-0174's
+;; "world-level" means. ADR-0180 site 3 did not weaken it: `:board` is
+;; now MAINTAINED rather than recomputed, and the law is what
+;; `ehrt.sim-engine.board-index-test` proves rather than what the call
+;; sites re-establish by rebuilding.
 ;;
 ;; NIL UNLESS THE RUN OPTED IN, exactly like `:encounter-minting` above
 ;; it: no index, no `:ready` gate (`sim-model/free` falls back to
@@ -1026,11 +1030,21 @@
   [{world-rng :world facility-rng :facility} t world patient-id
    {:keys [location force-placement] :as step}]
   ;; ADR-0171: the bed choice is WORLD (its candidate set is `free`
-  ;; against a board built from EVERY patient), the attending is
+  ;; against a board covering EVERY patient), the attending is
   ;; FACILITY (ward-eligible providers, no patient state read) -- ruling
   ;; E1's split is by what the draw READS, not by what it is named after.
+  ;;
+  ;; ADR-0180 site 3: THE BOARD IS READ, NOT REBUILT. It is the same map
+  ;; `sim-model/occupancy-board` returns for this world -- `fold/apply-
+  ;; events` maintains `:board` off each event's own pre/post participant
+  ;; pair, and `ehrt.sim-engine.board-index-test` keeps the definition
+  ;; verbatim and proves the two equal at EVERY intermediate world of a
+  ;; churn-bearing log. What changes is the cost: an `into {}` over the
+  ;; whole population per placement becomes a map lookup. The board is
+  ;; still a definition (`components/sim-model/docs/charter.md` section
+  ;; 4); this is a cache of it that is proven equal to it.
   (let [{:keys [facility providers patients]} world
-        board (sim-model/occupancy-board patients)
+        board (:board world)
         ;; ARC 3B SWEEP 2: `(:beds world)` is nil with no `:bed-cycle`
         ;; opt-in, and `allocate`'s own 6-arity is then the 5-arity
         ;; verbatim -- one of the four `allocate` call sites
@@ -1083,7 +1097,9 @@
   ;; draw -- it reads a ward's config and no patient state at all.
   [{world-rng :world facility-rng :facility} t world patient-id {:keys [location force-placement]}]
   (let [{:keys [facility patients]} world
-        board (sim-model/occupancy-board patients)
+        ;; ADR-0180 site 3: the maintained board, read not rebuilt --
+        ;; `decide :admission` above carries the argument.
+        board (:board world)
         patient (get patients patient-id)
         alloc (sim-model/allocate world-rng facility board (:beds world) location force-placement)]
     (if (:exhausted alloc)
@@ -1151,12 +1167,21 @@
 
   `home-licensed-free?` goes through `sim-model/free` rather than
   repeating `(remove board ...)`: ADR-0174 names this probe specifically
-  as one that must ask the same question the ladder asks."
+  as one that must ask the same question the ladder asks.
+
+  ADR-0180 site 3: THE BOARD THIS FUNCTION ASKS FOR IS A DIFFERENT ONE
+  from the three `decide` methods' -- the board with the discharging
+  patient REMOVED, since the bed being handed over is the one they are
+  vacating. That second query shape is where an index most easily
+  diverges from its definition, so it is answered by masking the ONE
+  maintained index (`fold/board-without`) rather than by a second index,
+  and `ehrt.sim-engine.board-index-test` drives the mask against the
+  `dissoc` it replaces for every patient at every world."
   [world-rng world patient-id waiting-id vacated-location]
   (let [facility (:facility world)
         beds (:beds world)
         home-ward-name (get-in world [:patients waiting-id :home-ward])
-        board (sim-model/occupancy-board (dissoc (:patients world) patient-id))
+        board (fold/board-without world patient-id)
         home-ward (sim-model/ward-by-name facility home-ward-name)
         home-licensed-free? (boolean (seq (sim-model/free (sim-model/licensed-bed-ids home-ward) board beds)))]
     (if (and (= :surge (:placement vacated-location)) home-licensed-free?)
@@ -1361,7 +1386,8 @@
 (defmethod decide :transfer-in-error
   [{world-rng :world} t world patient-id {:keys [location force-placement]}]
   (let [{:keys [facility patients ground-truth]} world
-        board (sim-model/occupancy-board patients)
+        ;; ADR-0180 site 3: the maintained board, read not rebuilt.
+        board (:board world)
         patient (get patients patient-id)
         alloc (sim-model/allocate world-rng facility board (:beds world) location force-placement)]
     (if (:exhausted alloc)

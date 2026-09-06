@@ -2,10 +2,19 @@
   "The occupancy board and the four-rung allocation ladder
   (components/sim/docs/operational-models.md). The board is NEVER an independent
   structure the engine writes to -- it is a pure fold over patient
-  states (`occupancy-board`), recomputed on demand every time `decide`
-  needs it (`sim/ADR-0008`'s own pattern, applied to beds: one authoritative
-  record -- patient state -- everything else a projection with a
-  proven consistency law).
+  states (`occupancy-board`) with a proven consistency law
+  (`sim/ADR-0008`'s own pattern, applied to beds: one authoritative
+  record -- patient state -- everything else a projection).
+
+  IT USED TO SAY \"recomputed on demand every time `decide` needs it\",
+  and since ADR-0180 site 3 (2026-09-06) that is no longer how the
+  engine gets it: `ehrt.sim-engine.fold/apply-events` maintains the same
+  map incrementally as `:board` on the world, and the five call sites
+  that rebuilt it read the index instead. THE DEFINITION IS UNCHANGED
+  and still lives here -- `ehrt.sim-check.check` calls it, and
+  `ehrt.sim-engine.board-index-test` proves the index equal to it at
+  every intermediate world of a churn-bearing log. What moved is who
+  recomputes it, not what it means.
 
   Ward matching throughout is by NAME (the string a pathway names,
   e.g. \"Renal\") -- the same string `:home-ward` and `:location`'s
@@ -45,7 +54,16 @@
   "The derived index: bed-id -> patient-id (sim/ADR-0010; was bed-id -> mrn
   before identity moved off :mrn), folded from patient states. This IS
   the consistency law stated as code: recomputing from `patients` from
-  scratch always equals this."
+  scratch always equals this.
+
+  AND SINCE ADR-0180 site 3 that sentence has a second reader. The
+  generate path no longer calls this per placement -- it carries
+  `ehrt.sim-engine.fold`'s `:board`, maintained event by event -- so
+  this body is now the REFERENCE the index is proven against rather than
+  the thing the engine runs. It is still live code: `ehrt.sim-check.
+  check`'s `surge-only-when-earlier-rungs-exhausted` calls it over a
+  replay entry's `:world-before`, a site the index deliberately does not
+  reach."
   [patients]
   (into {}
         (keep (fn [[patient-id patient]]

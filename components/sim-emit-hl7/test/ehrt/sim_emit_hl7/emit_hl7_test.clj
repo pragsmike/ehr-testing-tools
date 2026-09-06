@@ -17,6 +17,7 @@
             [ehrt.sim-engine.config :as config]
             [ehrt.sim-engine.decide :as decide]
             [ehrt.sim-engine.evolve :as evolve]
+            [ehrt.sim-engine.fold :as fold]
             [ehrt.sim-engine.run :as run]
             [ehrt.sim-engine.state :as state]
             [ehrt.sim-engine.streams :as streams]
@@ -158,17 +159,52 @@
     :specialty "Nephrology" :wards [:renal :ed]}])
 
 (defn- world-of
+  "ADR-0180 site 3: `:board {}` is `ehrt.sim-engine.run`'s own
+  `init-world` seed, and a world that drives `decide` before any fold
+  has to carry it -- `decide` READS the occupancy board rather than
+  rebuilding it, and `sim-model/free` calls the board as a PREDICATE, so
+  a missing one throws rather than reading empty."
   [patients]
-  {:patients patients :facility churn-facility :providers churn-providers :ground-truth []})
+  {:patients patients :facility churn-facility :providers churn-providers
+   :ground-truth [] :board {}})
 
 (defn- fold-events
+  "Applies `events` to `world` THROUGH THE CHOKE POINT --
+  `fold/apply-events`, which IS `run`'s own in-loop fold -- with an
+  explicit declared projection, exactly as the three shipped apply sites
+  do.
+
+  REWRITTEN 2026-09-06 (ADR-0180 site 3), AND THE REASON IS THE POINT.
+  It hand-rolled the fold: evolve every named participant, append the
+  batch to `:ground-truth`, done. That was a faithful copy of the loop
+  for as long as those were the only two things the loop did to a
+  world, and it silently stopped being one when the loop gained a
+  fourteenth concern and then a fifteenth. Site 1 found and fixed the
+  same shape in `ehrt.sim-engine.engine-test` on 2026-09-06 and
+  DISCLOSED this copy as a latent one it left standing, because nothing
+  here asked a boarder question. `:board` is what made it live: every
+  scripted `admit` below drives `decide :admission`, which reads the
+  board off the world. A hand-rolled copy of the choke point is a SECOND
+  DEFINITION of what applying an event means, and it falls behind the
+  first every time the first grows.
+
+  The projection is the five concerns a scripted `decide` test needs,
+  the same five `engine_test.clj`'s own helper declares. It is NOT
+  `run-loop-projection`: the decorations and the two transient
+  accumulators want slots and parameters a scripted test has no source
+  for.
+
+  ONE PRE-EXISTING DEFECT GOES WITH THE REWRITE, disclosed rather than
+  absorbed and in the same words its twin carried: the hand-rolled
+  version mapped over `(:participants ev)` unfiltered, so a
+  `:bed-status-change` -- whose participant names a BED and carries
+  `:patient-id` nil -- would have evolved a phantom nil-keyed patient.
+  No test here emits one, so it never fired; the choke point filters, so
+  it now cannot."
   [world events]
-  (-> (reduce (fn [w ev]
-                (reduce (fn [w2 {:keys [patient-id]}]
-                          (update-in w2 [:patients patient-id] evolve/evolve ev))
-                        w (:participants ev)))
-              world events)
-      (update :ground-truth into events)))
+  (:world (fold/apply-events {:world world} events
+                             #{:patient-bootstrap :patient-state
+                               :boarder-index :board :log-mirror})))
 
 (defn- admit
   [world t patient-id location]
@@ -336,6 +372,11 @@
             :step-rejected event produces the SAME empty vector any
             unregistered event type does"
     (let [world0 {:patients {"P1" (state/initial-patient "P1" "MRN000001")}
+                  ;; ADR-0180 site 3: `run`'s `init-world` seed, owed
+                  ;; by any hand-built world that drives `decide` -- the
+                  ;; occupancy board is READ off the world now, and
+                  ;; `sim-model/free` calls it as a PREDICATE.
+                  :board {}
                   :facility churn-facility :providers churn-providers :ground-truth []}
           world1 (admit world0 0 "P1" "Renal")
           {:keys [events]} (decide/decide (streams/one-stream (Random. 1)) 10 world1 "P1" {:type :cancel-transfer})
@@ -735,6 +776,11 @@
   (testing "old test worlds that never processed a :registered step (e.g. churn-scenarios-style
             hand-driven decide/evolve) still emit the pre-M4 3-field PID -- no persona, no crash"
     (let [world0 {:patients {"P1" (state/initial-patient "P1" "MRN000001")}
+                  ;; ADR-0180 site 3: `run`'s `init-world` seed, owed
+                  ;; by any hand-built world that drives `decide` -- the
+                  ;; occupancy board is READ off the world now, and
+                  ;; `sim-model/free` calls it as a PREDICATE.
+                  :board {}
                   :facility sim-model/default-facility :providers sim-model/default-provider-templates
                   :ground-truth []}
           {:keys [events]} (decide/decide (streams/one-stream (Random. 1)) 0 world0 "P1" {:type :admission :location "Renal"})
@@ -768,7 +814,10 @@
   [persona]
   (let [world0 {:patients {"P1" (assoc (state/initial-patient "P1" "MRN000001") :persona persona)}
                 :facility sim-model/default-facility :providers sim-model/default-provider-templates
-                :ground-truth []}
+                ;; ADR-0180 site 3: run/init-world's own seed, owed by any
+                ;; world that drives decide -- the board is READ now, and
+                ;; sim-model/free calls it as a predicate.
+                :ground-truth [] :board {}}
         registered-event {:event :registered :t 0 :active-mrn "MRN000001" :persona persona
                           :participants [{:patient-id "P1" :role :subject}]}
         world1 (update-in world0 [:patients "P1"] evolve/evolve registered-event)

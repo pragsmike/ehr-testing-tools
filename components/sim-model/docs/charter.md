@@ -172,7 +172,17 @@ Not all of them are on the seam — see §5 and UNCLEAR-M1.
   `surge-slot-ids` compute from ward config; `ward-of-bed` and
   `bed-placement` search those same lists, so an id and its ward
   cannot disagree, and no code parses a bed-id string.
-- **The occupancy board is a definition, not a cache.**
+- **The occupancy board is a definition, and every cache of it is
+  proven equal to it.** Amended 2026-09-06 (ADR-0180 site 3). It read
+  "a definition, not a cache", and the second clause stopped being
+  true when `ehrt.sim-engine.fold/apply-events` began maintaining the
+  same map as `:board` on the world. What survives is the load-bearing
+  half: `occupancy-board` here is still the ONE statement of what the
+  board IS, it is still a pure fold over patient states, and no engine
+  writes a board it did not derive. What is added is the obligation a
+  cache incurs -- `ehrt.sim-engine.board-index-test` keeps this body
+  verbatim and asserts the index equal to it, whole map and masked
+  query alike, at every intermediate world of a churn-bearing log.
 - **One reading of `:turnaround-minutes`**, via `turnaround-minutes`.
 - **One `:ready` predicate**, via `free`, shared by three namespaces.
 - **Fixed-draw determinism.** Seeded choice consumes exactly one RNG
