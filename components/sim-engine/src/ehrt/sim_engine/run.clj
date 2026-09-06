@@ -1295,6 +1295,21 @@
                     ;; so the seed is the definition's own answer at t 0
                     ;; and not a stand-in for it.
                     :board {}
+                    ;; ADR-0180 site 4: the cancel index's SEED, and the
+                    ;; second in-fold index this world carries rather
+                    ;; than waits for, for a reason of the same kind as
+                    ;; `:board`'s directly above. `fold/apply-events`
+                    ;; opens `:cancel-index` on the first batch, but
+                    ;; `decide` runs BEFORE that batch and
+                    ;; `fold/last-uncancelled` THROWS on a missing index
+                    ;; rather than rebuilding the scan
+                    ;; (`rulings.md#R-raw-read`) -- which it must, since
+                    ;; nil is that query's own "no such event" answer
+                    ;; and a missing index read as nil would silently
+                    ;; reject a legal cancel. `{}` is what these
+                    ;; patients' cancel index actually IS: no event has
+                    ;; been logged, so no patient has a cancellable one.
+                    :cancel-index {}
                     :order-profiles order-profiles
                     :persona-config persona-config
                     :module-horizon-days module-horizon-days

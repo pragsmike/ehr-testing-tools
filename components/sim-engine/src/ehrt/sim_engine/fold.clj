@@ -331,6 +331,99 @@
       (dissoc board bed)
       board)))
 
+(defn update-cancel-index
+  "The cancel index, folded one event forward (ADR-0180 site 4): the TWO
+  MAPS `log-index/last-uncancelled-index`'s two whole-log passes used to
+  build ON EVERY CALL, maintained here once per event instead.
+
+  * `:by-patient` -- `[patient-id event-type]` -> the log indices of
+    that patient's events of that type, APPENDED IN LOG ORDER, one entry
+    per patient participant. It is the scan's `(some #(= patient-id
+    (:patient-id %)) (:participants ev))` predicate turned inside out:
+    the scan asked every event whether it named a given patient, and
+    this files every event under the patients it names. An event with
+    more than one patient participant appears in every one of their
+    vectors, which is `log-index/events-for-patient`'s own rule.
+
+  * `:cancelled` -- `cancel-type` -> the set of log indices that class
+    of cancel has already consumed, read off the event's OWN
+    `:cancels-event-id`. That is the very field `decide` writes back
+    into the event this fold is folding, which is why the index needs
+    nothing but the event to maintain.
+
+  THIS IS AN EVENT-DERIVED INDEX, NOT A STATE-DERIVED ONE, and that is
+  its one structural difference from ADR-0180's other three.
+  `boarder-entry` and `bed-of` recompute membership from a PATIENT STATE
+  under R-membership-from-post-state, because what they index can move
+  under an event that does not mention it. Nothing here can: a log index
+  is immutable once written and an event's own `:cancels-event-id` never
+  changes, so this index only ever GROWS. There is no eviction case at
+  all -- none to enumerate, and none to miss.
+
+  AN EVENT WITH NO `:cancels-event-id` KEY CONTRIBUTES NOTHING to
+  `:cancelled`, where the scan's `(map :cancels-event-id)` over a
+  cancel-type event lacking the key would have contributed `nil` to its
+  set. The two agree because that set is only ever asked about an
+  integer log index, so a `nil` in it could never change an answer --
+  and keying on the KEY'S PRESENCE rather than on a cancel-type
+  whitelist is what keeps this concern from carrying a second copy of
+  `decide`'s own event vocabulary for the whitelist to drift from."
+  [index idx ev participants]
+  (let [event-type (:event ev)]
+    (cond-> (reduce (fn [i pid]
+                      (update-in i [:by-patient [pid event-type]] (fnil conj []) idx))
+                    (or index {})
+                    (distinct (map :patient-id participants)))
+      (contains? ev :cancels-event-id)
+      (update-in [:cancelled event-type] (fnil conj #{}) (:cancels-event-id ev)))))
+
+(defn last-uncancelled
+  "THE INDEX'S ANSWER to the applicability query the event-validity
+  table's cancel-* row asks: the log index of the most recent
+  `event-type` event naming `patient-id` that no `cancel-type` event has
+  already consumed, or nil when there is none.
+  `log-index/last-uncancelled-index` is the reader-facing name and
+  carries the definition's own prose; this is the lookup behind it.
+
+  LAST, NOT FIRST, and walking from the END is the whole of the
+  difference. The scan took `(last (keep-indexed ...))`, so a patient
+  re-admitted after a `:cancel-admit` has TWO `:admission` entries and
+  the next cancel must find the SECOND. Reading the vector forwards
+  would find the FIRST uncancelled index -- a different function that
+  agrees on every patient who was admitted once, which is most of them.
+
+  IDENTITY IS THE OBLIGATION, nil included. ADR-0180 site 4 records that
+  this query draws nothing and is not allocation-affecting; that owes it
+  no draw-ORDER argument and does not make it cheap to get wrong. A nil
+  where the scan returned an integer turns a legal cancel into a
+  `:step-rejected`, which changes the event stream and therefore every
+  draw after it.
+
+  THE READ IS RAW (`rulings.md#R-raw-read`, site 3's standing choice):
+  a world carrying no `:cancel-index` THROWS rather than falling back to
+  the scan. A fallback would be a SECOND IMPLEMENTATION of this answer,
+  which is exactly the condition ADR-0169's F-3 admitted this site on
+  not having -- and here a silent nil is a WRONG answer rather than
+  merely a slow one, so failing loudly is the only honest missing-key
+  behaviour. `run`'s `init-world` seeds the empty index for the same
+  reason it seeds `:board`: `decide` runs BEFORE the batch that would
+  open it.
+
+  The scan is not gone, it MOVED: `ehrt.sim-engine.cancel-index-test`
+  keeps it verbatim as `naive-last-uncancelled-index`
+  (`rulings.md#R-move-not-improve`) and a pinned-seed property asserts
+  the two agree at every intermediate world, for every patient and every
+  one of the three (event-type, cancel-type) pairs `decide` asks."
+  [world patient-id event-type cancel-type]
+  (let [index (:cancel-index world)]
+    (when (nil? index)
+      (throw (ex-info "no :cancel-index on this world -- ADR-0180 site 4 reads the index and never rebuilds the scan"
+                      {:patient-id patient-id :event-type event-type
+                       :cancel-type cancel-type})))
+    (let [cancelled (get (:cancelled index) cancel-type)]
+      (some (fn [i] (when-not (contains? cancelled i) i))
+            (rseq (get (:by-patient index) [patient-id event-type] []))))))
+
 (def reinstatable-event-types
   "The event classes a cancel decide reinstates state FROM, and therefore
   the only ones `run`'s `:reinstate-index` records (ADR-0169).
@@ -408,11 +501,27 @@
   this fold under exactly the contract the paragraph above states, and
   the two sites that decline it decline it for the same two reasons:
   `replay` returns entries and `reinstated-state` returns a patient
-  state, and an occupancy board is in neither."
+  state, and an occupancy board is in neither.
+
+  AND `:cancel-index` MAKES IT SIXTEEN -- ADR-0180 site 4, 2026-09-06,
+  the two maps `log-index/last-uncancelled-index` rebuilt from the whole
+  log on EVERY cancel decide. It rides this fold under the same contract
+  the paragraph above states, and the two sites that decline it decline
+  it for the same shape of reason the other two indexes are declined:
+  `replay` returns entries and `reinstated-state` returns a patient
+  state, and a log index of a patient's cancellable events is in
+  neither.
+
+  IT IS ALSO THE FIRST OF ADR-0180'S FOUR THAT READS THE EVENT rather
+  than the pre/post patient pair, which puts it with `:citation-index`
+  and `:registration-index` structurally even though it is this
+  charter's and not the census's. `update-cancel-index`'s own docstring
+  says why that makes it the only one of the four with no eviction
+  case."
   #{:encounter-stamp :warm-up-mark :log-ordinal :reinstate-index
     :citation-index :registration-index :patient-bootstrap
-    :patient-state :bed-index :boarder-index :board :log-mirror
-    :log-accumulator :state-history :replay-entries})
+    :patient-state :bed-index :boarder-index :board :cancel-index
+    :log-mirror :log-accumulator :state-history :replay-entries})
 
 (def run-loop-projection
   "Census site 1 -- `ehrt.sim-engine.run`'s in-loop fold. THE FULL
@@ -447,6 +556,18 @@
   defined on a missing one, so `run`'s `init-world` carries `:board {}`
   -- which is the board its own seeded patients actually have, every one
   of them `state/initial-patient` and naming no location.
+
+  `:cancel-index` IS THE SIXTEENTH AND IS NOT INERT EITHER (ADR-0180
+  site 4). The three cancel `decide` methods ask
+  `log-index/last-uncancelled-index` its question against the world this
+  fold returns, and until site 4 each of them walked the WHOLE log TWICE
+  to answer it. Same sentence as the two above, with the carrier's own
+  inputs changed: the log index and the event both exist at this point
+  and nowhere later. THIS SITE SEEDS IT, as it seeds `:board`, and for a
+  reason of the same kind: `decide` runs BEFORE the batch that would
+  open the index and `last-uncancelled` throws on a missing one
+  (`rulings.md#R-raw-read`) rather than answering nil, because nil is
+  this query's 'no such event' answer and would be a wrong one.
 
   `:replay-entries` is inert here for a different reason -- not that its
   branch never fires, but that nothing READS what it accumulates.
@@ -486,6 +607,16 @@
   board`, the DEFINITION, against a replay entry's `:world-before`
   rather than of an index this site would have had to carry. It is not
   one of the arc's thirty-nine cells either.
+
+  NOR THE SIXTEENTH, `:cancel-index` (ADR-0180 site 4, 2026-09-06), and
+  the argument is the same one a third time: `replay` returns ENTRIES, a
+  log index of a patient's cancellable events is not in one, and nothing
+  at this site would read it. `ehrt.sim-check.check` asks no
+  last-uncancelled question at all -- the cancel family reaches it as
+  events to be checked, never as a query to be answered -- so declining
+  costs the check phase nothing and saves it a per-event map update over
+  50.97% of its wall. Not one of the arc's thirty-nine cells either.
+
   Each bullet below names why that pair moved no output -- the cone the
   census's section 3b predicted, as the commit that took it found it,
   except the first, whose cone predicted a MOVE and was refuted by
@@ -697,13 +828,23 @@
     definition, which changes nothing here: the world it reads is
     `run`'s, never this fallback's.
 
+  * `:cancel-index` -- ADR-0180 site 4, 2026-09-06, the sixteenth, and
+    inert twice over for the two reasons both twins above are: a
+    `reinstated-state` is a PATIENT STATE and a log index is not in one,
+    and this site's world is `{:patients {}}` with no `:ground-truth`,
+    so `:log-ordinal`'s base is 0 here and an index built over it would
+    number a log this site was HANDED rather than the one it is a
+    projection of. The cancel decides' own last-uncancelled question is
+    asked against `run`'s world, one frame above this fallback, and
+    never inside it.
+
   THERE IS NOTHING OF THE UNIFICATION ARC'S OWN THAT IT DOES NOT GET.
   Site 3 names every one of that arc's thirteen, its ruled end state,
   and it was the SECOND of the three sites to reach it -- site 2 keeps
   one measured, permanent omission, `:warm-up-mark`, for a reason that
   does not apply here (`replay-projection` above, and record section
-  4d). ADR-0180's fourteenth is a different question and is answered
-  above."
+  4d). ADR-0180's fourteenth, fifteenth and sixteenth are a different
+  question and are answered above."
   #{:encounter-stamp :warm-up-mark :log-ordinal :reinstate-index
     :citation-index :registration-index :patient-bootstrap
     :patient-state :bed-index :log-mirror :log-accumulator
@@ -728,19 +869,28 @@
   `:log-mirror` needs no slot of its own -- it publishes into
   `(:world acc')` under `:ground-truth`, which is where a mid-run
   `decide` reads the log back from. `:log-ordinal` needs none either:
-  its base is derived from `(:world acc)` on entry. Nor do the two
-  world-carried indexes, `:bed-index`, `:boarder-index` and `:board`:
-  each reads and writes its own key of `(:world acc)`, and the latter
-  two tolerate that key's ABSENCE on entry, which is what makes the run
-  loop's first batch legal against a seeded world that carries no index
-  yet (`ehrt.sim-engine.run`'s `init-world` seeds every patient
-  `:status :new`, so the index it does not carry is the empty one).
-  `:board` is nonetheless SEEDED at that call site and `:boarder-index`
-  is not, and the asymmetry is a property of the READERS rather than of
-  the concerns: `first-boarder` reads a missing key as nil, which is the
-  answer, while `sim-model/free` calls the board as a predicate and a
-  missing one would throw. `run` decides its first `:admission` before
-  the batch that would open either index.
+  its base is derived from `(:world acc)` on entry. Nor do the FOUR
+  world-carried indexes, `:bed-index`, `:boarder-index`, `:board` and
+  `:cancel-index`: each reads and writes its own key of `(:world acc)`,
+  and the last three tolerate that key's ABSENCE on entry, which is what
+  makes the run loop's first batch legal against a seeded world that
+  carries no index yet (`ehrt.sim-engine.run`'s `init-world` seeds every
+  patient `:status :new`, so the index it does not carry is the empty
+  one). `:board` and `:cancel-index` are nonetheless SEEDED at that call
+  site and `:boarder-index` is not, and the asymmetry is a property of
+  the READERS rather than of the concerns: `first-boarder` reads a
+  missing key as nil, which IS the answer; `sim-model/free` calls the
+  board as a predicate and a missing one would throw; and
+  `last-uncancelled` throws on a missing one DELIBERATELY
+  (`rulings.md#R-raw-read`), because nil is that query's own 'no such
+  event' answer and reading a missing index as one would be wrong rather
+  than absent. `run` decides its first `:admission` before the batch
+  that would open any of them.
+
+  THE SENTENCE ABOVE READ 'the two world-carried indexes' WHILE LISTING
+  THREE until this edit -- a count left behind by site 3's own addition.
+  It is corrected here rather than carried, because site 4 had to
+  rewrite the sentence to name a fourth either way.
 
   THE ORDER IS `run`'s, unchanged, and that is what makes stage 1
   output-identical by construction rather than by assertion: decorate
@@ -866,7 +1016,19 @@
                        (assoc :board
                               (update-board (:board w-next)
                                             (:patients w) (:patients w-next)
-                                            participants)))
+                                            participants))
+
+                       ;; ADR-0180 site 4: the cancel index, and the one
+                       ;; of the four that reads the EVENT rather than
+                       ;; the pre/post patient pair -- so it takes `idx`
+                       ;; and `ev`, both of which exist here and nowhere
+                       ;; later, which is the same sentence
+                       ;; `:citation-index` and `:registration-index`
+                       ;; are in this fold under.
+                       (projection :cancel-index)
+                       (assoc :cancel-index
+                              (update-cancel-index (:cancel-index w-next)
+                                                   idx ev participants)))
                      ridx' cidx' gidx' entries']))
                 [world (:reinstate-index world) (:citation-index world)
                  (:registration-index world) (:entries acc)]

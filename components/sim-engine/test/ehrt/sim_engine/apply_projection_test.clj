@@ -25,18 +25,21 @@
   says only that the code's three subsets are the ones the matrix
   records, and that all three are subsets of the closure.
 
-  THE CLOSURE HAS GROWN TWICE SINCE THE CENSUS, and this namespace is
-  where that is written down. ADR-0180 site 1 added `:boarder-index` on
-  2026-09-06, the first index of the generate-quadratic program to ride
-  `apply-events`; site 3 added `:board` the same day, the occupancy
-  board. Site 1 -- the run loop -- opts into both; sites 2 and 3 opt
-  into neither, under that charter's own contract that an index is
-  guarded by its projection membership and by nothing else, so a site
-  which never reads one pays nothing for it. Those FOUR ABSENCES are
-  transcribed here as deliberately as the presences are -- a later
-  session that 'completes' any of those columns would be undoing a
-  decision, exactly as it would with site 2's `:warm-up-mark`, and the
-  four negative assertions below are what say so out loud."
+  THE CLOSURE HAS GROWN THREE TIMES SINCE THE CENSUS, and this
+  namespace is where that is written down. ADR-0180 site 1 added
+  `:boarder-index` on 2026-09-06, the first index of the generate-
+  quadratic program to ride `apply-events`; site 3 added `:board` the
+  same day, the occupancy board; site 4 added `:cancel-index` the same
+  day again, the two maps the cancel decides' last-uncancelled query
+  used to rebuild from the whole log per call. Site 1 -- the run loop --
+  opts into all three; sites 2 and 3 opt into none, under that charter's
+  own contract that an index is guarded by its projection membership and
+  by nothing else, so a site which never reads one pays nothing for it.
+  Those SIX ABSENCES are transcribed here as deliberately as the
+  presences are -- a later session that 'completes' any of those columns
+  would be undoing a decision, exactly as it would with site 2's
+  `:warm-up-mark`, and the six negative assertions below are what say so
+  out loud."
   (:require [clojure.test :refer [deftest is testing]]
             [ehrt.sim-engine.fold :as fold]
             [ehrt.sim-engine.log-index :as log-index]))
@@ -51,10 +54,10 @@
     :state-history :replay-entries})
 
 (def ^:private census-full-algebra
-  "FIFTEEN: section 1's inventory plus ADR-0180's two in-fold indexes,
-  site 1's `:boarder-index` and site 3's `:board` -- the closure a
-  projection is a subset of today."
-  (conj census-arc-thirteen :boarder-index :board))
+  "SIXTEEN: section 1's inventory plus ADR-0180's three in-fold indexes,
+  site 1's `:boarder-index`, site 3's `:board` and site 4's
+  `:cancel-index` -- the closure a projection is a subset of today."
+  (conj census-arc-thirteen :boarder-index :board :cancel-index))
 
 (def ^:private census-site-1
   "Section 2, column `site 1 -- run fold`: eleven PRESENT cells at stage
@@ -64,17 +67,19 @@
   rather than aliased, for the same reason every other column here is a
   transcription.
 
-  ADR-0180 makes it FIFTEEN, and both of its additions are here for the
-  same reason: this is the ONE site that reads either. `decide
+  ADR-0180 makes it SIXTEEN, and all three of its additions are here for
+  the same reason: this is the ONE site that reads any of them. `decide
   :discharge` and `decide :bed-ready` ask `waiting-boarder` its question
-  against the world this fold returns (`:boarder-index`, site 1), and
-  four `decide` methods plus
-  `log-index/bed-reoccupied-by-someone-else?` ask their occupancy
-  question against that same world (`:board`, site 3)."
+  against the world this fold returns (`:boarder-index`, site 1); four
+  `decide` methods plus `log-index/bed-reoccupied-by-someone-else?` ask
+  their occupancy question against that same world (`:board`, site 3);
+  and the three cancel `decide` methods ask
+  `log-index/last-uncancelled-index` its question against it
+  (`:cancel-index`, site 4)."
   #{:encounter-stamp :warm-up-mark :log-ordinal :reinstate-index
     :citation-index :registration-index :patient-bootstrap
-    :patient-state :bed-index :boarder-index :board :log-mirror
-    :log-accumulator :state-history :replay-entries})
+    :patient-state :bed-index :boarder-index :board :cancel-index
+    :log-mirror :log-accumulator :state-history :replay-entries})
 
 (def ^:private census-site-2
   "Section 2, column `site 2 -- replay`: TWELVE PRESENT cells -- three
@@ -92,15 +97,17 @@
   undone a decision, not finished the arc -- which is why the ARC's own
   count below reads 38 of 39 and not 39.
 
-  THE FOURTEENTH AND FIFTEENTH ARE ABSENT TOO, and for a third reason:
-  ADR-0180's `:boarder-index` (site 1) and `:board` (site 3) are not
-  cells of the arc's thirty-nine at all. `replay` returns entries,
-  neither index is in one, and this site is 50.97% of the check phase --
-  so the charter's guard-by-membership contract is what keeps two
-  generate-side indexes off the check-side wall. `ehrt.sim-check.check`
-  asks the board's own question over these entries and asks it of
-  `sim-model/occupancy-board`, the DEFINITION, which is what leaves this
-  column free to decline the index."
+  THE FOURTEENTH, FIFTEENTH AND SIXTEENTH ARE ABSENT TOO, and for a
+  third reason: ADR-0180's `:boarder-index` (site 1), `:board` (site 3)
+  and `:cancel-index` (site 4) are not cells of the arc's thirty-nine at
+  all. `replay` returns entries, none of the three is in one, and this
+  site is 50.97% of the check phase -- so the charter's guard-by-
+  membership contract is what keeps three generate-side indexes off the
+  check-side wall. `ehrt.sim-check.check` asks the board's own question
+  over these entries and asks it of `sim-model/occupancy-board`, the
+  DEFINITION, which is what leaves this column free to decline that one;
+  it asks no last-uncancelled question at all, which is what leaves it
+  free to decline site 4's."
   #{:encounter-stamp :log-ordinal :reinstate-index :citation-index
     :registration-index :patient-bootstrap :patient-state :bed-index
     :log-mirror :log-accumulator :state-history :replay-entries})
@@ -111,43 +118,47 @@
   pairs stage 2 enabled in census order, and the DECORATION
   `:encounter-stamp` under ruling A1(b). FULL PRODUCT OF THE ARC'S
   THIRTEEN, its ruled end state -- and since ADR-0180 that is thirteen
-  of FIFTEEN, `:boarder-index` and `:board` both being absent because
-  `reinstated-state` returns a patient state and neither index is in
-  one. This set is `census-arc-thirteen` written out rather than aliased
-  for the same reason site 1's is."
+  of SIXTEEN, `:boarder-index`, `:board` and `:cancel-index` all being
+  absent because `reinstated-state` returns a patient state and none of
+  the three is in one. This set is `census-arc-thirteen` written out
+  rather than aliased for the same reason site 1's is."
   #{:encounter-stamp :warm-up-mark :log-ordinal :reinstate-index
     :citation-index :registration-index :patient-bootstrap
     :patient-state :bed-index :log-mirror :log-accumulator
     :state-history :replay-entries})
 
 (deftest projections-match-the-census-matrix
-  (testing "the closure is section 1's thirteen concerns plus ADR-0180's two"
+  (testing "the closure is section 1's thirteen concerns plus ADR-0180's three"
     (is (= census-full-algebra fold/full-algebra)
-        "fold/full-algebra is the census's section-1 inventory plus the two indexes")
-    (is (= 15 (count fold/full-algebra)))
-    (is (= #{:boarder-index :board} (set (remove census-arc-thirteen fold/full-algebra)))
-        "exactly two concerns have been added since the census, and both are ADR-0180's"))
+        "fold/full-algebra is the census's section-1 inventory plus the three indexes")
+    (is (= 16 (count fold/full-algebra)))
+    (is (= #{:boarder-index :board :cancel-index}
+           (set (remove census-arc-thirteen fold/full-algebra)))
+        "exactly three concerns have been added since the census, and all are ADR-0180's"))
 
   (testing "each site's projection is its own matrix column"
     (is (= census-site-1 fold/run-loop-projection)
-        "site 1 -- run's in-loop fold, all fifteen -- full product")
+        "site 1 -- run's in-loop fold, all sixteen -- full product")
     (is (= census-site-2 fold/replay-projection)
-        "site 2 -- replay, twelve of fifteen")
+        "site 2 -- replay, twelve of sixteen")
     (is (= census-site-3 fold/reinstated-projection)
-        "site 3 -- reinstated-state's fallback, thirteen of fifteen"))
+        "site 3 -- reinstated-state's fallback, thirteen of sixteen"))
 
   (testing "ADR-0180's contract, stated as an assertion and not a
             comment: an index is guarded by its projection membership
             and by nothing else, so the two sites that never read
-            `:boarder-index` or `:board` do not name them. Completing
-            any of those columns would undo a decision, not finish an
-            arc"
+            `:boarder-index`, `:board` or `:cancel-index` do not name
+            them. Completing any of those columns would undo a decision,
+            not finish an arc"
     (is (contains? fold/run-loop-projection :boarder-index))
     (is (not (contains? fold/replay-projection :boarder-index)))
     (is (not (contains? fold/reinstated-projection :boarder-index)))
     (is (contains? fold/run-loop-projection :board))
     (is (not (contains? fold/replay-projection :board)))
-    (is (not (contains? fold/reinstated-projection :board))))
+    (is (not (contains? fold/reinstated-projection :board)))
+    (is (contains? fold/run-loop-projection :cancel-index))
+    (is (not (contains? fold/replay-projection :cancel-index)))
+    (is (not (contains? fold/reinstated-projection :cancel-index))))
 
   (testing "every projection is a SUBSET of the closure -- no site names
             a concern the algebra does not have"
@@ -176,14 +187,14 @@
                      (arc fold/replay-projection)
                      (arc fold/reinstated-projection)))))))
 
-  (testing "and the WHOLE matrix's, which ADR-0180 moved twice: 40
-            present cells of 45. The five absences are the arc's one
-            plus two each for `:boarder-index` and `:board`, and every
-            one of them is ruled"
-    (is (= 40 (+ (count fold/run-loop-projection)
+  (testing "and the WHOLE matrix's, which ADR-0180 moved three times: 41
+            present cells of 48. The seven absences are the arc's one
+            plus two each for `:boarder-index`, `:board` and
+            `:cancel-index`, and every one of them is ruled"
+    (is (= 41 (+ (count fold/run-loop-projection)
                  (count fold/replay-projection)
                  (count fold/reinstated-projection))))
-    (is (= 5 (- (* 3 (count fold/full-algebra))
+    (is (= 7 (- (* 3 (count fold/full-algebra))
                 (+ (count fold/run-loop-projection)
                    (count fold/replay-projection)
                    (count fold/reinstated-projection)))))))
