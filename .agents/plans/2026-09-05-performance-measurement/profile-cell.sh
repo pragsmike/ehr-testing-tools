@@ -100,12 +100,25 @@ SITES
 #
 # `:patient-state` IS MATCHED ON ITS NAMESPACE AND NOT ON A FUNCTION
 # NAME, alone among the six, because `evolve` is a `defmulti`
-# (`evolve.clj:91`): its methods compile to `ehrt.sim_engine.evolve$
-# eval<n>$fn__<n>` and NO `evolve$evolve` class is ever on a stack.
-# Matched by function name it reported 0.00% of a fold that runs it on
-# every event, which is a zero produced by the instrument and not by
+# (`evolve.clj:91`) and NO `evolve$evolve` class is ever on a stack.
+# Matched by the name `evolve` it reported 0.00% of a fold that runs it
+# on every event, which is a zero produced by the instrument and not by
 # the code. Only `evolve`'s own methods live in that namespace, so the
-# namespace IS the concern here.
+# namespace IS the concern here, and that stays true: this row is the
+# whole per-event fold, not one kind of it.
+#
+# FRAMES NOW READ BY NAME, AND THE ORDINAL RESOLUTION IS RETIRED (D2,
+# 2026-09-07). Every `decide` and `evolve` method carries a NAME in its
+# fn-tail, so a method's class is
+# `ehrt.sim_engine.evolve$eval<n>$evolve_<kind>__<n>` and not
+# `...$eval<n>$fn__<n>`. A PER-KIND frame can therefore be matched the
+# same way every other row in this file is -- `evolve\$evolve_merge[.$]`,
+# `decide\$decide_bed_swap[.$]` -- instead of by reading `eval<n>`
+# against source to learn which kind a frame belonged to. That reading is
+# what sites 5 and 6 did, and site 6 had to do it TWICE for one matched
+# pair: deleting two anonymous fns from `decide :bed-swap` shifted every
+# later ordinal in `decide.clj` by 13. The `<n>` is still in the class
+# name and is still unstable; nothing has to read it any more.
 #
 # THIS LIST REACHES awk THROUGH A FILE AND NOT THROUGH `-v`, and that
 # is the whole reason the temporary exists. gawk runs ESCAPE
