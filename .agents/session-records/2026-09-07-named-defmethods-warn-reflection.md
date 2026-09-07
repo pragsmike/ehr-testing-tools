@@ -205,6 +205,6 @@ Verified with `gh run view` rather than assumed:
 | commit | run | conclusion |
 |---|---|---|
 | `36af9103` (step 2) | 34126516658 | **success** |
-| `87a9b502` (step 3) | RUN3 | **CONC3** |
-| `TIPSHA` (this record) | RUNTIP | **CONCTIP** |
+| `87a9b502` (step 3) | 34129244353 | **success** |
+| `53afeda0` (this record, tip) | 34129694573 | **success** |
 
