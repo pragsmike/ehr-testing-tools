@@ -260,10 +260,24 @@ was `ee7d0070`.
 
 ## 9. CI
 
-Two pushes: `ee7d0070..c2e62012` and `c2e62012..e6cd1dbb`, each verified with
-`bin/post-push-verify` immediately after. The remaining commits go out in one
-final push, and section 9's table is completed from `gh run view` rather than
-assumed.
+THREE pushes, one per checkpoint under R30, each verified with
+`bin/post-push-verify` immediately after. Verified with `gh run view` rather
+than assumed:
+
+| commit | run | conclusion |
+|---|---|---|
+| `c2e62012` (the check-side fold) | 34144129998 | **success** |
+| `e6cd1dbb` (the in-run handoff) | 34147811132 | **success** |
+| `da2c7680` (this record, tip) | 34152150935 | **success** |
+
+`bin/post-push-verify` reported the CI run once rather than awaiting it
+(AR-CI-4) after each push; this section is where it was awaited, by polling
+`status`/`conclusion` to `completed success`. `gitleaks` scanned the range at
+every push hook and found no leaks.
+
+Every code commit of this session has its own green run, which is stronger
+than the usual one-run-at-the-tip: the two halves were pushed separately, so
+the standalone fold and the in-run handoff each stand on their own CI.
 
 CI green at the tip is the marker site 7 closed — and with it ADR-0180's
 generate-quadratic program, all seven sites.
