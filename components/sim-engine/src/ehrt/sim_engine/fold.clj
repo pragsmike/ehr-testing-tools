@@ -810,15 +810,27 @@
   that count: the omission the next paragraphs are about is a different
   one, ruled for a different reason.
 
-  NOR THE FIFTEENTH, `:board` (ADR-0180 site 3, 2026-09-06), and the
-  sentence above is the whole argument again with one noun changed: this
-  site returns ENTRIES, an occupancy board is not in one, and it is
-  50.97% of the check phase. `ehrt.sim-check.check`'s own
-  `surge-only-when-earlier-rungs-exhausted` does ask the board's
-  question over these entries -- and asks it of `sim-model/occupancy-
-  board`, the DEFINITION, against a replay entry's `:world-before`
-  rather than of an index this site would have had to carry. It is not
-  one of the arc's thirty-nine cells either.
+  THE FIFTEENTH, `:board` (ADR-0180 site 3, 2026-09-06), IS OPTED IN,
+  SINCE SITE 7 (2026-09-07, ruling R-board-in-entry) -- the ONE of
+  ADR-0180's five in-fold indexes this site takes, where the paragraph
+  above refuses the fourteenth in the words the sixteenth and
+  seventeenth are refused in below. The argument did not weaken; the
+  READER moved. `ehrt.sim-check.check`'s
+  `surge-only-when-earlier-rungs-exhausted` always asked the board's
+  question over these entries, and asked it of
+  `sim-model/occupancy-board` -- the DEFINITION -- against an entry's
+  `:world-before`. That is an `into {}` over EVERY patient in that
+  world. It was affordable only because this site's world holds just
+  the patients seen so far; once `check-all` can be HANDED `run`'s own
+  projection, whose world holds every patient from t 0, the same read
+  costs O(all patients) per surge event -- the quadratic site 3 removed
+  from `decide`, reappearing in the checker. Carrying the index instead
+  costs this site one `update-board` per event, which site 6 measured
+  at 0.19%-0.21% of a generate phase, and costs the reader nothing. Two
+  consequences ride with it and are stated where a reader will look for
+  them: a replay ENTRY now carries a `:board` key, and `replay`'s own
+  call site SEEDS `:board {}` in the world it starts from. It is not
+  one of the apply-unification arc's thirty-nine cells either.
 
   NOR THE SIXTEENTH, `:cancel-index` (ADR-0180 site 4, 2026-09-06), and
   the argument is the same one a third time: `replay` returns ENTRIES, a
@@ -944,7 +956,10 @@
   stage-2.md` section 4d, and census section 3e."
   #{:encounter-stamp :log-ordinal :reinstate-index :citation-index
     :registration-index :patient-bootstrap :patient-state :bed-index
-    :log-mirror :log-accumulator :state-history :replay-entries})
+    :log-mirror :log-accumulator :state-history :replay-entries
+    ;; ADR-0180 site 7, 2026-09-07 -- the fifteenth, and the reason is
+    ;; the docstring's own paragraph above, not this line.
+    :board})
 
 (def reinstated-projection
   "Census site 3 -- `ehrt.sim-engine.log-index/reinstated-state`'s
@@ -1225,7 +1240,23 @@
                                              :before (get (:patients w) subject-id)
                                              :after (get (:patients w-next) subject-id)
                                              :world-before (:patients w)
-                                             :world-after (:patients w-next)}))
+                                             :world-after (:patients w-next)
+                                             ;; ADR-0180 site 7: the
+                                             ;; occupancy board as of the
+                                             ;; PRE-event world, read off
+                                             ;; `w` and not rebuilt, which
+                                             ;; is what lets the one
+                                             ;; whole-world reader in
+                                             ;; `ehrt.sim-check.check` stop
+                                             ;; walking `:world-before`.
+                                             ;; UNGUARDED, and nil at a
+                                             ;; site whose projection does
+                                             ;; not carry `:board`: the
+                                             ;; entry then says the board
+                                             ;; is not known here, which is
+                                             ;; true, rather than that it
+                                             ;; is empty, which is not.
+                                             :board (:board w)}))
                                    entries)]
                     [(cond-> w-next
                        (and (projection :bed-index) (:beds w-next))
@@ -1324,12 +1355,24 @@
 
   APPLY SITE 2, and since stage 1 of the unification pass it is a
   PROJECTION of `apply-events` above rather than a fold of its own:
-  three of the thirteen concerns, named by `replay-projection`. Nothing
-  it folds was added, removed or reordered -- what was a hand-written
-  loop is the same fold under the choke point's own guards."
+  three of `full-algebra`'s concerns at stage 1, twelve after stage 2
+  and ruling A1(b), and THIRTEEN since ADR-0180 site 7 added `:board`
+  -- `replay-projection` is the set and is where that count lives.
+  Nothing it folds was added, removed or reordered -- what was a
+  hand-written loop is the same fold under the choke point's own
+  guards.
+
+  THE WORLD IS SEEDED `{:patients {} :board {}}`, and the second key is
+  not decoration. `update-board` seeds itself from nil, so the board is
+  correct from the first event either way -- but the entry minted AT
+  that first event reads `(:board w)` off the world as it stood BEFORE
+  it, which without a seed is nil, and `sim-model/free` (the one thing
+  that reads this board) calls it as a PREDICATE: `(remove nil ids)`
+  throws. `run`'s own `init-world` carries the same seed for the same
+  reason, one frame further out (ADR-0180 site 3)."
   [ground-truth]
   (persistent!
-   (:entries (apply-events {:world {:patients {}}
+   (:entries (apply-events {:world {:patients {} :board {}}
                             :entries (transient [])
                             ;; `:log-accumulator`'s slot, since stage 2
                             ;; enabled that pair at this site. Never

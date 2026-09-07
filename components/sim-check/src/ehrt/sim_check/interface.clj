@@ -9,7 +9,13 @@
   disclosure's own exception, ADR-0018's from-live-consumers
   precedent) -- test-scope callers repoint to this component's
   internal `check` namespace directly (Polylith permits reaching
-  implementation from test), never through this seam."
+  implementation from test), never through this seam.
+
+  THE SENTENCE ABOVE SAID \"all four arities\" AND THERE ARE FIVE, since
+  ADR-0180 site 7 (2026-09-07): `run.clj`'s call is the 5-arity now,
+  and it is the only caller of it. The union rule is unchanged -- the
+  arity is here because a live src-scope caller reaches it, which is
+  what put the other four here too."
   (:require [ehrt.sim-check.check :as check]))
 
 (defn check-all
@@ -18,4 +24,13 @@
   ([ground-truth facility-config warm-up-seconds]
    (check/check-all ground-truth facility-config warm-up-seconds))
   ([ground-truth facility-config warm-up-seconds order-profiles-config]
-   (check/check-all ground-truth facility-config warm-up-seconds order-profiles-config)))
+   (check/check-all ground-truth facility-config warm-up-seconds order-profiles-config))
+  ;; ADR-0180 site 7 (2026-09-07, ruling R-check-once): the 5-arity
+  ;; carries `records`, `engine/replay`'s own projection, so a caller
+  ;; that already has one -- `ehrt.sim.run`'s in-run self-check, over
+  ;; the entries `engine/run` builds and used to discard -- hands it
+  ;; over instead of making the catalog fold the log again. Added HERE
+  ;; and deliberately NOT to `ehrt.sim.interface`, whose surface is
+  ;; frozen at four arities by AR-M4-3: nothing needs it there.
+  ([ground-truth facility-config warm-up-seconds order-profiles-config records]
+   (check/check-all ground-truth facility-config warm-up-seconds order-profiles-config records)))

@@ -86,10 +86,19 @@
   rather than behind a conditional because the concern throws on a nil
   window, and it is inert for the site-2 calls below -- ruling A2(b)
   omits `:warm-up-mark` from `replay-projection` PERMANENTLY, so those
-  calls never reach the line that reads it."
+  calls never reach the line that reads it.
+
+  `:board {}` IS `replay`'s OWN SEED and is here for the same reason
+  every other slot in this map is: the accumulator has to be the live
+  site's, or the third assertion below -- the one that says `replay`
+  ITSELF is this fold -- is comparing two different call sites and not
+  two projections. ADR-0180 site 7 added it there (an entry minted
+  before any event would otherwise carry `:board nil`, which
+  `sim-model/free` calls as a predicate and throws on), and it arrives
+  here in the same commit."
   [projection log]
   (persistent!
-   (:entries (fold/apply-events {:world {:patients {}}
+   (:entries (fold/apply-events {:world {:patients {} :board {}}
                                  :entries (transient [])
                                  :warm-up-seconds 0
                                  :log (transient [])}

@@ -60,10 +60,19 @@
   generate path no longer calls this per placement -- it carries
   `ehrt.sim-engine.fold`'s `:board`, maintained event by event -- so
   this body is now the REFERENCE the index is proven against rather than
-  the thing the engine runs. It is still live code: `ehrt.sim-check.
-  check`'s `surge-only-when-earlier-rungs-exhausted` calls it over a
-  replay entry's `:world-before`, a site the index deliberately does not
-  reach."
+  the thing the engine runs.
+
+  AND SITE 7 (2026-09-07, ruling R-board-in-entry) TOOK THE LAST
+  CALLER. `ehrt.sim-check.check`'s
+  `surge-only-when-earlier-rungs-exhausted` called this over a replay
+  entry's `:world-before` until then; the entry carries `:board` now,
+  because a `check-all` handed the RUN's own projection gets a world
+  holding every patient from t 0, and this `into {}` walks all of them.
+  NO `src` NAMESPACE IN THIS WORKSPACE CALLS IT ANY MORE, and that is
+  neither a retirement nor a defect: it is the from-scratch definition
+  `ehrt.sim-engine.board-index-test` proves the folded index equal to
+  at every replay entry, and having no callers is what a reference
+  definition looks like once every reader carries the index instead."
   [patients]
   (into {}
         (keep (fn [[patient-id patient]]

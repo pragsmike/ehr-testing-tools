@@ -103,20 +103,36 @@
   undone a decision, not finished the arc -- which is why the ARC's own
   count below reads 38 of 39 and not 39.
 
-  THE FOURTEENTH THROUGH SEVENTEENTH ARE ABSENT TOO, and for a
-  third reason: ADR-0180's `:boarder-index` (site 1), `:board` (site 3),
-  `:cancel-index` (site 4) and `:eligible-index` (site 5) are not cells
-  of the arc's thirty-nine at all. `replay` returns entries, none of the
-  four is in one, and this site is 50.97% of the check phase -- so the
-  charter's guard-by-membership contract is what keeps four
-  generate-side indexes off the check-side wall. `ehrt.sim-check.check` asks the board's own question
-  over these entries and asks it of `sim-model/occupancy-board`, the
-  DEFINITION, which is what leaves this column free to decline that one;
-  it asks no last-uncancelled question at all, which is what leaves it
-  free to decline site 4's."
+  THE FOURTEENTH, SIXTEENTH AND SEVENTEENTH ARE ABSENT TOO, and for a
+  third reason: ADR-0180's `:boarder-index` (site 1), `:cancel-index`
+  (site 4) and `:eligible-index` (site 5) are not cells of the arc's
+  thirty-nine at all. `replay` returns entries, none of the three is in
+  one, and this site is 50.97% of the check phase -- so the charter's
+  guard-by-membership contract is what keeps three generate-side
+  indexes off the check-side wall. `ehrt.sim-check.check` asks no
+  last-uncancelled question and no candidate question at all, which is
+  what leaves this column free to decline sites 4 and 5.
+
+  THE FIFTEENTH, `:board`, IS PRESENT SINCE ADR-0180 SITE 7
+  (2026-09-07, ruling R-board-in-entry), AND THE COLUMN THEREFORE READS
+  THIRTEEN. It is the one of ADR-0180's four this site takes, and it is
+  here because a READER moved rather than because the argument above
+  weakened. `ehrt.sim-check.check`'s
+  `surge-only-when-earlier-rungs-exhausted` always asked the board's
+  question over these entries and asked it of
+  `sim-model/occupancy-board`, the DEFINITION, against an entry's
+  `:world-before` -- an `into {}` over EVERY patient in that world.
+  Site 7 lets `check-all` be HANDED `run`'s own projection, whose world
+  carries every patient from t 0 rather than only those seen so far, so
+  that read would have cost O(all patients) per surge event: the
+  quadratic site 3 removed from `decide`, reappearing in the checker.
+  The entry carries `:board` instead. It is STILL not one of the arc's
+  thirty-nine cells, so the 38-of-39 arithmetic below is untouched."
   #{:encounter-stamp :log-ordinal :reinstate-index :citation-index
     :registration-index :patient-bootstrap :patient-state :bed-index
-    :log-mirror :log-accumulator :state-history :replay-entries})
+    :log-mirror :log-accumulator :state-history :replay-entries
+    ;; ADR-0180 site 7, 2026-09-07 -- see the docstring above.
+    :board})
 
 (def ^:private census-site-3
   "Section 2, column `site 3 -- reinstated-state`: ALL THIRTEEN --
@@ -146,21 +162,29 @@
     (is (= census-site-1 fold/run-loop-projection)
         "site 1 -- run's in-loop fold, all seventeen -- full product")
     (is (= census-site-2 fold/replay-projection)
-        "site 2 -- replay, twelve of seventeen")
+        "site 2 -- replay, thirteen of seventeen since ADR-0180 site 7")
     (is (= census-site-3 fold/reinstated-projection)
         "site 3 -- reinstated-state's fallback, thirteen of seventeen"))
 
   (testing "ADR-0180's contract, stated as an assertion and not a
             comment: an index is guarded by its projection membership
-            and by nothing else, so the two sites that never read
-            `:boarder-index`, `:board`, `:cancel-index` or
-            `:eligible-index` do not name them. Completing any of those
-            columns would undo a decision, not finish an arc"
+            and by nothing else, so a site that never reads
+            `:boarder-index`, `:cancel-index` or `:eligible-index` does
+            not name it. Completing any of those columns would undo a
+            decision, not finish an arc.
+
+            `:board` IS THE EXCEPTION AND IT IS A RULED ONE (ADR-0180
+            site 7, R-board-in-entry): site 2 reads it now, because
+            `ehrt.sim-check.check` reads it off the entry instead of
+            rebuilding it from a world a handed projection makes much
+            larger. Site 3 still declines it -- it returns a patient
+            state, and a board is not in one"
     (is (contains? fold/run-loop-projection :boarder-index))
     (is (not (contains? fold/replay-projection :boarder-index)))
     (is (not (contains? fold/reinstated-projection :boarder-index)))
     (is (contains? fold/run-loop-projection :board))
-    (is (not (contains? fold/replay-projection :board)))
+    (is (contains? fold/replay-projection :board)
+        "site 7: the entry carries the board so check does not walk the world")
     (is (not (contains? fold/reinstated-projection :board)))
     (is (contains? fold/run-loop-projection :cancel-index))
     (is (not (contains? fold/replay-projection :cancel-index)))
@@ -196,15 +220,17 @@
                      (arc fold/replay-projection)
                      (arc fold/reinstated-projection)))))))
 
-  (testing "and the WHOLE matrix's, which ADR-0180 moved four times: 42
-            present cells of 51. The nine absences are the arc's one
-            plus two each for `:boarder-index`, `:board`,
-            `:cancel-index` and `:eligible-index`, and every one of them
-            is ruled"
-    (is (= 42 (+ (count fold/run-loop-projection)
+  (testing "and the WHOLE matrix's, which ADR-0180 moved four times and
+            then site 7 moved once more: 43 present cells of 51. The
+            eight absences are the arc's one, two each for
+            `:boarder-index`, `:cancel-index` and `:eligible-index`, and
+            ONE for `:board` -- site 3's, site 2's having been taken by
+            ADR-0180 site 7 under R-board-in-entry. Every one of them is
+            ruled"
+    (is (= 43 (+ (count fold/run-loop-projection)
                  (count fold/replay-projection)
                  (count fold/reinstated-projection))))
-    (is (= 9 (- (* 3 (count fold/full-algebra))
+    (is (= 8 (- (* 3 (count fold/full-algebra))
                 (+ (count fold/run-loop-projection)
                    (count fold/replay-projection)
                    (count fold/reinstated-projection)))))))

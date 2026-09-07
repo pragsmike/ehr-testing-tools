@@ -30,7 +30,17 @@
   than one participant (M2b's bed-swap, merge) belongs to every
   participant's own sequence, not just one. M2a (sim/ADR-0011) adds the
   warm-up-mark invariant (config/check-warm-up.clj docstring companion
-  below)."
+  below).
+
+  ADR-0180 SITE 7 (2026-09-07): THE CATALOG FOLDS THE LOG ONCE. Every
+  invariant that needs `engine/replay`'s records now takes them as a
+  trailing parameter and carries `{::records true}` so `check-all` can
+  see that it does; `check-all` folds once -- or is HANDED the run's own
+  projection, which is what `ehrt.sim.run` does with the entries it
+  already builds -- and passes the one seq to all of them. Each such
+  invariant keeps its old arity, which replays for itself, so a caller
+  with a log and nothing else is unchanged. It was SEVENTEEN folds per
+  `check-all` before this, twenty with a bed cycle in the log."
   (:require [clojure.set]
             [ehrt.kernel.interface :as result]
             [ehrt.sim-model.interface :as sim-model]
@@ -211,13 +221,15 @@
   `(:encounter before)` is a real predicate on a corpus generated before
   this sweep existed: an opener while an encounter is open fires here
   exactly as it did before."
-  [ground-truth]
-  (for [{:keys [event before patient-id]} (engine/replay ground-truth)
-        :when (and (encounter-openers (:event event))
-                   (or (some? (:encounter before))
-                       (#{:merged :expired} (:status before))))]
-    {:invariant :admission-only-when-no-open-encounter
-     :event (:event event) :patient-id patient-id :at (:t event)}))
+  {::records true}
+  ([ground-truth] (admission-only-when-no-open-encounter ground-truth (engine/replay ground-truth)))
+  ([ground-truth records]
+   (for [{:keys [event before patient-id]} records
+         :when (and (encounter-openers (:event event))
+                    (or (some? (:encounter before))
+                        (#{:merged :expired} (:status before))))]
+     {:invariant :admission-only-when-no-open-encounter
+      :event (:event event) :patient-id patient-id :at (:t event)})))
 
 (defn discharge-closes-an-open-encounter
   "The PER-ENCOUNTER half of the split ADR-0174's table makes of
@@ -230,11 +242,13 @@
   precedes the patient's FIRST admission -- so the claim it makes has
   been unenforced for its whole life. Measured, not assumed: the
   function's body is four lines and none of them counts anything."
-  [ground-truth]
-  (for [{:keys [event before patient-id]} (engine/replay ground-truth)
-        :when (and (encounter-closers (:event event)) (nil? (:encounter before)))]
-    {:invariant :discharge-closes-an-open-encounter
-     :event (:event event) :patient-id patient-id :at (:t event)}))
+  {::records true}
+  ([ground-truth] (discharge-closes-an-open-encounter ground-truth (engine/replay ground-truth)))
+  ([ground-truth records]
+   (for [{:keys [event before patient-id]} records
+         :when (and (encounter-closers (:event event)) (nil? (:encounter before)))]
+     {:invariant :discharge-closes-an-open-encounter
+      :event (:event event) :patient-id patient-id :at (:t event)})))
 
 (defn every-encounter-is-opened-and-closed-or-still-open
   "Every `:encounter-id` in the log is a real encounter of the patient
@@ -280,24 +294,28 @@
   "docs/patient-state-model.md's event-validity table: :transfer
   (including bed-ready) is legal only when the patient's prior state
   is :admitted (Admitted or Boarding)."
-  [ground-truth]
-  (for [{:keys [event before patient-id]} (engine/replay ground-truth)
-        :when (and (= :transfer (:event event))
-                   (or (not= :admitted (:status before))
-                       ;; ADR-0174's table, per-encounter: and the
-                       ;; transfer's own `:encounter-id` is the OPEN one,
-                       ;; so a transfer cannot be attributed to a visit
-                       ;; that had already ended.
-                       (carried-encounter-is-not-the-open-one? event before patient-id)))]
-    {:invariant :transfer-only-when-admitted :patient-id patient-id :at (:t event)}))
+  {::records true}
+  ([ground-truth] (transfer-only-when-admitted ground-truth (engine/replay ground-truth)))
+  ([ground-truth records]
+   (for [{:keys [event before patient-id]} records
+         :when (and (= :transfer (:event event))
+                    (or (not= :admitted (:status before))
+                        ;; ADR-0174's table, per-encounter: and the
+                        ;; transfer's own `:encounter-id` is the OPEN one,
+                        ;; so a transfer cannot be attributed to a visit
+                        ;; that had already ended.
+                        (carried-encounter-is-not-the-open-one? event before patient-id)))]
+     {:invariant :transfer-only-when-admitted :patient-id patient-id :at (:t event)})))
 
 (defn transfer-from-matches-state
   "A transfer event's declared :from matches the patient's actual
   location immediately beforehand (components/sim/docs/operational-models.md)."
-  [ground-truth]
-  (for [{:keys [event before patient-id]} (engine/replay ground-truth)
-        :when (and (= :transfer (:event event)) (not= (:from event) (:location before)))]
-    {:invariant :transfer-from-matches-state :patient-id patient-id :at (:t event)}))
+  {::records true}
+  ([ground-truth] (transfer-from-matches-state ground-truth (engine/replay ground-truth)))
+  ([ground-truth records]
+   (for [{:keys [event before patient-id]} records
+         :when (and (= :transfer (:event event)) (not= (:from event) (:location before)))]
+     {:invariant :transfer-from-matches-state :patient-id patient-id :at (:t event)})))
 
 ;; --- M1 facility invariants (components/sim/docs/operational-models.md) ----------------
 
@@ -392,11 +410,17 @@
 (defn- ward-of [patient] (get-in patient [:location :ward]))
 
 (defn- fold-records
-  "Folds `f` over `(engine/replay ground-truth)`, threading `state` and
-  concatenating whatever each step's `emit` produces, in record order.
-  `f` is (state record) -> [state' findings]."
-  [ground-truth init f]
-  (loop [records (engine/replay ground-truth) state init acc (transient [])]
+  "Folds `f` over `records` -- `engine/replay`'s own record seq, HANDED
+  IN since ADR-0180 site 7 rather than replayed here -- threading
+  `state` and concatenating whatever each step's `emit` produces, in
+  record order. `f` is (state record) -> [state' findings].
+
+  FIVE INVARIANTS SHARE THIS FOLD and each of them used to pay its own
+  `engine/replay` through it, which is five of the seventeen the
+  addendum counted. They now pay none: `check-all` folds once and hands
+  the seq down."
+  [records init f]
+  (loop [records records state init acc (transient [])]
     (if (empty? records)
       (persistent! acc)
       (let [[state' findings] (f state (first records))]
@@ -404,29 +428,31 @@
 
 (defn no-double-occupancy
   "No bed holds two patients at once, at any event boundary."
-  [ground-truth]
-  (fold-records
-   ground-truth
-   {:by-bed {} :dupes #{}}
-   (fn [{:keys [by-bed dupes]} {:keys [event world-before world-after]}]
-     (let [[by-bed' dupes']
-           (reduce (fn [[idx dup] pid]
-                     (let [old-bed (bed-of (get world-before pid))
-                           new-bed (bed-of (get world-after pid))
-                           idx' (reindex-set idx old-bed new-bed pid)
-                           touched (remove nil? (distinct [old-bed new-bed]))]
-                       [idx' (reduce (fn [d b]
-                                       (if (> (count (get idx' b)) 1) (conj d b) (disj d b)))
-                                     dup touched)]))
-                   [by-bed dupes] (participants-of event))]
-       [{:by-bed by-bed' :dupes dupes'}
-        ;; Guard positive -> emit from the ORIGINAL expression, so the
-        ;; order `frequencies` produces is the order that ships.
-        (when (seq dupes')
-          (let [beds (keep (comp :bed :location) (vals world-after))
-                dupe-beds (->> beds frequencies (filter (comp #(> % 1) val)) (map key))]
-            (for [bed dupe-beds]
-              {:invariant :no-double-occupancy :bed bed :at (:t event)})))]))))
+  {::records true}
+  ([ground-truth] (no-double-occupancy ground-truth (engine/replay ground-truth)))
+  ([ground-truth records]
+   (fold-records
+    records
+    {:by-bed {} :dupes #{}}
+    (fn [{:keys [by-bed dupes]} {:keys [event world-before world-after]}]
+      (let [[by-bed' dupes']
+            (reduce (fn [[idx dup] pid]
+                      (let [old-bed (bed-of (get world-before pid))
+                            new-bed (bed-of (get world-after pid))
+                            idx' (reindex-set idx old-bed new-bed pid)
+                            touched (remove nil? (distinct [old-bed new-bed]))]
+                        [idx' (reduce (fn [d b]
+                                        (if (> (count (get idx' b)) 1) (conj d b) (disj d b)))
+                                      dup touched)]))
+                    [by-bed dupes] (participants-of event))]
+        [{:by-bed by-bed' :dupes dupes'}
+         ;; Guard positive -> emit from the ORIGINAL expression, so the
+         ;; order `frequencies` produces is the order that ships.
+         (when (seq dupes')
+           (let [beds (keep (comp :bed :location) (vals world-after))
+                 dupe-beds (->> beds frequencies (filter (comp #(> % 1) val)) (map key))]
+             (for [bed dupe-beds]
+               {:invariant :no-double-occupancy :bed bed :at (:t event)})))])))))
 
 
 (defn- one-slot-offender?
@@ -446,18 +472,20 @@
   4's item 6). `outpatient-patients-occupy-no-bed`, below, is this same
   fact's own converse: an outpatient patient's :location must ALWAYS be
   nil, never merely may be."
-  [ground-truth]
-  (fold-records
-   ground-truth
-   #{}
-   (fn [flags {:keys [event world-after]}]
-     (let [flags' (reduce (fn [fs pid] (reflag fs pid (one-slot-offender? (get world-after pid))))
-                          flags (participants-of event))]
-       [flags'
-        (when (seq flags')
-          (for [[patient-id patient] world-after
-                :when (one-slot-offender? patient)]
-            {:invariant :admitted-occupies-one-slot :patient-id patient-id :at (:t event)}))]))))
+  {::records true}
+  ([ground-truth] (admitted-occupies-one-slot ground-truth (engine/replay ground-truth)))
+  ([ground-truth records]
+   (fold-records
+    records
+    #{}
+    (fn [flags {:keys [event world-after]}]
+      (let [flags' (reduce (fn [fs pid] (reflag fs pid (one-slot-offender? (get world-after pid))))
+                           flags (participants-of event))]
+        [flags'
+         (when (seq flags')
+           (for [[patient-id patient] world-after
+                 :when (one-slot-offender? patient)]
+             {:invariant :admitted-occupies-one-slot :patient-id patient-id :at (:t event)}))])))))
 
 ;; --- M5b: :outpatient-visit / :outpatient-visit-end (components/patient-simulator/docs/gmf-interpreter.md
 ;; section 4's sketch, item 8's own invariant list) --------------------------
@@ -493,28 +521,30 @@
   is `non-admitted-patients-hold-no-bed`'s row, from that exact record
   on (`world-after` at the closer is already `:discharged` plus the
   held bed, so the handoff has no gap and no overlap)."
-  [ground-truth]
-  (fold-records
-   ground-truth
-   {:open #{} :flags #{}}
-   (fn [{:keys [open flags]} {:keys [event world-after]}]
-     (let [kind (:event event)
-           pids (participants-of event)
-           open' (cond
-                   (= :outpatient-visit kind) (into open pids)
-                   (or (encounter-openers kind) (encounter-closers kind)) (reduce disj open pids)
-                   :else open)
-           flags' (reduce (fn [fs pid]
-                            (reflag fs pid (and (contains? open' pid)
-                                                (outpatient-with-bed? (get world-after pid)))))
-                          flags pids)]
-       [{:open open' :flags flags'}
-        ;; Guard positive -> emit from the ORIGINAL expression over
-        ;; world-after (the ADR-0169 order-identity convention above).
-        (when (seq flags')
-          (for [[patient-id patient] world-after
-                :when (and (contains? open' patient-id) (outpatient-with-bed? patient))]
-            {:invariant :outpatient-patients-occupy-no-bed :patient-id patient-id :at (:t event)}))]))))
+  {::records true}
+  ([ground-truth] (outpatient-patients-occupy-no-bed ground-truth (engine/replay ground-truth)))
+  ([ground-truth records]
+   (fold-records
+    records
+    {:open #{} :flags #{}}
+    (fn [{:keys [open flags]} {:keys [event world-after]}]
+      (let [kind (:event event)
+            pids (participants-of event)
+            open' (cond
+                    (= :outpatient-visit kind) (into open pids)
+                    (or (encounter-openers kind) (encounter-closers kind)) (reduce disj open pids)
+                    :else open)
+            flags' (reduce (fn [fs pid]
+                             (reflag fs pid (and (contains? open' pid)
+                                                 (outpatient-with-bed? (get world-after pid)))))
+                           flags pids)]
+        [{:open open' :flags flags'}
+         ;; Guard positive -> emit from the ORIGINAL expression over
+         ;; world-after (the ADR-0169 order-identity convention above).
+         (when (seq flags')
+           (for [[patient-id patient] world-after
+                 :when (and (contains? open' patient-id) (outpatient-with-bed? patient))]
+             {:invariant :outpatient-patients-occupy-no-bed :patient-id patient-id :at (:t event)}))])))))
 
 ;; --- GMF coverage Wave C (2026-08-02, ADR-0028, C3): :expired --------------
 
@@ -528,10 +558,12 @@
   expired-disposition :discharge fires (ehrt.sim-engine.engine's own
   :disposition field, riding the compiled step through, sim-model/
   pathway.clj) -- never nil immediately after."
-  [ground-truth]
-  (for [{:keys [event patient-id after]} (engine/replay ground-truth)
-        :when (and (= :discharge (:event event)) (= :expired (:disposition event)) (nil? (:location after)))]
-    {:invariant :expired-patient-retains-location :patient-id patient-id :at (:t event)}))
+  {::records true}
+  ([ground-truth] (expired-patient-retains-location ground-truth (engine/replay ground-truth)))
+  ([ground-truth records]
+   (for [{:keys [event patient-id after]} records
+         :when (and (= :discharge (:event event)) (= :expired (:disposition event)) (nil? (:location after)))]
+     {:invariant :expired-patient-retains-location :patient-id patient-id :at (:t event)})))
 
 ;; --- B2 (R-fork 2026-09-03, option C): the stale-hold invariant ----------
 
@@ -581,18 +613,20 @@
   the independent judge (the vacuous-gate note above the bed-cycle rows
   below), and that guard's own deliberate `:new` exclusion is precisely
   the seam under judgment here."
-  [ground-truth]
-  (fold-records
-   ground-truth
-   #{}
-   (fn [flags {:keys [event world-after]}]
-     (let [flags' (reduce (fn [fs pid] (reflag fs pid (non-admitted-bed-holder? (get world-after pid))))
-                          flags (participants-of event))]
-       [flags'
-        (when (seq flags')
-          (for [[patient-id patient] world-after
-                :when (non-admitted-bed-holder? patient)]
-            {:invariant :non-admitted-patients-hold-no-bed :patient-id patient-id :at (:t event)}))]))))
+  {::records true}
+  ([ground-truth] (non-admitted-patients-hold-no-bed ground-truth (engine/replay ground-truth)))
+  ([ground-truth records]
+   (fold-records
+    records
+    #{}
+    (fn [flags {:keys [event world-after]}]
+      (let [flags' (reduce (fn [fs pid] (reflag fs pid (non-admitted-bed-holder? (get world-after pid))))
+                           flags (participants-of event))]
+        [flags'
+         (when (seq flags')
+           (for [[patient-id patient] world-after
+                 :when (non-admitted-bed-holder? patient)]
+             {:invariant :non-admitted-patients-hold-no-bed :patient-id patient-id :at (:t event)}))])))))
 
 
 ;; --- ARC 3B SWEEP 2 (ADR-0174 section 2(c)): the BED-STATUS CYCLE, judged
@@ -718,21 +752,23 @@
   reason invariant 2's \"except at run start\" clause needs no special
   case: a bed born ready reaches `:ready` through no transition at all.
 
-  Returns `{:transitions [..] :before [..] :records [..]}` -- `:before`
-  is the bed index as it stood immediately BEFORE each record, parallel
-  to `engine/replay`'s own record seq, and `:records` is that seq
-  itself. Invariant 5 (`surge-only-when-earlier-rungs-exhausted`) needs
-  the index and not the transitions, because its question is about the
-  beds a placement PASSED OVER, which no transition names -- and it gets
-  the records back from here so that reading the index costs it no
-  SECOND `engine/replay` (`roadmap.md#performance-residual-sites` counts
-  those calls, and this sweep adds three, not four)."
-  [ground-truth]
-  (loop [records (engine/replay ground-truth)
-         all-records records beds {} acc (transient []) befores (transient [])]
-    (if (empty? records)
-      {:transitions (persistent! acc) :before (persistent! befores) :records all-records}
-      (let [{:keys [event world-before world-after]} (first records)
+  Returns `{:transitions [..] :before [..]}` -- `:before` is the bed
+  index as it stood immediately BEFORE each record, parallel to the
+  record seq this is handed. Invariant 5
+  (`surge-only-when-earlier-rungs-exhausted`) needs the index and not
+  the transitions, because its question is about the beds a placement
+  PASSED OVER, which no transition names.
+
+  IT RETURNED THE RECORDS TOO, UNTIL ADR-0180 SITE 7, so that invariant
+  5 could read the index without paying a SECOND `engine/replay`. The
+  records are handed IN now, by a `check-all` that folded once for the
+  whole catalog, so a key that hands them back to the caller who
+  supplied them went out with the replay that made it necessary."
+  [records]
+  (loop [rs records beds {} acc (transient []) befores (transient [])]
+    (if (empty? rs)
+      {:transitions (persistent! acc) :before (persistent! befores)}
+      (let [{:keys [event world-before world-after]} (first rs)
             t (:t event)
             ;; THE ENTRY IS A MAP, `{:status ..}`, and not a bare
             ;; keyword. `sim-model/free` -- which invariant 5 hands this
@@ -765,21 +801,23 @@
                             state')))
                       [beds []]
                       (participants-of event)))]
-        (recur (rest records) all-records beds' (reduce conj! acc found) (conj! befores beds))))))
+        (recur (rest rs) beds' (reduce conj! acc found) (conj! befores beds))))))
 
 (defn- bed-transitions
-  "`bed-fold`'s transition half -- the three rows below read only that."
-  [ground-truth]
-  (:transitions (bed-fold ground-truth)))
+  "`bed-fold`'s transition half -- the three rows below read only that.
+  The 1-arity replays for itself, which is what a test holding a log and
+  nothing else calls (`ehrt.sim-engine.bed-cycle-test`)."
+  ([ground-truth] (bed-transitions ground-truth (engine/replay ground-truth)))
+  ([_ground-truth records] (:transitions (bed-fold records))))
 
 (defn- log-derived-bed-fold
   "`bed-fold`, or nil when this log carries no cycle. A nil `:before`
   is what `sim-model/free` reads as \"no index\" and is therefore
   exactly the pre-sweep predicate, which is what a legacy log must still
   be judged by."
-  [ground-truth]
+  [ground-truth records]
   (when (bed-cycle-log? ground-truth)
-    (bed-fold ground-truth)))
+    (bed-fold records)))
 
 (defn no-assignment-to-a-non-ready-bed
   "ADR-0174 section 2(c), invariant 1: every event that ALLOCATES a bed
@@ -795,13 +833,15 @@
   beds are occupied by construction.
 
   VACUOUS on a log with no `:bed-status-change` -- see `bed-cycle-log?`."
-  [ground-truth]
-  (when (bed-cycle-log? ground-truth)
-    (for [{:keys [bed from to at event]} (bed-transitions ground-truth)
-          :when (and (= :occupied to)
-                     (bed-allocating-event-types event)
-                     (not= :ready from))]
-      {:invariant :no-assignment-to-a-non-ready-bed :bed bed :at at :status from})))
+  {::records true}
+  ([ground-truth] (no-assignment-to-a-non-ready-bed ground-truth (engine/replay ground-truth)))
+  ([ground-truth records]
+   (when (bed-cycle-log? ground-truth)
+     (for [{:keys [bed from to at event]} (bed-transitions ground-truth records)
+           :when (and (= :occupied to)
+                      (bed-allocating-event-types event)
+                      (not= :ready from))]
+       {:invariant :no-assignment-to-a-non-ready-bed :bed bed :at at :status from}))))
 
 (defn every-ready-follows-a-cleaning
   "ADR-0174 section 2(c), invariant 2: a bed REACHING `:ready` was
@@ -817,13 +857,15 @@
     is where that arc is enumerated.
 
   VACUOUS on a log with no `:bed-status-change` -- see `bed-cycle-log?`."
-  [ground-truth]
-  (when (bed-cycle-log? ground-truth)
-    (for [{:keys [bed from to at event]} (bed-transitions ground-truth)
-          :when (and (= :ready to)
-                     (= :bed-status-change event)
-                     (not= :cleaning from))]
-      {:invariant :every-ready-follows-a-cleaning :bed bed :at at :status from})))
+  {::records true}
+  ([ground-truth] (every-ready-follows-a-cleaning ground-truth (engine/replay ground-truth)))
+  ([ground-truth records]
+   (when (bed-cycle-log? ground-truth)
+     (for [{:keys [bed from to at event]} (bed-transitions ground-truth records)
+           :when (and (= :ready to)
+                      (= :bed-status-change event)
+                      (not= :cleaning from))]
+       {:invariant :every-ready-follows-a-cleaning :bed bed :at at :status from}))))
 
 (defn bed-cycle-transitions-are-legal
   "ADR-0174 section 2(c), invariant 3: every bed-status transition is
@@ -838,17 +880,19 @@
   can.
 
   VACUOUS on a log with no `:bed-status-change` -- see `bed-cycle-log?`."
-  [ground-truth]
-  (when (bed-cycle-log? ground-truth)
-    (let [transitions (bed-transitions ground-truth)]
-      (concat
-       (for [{:keys [bed from to at]} transitions
-             :when (not (legal-bed-transitions [from to]))]
-         {:invariant :bed-cycle-transitions-are-legal :bed bed :at at :from from :to to})
-       (for [{:keys [bed from at declared-from event]} transitions
-             :when (and (= :bed-status-change event) (not= declared-from from))]
-         {:invariant :bed-cycle-transitions-are-legal :bed bed :at at
-          :declared declared-from :actual from})))))
+  {::records true}
+  ([ground-truth] (bed-cycle-transitions-are-legal ground-truth (engine/replay ground-truth)))
+  ([ground-truth records]
+   (when (bed-cycle-log? ground-truth)
+     (let [transitions (bed-transitions ground-truth records)]
+       (concat
+        (for [{:keys [bed from to at]} transitions
+              :when (not (legal-bed-transitions [from to]))]
+          {:invariant :bed-cycle-transitions-are-legal :bed bed :at at :from from :to to})
+        (for [{:keys [bed from at declared-from event]} transitions
+              :when (and (= :bed-status-change event) (not= declared-from from))]
+          {:invariant :bed-cycle-transitions-are-legal :bed bed :at at
+           :declared declared-from :actual from}))))))
 
 (defn occupancy-within-capacity
   "Occupancy never exceeds a ward's declared capacity (licensed +
@@ -861,24 +905,26 @@
   facility config, in config order, and the only carried value in the
   finding is `:occupied`, a count. The 54.9%-of-the-phase site becomes
   O(W) per event instead of O(P x W)."
-  [ground-truth facility-config]
-  (fold-records
-   ground-truth
-   {}
-   (fn [by-ward {:keys [event world-before world-after]}]
-     (let [by-ward' (reduce (fn [idx pid]
-                              (reindex-set idx
-                                           (ward-of (get world-before pid))
-                                           (ward-of (get world-after pid))
-                                           pid))
-                            by-ward (participants-of event))]
-       [by-ward'
-        (for [ward (:wards facility-config)
-              :let [cap (+ (:beds ward) (:surge-slots ward))
-                    occ (count (get by-ward' (:name ward)))]
-              :when (> occ cap)]
-          {:invariant :occupancy-within-capacity :ward (:name ward) :at (:t event)
-           :occupied occ :capacity cap})]))))
+  {::records true}
+  ([ground-truth facility-config] (occupancy-within-capacity ground-truth facility-config (engine/replay ground-truth)))
+  ([ground-truth facility-config records]
+   (fold-records
+    records
+    {}
+    (fn [by-ward {:keys [event world-before world-after]}]
+      (let [by-ward' (reduce (fn [idx pid]
+                               (reindex-set idx
+                                            (ward-of (get world-before pid))
+                                            (ward-of (get world-after pid))
+                                            pid))
+                             by-ward (participants-of event))]
+        [by-ward'
+         (for [ward (:wards facility-config)
+               :let [cap (+ (:beds ward) (:surge-slots ward))
+                     occ (count (get by-ward' (:name ward)))]
+               :when (> occ cap)]
+           {:invariant :occupancy-within-capacity :ward (:name ward) :at (:t event)
+            :occupied occ :capacity cap})])))))
 
 (defn- earlier-rungs-exhausted?
   "Whether the ladder's earlier rungs were legitimately exhausted at
@@ -922,21 +968,37 @@
   ARC 3B SWEEP 2: the CLAIM is unchanged and the READING of \"exhausted\"
   is not -- see `earlier-rungs-exhausted?` above. The bed index it now
   consults is reconstructed from this log alone
-  (`log-derived-bed-index`), never read off the engine."
-  [ground-truth facility-config]
-  (let [folded (log-derived-bed-fold ground-truth)
-        beds-before (:before folded)
-        records (or (:records folded) (engine/replay ground-truth))]
-    (for [[idx {:keys [event world-before patient-id]}] (map-indexed vector records)
-          :when (and (#{:admission :transfer} (:event event))
-                     (= :surge (get-in event [:location :placement]))
-                     (not (:forced event))
-                     (not (earlier-rungs-exhausted? facility-config
-                                                    (sim-model/occupancy-board world-before)
-                                                    (when beds-before (nth beds-before idx))
-                                                    (:home-ward event)
-                                                    (get-in event [:location :ward]))))]
-      {:invariant :surge-only-when-earlier-rungs-exhausted :patient-id patient-id :at (:t event)})))
+  (`log-derived-bed-index`), never read off the engine.
+
+  ADR-0180 SITE 7, ruling R-board-in-entry: THE OCCUPANCY BOARD IS READ
+  OFF THE RECORD, not rebuilt here. This was the one reading site in the
+  catalog that walked a record's WHOLE `:world-before` --
+  `sim-model/occupancy-board` is an `into {}` over every patient in it
+  -- so on a handed projection, whose world carries every patient from
+  t 0 rather than only those seen so far, it would have reintroduced
+  exactly the O(all patients) per surge event that site 3 removed from
+  the generate path. The concern that maintains the board incrementally
+  is now in `replay`'s own projection too, so the record carries
+  `:board` and this row reads it. `sim-model/occupancy-board` stays the
+  from-scratch DEFINITION the index is proven equal to
+  (`ehrt.sim-engine.board-index-test`); it is no longer called anywhere
+  in `src`."
+  {::records true}
+  ([ground-truth facility-config]
+   (surge-only-when-earlier-rungs-exhausted ground-truth facility-config
+                                            (engine/replay ground-truth)))
+  ([ground-truth facility-config records]
+   (let [beds-before (:before (log-derived-bed-fold ground-truth records))]
+     (for [[idx {:keys [event board patient-id]}] (map-indexed vector records)
+           :when (and (#{:admission :transfer} (:event event))
+                      (= :surge (get-in event [:location :placement]))
+                      (not (:forced event))
+                      (not (earlier-rungs-exhausted? facility-config
+                                                     board
+                                                     (when beds-before (nth beds-before idx))
+                                                     (:home-ward event)
+                                                     (get-in event [:location :ward]))))]
+       {:invariant :surge-only-when-earlier-rungs-exhausted :patient-id patient-id :at (:t event)}))))
 
 ;; --- M2b: churn family (docs/patient-state-model.md's event-validity
 ;; table's cancel-*/bed-swap/merge rows; sim/ADR-0010's cross-participant
@@ -1056,13 +1118,15 @@
   "Both bed-swap participants were :admitted immediately beforehand
   (components/sim/docs/operational-models.md's own admitted-when-placed rule, extended
   to the genuinely-two-participant case -- sim/ADR-0010)."
-  [ground-truth]
-  (for [{:keys [event world-before]} (engine/replay ground-truth)
-        :when (= :bed-swap (:event event))
-        {:keys [patient-id]} (:participants event)
-        :let [before (get world-before patient-id)]
-        :when (not= :admitted (:status before))]
-    {:invariant :bed-swap-both-admitted-before-swap :patient-id patient-id :at (:t event)}))
+  {::records true}
+  ([ground-truth] (bed-swap-both-admitted-before-swap ground-truth (engine/replay ground-truth)))
+  ([ground-truth records]
+   (for [{:keys [event world-before]} records
+         :when (= :bed-swap (:event event))
+         {:keys [patient-id]} (:participants event)
+         :let [before (get world-before patient-id)]
+         :when (not= :admitted (:status before))]
+     {:invariant :bed-swap-both-admitted-before-swap :patient-id patient-id :at (:t event)})))
 
 (defn merge-survivor-absorbs-merged-mrns
   "docs/patient-state-model.md's identity payoff: the merge's stated
@@ -1070,19 +1134,21 @@
   arbitrary string); the survivor's post-merge :active-mrn is exactly
   that; and the survivor's post-merge :mrns is a superset of what the
   merged patient answered to beforehand (retired, not discarded)."
-  [ground-truth]
-  (for [{:keys [event world-before world-after]} (engine/replay ground-truth)
-        :when (= :merge (:event event))
-        :let [{:keys [participants surviving-mrn]} event
-              survivor-id (:patient-id (first (filter #(= :survivor (:role %)) participants)))
-              merged-id (:patient-id (first (filter #(= :merged (:role %)) participants)))
-              survivor-before (get world-before survivor-id)
-              merged-before (get world-before merged-id)
-              survivor-after (get world-after survivor-id)]
-        :when (not (and (contains? (:mrns survivor-before) surviving-mrn)
-                        (= surviving-mrn (:active-mrn survivor-after))
-                        (clojure.set/subset? (:mrns merged-before) (:mrns survivor-after))))]
-    {:invariant :merge-survivor-absorbs-merged-mrns :patient-id survivor-id :at (:t event)}))
+  {::records true}
+  ([ground-truth] (merge-survivor-absorbs-merged-mrns ground-truth (engine/replay ground-truth)))
+  ([ground-truth records]
+   (for [{:keys [event world-before world-after]} records
+         :when (= :merge (:event event))
+         :let [{:keys [participants surviving-mrn]} event
+               survivor-id (:patient-id (first (filter #(= :survivor (:role %)) participants)))
+               merged-id (:patient-id (first (filter #(= :merged (:role %)) participants)))
+               survivor-before (get world-before survivor-id)
+               merged-before (get world-before merged-id)
+               survivor-after (get world-after survivor-id)]
+         :when (not (and (contains? (:mrns survivor-before) surviving-mrn)
+                         (= surviving-mrn (:active-mrn survivor-after))
+                         (clojure.set/subset? (:mrns merged-before) (:mrns survivor-after))))]
+     {:invariant :merge-survivor-absorbs-merged-mrns :patient-id survivor-id :at (:t event)})))
 
 (defn no-events-after-merged-terminal
   "The merged patient-id's stream ends with its own merge event -- no
@@ -1170,14 +1236,16 @@
   generalized to both event types. result-references-existing-order-
   and-follows-it-in-time already guarantees a result's own order was
   itself legitimate."
-  [ground-truth]
-  (for [{:keys [event before patient-id]} (engine/replay ground-truth)
-        :when (and (= :order-placed (:event event))
-                   (or (not= :admitted (:status before))
-                       ;; ADR-0174's table, per-encounter (see
-                       ;; `transfer-only-when-admitted`'s own note).
-                       (carried-encounter-is-not-the-open-one? event before patient-id)))]
-    {:invariant :order-only-when-admitted :patient-id patient-id :at (:t event)}))
+  {::records true}
+  ([ground-truth] (order-only-when-admitted ground-truth (engine/replay ground-truth)))
+  ([ground-truth records]
+   (for [{:keys [event before patient-id]} records
+         :when (and (= :order-placed (:event event))
+                    (or (not= :admitted (:status before))
+                        ;; ADR-0174's table, per-encounter (see
+                        ;; `transfer-only-when-admitted`'s own note).
+                        (carried-encounter-is-not-the-open-one? event before patient-id)))]
+     {:invariant :order-only-when-admitted :patient-id patient-id :at (:t event)})))
 
 (defn- merges-forward
   "The `:merge` relation, absorbed patient-id -> `{:survivor .. :t ..}`.
@@ -1304,16 +1372,18 @@
   :care-plan-end is deliberately NOT included, same reason
   :medication-end isn't -- a care plan legitimately continues (and
   ends) after discharge."
-  [ground-truth]
-  (for [{:keys [event before patient-id]} (engine/replay ground-truth)
-        :when (and (#{:procedure :observation :medication-order :diagnostic-report :care-plan-start} (:event event))
-                   (or (not= :admitted (:status before))
-                       ;; ADR-0174's table, per-encounter: and the stamp
-                       ;; names the OPEN encounter, so a condition
-                       ;; recorded during visit 2 is not silently
-                       ;; attributed to visit 1.
-                       (carried-encounter-is-not-the-open-one? event before patient-id)))]
-    {:invariant :clinical-content-only-when-admitted :patient-id patient-id :at (:t event)}))
+  {::records true}
+  ([ground-truth] (clinical-content-only-when-admitted ground-truth (engine/replay ground-truth)))
+  ([ground-truth records]
+   (for [{:keys [event before patient-id]} records
+         :when (and (#{:procedure :observation :medication-order :diagnostic-report :care-plan-start} (:event event))
+                    (or (not= :admitted (:status before))
+                        ;; ADR-0174's table, per-encounter: and the stamp
+                        ;; names the OPEN encounter, so a condition
+                        ;; recorded during visit 2 is not silently
+                        ;; attributed to visit 1.
+                        (carried-encounter-is-not-the-open-one? event before patient-id)))]
+     {:invariant :clinical-content-only-when-admitted :patient-id patient-id :at (:t event)})))
 
 (defn- pre-horizon-medication-order-citations-by-patient
   "patient-id -> the set of :citation values riding that patient's own
@@ -1754,21 +1824,23 @@
   first half -- `:prior-value`/`:prior-payer` are `{:optional true}` in
   the contract, and a correction of a field never previously set has no
   prior to report."
-  [ground-truth]
-  (for [{:keys [event before patient-id]} (engine/replay ground-truth)
-        :let [[prior-key value-key field]
-              (case (:event event)
-                :demographic-update [:prior-value :value (:field event)]
-                :coverage-change [:prior-payer :payer :payer]
-                nil)]
-        :when (and field
-                   (or (= (get event prior-key) (get event value-key))
-                       (and (contains? event prior-key)
-                            (some? (:demographics before))
-                            (not= (get event prior-key)
-                                  (get (:demographics before) field)))))]
-    {:invariant :demographic-update-reports-a-real-change
-     :patient-id patient-id :at (:t event)}))
+  {::records true}
+  ([ground-truth] (demographic-update-reports-a-real-change ground-truth (engine/replay ground-truth)))
+  ([ground-truth records]
+   (for [{:keys [event before patient-id]} records
+         :let [[prior-key value-key field]
+               (case (:event event)
+                 :demographic-update [:prior-value :value (:field event)]
+                 :coverage-change [:prior-payer :payer :payer]
+                 nil)]
+         :when (and field
+                    (or (= (get event prior-key) (get event value-key))
+                        (and (contains? event prior-key)
+                             (some? (:demographics before))
+                             (not= (get event prior-key)
+                                   (get (:demographics before) field)))))]
+     {:invariant :demographic-update-reports-a-real-change
+      :patient-id patient-id :at (:t event)})))
 
 (defn no-demographic-event-after-a-patient-expires
   "No `:demographic-update`, `:coverage-change` or `:registered` for a
@@ -1781,12 +1853,14 @@
   candidate set: a dead person is not selectable, so a `:registered`
   after an expiry is the one shape that would prove the alive-filter had
   stopped working."
-  [ground-truth]
-  (for [{:keys [event before patient-id]} (engine/replay ground-truth)
-        :when (and (#{:demographic-update :coverage-change :registered} (:event event))
-                   (= :expired (:status before)))]
-    {:invariant :no-demographic-event-after-a-patient-expires
-     :patient-id patient-id :at (:t event)}))
+  {::records true}
+  ([ground-truth] (no-demographic-event-after-a-patient-expires ground-truth (engine/replay ground-truth)))
+  ([ground-truth records]
+   (for [{:keys [event before patient-id]} records
+         :when (and (#{:demographic-update :coverage-change :registered} (:event event))
+                    (= :expired (:status before)))]
+     {:invariant :no-demographic-event-after-a-patient-expires
+      :patient-id patient-id :at (:t event)})))
 
 (defn person-scoped-provenance-is-a-stamp-not-a-reference
   "`:person-event-id` is a STAMP -- the person stream's own
@@ -2110,6 +2184,19 @@
   same reason `facility-catalog` is separate (Milestone M3)."
   [#'result-analytes-match-order-profile])
 
+(defn- reads-records?
+  "Whether a catalog row takes the shared record projection as its
+  trailing argument, declared by the row itself as `{::records true}`
+  rather than inferred from its arity -- `warm-up-mark-matches-window`
+  and `result-analytes-match-order-profile` also take a second argument
+  and neither reads a record, so arity does not separate them.
+
+  ADR-0180 site 7. A row that grows a record read and forgets this key
+  simply replays for itself, which is CORRECT and slow, never wrong --
+  the short arity is the same function over the same log."
+  [row]
+  (boolean (::records (meta row))))
+
 (defn check-all
   "Runs every invariant in the catalog over a ground-truth log.
   `facility-config` (default sim-model/default-facility) is needed by the
@@ -2117,14 +2204,29 @@
   needed by the warm-up-mark invariant; `order-profiles-config`
   (default ehrt.sim-engine.order-profiles/default-profiles, Milestone
   M3) is needed by result-analytes-match-order-profile. Existing
-  1-arg/2-arg/3-arg call sites are unaffected."
+  1-arg/2-arg/3-arg call sites are unaffected.
+
+  ADR-0180 SITE 7, ruling R-check-once: `records` -- the fifth argument
+  -- is `engine/replay`'s own record seq, and this function FOLDS THE
+  LOG ONCE. Handed nil (every arity below), it replays once itself and
+  every `{::records true}` row reads that one seq; handed a projection,
+  it replays NOT AT ALL, which is what `ehrt.sim.run`'s in-run
+  self-check does with the entries `engine/run` already built and used
+  to throw away. Before this the catalog folded seventeen times per
+  call, twenty with a bed cycle in the log."
   ([ground-truth] (check-all ground-truth sim-model/default-facility 0 order-profiles/default-profiles))
   ([ground-truth facility-config] (check-all ground-truth facility-config 0 order-profiles/default-profiles))
   ([ground-truth facility-config warm-up-seconds]
    (check-all ground-truth facility-config warm-up-seconds order-profiles/default-profiles))
   ([ground-truth facility-config warm-up-seconds order-profiles-config]
-   (let [base-violations (into [] (mapcat #(% ground-truth)) catalog)
-         facility-violations (into [] (mapcat #(% ground-truth facility-config)) facility-catalog)
+   (check-all ground-truth facility-config warm-up-seconds order-profiles-config nil))
+  ([ground-truth facility-config warm-up-seconds order-profiles-config records]
+   (let [records (or records (engine/replay ground-truth))
+         base-violations (into [] (mapcat #(if (reads-records? %) (% ground-truth records) (% ground-truth))) catalog)
+         facility-violations (into [] (mapcat #(if (reads-records? %)
+                                                 (% ground-truth facility-config records)
+                                                 (% ground-truth facility-config)))
+                                   facility-catalog)
          warmup-violations (into [] (mapcat #(% ground-truth warm-up-seconds)) warmup-catalog)
          order-profiles-violations (into [] (mapcat #(% ground-truth order-profiles-config)) order-profiles-catalog)
          violations (-> base-violations
