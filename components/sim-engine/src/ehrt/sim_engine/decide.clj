@@ -1447,30 +1447,50 @@
        :advance 0})))
 
 (defmethod decide :merge
+  ;; ADR-0180 site 5, 2026-09-07. TWO whole-collection scans used to
+  ;; stand in this `let` and neither does now.
+  ;;
+  ;; `eligible` was a scan of the WHOLE `:patients` map per merge step
+  ;; -- 34.06% of the generate phase at 22,500 arrivals -- and is now
+  ;; `fold/merge-eligible`, the merge view of the `:eligible-index`
+  ;; sub-map `fold/apply-events` maintains. THE ORDER IS THE OBLIGATION,
+  ;; not the set: `streams/uniform-choice` resolves positionally, so the
+  ;; index owes vector identity down to the position of every element.
+  ;; That argument, its hash-collision hole and the law that detects it
+  ;; live in `fold/merge-eligible` and
+  ;; `ehrt.sim-engine.eligible-index-test`.
+  ;;
+  ;; `already-merged?` was a `some` over the ENTIRE `:ground-truth` per
+  ;; merge step, and it is DELETED rather than indexed (R-already-
+  ;; merged). It was provably redundant: `evolve :merge`'s `:merged` arm
+  ;; sets `:status :merged` on the absorbed patient, `:merged` is
+  ;; absorbing, and BOTH paths to `merged-id` already exclude it -- the
+  ;; dynamic path because `never-mergeable?` is the index's own
+  ;; membership predicate, and the `:with` path because
+  ;; `(never-mergeable? merged)` is evaluated on the same `if` below. So
+  ;; the disjunct was true only where a term beside it was already true.
+  ;; The full proof is in `notes/adr/0180-indexes-ride-the-fold.md`; the
+  ;; implication it rests on -- that the LOG scan and the WORLD status
+  ;; answer the same thing, because the world is the fold of the log --
+  ;; is asserted over generated logs by that test namespace.
   [{world-rng :world} t world patient-id {:keys [with] :as step}]
-  (let [{:keys [patients ground-truth]} world
+  (let [{:keys [patients]} world
         survivor (get patients patient-id)
         ;; :new (never admitted -- no :admission event exists yet for
         ;; participant-ids-exist-in-run to find) and :merged (already
         ;; merged away) are never legal merge targets, dynamically
-        ;; picked OR explicitly named via :with.
+        ;; picked OR explicitly named via :with. The dynamic half of
+        ;; that sentence is now the index's membership rule; this
+        ;; predicate stays for the :with path, which never consults it.
         never-mergeable? (fn [p] (#{:new :merged} (:status p)))
-        eligible (->> patients
-                     (remove (fn [[pid _]] (= pid patient-id)))
-                     (remove (fn [[_ p]] (never-mergeable? p)))
-                     (mapv first))
+        eligible (fold/merge-eligible world patient-id)
         merged-id (cond
                     with with
                     (seq eligible) (streams/uniform-choice world-rng eligible)
                     :else nil)
-        merged (get patients merged-id)
-        already-merged? (some (fn [ev]
-                                (and (= :merge (:event ev))
-                                     (some #(and (= :merged (:role %)) (= merged-id (:patient-id %)))
-                                           (:participants ev))))
-                              ground-truth)]
+        merged (get patients merged-id)]
     (if (or (nil? merged-id) (= patient-id merged-id) (nil? merged)
-            (never-mergeable? merged) already-merged?)
+            (never-mergeable? merged))
       (rejected-outcome :illegal-merge patient-id t step {:with with})
       {:events [{:event :merge :t t
                  :participants [{:patient-id patient-id :role :survivor}

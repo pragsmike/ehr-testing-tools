@@ -197,6 +197,14 @@
   reason a projection is a declared subset rather than an
   all-or-nothing switch.
 
+  AND `:eligible-index` MAKES IT EIGHT (ADR-0180 site 5, 2026-09-07),
+  added for the reason every one of its predecessors was: `decide
+  :merge` now reads its candidate list off that index rather than
+  scanning `(:patients world)`, so a scripted merge driven against a
+  world this helper built would ask the question of a world carrying no
+  index -- and get an exception, not a nil, which is R-read-throws
+  working as intended.
+
   ONE PRE-EXISTING DEFECT GOES WITH THE REWRITE, disclosed rather than
   absorbed: the hand-rolled version mapped over `(:participants ev)`
   unfiltered, so a `:bed-status-change` -- whose participant names a BED
@@ -207,7 +215,7 @@
   (:world (fold/apply-events {:world world} events
                              #{:patient-bootstrap :patient-state
                                :boarder-index :board :cancel-index
-                               :log-ordinal :log-mirror})))
+                               :eligible-index :log-ordinal :log-mirror})))
 
 (deftest bed-ready-transfer-scripted-two-patients
   (testing "B boards in ED surge because Renal's one bed is taken; A's
@@ -606,11 +614,20 @@
   further on: the three cancel decides read that index and
   `fold/last-uncancelled` THROWS on a world without one rather than
   rebuilding the scan. `{}` is again the answer rather than a stand-in
-  -- no event has been logged, so no patient has a cancellable one."
+  -- no event has been logged, so no patient has a cancellable one.
+
+  ADR-0180 site 5 adds `:eligible-index`, and it is the ONE seed here
+  that is a named var rather than a literal: `fold/merge-eligible`
+  answers in `(:patients world)`'s own hash order, and `{}` is a
+  `PersistentArrayMap` that would iterate its first eight entries in
+  insertion order instead (R-empty-carrier). Empty is still the right
+  VALUE -- these patients are all `:status :new`, which is never
+  merge-eligible."
   [patients]
   {:patients patients :facility churn-facility :providers churn-providers :ground-truth []
    :board {}
    :cancel-index {}
+   :eligible-index fold/empty-eligible-index
    :order-profiles order-profiles/default-profiles})
 
 (defn- admit

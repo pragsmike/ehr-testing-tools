@@ -168,10 +168,17 @@
   ADR-0180 site 4 adds `:cancel-index {}` one step further on: the three
   cancel decides this file scripts read that index, and
   `fold/last-uncancelled` throws on a world without one rather than
-  rebuilding the scan."
+  rebuilding the scan.
+
+  ADR-0180 site 5 adds `:eligible-index`, which `decide :merge` reads
+  and this file scripts an A40 against. It is a named var rather than a
+  literal because `{}` is a `PersistentArrayMap` and would answer
+  insertion order where the index owes `:patients`' hash order
+  (R-empty-carrier)."
   [patients]
   {:patients patients :facility churn-facility :providers churn-providers
-   :ground-truth [] :board {} :cancel-index {}})
+   :ground-truth [] :board {} :cancel-index {}
+   :eligible-index fold/empty-eligible-index})
 
 (defn- fold-events
   "Applies `events` to `world` THROUGH THE CHOKE POINT --
@@ -193,8 +200,11 @@
   DEFINITION of what applying an event means, and it falls behind the
   first every time the first grows.
 
-  The projection is the five concerns a scripted `decide` test needs,
-  the same five `engine_test.clj`'s own helper declares. It is NOT
+  The projection is the concerns a scripted `decide` test needs, the
+  same set `engine_test.clj`'s own helper declares -- eight of them
+  since ADR-0180 site 5 (2026-09-07) added `:eligible-index`, which
+  `decide :merge` reads its candidate list off and this file scripts a
+  merge against. It is NOT
   `run-loop-projection`: the decorations and the two transient
   accumulators want slots and parameters a scripted test has no source
   for.
@@ -210,7 +220,7 @@
   (:world (fold/apply-events {:world world} events
                              #{:patient-bootstrap :patient-state
                                :boarder-index :board :cancel-index
-                               :log-ordinal :log-mirror})))
+                               :eligible-index :log-ordinal :log-mirror})))
 
 (defn- admit
   [world t patient-id location]
