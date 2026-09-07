@@ -779,8 +779,26 @@
                                engine-opts)
                  engine-result (engine-run-fn engine-opts)
                  {:keys [ground-truth facility providers exhausted]} engine-result
+                 ;; ADR-0180 site 7 (2026-09-07, ruling R-check-once):
+                 ;; THE RUN HANDS `check-all` ITS OWN PROJECTION. The
+                 ;; engine already minted one replay entry per event
+                 ;; while folding, and until this it dropped them and the
+                 ;; self-check replayed the whole log seventeen times to
+                 ;; rebuild the same thing -- 34.71% of the generate
+                 ;; phase at 7,500 arrivals, and the transient heap peak
+                 ;; the post-program profile dated to exactly this call.
+                 ;; The 5-arity is what carries them, so the profile
+                 ;; argument has to be passed explicitly; it is
+                 ;; `engine/default-profiles`, which is the 3-arity's own
+                 ;; default spelled out and not a new choice. `:entries`
+                 ;; is nil for an injected `:engine-run-fn` that does not
+                 ;; produce them, and `check-all` then replays once, as
+                 ;; it does for every other caller with a log and nothing
+                 ;; else.
                  checked (when (and (not exhausted) (not (result/error? engine-result)))
-                           (check/check-all ground-truth facility warm-up-seconds))]
+                           (check/check-all ground-truth facility warm-up-seconds
+                                            engine/default-profiles
+                                            (:entries engine-result)))]
              (cond
                ;; sim/ADR-0116: engine/run now returns result/error :invalid-seed
                ;; (rather than throwing or running) for an out-of-contract seed --

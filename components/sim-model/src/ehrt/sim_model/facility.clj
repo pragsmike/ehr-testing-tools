@@ -140,8 +140,14 @@
 (defn- choose
   "Uniform seeded choice among `candidates` (a non-empty vector),
   consuming exactly one RNG draw regardless of candidate count --
-  same determinism law as every other stochastic choice in the theory."
-  [rng candidates]
+  same determinism law as every other stochastic choice in the theory.
+
+  `rng` IS HINTED (ADR-0180 site 7's rider, R-rider-hint): without it
+  `.nextInt` is a reflective call on every seeded choice this facility
+  makes, which is a per-draw cost on the generate path. A type hint
+  cannot change what a call returns, and the brackets are what say so
+  rather than the argument."
+  [^java.util.Random rng candidates]
   (nth candidates (.nextInt rng (count candidates))))
 
 (defn bed-placement

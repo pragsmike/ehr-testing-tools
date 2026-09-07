@@ -1467,9 +1467,19 @@
         ;; draw-free -- so each one is constructed and never read.
         streams-by-pid (into {} (for [i (concat firsts hook-patient-ordinals)]
                                   [(pid-for i) (nth patient-rngs i)]))
-        final-result (fn [ground-truth state-history extra]
+        ;; ADR-0180 site 7 (2026-09-07, ruling R-check-once): `entries`
+        ;; joins the three the loop already threads. `:replay-entries`
+        ;; has been at full product on this site since apply-unification
+        ;; stage 2, minting one entry per event into a transient the
+        ;; loop THREW AWAY per batch; the run's own self-check then
+        ;; replayed the whole log seventeen times to rebuild them. It
+        ;; hands them over instead. Persisted here, beside `:log`, and
+        ;; for the same reason: `final-result` is the one place either
+        ;; transient stops being one.
+        final-result (fn [ground-truth state-history entries extra]
                        (merge {:ground-truth (persistent! ground-truth)
                                :state-history state-history
+                               :entries (persistent! entries)
                                :facility facility
                                :providers materialized-providers}
                               extra))]
@@ -1481,9 +1491,12 @@
            seq-no seq-start
            world init-world
            ground-truth (transient [])
-           state-history {}]
+           state-history {}
+           ;; ADR-0180 site 7: the replay entries, threaded exactly as
+           ;; `ground-truth` above is and persisted at the same place.
+           entries (transient [])]
       (if (empty? queue)
-        (final-result ground-truth state-history nil)
+        (final-result ground-truth state-history entries nil)
         (let [[[t _] {:keys [patient-id steps]} queue'] (pop-min queue)
               [step & remaining] steps]
           (if (= :merged (get-in world [:patients patient-id :status]))
@@ -1543,7 +1556,7 @@
                                                (inc n)])
                                             [queue' seq-no]
                                             carried)]
-              (recur queue'' seq-no' world ground-truth state-history))
+              (recur queue'' seq-no' world ground-truth state-history entries))
             (let [{:keys [events advance exhausted schedule-followup prepend-steps]}
                   (decide/decide (assoc base-streams :patient (get streams-by-pid patient-id))
                           t world patient-id step)]
@@ -1562,7 +1575,7 @@
               ;; normally. check.clj remains the independent safety net
               ;; for any log, authored or generated.
               (cond
-                exhausted (final-result ground-truth state-history {:exhausted exhausted})
+                exhausted (final-result ground-truth state-history entries {:exhausted exhausted})
                 :else
             (let [;; THE APPLY CHOKE POINT (P5 stage 1,
                   ;; `.agents/plans/apply-unification-census.md`). This
@@ -1588,15 +1601,20 @@
                   ;; per-batch post-pass off the post-reduce world.
                   ;; `:log` is the TRANSIENT log accumulator, in and out
                   ;; as a transient; `final-result` is still the only
-                  ;; thing that persists it. `:entries` is the same shape
-                  ;; and is DELIBERATELY not destructured: site 1 holds
-                  ;; `:replay-entries` at full product, and nothing here
-                  ;; reads what it accumulates.
-                  {world'' :world ground-truth' :log state-history' :state-history}
+                  ;; thing that persists it. `:entries` IS THE SAME SHAPE
+                  ;; AND IS NOW THREADED THE SAME WAY (ADR-0180 site 7,
+                  ;; 2026-09-07): it used to be seeded fresh here per
+                  ;; batch and dropped on the floor, because nothing read
+                  ;; what `:replay-entries` accumulated. The run's own
+                  ;; self-check reads it now -- `ehrt.sim.run` hands it
+                  ;; to `check-all` -- so the accumulator has to survive
+                  ;; the batch, which is all that changed.
+                  {world'' :world ground-truth' :log state-history' :state-history
+                   entries' :entries}
                   (fold/apply-events {:world world
                                       :log ground-truth
                                       :state-history state-history
-                                      :entries (transient [])
+                                      :entries entries
                                       :warm-up-seconds warm-up-seconds}
                                      events
                                      fold/run-loop-projection)
@@ -1642,5 +1660,5 @@
                   remaining' (into (vec prepend-steps) remaining)]
               (if (seq remaining')
                 (recur (assoc queue'' [(+ t advance) seq-no'] {:patient-id patient-id :steps remaining'})
-                       (inc seq-no') world'' ground-truth' state-history')
-                (recur queue'' seq-no' world'' ground-truth' state-history'))))))))))))))
+                       (inc seq-no') world'' ground-truth' state-history' entries')
+                (recur queue'' seq-no' world'' ground-truth' state-history' entries'))))))))))))))

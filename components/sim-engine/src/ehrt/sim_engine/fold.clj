@@ -781,14 +781,18 @@
   was deleted by that repoint, so neither view has a second
   implementation in `src`.
 
-  `:replay-entries` is inert here for a different reason -- not that its
-  branch never fires, but that nothing READS what it accumulates.
-  `final-result` merges `:ground-truth`, `:state-history`, `:facility`
-  and `:providers` and nothing else, and no caller of
-  `ehrt.sim-engine.interface/run` asks for more, so the entries land in
-  a transient the call site never realises. It costs allocation -- one
-  map per event carrying two whole patient-map snapshots -- and moves no
-  byte."
+  `:replay-entries` WAS inert here for a different reason -- not that
+  its branch never fired, but that nothing READ what it accumulated.
+  That sentence stopped being true at ADR-0180 site 7 (2026-09-07,
+  ruling R-check-once), and this is the paragraph the addendum said the
+  session that made it false would owe. `run`'s loop threads the
+  accumulator instead of re-seeding it per batch, `final-result`
+  persists it as `:entries` beside `:ground-truth`, and
+  `ehrt.sim.run`'s in-run self-check hands it to `check-all` -- which
+  therefore folds the log ZERO times in-run where it folded it
+  seventeen. The allocation was always being paid, one map per event
+  carrying two whole patient-map snapshots; what changed is that
+  somebody reads it. It still moves no byte."
   full-algebra)
 
 (def replay-projection
