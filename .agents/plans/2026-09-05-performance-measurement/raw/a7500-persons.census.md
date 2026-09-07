@@ -1,6 +1,6 @@
 ## Corpora
 
-- `/home/mg/perf-out/a7500-persons.run1.edn` -- 167197 events
+- `/home/mg/perf-site7/a7500-persons.run1.edn` -- 167197 events
 
 Total: **167197 events**, **28 kinds**.
 
@@ -461,8 +461,8 @@ Total: **167197 events**, **28 kinds**.
 
 ## Per-corpus kind counts
 
-- `/home/mg/perf-out/a7500-persons.run1.edn`: :admission 8062, :appointment 7340, :appointment-cancel 592, :bed-status-change 41399, :bed-swap 2220, :cancel-admit 54, :cancel-discharge 51, :cancel-transfer 2146, :care-plan-end 3486, :care-plan-start 3567, :coverage-change 7341, :demographic-update 13477, :diagnostic-report 2446, :discharge 8001, :medication-end 4885, :medication-order 4978, :merge 891, :no-show 981, :observation 7827, :order-placed 10274, :outpatient-visit 2318, :outpatient-visit-end 2316, :procedure 5461, :registered 8521, :reschedule 770, :result-available 10274, :step-rejected 179, :transfer 7340
+- `/home/mg/perf-site7/a7500-persons.run1.edn`: :admission 8062, :appointment 7340, :appointment-cancel 592, :bed-status-change 41399, :bed-swap 2220, :cancel-admit 54, :cancel-discharge 51, :cancel-transfer 2146, :care-plan-end 3486, :care-plan-start 3567, :coverage-change 7341, :demographic-update 13477, :diagnostic-report 2446, :discharge 8001, :medication-end 4885, :medication-order 4978, :merge 891, :no-show 981, :observation 7827, :order-placed 10274, :outpatient-visit 2318, :outpatient-visit-end 2316, :procedure 5461, :registered 8521, :reschedule 770, :result-available 10274, :step-rejected 179, :transfer 7340
 
 ## Per-corpus `:t` monotonicity (a RUN-level property)
 
-- `/home/mg/perf-out/a7500-persons.run1.edn`: `(apply <= (map :t ...))` = **true**
+- `/home/mg/perf-site7/a7500-persons.run1.edn`: `(apply <= (map :t ...))` = **true**

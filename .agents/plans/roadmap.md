@@ -16,47 +16,7 @@ record it names. The six-line row cap and the `## Done` rotation both went
 with them.
 
 ## Next (backlog, no session scheduled)
-- OPEN **[performance-residual-sites]** PRIORITY 1 -- the generate-quadratic
-  program, chartered by ADR-0180 (`notes/adr/0180-indexes-ride-the-fold.md`)
-  over the 2026-09-05 re-measurement at `3114dbfe`
-  (`.agents/plans/2026-09-05-performance-measurement/measurements.md`). CHECK IS
-  NO LONGER THE QUADRATIC: corrected decade slope 1.03-1.04 against ADR-0169's
-  1.814, and the whole phase is 130.57 s against generate's 2,329.46 s at
-  533,147 events -- 5.3% of the pair's wall. GENERATE WAS, and was steepening:
-  corrected decade slope 1.851, local slope 1.587 at the bottom rising to
-  2.116 at the top. SITES OF ONE SHAPE -- a per-event or per-arrival scan
-  over a population only ever appended to -- and the charter's first four
-  were 78.4 points of inclusive share at 22,500 arrivals on their own.
-  R-fold-carrier fixes each the same way: an index maintained at
-  `fold/apply-events`, with the from-scratch definition kept as the gate
-  proving it equal at every replay entry; R-order sequences them one
-  session each. SITES 1-4 LANDED 2026-09-06 AND SITES 5-6 ON 2026-09-07,
-  and every commit of the six carries both cell logs byte-identical and
-  `bin/ground-truth-bracket` IDENTICAL on all 38 roots -- each session's
-  shas, shares and walls in its own dated section of that measurements
-  file, which is where they live and not here. CUMULATIVELY at 7,500
-  arrivals the six read 0.00%-0.43% inclusive share where each was
-  25.23%, 19.17%, 17.87%, 21.63%, 12.40% and 12.58% at the head of its
-  own session; the five in-fold indexes together cost 1.33% of that
-  phase; and the cell went 256.15 s -> 87.95 s (`a2500-nopersons`
-  34.85 s -> 24.11 s) -- a LOWER BOUND, since every re-baseline read 3-6%
-  higher than the previous session's after on identical code. AT THE TOP
-  OF THE DECADE, one timed generate: `a22500-nopersons` **1,472.56 s ->
-  149.41 s**, 9.86x over a log BYTE-IDENTICAL to the committed 2026-09-05
-  digest -- 431,677 events agreeing to the byte, an order of magnitude
-  past what the 38 oracle roots and the two bracketed cells reach. ONE
-  SITE IS LEFT, from the charter's dated addendum
-  (`notes/adr/0180-indexes-ride-the-fold.md`, `Addendum, 2026-09-06`) and
-  last under R-order-2: the in-run and standalone `check-all` (site 7),
-  measured at site 6's close at **34.71% of generate** at 7,500 and at
-  **TWENTY** `engine/replay` invocations per standalone `sim check` at
-  BOTH committed cells -- against the 14 it was priced on, and against
-  the addendum's own "17, or 20 with a bed cycle", both cells carrying
-  one. 67,500 arrivals stays unreachable on
-  shipped defaults for a separate reason: 3,973 MB peak RSS against a
-  3.88 GB `MaxHeapSize`, and the post-program profile dates that peak to
-  the in-run `check-all`, which is site 7.
-- OPEN **[determinism-hash-order-dependence]** PRIORITY 2 -- churn's two
+- OPEN **[determinism-hash-order-dependence]** PRIORITY 1 -- churn's two
   candidate draws resolve POSITIONALLY (`streams/uniform-choice`) over a
   vector whose order IS `(:patients world)`'s `PersistentHashMap`
   iteration order, so every churn-bearing corpus in this tree depends on
@@ -74,8 +34,15 @@ with them.
   hash-order dependence" at site 5 and names this row instead. Retire only as a DECLARED
   oracle change -- sorting `eligible` moves every churn-bearing golden
   root -- never as a site session's judgment call.
-- OPEN **[dense-7500-gate-gaps]** PRIORITY 3 -- two gates ADR-0180's
-  R-gate-gaps commissions, neither of them site work. (a) THE EXERCISER IS NOT
+- OPEN **[dense-7500-gate-gaps]** PRIORITY 2 -- two gates ADR-0180's
+  R-gate-gaps commissions, neither of them site work. THE THING THEY GUARD
+  HAS MOVED THREE TIMES SINCE: sites 5, 6 and 7 each shortened the generate
+  phase at this very configuration, and `docs/consuming-ground-truth.md`'s
+  Scale table still quotes the three `corpus generate` process walls measured
+  at `4ddf62c2` (2026-09-06, before any of them). Nothing gates those rows --
+  which is gap (a), stated in the concrete rather than in the abstract. Site 7
+  disclosed the staleness and did not re-measure it: re-running the table is
+  this row's work, not a site's. (a) THE EXERCISER IS NOT
   IN A MAKE TARGET: `bin/demo-exerciser-dense-7500` exists and is wired into
   neither `make test` nor `make integration`, so the only committed
   configuration in this tree with a non-empty R-queue population -- the 21
@@ -86,12 +53,12 @@ with them.
   did. Gate the table BEFORE the four generate sites land -- those sites must
   move no figure in it, which is exactly the claim a gate would carry and prose
   cannot. Record: `.agents/session-records/2026-09-06-adr-0180-charter.md`.
-- OPEN **[oru-control-id-collision]** PRIORITY 4 -- `control-id-for` not
+- OPEN **[oru-control-id-collision]** PRIORITY 3 -- `control-id-for` not
   injective over `:result-available` -- 6 live duplicate MSH-10s in seed-424242,
   1 in clinic-decade demo (sweep-3 record :290); fix moves every corpus, its own
   declared sweep; sweep 5's fan-out must either wait for it or derive from log
   indices.
-- OPEN **[cancel-discharge-reopens-an-encounter-that-never-closes]** PRIORITY 9 --
+- OPEN **[cancel-discharge-reopens-an-encounter-that-never-closes]** PRIORITY 4 --
   MEASURED 2026-08-29 while tracing `roadmap.md#ts-3-outpatient-opens-over-an-encounter`,
   and it is a population fact rather than one patient's: a legal
   `:cancel-discharge` re-opens the encounter its own `:discharge` closed
@@ -117,7 +84,7 @@ with them.
   option (B), rejected there for reasons that apply here too. Any fix is
   draw-affecting and owes its own declared sweep. Record:
   `.agents/session-records/2026-08-29-ts-3-compiled-opener.md`.
-- OPEN **[corpus-player-slices]** PRIORITY 10 -- the corpus-player slices chartered
+- OPEN **[corpus-player-slices]** PRIORITY 5 -- the corpus-player slices chartered
   by ADR-0014. RE-DERIVED 2026-08-29 against the live tree, and the row is now
   TWO items where it was once a list: everything else in it has shipped.
   - **The board accumulator's final state, as an output.** `ehrt.corpus.board`
@@ -143,7 +110,7 @@ with them.
   what it checked. Kept rather than retired because
   `rulings.md#R-unregistered-request-gets-a-row` puts visibility first.
   ADR-0158 (review-4 D7-5); ADR-0175 section 2(f)/2(g) designed both halves.
-- OPEN **[corpus-io-ephemeral-port-flake]** PRIORITY 11 --
+- OPEN **[corpus-io-ephemeral-port-flake]** PRIORITY 6 --
   `ehrt.corpus-io.mllp-test`'s `a-refused-connection-is-an-error-not-a-throw`
   (`mllp_test.clj:214`/`:215`) is a RACE on a loaded runner, not a defect in
   the code it tests: `ack-server!` binds an EPHEMERAL port, the test stops it,
@@ -318,6 +285,7 @@ One line a row. `CLOSED` here means "no longer a roadmap row", not "the work
 was done" -- each line says which. The section is named `## Done` because that
 is where `ehrt.docs-tooling.roadmap-lint-test` requires a `CLOSED` row to live.
 
+- CLOSED 2026-09-07 e6cd1dbb **[performance-residual-sites]** -- DONE, all SEVEN sites of ADR-0180's program, one session each, every commit over byte-identical cell logs, `bin/ground-truth-bracket` IDENTICAL on 38 roots. At 22,500 generate went **1,472.56 -> 98.66 s** (14.9x); site 7 halved check, 112.28 -> 54.17 s, peak heap 3,476 -> 1,985 MB. Residue unchartered: the EDN parse, `licensed-bed-ids`. `.agents/plans/2026-09-05-performance-measurement/measurements.md`.
 - CLOSED 2026-09-06 03db90a4 **[select-person-arrival-quadratic]** -- DONE, site 2 of `roadmap.md#performance-residual-sites`. `prelude` builds ONE `alive-sweep` (a Fenwick tree over population indices, evicted by a cursor over deaths sorted by instant) and `select-person` reads its count and `k`th survivor. 19.17% -> 0.01% of generate, -19.5% wall, cell logs byte-identical, bracket IDENTICAL. Record: `.agents/session-records/2026-09-06-adr-0180-site-2-select-person.md`.
 - CLOSED 2026-09-05 97d0c31 **[orphan-participant-shape-gap]** -- DONE under R-split, reading 1 of the three ADR-0176 section 8 offered: the fifth invariant keys on a LOG FACT -- the reattributed event is a span start some end cites -- so the fact went into the site predicate rather than a register. The 14 sites given up are taken by two new operators, catalog 26 -> 28. Record: `.agents/session-records/2026-09-05-orphan-participant-split.md`.
 - CLOSED 2026-09-05 8c5379a **[event-mutation-catalog-gate]** -- DONE, both follow-ons: the catalog-wide gate runs every sited (operator, population) pair, and the `:expected-findings` vocabulary check landed as a corpus-brick TEST, so Q11(a)'s block dissolved without widening `ehrt.sim-check.interface`. It found a shape gap on its first run: `roadmap.md#orphan-participant-shape-gap`. Record: `.agents/session-records/2026-09-05-q11c-catalog-wide-gate.md`.

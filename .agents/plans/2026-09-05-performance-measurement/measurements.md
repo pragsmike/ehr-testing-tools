@@ -1431,3 +1431,191 @@ frame in the phase.
 * **The check phase itself did not move** (`replay` 47.00% -> 47.88%),
   which is what makes it a clean baseline for a session that will move
   it.
+
+## Site 7 measured, 2026-09-07 -- `check-all` folds once, and the run hands its own projection
+
+Baseline `ee7d0070`, site 6's own close plus the named-defmethods session.
+TWO code commits: `c2e62012`, the standalone half -- `check-all` replays ONCE
+and every invariant reads the shared records, with `:929` reading `:board` off
+the entry under R-board-in-entry -- and `e6cd1dbb`, the in-run half, where
+`engine/run` threads the entries it already builds and `ehrt.sim.run` hands
+them to `check-all`'s 5-arity. Two instrument commits precede them
+(`78f228f7`, `78226b5a`).
+
+This is the LAST site of the generate-quadratic program and the only one of
+the seven that moves the CHECK phase.
+
+### Output identity
+
+`bin/ground-truth-bracket` IDENTICAL on all 38 digested roots (3 skipped, no
+`:ground-truth` key) at BOTH code commits -- `ee7d0070..c2e62012` and
+`c2e62012..e6cd1dbb` -- and its own zero at the clean tip did too.
+
+All three cells reproduced their pre-change logs BYTE-FOR-BYTE:
+`a7500-persons` sha256 `3018299a...0d3bd3` over 167,197 events,
+`a2500-nopersons` `c22d6573...a55208` over 43,103, and `a22500-nopersons`
+`7d105743...78e0a` over 174,866,696 bytes -- the same digest sites 4, 5, 6 and
+the 2026-09-05 measurement recorded.
+
+**AND THE BRACKET THE OTHER SIX DID NOT NEED.** Site 7 moves no ground-truth
+byte BY CONSTRUCTION, so a ground-truth bracket here is necessary and says
+almost nothing: it would read IDENTICAL if every invariant in the catalog had
+been quietly disabled. `bin/check-verdict-bracket` (ruling R-verdict-bracket,
+landed at `78f228f7`) digests `check-all`'s VIOLATION VECTOR instead, computed
+via a handed projection and via a fresh replay, over 38 roots + a negative
+control + the three cells. IDENTICAL on all 42 rows at every commit of this
+session, including its own zero at `ee7d0070` where both ways are the public
+path. The control -- the largest root REVERSED -- carries 28 violations, so
+the comparison is not two empty vectors; its FIRST form, a head-event drop,
+convicted nothing and the instrument STOPPED on itself.
+
+The suite reads 426 `Test results:` lines and 28,415 passes, 0 failures, 0
+errors, against site 6's close of 424 / 28,057: one new test namespace
+(`ehrt.sim-engine.handed-projection-test`, 178 assertions), which runs under
+two projects, plus its lint assertion.
+
+### Wall
+
+The before column is this session's OWN re-baseline at `ee7d0070`. It reads
+higher than site 6's after column on identical code by more than the usual
+3-6% (108.66 s against 87.95 s at 7,500), and that is recorded rather than
+smoothed: the whole delta below is measured against the higher number, so the
+percentages are if anything conservative at 7,500 and honest at the other two,
+whose before halves were taken in the same session on the same machine.
+
+| cell | phase | before | after | delta |
+|---|---|---|---|---|
+| `a7500-persons` | generate | 108.66 s | **70.10 s** | -38.56 s, **-35.5%** |
+| `a7500-persons` | check | 53.31 s | **26.29 s** | -27.02 s, **-50.7%** |
+| `a2500-nopersons` | generate | 28.03 s | **19.94 s** | -8.09 s, **-28.9%** |
+| `a2500-nopersons` | check | 21.39 s | **13.67 s** | -7.72 s, **-36.1%** |
+| `a22500-nopersons` | generate | 169.22 s | **98.66 s** | -70.56 s, **-41.7%** |
+| `a22500-nopersons` | check | 112.28 s | **54.17 s** | -58.11 s, **-51.8%** |
+
+The check column halves at every cell, which is what "twenty folds become one"
+predicts once the EDN parse it cannot touch is netted out. The generate column
+falls by a third at every cell for a different reason: the in-run self-check
+folded nothing at all.
+
+**AND THE PEAK FELL, at the cell where the addendum said it was a HYPOTHESIS
+and not a prediction.**
+
+| cell | phase | peak RSS before | after |
+|---|---|---|---|
+| `a7500-persons` | generate | 2,172 MB | **1,315 MB** |
+| `a7500-persons` | check | 2,277 MB | **1,254 MB** |
+| `a2500-nopersons` | generate | 797 MB | 825 MB |
+| `a2500-nopersons` | check | 740 MB | **595 MB** |
+| `a22500-nopersons` | generate | 3,476 MB | **1,985 MB** |
+| `a22500-nopersons` | check | 3,557 MB | **1,933 MB** |
+
+The post-program profile dated the 3,863 MB transient to the in-run
+`check-all` and left the inference that 67,500 arrivals is unreachable
+standing as a hypothesis for this session to test. It is REFUTED as stated:
+the top cell's generate peak is 1,985 MB against a 3.88 GB `MaxHeapSize`,
+where it was 3,476 MB, so the headroom that was 12% is 49%. What the peak
+measures is still what G1 was allowed -- the 2,500 cell's generate peak ROSE
+28 MB on a byte-identical log -- so the floor below is the real evidence.
+
+**THE POST-COLLECTION FLOOR, which is the live set.** One `a7500-persons`
+generate under `-Xlog:gc*` at the DEFAULT heap, each side byte-identical to
+`3018299a...0d3bd3`:
+
+| | before (`ee7d0070`) | after (`e6cd1dbb`) |
+|---|---|---|
+| collections | 156 (0 Full, 8 Mixed) | 134 (0 Full, 5 Mixed) |
+| final heap capacity | 1,880 MB | **960 MB** |
+| peak PRE-GC used | 1,916 MB | **915 MB** |
+| peak POST-GC used | 1,012 MB | **518 MB** |
+| post-GC floor, 2nd half | 118 -> 562 MB over 61 s | **95 -> 409 MB over 45 s** |
+| floor slope | 16.52 MB/s | **9.05 MB/s** |
+
+The live set itself falls: the deepest reclaim at the end of the run is 409 MB
+against 562 MB, on a run producing the same 167,197 events. Sixteen
+seventeenths of the check's allocation is gone and so is the transient that
+held it, and G1 then asks for half the heap capacity it asked for before.
+
+### Profile
+
+JFR at 7,500 with `:persons`, inclusive share, `--stack-depth 2048`, a MATCHED
+PAIR recorded in this session -- the before half at `ee7d0070` BEFORE any edit
+(no worktree needed: the pair is two tips of one clone in time, not two trees
+at once) and the after half at `e6cd1dbb`, same driver, same cell.
+
+| frame | generate before (6,244 samples) | generate after (4,321) |
+|---|---|---|
+| `sim-check` (the IN-RUN `check-all`) | **31.13%** | **15.30%** |
+| `replay` | **20.55%** | **0.00%** |
+| `fold/apply-events` | 24.23% | 4.95% |
+| `decide` (whole dispatch) | 19.15% | 24.23% |
+| `person-simulator` | 26.70% | 32.47% |
+| `evolve` | 4.42% | 0.69% |
+
+`replay` reads **0.00%** in the generate phase: not a smaller share, a frame
+that is not on any stack, which is the structural confirmation that the in-run
+catalog folds the log zero times. `sim-check` does not vanish with it -- the
+catalog still walks the records it was handed -- and `decide` and
+`person-simulator` rise as shares of a phase that got shorter without either
+of them changing.
+
+| frame | check before (3,035 samples) | check after (1,629) |
+|---|---|---|
+| `sim-check`, whole namespace | 72.32% | 52.73% |
+| `replay` | **48.17%** | **5.16%** |
+| `fold/apply-events` | 48.17% | 5.16% |
+| `occupancy-within-capacity` | 3.53% | 2.95% |
+| `occupancy-board` | 0.00% | 0.00% |
+| EDN parse of the input log | 20.20% | **34.25%** |
+| malli | 1.94% | 3.56% |
+
+Twenty folds become one and the share falls by a factor of nine, not twenty:
+the remaining 5.16% IS the one fold, and everything else in the phase now
+divides a smaller total. **The check phase's largest single item is now
+reading the file.** `ehrt.cli.core/read-ground-truth-stdin` is 34.25% of it by
+self time -- the constant-factor exclusion `measurements.md:1134-1139` named
+and ADR-0180 deliberately did not charter, unmoved in seconds and now the top
+frame. Behind it: `check.clj`'s own `bed-fold` at 5.40% self / 10.13%
+inclusive, `event-schema/valid-event?` at 3.13%, `events-by-patient` at 2.15%.
+
+**Site 7 added no in-fold concern and no index.** The five ADR-0180 indexes
+cost what site 6 measured them at; `:board` gained one reader and no writer.
+
+### The program, closed
+
+Seven sites, one session each, in R-order-2's order, every one of them
+bracket-proven and every one of them over byte-identical logs.
+
+| site | what rode the fold | share at the head of its session |
+|---|---|---|
+| 1 | `waiting-boarder` -> `:boarder-index` | 25.23% |
+| 2 | `select-person` -> an alive-sweep Fenwick tree | 19.17% |
+| 3 | `occupancy-board` -> `:board` | 17.87% |
+| 4 | `last-uncancelled-index` -> `:cancel-index` | 21.63% |
+| 5 | `decide :merge` -> `:eligible-index` | 12.40% |
+| 6 | `decide :bed-swap` -> the same sub-map's swap view | 12.58% |
+| 7 | `check-all`'s seventeen replays -> ONE, then ZERO in-run | 34.71% of generate, 49.85% of check |
+
+At the top of the decade, one timed run each way:
+
+| `a22500-nopersons` | at the program's start | after site 7 | factor |
+|---|---|---|---|
+| generate | 1,472.56 s | **98.66 s** | **14.9x** |
+| check | -- | 54.17 s | see below |
+| peak RSS, generate | 3,575 MB (site 6's before) | 1,985 MB | -44% |
+
+The check phase was never measured at the program's start, because ADR-0180's
+own re-measurement had just established it was NOT the quadratic -- 5.3% of
+the pair's wall at 533,147 events. It is 54.17 s here against 112.28 s at this
+session's own baseline, and the pair at 22,500 arrivals is now **152.83 s**
+where the program found 1,472.56 s of generate alone.
+
+**WHAT THE PROGRAM DID NOT DO, restated at its close.** The constant-factor
+exclusions stand unchartered and are now the largest things in each phase:
+`sim-model/licensed-bed-ids`' inner fn (7.06% self of generate) and the EDN
+parse (34.25% self of check). No decade slope is re-derived here -- the cells
+are three points and a slope claim needs the whole decade re-run, which this
+session did not do. And the two gate gaps of
+`roadmap.md#dense-7500-gate-gaps` are untouched, which now matters more rather
+than less: sites 5, 6 and 7 have all moved the generate phase at the
+`dense-7500` configuration since `docs/consuming-ground-truth.md`'s Scale
+table was last measured at `4ddf62c2`, and nothing gates those three rows.
