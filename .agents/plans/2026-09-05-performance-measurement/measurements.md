@@ -1140,3 +1140,155 @@ reopen it.
 
 Fenced, deliberately: this session changed no engine code (R-measure-first),
 and every item above is a recommendation for the design channel.
+
+## Site 5 measured, 2026-09-07 -- `decide :merge` rides the `:eligible-index`
+
+Baseline `16f825b7`, the addendum's own close. Two code commits:
+`24ed60a1` (the concern and its from-scratch law, `decide` untouched)
+and `b8c8ff2d` (the repoint, `already-merged?` deleted, plus the
+AGENTS.md rider). One index this time serving TWO views, of which site 5
+repoints one -- `decide :bed-swap` is site 6 and its view arrives here
+proven rather than arriving with its own session.
+
+### Output identity
+
+`bin/ground-truth-bracket 16f825b7 <sha>` reported IDENTICAL on all 38
+digested roots at BOTH code commits (3 skipped, no `:ground-truth`
+key), and the instrument's own zero at the clean tip did too. Both timed
+cells reproduced their pre-change logs BYTE-FOR-BYTE -- `a7500-persons`
+sha256 `3018299a…0d3bd3` over 167,197 events, `a2500-nopersons`
+`c22d6573…a55208` over 43,103 -- and so did the top-of-decade cell,
+`7d105743…78e0a` over 174,866,696 bytes and 431,677 events, the same
+digest sites 4 and the 2026-09-05 measurement recorded.
+
+The suite read 424 `Test results:` lines and 28,041 passes at both code
+commits -- IDENTICAL COUNTS ACROSS THE REPOINT, which is what an
+output-identical refactor looks like from here. The +2 lines and +106
+passes against site 4's 422/27,935 are the new law namespace and
+`apply-projection-test`'s three new negative assertions.
+
+### Wall
+
+| cell | before | after | delta |
+|---|---|---|---|
+| `a7500-persons` generate | 110.95 s | **96.98 s** | -13.97 s, **-12.6%** |
+| `a2500-nopersons` generate | 26.97 s | **24.74 s** | -2.23 s, **-8.3%** |
+| `a7500-persons` check | 46.38 s | 47.30 s | +0.92 s |
+| `a2500-nopersons` check | 18.12 s | 17.93 s | -0.19 s |
+
+The check column is the control: `replay-projection` declines this
+index as it declines the other three, so the check phase should not
+move, and it does not beyond run-to-run spread. Peak RSS FELL at both
+generate cells (2,353 -> 2,010 MB; 969 -> 933 MB), which is the
+expected direction for the first ADR-0180 index whose repoint deletes
+an allocation as well as a scan.
+
+**AND THE TOP OF THE DECADE.** One timed `a22500-nopersons` generate:
+**396.18 s -> 250.62 s**, a further 1.58x over a byte-identical log, and
+**1,472.56 s -> 250.62 s** across the whole program -- 5.9x. Peak RSS
+3,575 MB against site 4's 3,599 MB.
+
+### Profile
+
+JFR at 7,500 with `:persons`, inclusive share, `--stack-depth 2048`,
+and this is a MATCHED PAIR: the before half was recorded from a
+worktree at `16f825b7` with the same driver and the same cell, so the
+two columns are one scale rather than two.
+
+| frame | before (7,145 samples) | after (6,208) |
+|---|---|---|
+| `decide :merge` | **12.40%** | **0.43%** |
+| `decide :bed-swap` | 11.07% | 12.00% |
+| `decide` (whole dispatch) | 37.30% | 28.46% |
+| `fold/apply-events` | 20.35% | 23.02% |
+| `person-simulator` | 18.77% | 21.25% |
+
+`decide :bed-swap` is UNTOUCHED this session and its absolute sample
+count fell with the phase (791 -> 745); its share rose because the
+phase got shorter. It is now the recording's top project frame, which
+is site 6 sitting in the instrument.
+
+**HOW THE `decide` FRAMES WERE ATTRIBUTED, because they are gensym-named
+and the post-program session resolved its two by hand.** A `defmethod`'s
+compiled class carries the eval ordinal of the top-level form that
+produced it, which shifts with the classpath -- but the GAPS between one
+file's methods are fixed by that file, so a single offset maps a
+`clojure -M:dev` resolution of all 32 `decide` methods onto a whole
+recording. Both recordings resolved at offset **+2999** independently,
+matching 21 and 24 of the 32 methods (the rest have zero samples), which
+is the attribution checking itself rather than being asserted.
+
+**The concern's own cost.** `profile-cell.sh`'s breakdown gains a row
+for `update-eligible`, and both recordings were re-aggregated so the
+pair carries it:
+
+| concern | before, % of phase | after, % of phase |
+|---|---|---|
+| `:patient-state` (the `evolve` multimethod) | 3.83% | 4.45% |
+| `:encounter-stamp` | 1.06% | 1.16% |
+| `:cancel-index` (site 4) | 0.46% | 0.52% |
+| `:bed-index` | 0.36% | 0.34% |
+| **`:eligible-index` (site 5)** | **0.00%** | **0.21%** |
+| `:board` (site 3) | 0.07% | 0.16% |
+| `:boarder-index` (site 1) | 0.24% | 0.14% |
+
+**Site 5 traded 12.40 points of the phase for 0.21.** ADR-0180's four
+in-fold indexes together now cost 1.03% of this cell's generate phase.
+
+**Allocation, from the same two recordings.** Estimated total
+allocation 59.9 GB -> 54.1 GB, -9.7%.
+
+| allocating method | before | after |
+|---|---|---|
+| `decide :merge` | 5.10 GB, **8.51%** | 0.14 GB, **0.26%** |
+| `decide :bed-swap` | 6.87 GB, 11.46% | 7.47 GB, 13.82% |
+
+`decide :bed-swap`'s absolute rise is the throttled estimator's spread
+across two runs on code that did not change and a log that is identical
+to the byte; recorded rather than explained away.
+
+### The law, and the clause it was blind to
+
+`ehrt.sim-engine.eligible-index-test` keeps both `decide` scans VERBATIM
+and asserts them `=` -- vectors, ORDER included -- at every replay entry
+of churn-bearing generated logs. Red->green, by rebinding the shipped
+functions and re-running the namespace:
+
+| mutation | failures |
+|---|---|
+| shipped | **0** |
+| carrier grown from `{}` (array-map) | 1 |
+| membership from the event, never evicts | 7 |
+| merge view SORTED | 6 |
+| swap flag ignores `:location` | 0 -> **3** |
+| restored | **0** |
+
+The last row is the finding. Dropping the `(some? (:location p))` term
+failed ZERO assertions against the property as first written, because no
+generated log reaches an `:admitted` patient without a location:
+`evolve :admission`, `:transfer` and `:bed-swap` all write one and
+`:discharge` clears the location and the status together. That makes the
+term unfalsifiable by corpus, not unnecessary -- the index is specified
+to equal the DEFINITION on every world, and the definition tests both
+terms -- so the world is now constructed by hand
+(`an-admitted-patient-with-no-location-is-in-the-merge-view-only`,
+`c83ea961`) and the mutation fails 3.
+
+The array-map row is honest about its own weakness: that mutation only
+bites where the seed is ABSENT, and the trace seeds it, so the
+generated property cannot see it. The dedicated
+`the-carrier-is-a-hash-map-from-empty` is what catches it, by folding
+one batch under each seed and comparing the two answers directly.
+
+### What the gates cannot see, said before it is asked
+
+The hasheq-collision hole is REAL at this program's scale and every
+instrument used here is blind to it: the addendum measured the first
+colliding patient-id pair at 45,000 arrivals, and the largest committed
+cell is 22,500. `at-a-hasheq-collision-the-two-orders-diverge` builds
+that pair by hand and pins what each side answers -- the definition in
+registration order, the index in eligibility order -- so the divergence
+is a recorded fact and not a discovery waiting for someone at 45,000
+arrivals. Retiring it means SORTING the candidates, which moves every
+churn-bearing golden root; that is `roadmap.md#determinism-hash-order-
+dependence` and a declared oracle change, not a site session's call.

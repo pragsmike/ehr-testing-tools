@@ -24,51 +24,39 @@ with them.
   1.814, and the whole phase is 130.57 s against generate's 2,329.46 s at
   533,147 events -- 5.3% of the pair's wall. GENERATE WAS, and was steepening:
   corrected decade slope 1.851, local slope 1.587 at the bottom rising to
-  2.116 at the top. FOUR SITES OF ONE SHAPE -- a per-event or per-arrival
-  scan over a population only ever appended to -- were 78.4 points of
-  inclusive share at 22,500 arrivals, and R-fold-carrier fixed all four the
-  same way: an index maintained at `fold/apply-events`, with the
-  from-scratch definition kept as the gate proving it equal at every replay
-  entry. R-order sequenced them one session each and **ALL FOUR LANDED
-  2026-09-06** -- `waiting-boarder` `75b4a868`, `select-person` `03db90a4`,
-  `occupancy-board` `24f7915e`, `last-uncancelled-index` `5ac15dce` -- every
-  commit with both cell logs byte-identical and `bin/ground-truth-bracket`
-  IDENTICAL on all 38 roots, a seven-commit byte-identity chain, each
-  session's detail in its own dated section of that measurements file.
-  CUMULATIVELY at 7,500 arrivals each of the four
-  is now 0.00%-0.01% inclusive share where it was 25.23%, 19.17%, 17.87% and
-  21.63% at the head of its own session, `apply-events` absorbed the lot at
-  7.56% -> 20.05%, and the cell went 256.15 s -> 112.29 s, **-58.0%
-  corrected** (`a2500-nopersons` 34.85 s -> 26.92 s, -29.5%) -- a LOWER
-  BOUND, since every re-baseline read 3-6% higher than the previous
-  session's after on identical code. AT THE TOP OF THE DECADE, one timed
-  generate: `a22500-nopersons` **1,472.56 s -> 396.18 s**, a 3.7x speedup
-  over a log BYTE-IDENTICAL to the committed 2026-09-05 digest -- 431,677
-  events agreeing to the byte, an order of magnitude past what the 38
-  oracle roots and the two bracketed cells reach. The one row left is
-  check's fourteen `engine/replay` calls (50.97% of check, 2.7% of the pair,
-  worth ~65 s), which R-order puts last. 67,500 arrivals is
-  unreachable on shipped defaults for a separate reason this program does not
-  address: 3,973 MB peak RSS against a 3.88 GB `MaxHeapSize`, measured and not
-  extrapolated. THAT LAST SENTENCE IS NOW WRONG and site 5 is underpriced:
-  the post-program profile dates the peak to the in-run `check-all`, which
-  is 18.79% of generate as well as 49.85% of check, and ranks two unrowed
-  `decide` methods above a memory program -- see the dated section
-  `Post-program profile, 2026-09-06` in
-  `.agents/plans/2026-09-05-performance-measurement/measurements.md`.
-  SITES 5-7 ARE NOW CHARTERED by that record's own dated addendum
-  (`notes/adr/0180-indexes-ride-the-fold.md`, `Addendum, 2026-09-06`),
-  which R-order-2 sequences: `decide :merge` (site 5, 34.06% CPU and
-  21.01% allocation -- its whole-`:patients` `eligible` scan AND
-  `already-merged?`'s whole-log scan, the second removed as provably
-  redundant rather than indexed), `decide :bed-swap` (site 6, 31.38% and
-  29.98% -- the same `:patients` scan, one `:eligible-index` sub-map
-  serving both views), then the in-run and standalone `check-all` (site 7,
-  18.79% of generate and 49.85% of check; the charter's own site 5,
-  renumbered, re-scoped, and measured at 17 `engine/replay` invocations
-  per `check-all` -- 20 with a bed cycle -- against the 14 it was priced
-  on). Those two `decide` methods are the profile's two unrowed findings
-  and this line is where they are rowed.
+  2.116 at the top. SITES OF ONE SHAPE -- a per-event or per-arrival scan
+  over a population only ever appended to -- and the charter's first four
+  were 78.4 points of inclusive share at 22,500 arrivals on their own.
+  R-fold-carrier fixes each the same way: an index maintained at
+  `fold/apply-events`, with the from-scratch definition kept as the gate
+  proving it equal at every replay entry; R-order sequences them one
+  session each. SITES 1-4 LANDED 2026-09-06 AND SITE 5 ON 2026-09-07, and
+  every commit of the five carries both cell logs byte-identical and
+  `bin/ground-truth-bracket` IDENTICAL on all 38 roots -- each session's
+  shas, shares and walls in its own dated section of that measurements
+  file, which is where they live and not here. CUMULATIVELY at 7,500
+  arrivals the five read 0.00%-0.43% inclusive share where each was
+  25.23%, 19.17%, 17.87%, 21.63% and 12.40% at the head of its own
+  session; the four in-fold indexes together cost 1.03% of that phase;
+  and the cell went 256.15 s -> 96.98 s (`a2500-nopersons` 34.85 s ->
+  24.74 s) -- a LOWER BOUND, since every re-baseline read 3-6% higher than
+  the previous session's after on identical code. AT THE TOP OF THE
+  DECADE, one timed generate: `a22500-nopersons` **1,472.56 s ->
+  250.62 s**, 5.9x over a log BYTE-IDENTICAL to the committed 2026-09-05
+  digest -- 431,677 events agreeing to the byte, an order of magnitude
+  past what the 38 oracle roots and the two bracketed cells reach. TWO
+  SITES ARE LEFT, both from the charter's dated addendum
+  (`notes/adr/0180-indexes-ride-the-fold.md`, `Addendum, 2026-09-06`) and
+  sequenced by R-order-2: `decide :bed-swap` (site 6 -- the same
+  whole-`:patients` scan site 5 replaced, reading the SECOND view of the
+  `:eligible-index` sub-map site 5 built and proved, and at 7,500 now the
+  recording's top project frame at 12.00%), then the in-run and standalone
+  `check-all` (site 7, 18.79% of generate and 49.85% of check, measured at
+  17 `engine/replay` invocations per `check-all` -- 20 with a bed cycle --
+  against the 14 it was priced on). 67,500 arrivals stays unreachable on
+  shipped defaults for a separate reason: 3,973 MB peak RSS against a
+  3.88 GB `MaxHeapSize`, and the post-program profile dates that peak to
+  the in-run `check-all`, which is site 7.
 - OPEN **[determinism-hash-order-dependence]** PRIORITY 2 -- churn's two
   candidate draws resolve POSITIONALLY (`streams/uniform-choice`) over a
   vector whose order IS `(:patients world)`'s `PersistentHashMap`
@@ -79,9 +67,14 @@ with them.
   sits against AGENTS.md's own inherited rule (`sim/ADR-0002`, "no
   hash-order dependence"). Measured, with its collision hole, by
   ADR-0180's 2026-09-06 addendum (R-hash-order), which rules that sites 5
-  and 6 PRESERVE that order rather than replace it. Retire only as a
-  DECLARED oracle change -- sorting `eligible` moves every churn-bearing
-  golden root -- never as a site session's judgment call.
+  and 6 PRESERVE that order rather than replace it. Site 5 landed
+  2026-09-07 doing exactly that, and its law namespace now BUILDS the
+  colliding pair by hand and pins what each side answers, so the hole has
+  a test where every corpus is blind to it; AGENTS.md's inherited
+  determinism sentence stopped claiming "no hash-order dependence" in the
+  same commit and names this row instead. Retire only as a DECLARED
+  oracle change -- sorting `eligible` moves every churn-bearing golden
+  root -- never as a site session's judgment call.
 - OPEN **[dense-7500-gate-gaps]** PRIORITY 3 -- two gates ADR-0180's
   R-gate-gaps commissions, neither of them site work. (a) THE EXERCISER IS NOT
   IN A MAKE TARGET: `bin/demo-exerciser-dense-7500` exists and is wired into

@@ -47,16 +47,21 @@
 #
 #   THE `apply-events` CONCERN BREAKDOWN -- of the samples beneath
 #   `fold/apply-events`, which of the fold's own per-concern functions
-#   they are in. ADR-0180 moved four indexes into that one fold, so
+#   they are in. ADR-0180 moved five indexes into that one fold, so
 #   `apply-events`' inclusive share is now a SUM of things that used
 #   to be charged separately, and this table is what un-sums it. Only
 #   the concerns with a NAMED function can appear: `:bed-index`,
-#   `:boarder-index`, `:board` and `:cancel-index` have `update-*`
-#   functions, `:patient-state` runs `evolve/evolve` and
-#   `:encounter-stamp` runs `encounters/stamp-encounter`. The other
-#   ten of `full-algebra`'s sixteen are inline `assoc`/`reduce`/`conj!`
-#   forms inside `apply-events` itself with no frame of their own, and
-#   they land in the residual row rather than being silently dropped.
+#   `:boarder-index`, `:board`, `:cancel-index` and `:eligible-index`
+#   have `update-*` functions, `:patient-state` runs `evolve/evolve`
+#   and `:encounter-stamp` runs `encounters/stamp-encounter`. The other
+#   eleven of `full-algebra`'s seventeen are inline
+#   `assoc`/`reduce`/`conj!` forms inside `apply-events` itself with no
+#   frame of their own, and they land in the residual row rather than
+#   being silently dropped.
+#
+#   `update_eligible` NEEDS NO PREFIX DISAMBIGUATION the way
+#   `update_board` does against `update_boarders`, but it carries the
+#   same `[.$]` anchor anyway: the rule is the list's, not the row's.
 set -uo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)"
@@ -116,6 +121,7 @@ fold\$update_beds[.$]|:bed-index -- `update-beds` (arc 3b sweep 2)
 fold\$update_boarders[.$]|:boarder-index -- `update-boarders` (ADR-0180 site 1)
 fold\$update_board[.$]|:board -- `update-board` (ADR-0180 site 3)
 fold\$update_cancel_index[.$]|:cancel-index -- `update-cancel-index` (ADR-0180 site 4)
+fold\$update_eligible[.$]|:eligible-index -- `update-eligible` (ADR-0180 site 5)
 sim_engine\.evolve\$|:patient-state -- the `evolve` MULTIMETHOD (any fn of `ehrt.sim-engine.evolve`)
 encounters\$stamp_encounter[.$]|:encounter-stamp -- `encounters/stamp-encounter`
 CONCERNS
