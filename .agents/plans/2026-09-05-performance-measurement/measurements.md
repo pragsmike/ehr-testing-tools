@@ -1292,3 +1292,142 @@ is a recorded fact and not a discovery waiting for someone at 45,000
 arrivals. Retiring it means SORTING the candidates, which moves every
 churn-bearing golden root; that is `roadmap.md#determinism-hash-order-
 dependence` and a declared oracle change, not a site session's call.
+
+## Site 6 measured, 2026-09-07 -- `decide :bed-swap` rides the swap view
+
+Baseline `0b7976db`, site 5's own close. ONE code commit, `d16e38f4`: the
+repoint, plus the retirement of the three disclosures that said this
+repoint had not happened yet. No new index and no new law -- site 5 built
+the `:eligible-index` sub-map's SECOND view and proved it equal to the
+scan deleted here, so this session spent its measurement budget on the
+measurement rather than on the proof.
+
+### Output identity
+
+`bin/ground-truth-bracket 0b7976db d16e38f4` reported IDENTICAL on all 38
+digested roots (3 skipped, no `:ground-truth` key), and the instrument's
+own zero at the clean tip did too. Both timed cells reproduced their
+pre-change logs BYTE-FOR-BYTE -- `a7500-persons` sha256
+`3018299a...0d3bd3` over 167,197 events, `a2500-nopersons`
+`c22d6573...a55208` over 43,103 -- and so did the top-of-decade cell,
+`7d105743...78e0a` over 174,866,696 bytes, the same digest sites 4, 5 and
+the 2026-09-05 measurement recorded.
+
+The suite read 424 `Test results:` lines and 28,057 passes, 0 failures, 0
+errors -- IDENTICAL to site 5's close in all four figures. The repoint
+adds no assertion and removes none: the law it reads was already there.
+
+### Wall
+
+The before column is this session's OWN re-baseline at `0b7976db`, not
+site 5's after column, for the reason the P1 row already records -- a
+re-baseline reads 3-6% higher than the previous session's after on
+identical code (here 96.98 s -> 102.10 s and 24.74 s -> 26.45 s).
+
+| cell | before | after | delta |
+|---|---|---|---|
+| `a7500-persons` generate | 102.10 s | **87.95 s** | -14.15 s, **-13.9%** |
+| `a2500-nopersons` generate | 26.45 s | **24.11 s** | -2.34 s, **-8.8%** |
+| `a7500-persons` check | 48.04 s | 46.17 s | -1.87 s |
+| `a2500-nopersons` check | 18.73 s | 18.55 s | -0.18 s |
+
+The check column is the control and does not move: `replay-projection`
+declines this index as it declines the other four, and the check-phase
+profile agrees to within sampling spread (`replay` 47.00% -> 47.88% of
+that phase).
+
+**PEAK RSS ROSE AT BOTH GENERATE CELLS, and it is recorded rather than
+explained away**: 2,175 -> 2,340 MB at 7,500 and 886 -> 972 MB at 2,500,
+where site 5's fell. Total ALLOCATION fell 14.1% over the same change
+(below), so the peak is not tracking the live set here; `-Xlog:gc*`'s
+post-collection floor is the instrument for that question and it was not
+run at these two cells. At the top of the decade, where it was measured
+across a whole run, the peak FELL: 3,575 -> 3,196 MB.
+
+**AND THE TOP OF THE DECADE.** One timed `a22500-nopersons` generate:
+**250.62 s -> 149.41 s**, a further 1.68x over a byte-identical log, and
+**1,472.56 s -> 149.41 s** across the whole six-site program -- **9.86x**.
+
+### Profile
+
+JFR at 7,500 with `:persons`, inclusive share, `--stack-depth 2048`, and
+a MATCHED PAIR by site 5's own method: the before half was recorded from
+a worktree at `0b7976db` with the same driver and the same cell, so the
+two columns are one scale.
+
+| frame | before (6,463 samples) | after (5,708) |
+|---|---|---|
+| `decide :bed-swap` | **12.58%** | **0.35%** |
+| `decide :merge` | 0.45% | 0.58% |
+| `decide` (whole dispatch) | 29.18% | **18.73%** |
+| `fold/apply-events` | 22.96% | 26.59% |
+| `sim-check` (the IN-RUN `check-all`) | 29.29% | 34.71% |
+| `replay` | 19.34% | 22.90% |
+| `person-simulator` | 21.60% | 24.60% |
+
+Everything below the first two rows is a share of a phase that got
+shorter; only the first two describe code that changed. The two frames
+that vanished outright are the deleted scan's own lambdas -- the
+`remove` at 3.98% and the `filter` at 2.44% of the before recording have
+NO counterpart in the after one, which is the structural confirmation
+that the right frames went.
+
+**THE ATTRIBUTION, checked in both directions.** The `decide` methods are
+gensym-named, so each recording is mapped by site 5's offset method: a
+`defmethod`'s class carries the eval ordinal of its top-level form, the
+gaps between one file's methods are fixed by that file, and one offset
+maps a `clojure -M:dev` resolution of all 32 methods onto a whole
+recording. BOTH recordings resolved at **+3001** -- and they had to be
+resolved SEPARATELY, because deleting two anonymous fns from
+`decide :bed-swap` shifts every later ordinal in the file by 13
+(`:merge` is `eval7081` before the repoint and `eval7068` after). The
+before half was therefore resolved in the worktree it was recorded from,
+against that tree's own source, rather than assumed to share the after
+half's map. `:bed-swap` is `eval10055$fn__10058` in both.
+
+**The concern's own cost.** No row is added this session -- site 6 reads
+the view site 5 already pays for:
+
+| concern | before, % of phase | after, % of phase |
+|---|---|---|
+| `:patient-state` (the `evolve` multimethod) | 4.13% | 5.47% |
+| `:encounter-stamp` | 1.14% | 1.42% |
+| `:cancel-index` (site 4) | 0.56% | 0.47% |
+| `:bed-index` | 0.36% | 0.35% |
+| `:board` (site 3) | 0.19% | 0.21% |
+| `:boarder-index` (site 1) | 0.12% | 0.19% |
+| `:eligible-index` (sites 5 and 6) | 0.22% | 0.11% |
+
+**Site 6 traded 12.58 points of the phase for nothing at all** -- the
+0.11% below is the same sub-map site 5 was already charged for, and its
+apparent halving is sampling spread on unchanged code, not a saving.
+ADR-0180's five in-fold indexes together now cost **1.33%** of this
+cell's generate phase.
+
+**Allocation, from the same two recordings.** Estimated total 54.7 GB ->
+47.0 GB, **-14.1%**.
+
+| allocating method | before | after |
+|---|---|---|
+| `decide :bed-swap` | 6.98 GB, **12.76%** (3,176 samples) | 0.003 GB, **0.01%** (2) |
+| `sim-model/licensed-bed-ids`' inner fn | 4.79 GB, 8.76% | 4.64 GB, 9.89% |
+
+The second row is the constant-factor exclusion ADR-0180's addendum
+named and did not charter, unmoved and now the top allocating project
+frame in the phase.
+
+### What this leaves for site 7, measured here so that session need not
+
+* **The IN-RUN `check-all` is 34.71% of generate at this cell**, up from
+  29.29% on the same code -- a share, not a cost, and the largest single
+  thing left in the phase now that `decide` is 18.73%.
+* **A standalone `sim check` replays TWENTY times, at BOTH cells.** Counted
+  at the var `check.clj` calls through, over each cell's own committed
+  log -- so it is INVOCATIONS, not call sites. The addendum priced site 7
+  at "seventeen per `check-all`, twenty with the bed cycle on"; both
+  committed timed cells carry a bed cycle, so twenty is the figure that
+  actually ships, and the seventeen is the bed-cycle-free case neither
+  cell exercises.
+* **The check phase itself did not move** (`replay` 47.00% -> 47.88%),
+  which is what makes it a clean baseline for a session that will move
+  it.

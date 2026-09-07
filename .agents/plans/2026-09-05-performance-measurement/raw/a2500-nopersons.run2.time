@@ -1,20 +1,20 @@
 DISCLOSURE: module injuries: state names ["End DME" "End_DME"] all fold to :end-dme -- resolved to distinct keys [:end-dme :end-dme--2] by exact-name resolution (ADR-0133), no longer silently overwriting
 DISCLOSURE: module injuries: state names ["Postoperative Care" "Postoperative_Care"] all fold to :postoperative-care -- resolved to distinct keys [:postoperative-care :postoperative-care--2] by exact-name resolution (ADR-0133), no longer silently overwriting
 	Command being timed: "bin/ehrt sim run --seed 20260824 --patients 2500 --churn --config .agents/plans/2026-09-05-performance-measurement/cell-a2500-nopersons.edn --format ground-truth"
-	User time (seconds): 55.89
-	System time (seconds): 1.60
-	Percent of CPU this job got: 234%
-	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:24.47
+	User time (seconds): 56.50
+	System time (seconds): 1.71
+	Percent of CPU this job got: 241%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:24.06
 	Average shared text size (kbytes): 0
 	Average unshared data size (kbytes): 0
 	Average stack size (kbytes): 0
 	Average total size (kbytes): 0
-	Maximum resident set size (kbytes): 979564
+	Maximum resident set size (kbytes): 914460
 	Average resident set size (kbytes): 0
 	Major (requiring I/O) page faults: 0
-	Minor (reclaiming a frame) page faults: 309354
-	Voluntary context switches: 18171
-	Involuntary context switches: 124
+	Minor (reclaiming a frame) page faults: 302555
+	Voluntary context switches: 18293
+	Involuntary context switches: 125
 	Swaps: 0
 	File system inputs: 16
 	File system outputs: 35440
