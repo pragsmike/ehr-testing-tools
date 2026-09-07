@@ -240,4 +240,32 @@ section 8 exists.
 
 ## 8. CI
 
-<ci>
+Two payload commits went out in two pushes and the record in a third, so
+GitHub Actions ran three times rather than once. Verified with
+`gh run view`'s own `status`/`conclusion` pair — polled through the
+harness monitor, never a hand-rolled `until` waiter and never
+`gh run watch`, whose premature-completion report site 4 recorded:
+
+| commit | run | conclusion |
+|---|---|---|
+| `88a6d6e8` (the addendum) | 34078011071 | **success** |
+| `ac081b7c` (the rows) | 34079493326 | **success** |
+| `6508a9c8` (this record, tip) | 34079635129 | **success** |
+
+`bin/post-push-verify` ran immediately after each push: remote tip equal
+to HEAD, every commit message in each range pure ASCII, and the CI run
+DISCLOSED as not yet indexed — which this section is where it was
+awaited. `gitleaks` scanned ~44 MB at each push hook and found no leaks.
+Each of the three pushed messages was diffed against the file that
+produced it; every diff was exactly one trailing blank line, which is
+`git log --format=%B`'s own formatting artefact and not a mismatch.
+
+At close: `ps` shows zero `java` and zero `sleep` processes, the working
+tree is clean, and the one background process this session started (step
+2's `make test`) ended on its own `EXIT=0` sentinel.
+
+CI green at the tip is the marker this charter landed; no tag was paid
+(the de-scaffold ruling, 2026-08-25). Nothing was enacted: sites 5, 6
+and 7 are three sessions that have not run, sequenced by R-order-2, and
+`roadmap.md#determinism-hash-order-dependence` is the precondition the
+first of them must read before it touches `eligible`.
