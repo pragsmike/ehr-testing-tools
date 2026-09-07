@@ -34,25 +34,6 @@ with them.
   hash-order dependence" at site 5 and names this row instead. Retire only as a DECLARED
   oracle change -- sorting `eligible` moves every churn-bearing golden
   root -- never as a site session's judgment call.
-- OPEN **[dense-7500-gate-gaps]** PRIORITY 2 -- two gates ADR-0180's
-  R-gate-gaps commissions, neither of them site work. THE THING THEY GUARD
-  HAS MOVED THREE TIMES SINCE: sites 5, 6 and 7 each shortened the generate
-  phase at this very configuration, and `docs/consuming-ground-truth.md`'s
-  Scale table still quotes the three `corpus generate` process walls measured
-  at `4ddf62c2` (2026-09-06, before any of them). Nothing gates those rows --
-  which is gap (a), stated in the concrete rather than in the abstract. Site 7
-  disclosed the staleness and did not re-measure it: re-running the table is
-  this row's work, not a site's. (a) THE EXERCISER IS NOT
-  IN A MAKE TARGET: `bin/demo-exerciser-dense-7500` exists and is wired into
-  neither `make test` nor `make integration`, so the only committed
-  configuration in this tree with a non-empty R-queue population -- the 21
-  results ADR-0179's own addendum recovered -- is exercised by hand or not at
-  all. (b) THE SCALE TABLE IS UNGATED: `docs/consuming-ground-truth.md`'s three
-  Scale cells are that same unwired scenario's, they moved under ADR-0179, and
-  they were re-measured by hand at `4ddf62c2` because nothing failed when they
-  did. Gate the table BEFORE the four generate sites land -- those sites must
-  move no figure in it, which is exactly the claim a gate would carry and prose
-  cannot. Record: `.agents/session-records/2026-09-06-adr-0180-charter.md`.
 - OPEN **[oru-control-id-collision]** PRIORITY 3 -- `control-id-for` not
   injective over `:result-available` -- 6 live duplicate MSH-10s in seed-424242,
   1 in clinic-decade demo (sweep-3 record :290); fix moves every corpus, its own
@@ -285,6 +266,7 @@ One line a row. `CLOSED` here means "no longer a roadmap row", not "the work
 was done" -- each line says which. The section is named `## Done` because that
 is where `ehrt.docs-tooling.roadmap-lint-test` requires a `CLOSED` row to live.
 
+- CLOSED 2026-09-07 df73b6c8 **[dense-7500-gate-gaps]** -- DONE, both. (a) the exerciser is a step of `make integration`. (b) `demos/scenarios/dense-7500/figures.edn` is the one source; the exerciser rewrites its `:asserted` half from its own run, so the tree-clean check IS the assertion, and `dense-7500-figures-test` holds both quoting documents to it. Re-measured at `2ba3490c`: counts identical, walls 2.5-3.4x shorter. Record: `2026-09-07-dense-7500-gate-gaps.md`.
 - CLOSED 2026-09-07 e6cd1dbb **[performance-residual-sites]** -- DONE, all SEVEN sites of ADR-0180's program, one session each, every commit over byte-identical cell logs, `bin/ground-truth-bracket` IDENTICAL on 38 roots. At 22,500 generate went **1,472.56 -> 98.66 s** (14.9x); site 7 halved check, 112.28 -> 54.17 s, peak heap 3,476 -> 1,985 MB. Residue unchartered: the EDN parse, `licensed-bed-ids`. `.agents/plans/2026-09-05-performance-measurement/measurements.md`.
 - CLOSED 2026-09-06 03db90a4 **[select-person-arrival-quadratic]** -- DONE, site 2 of `roadmap.md#performance-residual-sites`. `prelude` builds ONE `alive-sweep` (a Fenwick tree over population indices, evicted by a cursor over deaths sorted by instant) and `select-person` reads its count and `k`th survivor. 19.17% -> 0.01% of generate, -19.5% wall, cell logs byte-identical, bracket IDENTICAL. Record: `.agents/session-records/2026-09-06-adr-0180-site-2-select-person.md`.
 - CLOSED 2026-09-05 97d0c31 **[orphan-participant-shape-gap]** -- DONE under R-split, reading 1 of the three ADR-0176 section 8 offered: the fifth invariant keys on a LOG FACT -- the reattributed event is a span start some end cites -- so the fact went into the site predicate rather than a register. The 14 sites given up are taken by two new operators, catalog 26 -> 28. Record: `.agents/session-records/2026-09-05-orphan-participant-split.md`.
