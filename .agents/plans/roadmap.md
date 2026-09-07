@@ -56,6 +56,32 @@ with them.
   `decide` methods above a memory program -- see the dated section
   `Post-program profile, 2026-09-06` in
   `.agents/plans/2026-09-05-performance-measurement/measurements.md`.
+  SITES 5-7 ARE NOW CHARTERED by that record's own dated addendum
+  (`notes/adr/0180-indexes-ride-the-fold.md`, `Addendum, 2026-09-06`),
+  which R-order-2 sequences: `decide :merge` (site 5, 34.06% CPU and
+  21.01% allocation -- its whole-`:patients` `eligible` scan AND
+  `already-merged?`'s whole-log scan, the second removed as provably
+  redundant rather than indexed), `decide :bed-swap` (site 6, 31.38% and
+  29.98% -- the same `:patients` scan, one `:eligible-index` sub-map
+  serving both views), then the in-run and standalone `check-all` (site 7,
+  18.79% of generate and 49.85% of check; the charter's own site 5,
+  renumbered, re-scoped, and measured at 17 `engine/replay` invocations
+  per `check-all` -- 20 with a bed cycle -- against the 14 it was priced
+  on). Those two `decide` methods are the profile's two unrowed findings
+  and this line is where they are rowed.
+- OPEN **[determinism-hash-order-dependence]** PRIORITY 2 -- churn's two
+  candidate draws resolve POSITIONALLY (`streams/uniform-choice`) over a
+  vector whose order IS `(:patients world)`'s `PersistentHashMap`
+  iteration order, so every churn-bearing corpus in this tree depends on
+  a hash order Clojure owns and this repo does not: reproducible on a
+  fixed Clojure/JDK, NOT provably stable across a `hasheq` or
+  `PersistentHashMap` change, which would move every one of them. It also
+  sits against AGENTS.md's own inherited rule (`sim/ADR-0002`, "no
+  hash-order dependence"). Measured, with its collision hole, by
+  ADR-0180's 2026-09-06 addendum (R-hash-order), which rules that sites 5
+  and 6 PRESERVE that order rather than replace it. Retire only as a
+  DECLARED oracle change -- sorting `eligible` moves every churn-bearing
+  golden root -- never as a site session's judgment call.
 - OPEN **[dense-7500-gate-gaps]** PRIORITY 3 -- two gates ADR-0180's
   R-gate-gaps commissions, neither of them site work. (a) THE EXERCISER IS NOT
   IN A MAKE TARGET: `bin/demo-exerciser-dense-7500` exists and is wired into
