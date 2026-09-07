@@ -39,7 +39,9 @@ sed -n '1,/^ :module-horizon-days /p' config.edn > config-bare.edn && printf '}\
 Edit `config.edn` and re-run both lines; never edit a sibling directly.
 Neither derivation is asserted afterwards either -- both are checked,
 and `bin/demo-exerciser-dense-7500` checks them on every integration
-run. The first check is one command, run from the workspace root, and
+run -- that script is a step of `make integration`, alongside the
+ed-tuesday and clinic-decade exercisers, and it is the one that makes
+that tier minutes rather than seconds. The first check is one command, run from the workspace root, and
 the exerciser runs it too:
 
 ```
