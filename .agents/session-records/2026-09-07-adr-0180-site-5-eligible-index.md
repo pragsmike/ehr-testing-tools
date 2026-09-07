@@ -285,12 +285,18 @@ runs, the profile re-aggregations, the `jfr print` extractions and several
 throwaway `clojure -M:dev:test` probes (namespace smoke runs, the fixture-size
 probes, the method resolver, the negative control) — ran in the foreground.
 
-**ZERO `sleep` waiters, which is the prompt's own R-sentinel and the correction
-site 4's record asked for.** Every wait in this session was a harness completion
-notification. One `find /` probe ran long and was stopped with `TaskStop` rather
-than waited out. At close, `ps` reports no `java`, no `make` and no `sleep`
-belonging to this session, and `git worktree list` shows only the main clone —
-the baseline-profile worktree was removed as soon as its recording was read.
+**ONE `sleep`, not seventy-two, and the distinction is R-sentinel's own.** Site
+4's finding was 72 background `sleep` waiters, one per poll, each waking the
+session into another poll so the count grew while the wall did not shrink. Every
+wait for work in this session was a harness completion notification instead. The
+single exception is the CI wait at close, which is one background job that polls
+`gh run view` on an internal interval and notifies ONCE when the run reaches
+`completed` — the shape the harness documents for a single-notification wait, and
+the shape site 4's record was reaching for. Recorded as one rather than claimed
+as zero. One `find /` probe ran long and was stopped with `TaskStop` rather than
+waited out. At close, `ps` reports no `java`, no `make` and no `sleep` belonging
+to this session, and `git worktree list` shows only the main clone — the
+baseline-profile worktree was removed as soon as its recording was read.
 
 **AND ONE THING THE PREVIOUS SESSION'S FINDING PREDICTED.** Every suite figure
 in section 6 is taken from an `EXIT=` line the command wrote itself, never from
@@ -306,4 +312,23 @@ verified green with `gh run view`. Baseline for every bracket in this session wa
 
 ## 9. CI
 
-Filled in at close.
+All five commits went out in ONE push, so GitHub Actions ran once, at the tip.
+Verified with `gh run view` rather than assumed:
+
+| commit | run | conclusion |
+|---|---|---|
+| `9d93260c` (tip, covering `24ed60a1`, `b8c8ff2d`, `c83ea961`, `09f51c47`) | 34098328708 | **success** |
+
+`bin/post-push-verify` ran immediately after the push: remote tip matches HEAD,
+every commit message in `16f825b7..9d93260c` is pure ASCII, and the CI run was
+reported once rather than awaited (AR-CI-4) — this section is where it was
+awaited, by polling `status`/`conclusion` to `completed success` rather than by
+trusting a watcher's exit code, which is site 4's own finding applied rather than
+rediscovered. `gitleaks` scanned 1,498 commits and 44.19 MB at the push hook and
+found no leaks.
+
+CI green at the tip is the marker site 5 closed. The generate-quadratic program
+has TWO sites left, both chartered and sequenced: `decide :bed-swap` (site 6),
+which reads the second view of the sub-map this session built and proved and is
+now the 7,500 recording's top project frame at 12.00%, and the `check-all`
+replays (site 7).
