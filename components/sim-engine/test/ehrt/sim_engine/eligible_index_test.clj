@@ -69,6 +69,15 @@
   eviction as well as admission, reaches carriers on both sides of the
   nine-entry array-map boundary, and reaches real `:merge` events.
 
+  AND ONE CLAUSE IT IS VACUOUS FOR, found by this session's own negative
+  control rather than reasoned about afterwards: dropping the
+  `(some? (:location p))` term from the swap view's flag fails ZERO
+  assertions against the generated property, because no generated log
+  reaches an `:admitted` patient without a location.
+  `an-admitted-patient-with-no-location-is-in-the-merge-view-only`
+  constructs that world, because the index is specified to equal the
+  DEFINITION on every world and the definition tests both terms.
+
   THE DUPLICATION IS PERMANENT AND DECLARED, exactly as ADR-0169's six
   `naive-*` invariant bodies and sites 1, 3 and 4's are
   (`rulings.md#R-move-not-improve`: the definitions are MOVED and COPIED
@@ -540,3 +549,53 @@
       (is (= (naive-merge-eligible (:patients merged) "no-such-patient")
              (fold/merge-eligible merged "no-such-patient"))
           "and the definition agrees, which is the eviction's own law"))))
+
+(deftest an-admitted-patient-with-no-location-is-in-the-merge-view-only
+  (testing "THE ONE CLAUSE THE GENERATED CORPUS CANNOT DECIDE, pinned
+            because the negative control said so rather than because it
+            looked likely. `decide :bed-swap`'s predicate is `(and (=
+            :admitted (:status p)) (some? (:location p)))` and this
+            index's value mirrors both terms -- but a mutation that
+            drops the `:location` term fails ZERO assertions against the
+            property, because no generated log reaches an `:admitted`
+            patient without a location: `evolve :admission`,
+            `:transfer` and `:bed-swap` all write one, and `:discharge`
+            clears the location and the status together.
+
+            That makes the second term unfalsifiable by corpus, not
+            unnecessary. The index is specified to equal the DEFINITION
+            on every world, including hand-built ones, and the
+            definition tests both terms -- so the case is constructed
+            here, which is the same move `cancel_index_test`'s
+            participant-filing case makes for the same reason
+            (ADR-0180's law, point 2, at one remove: the corpus is not
+            vacuous, but it is vacuous FOR THIS CLAUSE)."
+    (let [pid "P1"
+          located {:patient-id pid :mrns #{pid} :active-mrn pid :status :admitted
+                   :location {:ward "Renal" :bed "RENAL-01"}}
+          unlocated (dissoc located :location)
+          index-of (fn [p] (fold/update-eligible fold/empty-eligible-index
+                                                 {pid (assoc p :status :new)}
+                                                 {pid p}
+                                                 [{:patient-id pid :role :subject}]))
+          w-located {:patients (into clojure.lang.PersistentHashMap/EMPTY {pid located})
+                     :eligible-index (index-of located)}
+          w-unlocated {:patients (into clojure.lang.PersistentHashMap/EMPTY {pid unlocated})
+                       :eligible-index (index-of unlocated)}]
+      (is (= {pid true} (:eligible-index w-located))
+          "admitted WITH a location: in both views")
+      (is (= {pid false} (:eligible-index w-unlocated))
+          "admitted WITHOUT one: merge-eligible, and NOT swap-eligible -- the
+           term a mutation could drop and no generated log would notice")
+      (doseq [[label w p] [["located" w-located located]
+                           ["unlocated" w-unlocated unlocated]]]
+        (is (= (naive-merge-eligible (:patients w) "no-such-patient")
+               (fold/merge-eligible w "no-such-patient"))
+            (str label ": the merge view agrees with the definition"))
+        (is (= (naive-swap-eligible (:patients w) "no-such-patient")
+               (fold/swap-eligible w "no-such-patient"))
+            (str label ": and so does the view site 6 will read"))
+        (is (= (some? (:location p))
+               (= [pid] (fold/swap-eligible w "no-such-patient")))
+            (str label ": -- and the swap view's answer really does turn on the"
+                 " :location term, which is what makes this case decide it"))))))
