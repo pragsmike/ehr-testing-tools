@@ -224,4 +224,22 @@ verified green with `gh run view`. Baseline for every bracket in this session wa
 
 ## 9. CI
 
-Filled in at the close-marker commit.
+All three commits went out in ONE push, so GitHub Actions ran once, at the tip.
+Verified with `gh run view` rather than assumed:
+
+| commit | run | conclusion |
+|---|---|---|
+| `9911333a` (tip, covering `d16e38f4` and `50c2a1f0`) | 34119781714 | **success** |
+
+`bin/post-push-verify` ran immediately after the push: remote tip matches HEAD,
+every commit message in `0b7976db..9911333a` is pure ASCII, and the CI run was
+reported once rather than awaited (AR-CI-4) — this section is where it was
+awaited, by polling `status`/`conclusion` to `completed success` rather than by
+trusting a watcher's exit code. `gitleaks` scanned 1,502 commits and 44.26 MB at
+the push hook and found no leaks.
+
+CI green at the tip is the marker site 6 closed. The generate-quadratic program
+has ONE site left: the in-run and standalone `check-all` (site 7), whose two
+prices this session measured a session early — **34.71%** of generate at 7,500,
+and **twenty** `engine/replay` invocations per standalone `sim check` at both
+committed cells.
