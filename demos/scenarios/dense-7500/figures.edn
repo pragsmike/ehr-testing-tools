@@ -1,0 +1,61 @@
+;; demos/scenarios/dense-7500/figures.edn
+;;
+;; THE ONE PLACE THIS SCENARIO'S MEASURED FIGURES LIVE (author ruling
+;; R-figures-file, 2026-09-07; commissioned by ADR-0180's R-gate-gaps).
+;; Two documents quote them -- this directory's own README.md, under
+;; "What to look for", and docs/consuming-ground-truth.md's Scale table
+;; -- and until this file existed they quoted each other, which is how
+;; three Scale cells sat at a superseded measurement while nothing went
+;; red. `ehrt.docs-tooling.dense-7500-figures-test` now holds both
+;; documents equal to this file.
+;;
+;; TWO HALVES, and the difference between them is exactly what a run
+;; can prove.
+;;
+;; :asserted is REWRITTEN BY bin/demo-exerciser-dense-7500 ON EVERY
+;; RUN, between the markers below, from that run's own artefacts. It
+;; holds only the figures that script actually generates something to
+;; count -- `config.edn` at 7,500 arrivals and at 750. The rewrite is
+;; the assertion: a moved count makes the block differ from the
+;; committed one, and the script's own tree-clean postcondition fails
+;; carrying the diff. Never hand-edit inside the markers.
+;;
+;; :quoted is HAND-MEASURED and no line of that script touches it. Two
+;; kinds of figure live here, for two different reasons. (1) The two
+;; sibling configs' counts: the README teaches no command for either,
+;; so no run in this tree produces an artefact to count (that README's
+;; own note on what is deliberately not checked). (2) Every process
+;; wall and peak RSS, for all four cells: a wall is a property of a
+;; machine and a load rather than of the corpus, and R-figures-file
+;; rules the wall cells dated quotations -- never asserted against a
+;; live run. Re-measure them by hand, update :provenance in the same
+;; edit, and the gate test then requires both documents to follow.
+;;
+;; A CELL KEY is `<config file>` and `<arrivals>`, which is how both
+;; documents identify a row. `:msg-per-event` is `:messages` over
+;; `:events` to four decimal places, and the gate re-derives it rather
+;; than trusting it.
+{:scenario "dense-7500"
+ :seed 20260824
+ :flags ["--churn"]
+
+;; BEGIN asserted -- rewritten by bin/demo-exerciser-dense-7500 on every run
+ :asserted
+ {:config-edn-7500 {:events 167197 :messages 222819 :msg-per-event 1.3327}
+  :config-edn-750 {:events 33306}}
+;; END asserted
+
+ :quoted
+ {:config-edn-7500 {:wall-s 278.64 :peak-rss-mb 2415}
+  :config-nobed-7500 {:events 125642 :messages 165466 :msg-per-event 1.3170
+                      :wall-s 231.14 :peak-rss-mb 2178}
+  :config-bare-7500 {:events 100868 :messages 65457 :msg-per-event 0.6489
+                     :wall-s 142.12 :peak-rss-mb 1780}
+  :config-edn-750 {:messages 40291 :msg-per-event 1.2097
+                   :wall-s 54.37 :peak-rss-mb 1228}}
+
+ :provenance
+ {:sha "4ddf62c2"
+  :date "2026-09-06"
+  :machine "WSL2, 6c/12t i7-10750H, 15 GiB, OpenJDK 21.0.7, JVM defaults as shipped -- MaxHeapSize 3.88 GB, bin/ehrt sets no JVM options"
+  :method "one warm-up run, then two timed runs per cell, one JVM per run, a fresh spool target per run, /usr/bin/time -v around each; every figure is the mean of the two timed runs, and both runs of every cell produced the identical event and message counts"}}

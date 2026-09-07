@@ -180,26 +180,93 @@ fi
 echo "  witnessed figures: $got_msgs spooled messages match the README's own re-derived claim"
 
 # Both event counts in ONE JVM: parsing the 7,500 corpus's own log is
-# the expensive half and there is no reason to pay startup twice.
+# the expensive half and there is no reason to pay startup twice. Each
+# count is also echoed as a machine-readable FIGURE line, so that the
+# figures file written below carries what THIS RUN counted rather than
+# the README cell this run compared it against -- the same number
+# either way while the check is green, and not the same provenance.
+counts_log="$LOG_DIR/witnessed-counts.out"
 WANT_EVENTS_7500="$want_events_7500" WANT_EVENTS_750="$want_events_750" \
 clojure -M:dev:test -e '
 (require (quote [clojure.edn :as edn]))
-(let [check (fn [label path want]
+(let [check (fn [label key path want]
               (let [got (count (edn/read-string (slurp path)))]
+                (println (str "FIGURE " key " " got))
                 (if (= got want)
                   (do (println (str "  witnessed figures: " label " holds " got " events, as the README witnesses")) true)
                   (do (println (str "FAIL: " label " holds " got " events, the README witnesses " want)) false))))
-      a (check "the 7,500 corpus" "out/scenarios/dense-7500/events.edn"
+      a (check "the 7,500 corpus" "events-config-edn-7500" "out/scenarios/dense-7500/events.edn"
                (Long/parseLong (System/getenv "WANT_EVENTS_7500")))
-      b (check "the 750 ground-truth vector" "out/scenarios/dense-7500-750.edn"
+      b (check "the 750 ground-truth vector" "events-config-edn-750" "out/scenarios/dense-7500-750.edn"
                (Long/parseLong (System/getenv "WANT_EVENTS_750")))]
   (System/exit (if (and a b) 0 1)))
-' || fail "witnessed event counts did not hold (see FAIL detail above)"
+' > "$counts_log" 2>&1
+counts_code=$?
+cat "$counts_log"
+if [ "$counts_code" -ne 0 ]; then
+  fail "witnessed event counts did not hold (see FAIL detail above)"
+fi
+
+echo "== demo-exerciser-dense-7500: writing this run's own figures =="
+
+# THE FIGURES FILE (author ruling R-figures-file, 2026-09-07, under
+# ADR-0180's R-gate-gaps). demos/scenarios/dense-7500/figures.edn is
+# the ONE place this scenario's measured figures live; that file's own
+# header says which half is written here and which half is hand-owned,
+# and ehrt.docs-tooling.dense-7500-figures-test holds the two
+# documents that quote it -- the scenario README and
+# docs/consuming-ground-truth.md's Scale table -- equal to it.
+#
+# ONLY THE :asserted BLOCK IS REWRITTEN, and only from artefacts this
+# script generated. THE REWRITE IS THE ASSERTION: a moved count writes
+# a block that differs from the committed one, and the tree-clean
+# postcondition below fails carrying the diff. So there is no
+# comparison here to keep in step with the file, and no way for a
+# moved count to be rewritten quietly.
+figures="demos/scenarios/dense-7500/figures.edn"
+begin_marker=";; BEGIN asserted -- rewritten by bin/demo-exerciser-dense-7500 on every run"
+end_marker=";; END asserted"
+[ -f "$figures" ] || fail "figures file: $figures is missing -- the gate over both documents has nothing to hold them to"
+grep -qxF "$begin_marker" "$figures" || fail "figures file: $figures carries no BEGIN marker -- the rewrite below would silently change nothing and the gate would be vacuous"
+grep -qxF "$end_marker" "$figures" || fail "figures file: $figures carries no END marker -- see above"
+
+events_7500="$(sed -n 's/^FIGURE events-config-edn-7500 //p' "$counts_log")"
+events_750="$(sed -n 's/^FIGURE events-config-edn-750 //p' "$counts_log")"
+if [ -z "${events_7500:-}" ] || [ -z "${events_750:-}" ]; then
+  fail "figures file: the count step printed no FIGURE line -- refusing to write a figures block from nothing"
+fi
+mpe_7500="$(awk -v m="$got_msgs" -v e="$events_7500" 'BEGIN { printf "%.4f", m / e }')"
+
+{
+  printf '%s\n' "$begin_marker"
+  printf ' :asserted\n'
+  printf ' {:config-edn-7500 {:events %s :messages %s :msg-per-event %s}\n' \
+    "$events_7500" "$got_msgs" "$mpe_7500"
+  printf '  :config-edn-750 {:events %s}}\n' "$events_750"
+  printf '%s\n' "$end_marker"
+} > "$LOG_DIR/asserted.edn"
+
+awk -v blockfile="$LOG_DIR/asserted.edn" '
+  $0 == ";; BEGIN asserted -- rewritten by bin/demo-exerciser-dense-7500 on every run" {
+    inblk = 1
+    while ((getline line < blockfile) > 0) print line
+    next
+  }
+  $0 == ";; END asserted" { inblk = 0; next }
+  !inblk { print }
+' "$figures" > "$LOG_DIR/figures.edn.new" || fail "figures file: the splice failed"
+grep -qxF "$begin_marker" "$LOG_DIR/figures.edn.new" || fail "figures file: the spliced result lost its own markers -- refusing to install it"
+mv "$LOG_DIR/figures.edn.new" "$figures" || fail "figures file: could not install the spliced $figures"
+echo "  figures file: $figures :asserted rewritten -- config.edn at 7,500 holds $events_7500 events and $got_msgs messages ($mpe_7500 msg/event), at 750 holds $events_750 events"
 
 # Tree-clean postcondition (ADR-0005's own discipline, mirrored from
 # bin/demo-exerciser-ed-tuesday): every write path above lands under
 # the gitignored /out/ -- a full run must leave the tracked tree
-# exactly as it found it.
+# exactly as it found it. ONE tracked path is now written above, and
+# that is deliberate rather than an exception: figures.edn's :asserted
+# block is rewritten from this run's own artefacts, so a clean tree
+# here is the statement that every count this scenario publishes still
+# holds, and a dirty one is the diff that says which moved.
 dirty="$(git status --porcelain)"
 if [ -n "$dirty" ]; then
   fail "tree not clean after a full run (ADR-0005 postcondition violated):
