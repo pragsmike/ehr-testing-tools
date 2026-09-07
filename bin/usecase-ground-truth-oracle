@@ -117,13 +117,16 @@ grep -q ':status :ok' "$piped_verdict" \
 grep -q ':status :ok' "$retained_verdict" \
   || fail "the retained asset's verdict is not :status :ok"
 
-# 3. The catalog really is 45 invariants deep, counted out of the run's
+# 3. The catalog really is 46 invariants deep, counted out of the run's
 #    own :invariants-checked rather than out of prose. The page states
 #    that number twice -- in :get and in the strip's own comment -- so it
-#    is asserted rather than trusted.
+#    is asserted rather than trusted. It read 45 from 2026-09-05 until
+#    2026-09-07, against a catalog that was already 46: this script is in
+#    `make integration` and in nothing CI runs, so the assertion that was
+#    supposed to catch the drift was itself the thing that drifted.
 invariants="$(sed -n 's/.*:invariants-checked \[\([^]]*\)\].*/\1/p' "$retained_verdict" \
   | tr ' ' '\n' | grep -c .)"
-[ "$invariants" -eq 45 ] || fail "expected 45 invariants checked, got $invariants"
+[ "$invariants" -eq 46 ] || fail "expected 46 invariants checked, got $invariants"
 
 # 4. The FOUR config-needing invariants the strip's own comment names are
 #    among them, by name. This is the reason the taught commands pass
