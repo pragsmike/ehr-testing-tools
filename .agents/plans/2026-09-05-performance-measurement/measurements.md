@@ -919,3 +919,224 @@ this document precise enough to attribute.
 rose. Recorded, not explained: a single-JVM RSS reading against a 3.88 GB
 `MaxHeapSize` is a measurement of when the collector chose to run, and
 this session has now seen it move both ways on the same change.
+
+## Post-program profile, 2026-09-06 -- CPU, allocation and the live set
+
+Four `jdk.ExecutionSample` recordings at `63d5ee64`, after all four
+ADR-0180 sites: `a7500-persons` generate (10,081 samples) and check
+(3,399), `a22500-nopersons` generate (32,394) and check (8,630). The
+allocation tables below come off the SAME four recordings --
+`settings=profile` enables `jdk.ObjectAllocationSample` at a `300/s`
+throttle with stack traces already, so nothing was re-recorded and the
+CPU and allocation views describe one run rather than two. The 22,500
+generate under JFR produced 174,866,696 bytes digesting to
+`7d105743...78e0a`, the committed figure, so the profiled corpus is the
+measured one.
+
+### (a) Where the CPU is now
+
+Inclusive share, 22,500-arrival generate. The four sites are gone from
+the decide loop and two frames nobody has rowed are what is left.
+
+| site | share of generate | ADR-0180's own figure |
+|---|---|---|
+| `decide` (the whole dispatch) | **72.28%** | 70.35% pre-program |
+| in-run self-check (`sim-check`) | **18.79%** | -- |
+| `fold/apply-events` | 14.60% | 7.56% -> 20.05% at 7,500 |
+| `sim-model/occupancy-board` | 0.48% | site 3, was 17.11% |
+| `log-index/last-uncancelled-index` | 0.01% | site 4, was 10.78% |
+| `decide :discharge`'s `waiting-boarder` | 0.01% | site 1, was 30.54% |
+| `run/select-person` | 0.00% | site 2, was 19.98% |
+
+**`occupancy-board`'s residual 0.48% is not site 3 leaking.** All 157 of
+its samples are under `sim-check` and NONE under `decide`, counted
+directly: generate ends with an in-run self-check
+(`components/sim/src/ehrt/sim/run.clj:783`), and that check calls the
+from-scratch definitions the sites' own gates keep alive. Site 3 cleared
+the decide loop completely. `last-uncancelled-index`'s 4 samples and
+`waiting-boarder`'s 2 ARE under `decide`, at 0.01% each -- at the noise
+floor of a 32,394-sample recording, recorded rather than explained.
+
+**The two frames that are left are the same shape ADR-0180 fixed, and
+neither is on its census.** The project-frame table's top rows are
+gensym-named, so they are resolved here to source once:
+
+| frame | self | inclusive | resolves to |
+|---|---|---|---|
+| `decide$eval10066$fn__10069` (+ inner) | 8.70% | **34.06%** | `decide :merge`, `decide.clj:1449` |
+| `decide$eval10038$fn__10041` (+ inner) | 14.57% | **31.38%** | `decide :bed-swap`, `decide.clj:1414` |
+
+`decide :bed-swap` builds `eligible` with a `remove`/`filter`/`mapv`
+over the WHOLE `:patients` map, once per bed-swap. `decide :merge` does
+the same, and then answers `already-merged?` with a `some` over the
+ENTIRE `:ground-truth` log -- which is precisely the shape site 4
+removed for cancels, surviving under a different method's name.
+
+At 7,500 WITH `:persons` the ranking is different and the top row is
+also unrowed: `person-simulator` at 22.80% inclusive, whose
+`process/walk-person` is the single largest self frame at 8.79%.
+
+**`apply-events`, un-summed.** The concern breakdown charges the one
+fold ADR-0180 loaded four indexes into:
+
+| concern | % of `apply-events`, 22,500 gen | % of the phase |
+|---|---|---|
+| `:patient-state` (the `evolve` multimethod) | 17.61% | 2.57% |
+| `:encounter-stamp` | 4.78% | 0.70% |
+| `:cancel-index` (site 4) | 2.60% | 0.38% |
+| `:bed-index` | 1.29% | 0.19% |
+| `:boarder-index` (site 1) | 0.57% | 0.08% |
+| `:board` (site 3) | 0.47% | 0.07% |
+| residual -- the ten inline concerns and the fold itself | 72.68% | 10.61% |
+
+**All four ADR-0180 indexes together cost 0.72% of the generate phase**
+where the sites they replaced were 78.4 points of inclusive share. In
+the check phase all four read 0.00%, which is the instrument agreeing
+with `replay-projection`: that site declines them.
+
+### (b) The live set, and what the peak actually is
+
+One `a22500-nopersons` generate under `-Xmx8g` with `-Xlog:gc*`.
+**Byte-identical to the committed digest** (`7d105743...78e0a`,
+174,866,696 bytes), 402.35 s against 396.18 s at the default heap.
+
+| | default heap | `-Xmx8g` |
+|---|---|---|
+| `MaxHeapSize` | 3.88 GB (the JVM DEFAULT -- no `-Xmx` anywhere in this tree) | 8 GB |
+| peak RSS | 3,599 MB | **4,780 MB** |
+| peak PRE-GC used | -- | 3,863 MB |
+| Full GCs | -- | **none, in 480 collections** |
+
+**Peak RSS ROSE when the budget rose, on a byte-identical run.** That
+settles what the 3.6 GB reading is: it measures the budget G1 was given,
+not the memory the run needs.
+
+The post-collection floor -- the deepest reclaim in each 40-second
+window, which is the live set:
+
+| window | min post-GC | | window | min post-GC |
+|---|---|---|---|---|
+| 0-40s | 7 MB | | 200-240s | 382 MB |
+| 40-80s | 111 MB | | 240-280s | 407 MB |
+| 80-120s | 199 MB | | 280-320s | **432 MB** |
+| 120-160s | 272 MB | | 320-360s | 702 MB |
+| 160-200s | 337 MB | | 360-400s | 792 MB |
+
+It grows monotonically with events and reaches **432 MB by the end of
+the simulation loop**, its 40-second increments falling from ~100 MB to
+~25 MB. Growth is with events and bounded; it is NOT linear, and the
+deceleration is not explained here -- the estimator is a min-over-window
+through a collector that reclaims a different amount each time, so the
+series ranks the growth rather than fitting it.
+
+**THE 3,863 MB PEAK IS NEITHER THE WORLD'S HISTORY NOR THE RENDERER.**
+Dated off the profile's own sample timestamps rather than assumed:
+
+| phase | first sample | last sample |
+|---|---|---|
+| `decide` (the simulation loop) | 7s | **364s** |
+| in-run self-check (`sim-check`) | ~0 before 360s | **461s** |
+| render (`cli/sim-ground-truth-bare-text`) | **461s** | 471s |
+
+The heap balloons from 323 s and collapses at 396 s back to its
+pre-323 s level, in a 402 s run -- the same window, at the same relative
+position, as the in-run `check-all`. So the peak is a TRANSIENT held by
+the self-check while it folds the whole 431,677-event log, released when
+it finishes. Rendering the 175 MB corpus is the last 11 s and about 2%.
+
+Live-set COMPOSITION, from the 112 `jdk.OldObjectSample` events the same
+recording carries -- surviving objects with the stack that allocated
+them. It is a bounded sample, so it ranks and does not measure: 35 of
+112 were allocated at **`fold.clj:924`**, the `:warm-up-mark`
+decoration's `(assoc ev :warm-up ...)`, which mints the event map that
+lands in `:ground-truth`. The surviving objects are overwhelmingly small
+`Object[8..32]` arrays -- `PersistentArrayMap` backing arrays and
+`PersistentVector` nodes. **What survives is the log**, not the indexes:
+no ADR-0180 index frame appears among the survivors at all.
+
+### Allocation, from the same four recordings
+
+| | 7,500 (`:persons`) | 22,500 (no `:persons`) |
+|---|---|---|
+| samples | 43,065 | 134,379 |
+| estimated total allocation | 61.4 GB | **217.4 GB** |
+| `decide :bed-swap` | 11.59% | **29.98%** |
+| `decide :merge` | 6.96% | **21.01%** |
+| `sim-model/licensed-bed-ids`'s inner fn | 6.91% | 5.25% |
+| `fold/apply-events`' own frames | ~12% | ~9% |
+
+**The same two methods that hold a third of the CPU allocate half of
+everything.** The class table agrees rather than merely accompanying:
+`PersistentVector$ChunkedSeq`, `PersistentHashMap$ArrayNode$Seq`,
+`LazySeq` and `PersistentHashMap$NodeSeq` are **34.7%** between them at
+22,500, which is what seq-over-hashmap scanning allocates and what an
+indexed answer would not.
+
+The two cells' totals are NOT a scaling law: 7,500 carries `:persons`
+and 22,500 does not, so they are different configurations and the ratio
+between them means nothing.
+
+### (c) The check phase's fourteen replays, measured again
+
+| | 7,500 check | 22,500 check |
+|---|---|---|
+| `fold/apply-events` | 49.90% | 49.85% |
+| the `engine/replay` calls | 49.90% | **49.85%** |
+| `sim-check`, whole namespace | 73.46% | 75.71% |
+| EDN parse of the input log | -- | **20.12%** |
+| `occupancy-within-capacity` | 3.24% | 3.59% |
+
+Essentially unmoved from the 50.97% ADR-0180's R-order recorded, which
+is expected -- no site touched check.
+
+**The EDN parse row is a correction to this document's own instrument.**
+The named-site list held `clojure.lang.LispReader` and reported 0.35%;
+`cli/read-ground-truth-stdin` uses `clojure.edn/read`, i.e.
+`EdnReader`. The real figure is 20.12%, and one fifth of the check
+phase is parsing rather than checking. The project-frame table caught
+it, which is the argument for carrying both.
+
+### (d) The ranking -- a recommendation for a ruling, not a decision
+
+**1. Check's fourteen `engine/replay` calls (R-order site 5) -- and it
+is worth far more than the row says.** ADR-0180 prices it at "~65 s at
+the top cell, about one twentieth of what the same effort buys in
+generate", and that pricing counted only the standalone check phase. It
+is wrong in the cheap direction, for three reasons this session
+measured. (i) The SAME `check/check-all` runs inside generate
+(`sim/run.clj:783`) and is 18.79% of that phase -- roughly 97 s of the
+472 s profiled run. (ii) It is the source of the 3,863 MB peak heap, so
+it, and not the world's history, is what makes 67,500 arrivals
+unreachable on shipped defaults. (iii) The standalone phase is 49.85%.
+One change; three payoffs; and the carrier already exists, because
+`replay` is a projection of `apply-events` and `check.clj:929` already
+accepts pre-folded entries.
+
+**2. `decide :merge` and `decide :bed-swap` -- 34.06% and 31.38% of
+generate, half of all allocation, on no census.** Both are the shape
+R-fold-carrier was written for: a scan over a population only ever
+appended to. `:merge`'s `already-merged?` is the stronger case -- a
+`some` over the whole log per merge, which is site 4's own defect under
+another method's name, and an index of merged patient-ids is a smaller
+change than site 4 was. These belong on the roadmap row as sites 6 and
+7 rather than in a new program.
+
+**3. A memory program is NOT justified, and this session's own
+measurement is why.** The world's live set is 432 MB at the end of the
+loop and under 1 GB including the log, growing with events and showing
+no runaway retention; the survivors are the log's event maps, not the
+indexes; and the peak that would motivate streaming belongs to a
+transient the self-check holds. Streaming the log, or making the world
+drop its own history, would buy at most a few hundred megabytes against
+a 3.4 GB transient that item 1 removes. **Revisit only if item 1 lands
+and the peak stays high.**
+
+**4. Named constant-factor sites, if anything.** `sim-model/licensed-bed-ids`'s
+inner fn is 5.25% of allocation and 2.88% self CPU at 22,500 and looks
+recomputed rather than carried; the 20.12% EDN parse in check is real
+but is the file format's price, not a defect. ADR-0180's own "not in
+scope" ruling on constant factors still stands and nothing here asks to
+reopen it.
+
+Fenced, deliberately: this session changed no engine code (R-measure-first),
+and every item above is a recommendation for the design channel.

@@ -50,7 +50,12 @@ with them.
   worth ~65 s), which R-order puts last. 67,500 arrivals is
   unreachable on shipped defaults for a separate reason this program does not
   address: 3,973 MB peak RSS against a 3.88 GB `MaxHeapSize`, measured and not
-  extrapolated.
+  extrapolated. THAT LAST SENTENCE IS NOW WRONG and site 5 is underpriced:
+  the post-program profile dates the peak to the in-run `check-all`, which
+  is 18.79% of generate as well as 49.85% of check, and ranks two unrowed
+  `decide` methods above a memory program -- see the dated section
+  `Post-program profile, 2026-09-06` in
+  `.agents/plans/2026-09-05-performance-measurement/measurements.md`.
 - OPEN **[dense-7500-gate-gaps]** PRIORITY 3 -- two gates ADR-0180's
   R-gate-gaps commissions, neither of them site work. (a) THE EXERCISER IS NOT
   IN A MAKE TARGET: `bin/demo-exerciser-dense-7500` exists and is wired into
