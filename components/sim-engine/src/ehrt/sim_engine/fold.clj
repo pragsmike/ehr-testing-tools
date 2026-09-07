@@ -424,6 +424,186 @@
       (some (fn [i] (when-not (contains? cancelled i) i))
             (rseq (get (:by-patient index) [patient-id event-type] []))))))
 
+(def empty-eligible-index
+  "THE ELIGIBLE INDEX'S SEED, and it is a `PersistentHashMap` rather
+  than `{}` for a reason ADR-0180's addendum measured rather than
+  asserted (R-empty-carrier, 2026-09-07).
+
+  `{}` and `(hash-map)` read as `PersistentArrayMap`, which iterates in
+  INSERTION order and only becomes a `PersistentHashMap` at its ninth
+  entry. `:patients` has been a hash map since t 0 -- `run`'s
+  `init-world` builds it with `into {}` over the whole population -- so
+  a sub-map grown from `{}` would iterate its first eight members in
+  ELIGIBILITY order against a parent iterating in HASH order, and
+  `merge-eligible` below owes vector identity including ORDER. That bites
+  the FIRST merge of every run, not some exotic corner; measured, five
+  minted ids give array-map order `[0 1 2 3 4]` against hash-map order
+  `[2 1 4 0 3]`.
+
+  So the carrier is this object, both where `update-eligible` opens one
+  and where `run`'s `init-world` seeds one, and the two name the SAME
+  var rather than each writing a literal that looks right."
+  clojure.lang.PersistentHashMap/EMPTY)
+
+(defn eligible-entry
+  "A patient's ELIGIBLE MEMBERSHIP together with the bed-swap view's own
+  flag, computed from ONE patient state and nothing else: `true` when
+  that state is merge-eligible AND bed-swap-eligible, `false` when it is
+  merge-eligible only, nil when it is not a member at all.
+
+  The membership predicate is `decide :merge`'s own `never-mergeable?`
+  negated, term for term -- `:new` (never admitted, so no `:admission`
+  event exists for `participant-ids-exist-in-run` to find) and `:merged`
+  (already merged away) are the two statuses that are never legal merge
+  targets. The VALUE is `decide :bed-swap`'s own filter, term for term:
+  `:admitted` with a non-nil `:location`.
+
+  ONE SUB-MAP AND TWO VIEWS rather than two sub-maps, and the reason is
+  the containment ADR-0180's addendum asks this session to assert rather
+  than assume: `:admitted` is not in `#{:new :merged}`, so every
+  bed-swap-eligible patient is merge-eligible, and `evolve :merge`'s
+  `:merged` arm `dissoc`es `:location` so a merged patient fails the
+  bed-swap predicate twice over. The containment is what lets one
+  carrier answer both, and one carrier is not an economy -- it means the
+  hash-order argument in `merge-eligible` below is made ONCE, for one
+  structure, rather than twice for two that could drift apart.
+
+  A nil patient is NOT a member: participants without a `:patient-id`
+  (the bed participants) and ids absent from the map both read nil here,
+  where an unguarded status test would file them under a nil key as
+  `false`. The from-scratch definitions iterate `:patients` and can
+  reach no such key.
+
+  ADR-0180's R-membership-from-post-state, the same way `boarder-entry`
+  and `bed-of` above satisfy it: membership is RECOMPUTED from a patient
+  state, never derived from which event just happened, so there is no
+  add/remove case per event kind to enumerate and none to miss."
+  [p]
+  (when (and (some? p) (not (#{:new :merged} (:status p))))
+    (and (= :admitted (:status p)) (some? (:location p)))))
+
+(defn update-eligible
+  "The eligible index, folded one event forward (ADR-0180 site 5):
+  `patient-id -> bed-swap-eligible?` over the merge-eligible patients.
+
+  ONE rule and no others, `update-boarders`' and `update-board`'s own:
+  for each of this event's patient participants, take `eligible-entry`
+  of its PRE-event state and of its POST-event state and reconcile the
+  two. An entry that did not change writes nothing; one that did either
+  retires the key or files the new value.
+
+  THE nil TEST IS NOT A TRUTH TEST, and `cond->` is deliberately not
+  used here: `false` is a MEMBER -- merge-eligible, not bed-swap-
+  eligible -- and only nil is an absence. That is the one place this
+  concern's shape differs from its two neighbours above, whose entries
+  are truthy whenever they exist.
+
+  Only participants are considered, and that is soundness rather than an
+  optimisation, for the reason both neighbours give: `evolve` folds an
+  event into exactly its participants' states (sim/ADR-0010), so no
+  other patient's `:status` or `:location` can have moved under it.
+
+  THE SEED IS `empty-eligible-index` AND NOT `{}` -- see that var. A
+  caller that hands this function an array-map keeps an array-map, which
+  is why `run` seeds the same object rather than a literal."
+  [index patients-before patients-after participants]
+  (reduce (fn [idx {:keys [patient-id]}]
+            (let [before (eligible-entry (get patients-before patient-id))
+                  after (eligible-entry (get patients-after patient-id))]
+              (if (= before after)
+                idx
+                (if (nil? after)
+                  (dissoc idx patient-id)
+                  (assoc idx patient-id after)))))
+          (or index empty-eligible-index)
+          participants))
+
+(defn merge-eligible
+  "THE INDEX'S ANSWER to `decide :merge`'s candidate question: every
+  merge-eligible patient except `excluded-id`, as a VECTOR.
+
+  VECTOR IDENTITY IS THE OBLIGATION -- same elements, same count, SAME
+  ORDER -- because `streams/uniform-choice` is positional
+  (`(nth candidates (.nextInt rng (count candidates)))`,
+  `streams.clj:47-49`). The draw SEQUENCE is fixed either way, one
+  `.nextInt` per merge step with a non-empty candidate list and no
+  `:with`; what the count and the positions decide is the draw's
+  RESOLUTION, so a structure answering the same SET in a different order
+  would rebind merges and move every byte after them.
+
+  THE ORDER ARGUMENT, and it is the whole of why an index is legal here
+  (ADR-0180's R-hash-order, addendum 2026-09-07). `PersistentHashMap`'s
+  seq is a depth-first walk of a trie indexed by 5-bit slices of the
+  key's `hasheq`, and every node type iterates its slots in ascending
+  slot order -- so the relative order of two non-colliding keys is fixed
+  by their hash bits alone, independent of which other keys are present
+  and of the order they were inserted. A sub-map of `:patients`
+  therefore iterates its keys in the same relative order `:patients`
+  does, and `(keys sub-map)` equals `(filter member? (keys :patients))`,
+  which is the from-scratch scan's answer.
+
+  THE HOLE, named rather than discovered later: keys whose FULL 32-bit
+  `hasheq` collides land in a `HashCollisionNode`, whose array is
+  ordered by INSERTION -- so at such a node a sub-map filled in
+  eligibility order can differ from a parent filled in registration
+  order. Patient-ids are one per arrival, and the addendum measures the
+  first colliding pair of the shipped seed at 45,000 arrivals: every
+  committed cell of the measured decade is collision-free, so both
+  bracketed cells and all 38 oracle roots are BLIND to it. The detection
+  is `ehrt.sim-engine.eligible-index-test`, which keeps the from-scratch
+  definition verbatim and asserts equality at every replay entry, and
+  which pins what the two sides actually answer at a hand-built
+  collision rather than asserting they agree there.
+
+  Sorting the candidates would close both holes and is NOT licensed
+  here: it moves every churn-bearing golden root, so it is a declared
+  oracle change with its own roadmap row
+  (`roadmap.md#determinism-hash-order-dependence`), never a site
+  session's judgment call.
+
+  THE EXCLUSION STAYS A CALLER-SIDE REMOVE over the index's answer
+  rather than a second index, the shape `first-boarder` uses and for the
+  same reason: an index keyed on the subject would be a different index
+  per caller. At most one entry can carry `excluded-id`.
+
+  THE READ IS RAW AND A MISSING INDEX THROWS (R-read-throws, ADR-0180's
+  addendum; `last-uncancelled`'s own choice above). nil is not a legal
+  answer: an absent index read as an empty candidate list turns every
+  legal merge into a `:step-rejected` and moves every draw after it."
+  [world excluded-id]
+  (let [index (:eligible-index world)]
+    (when (nil? index)
+      (throw (ex-info "no :eligible-index on this world -- ADR-0180 site 5 reads the index and never rebuilds the scan"
+                      {:excluded-id excluded-id :view :merge})))
+    (into [] (comp (map key) (remove #(= excluded-id %))) index)))
+
+(defn swap-eligible
+  "THE INDEX'S ANSWER to `decide :bed-swap`'s candidate question: every
+  patient that is `:admitted` with a `:location`, except `excluded-id`,
+  as a VECTOR -- the same carrier `merge-eligible` above reads, filtered
+  to the entries whose value is `true`.
+
+  EVERY SENTENCE OF `merge-eligible`'s contract holds here unchanged:
+  vector identity including order, the same positional
+  `streams/uniform-choice` draw, the same hash-order argument and the
+  same collision hole, the same caller-side exclusion, the same throw on
+  a missing index. Filtering by value cannot disturb the order argument,
+  which is a statement about the key set alone.
+
+  `decide :bed-swap` DOES NOT READ THIS YET. Site 6 repoints it; site 5
+  builds the view, and `ehrt.sim-engine.eligible-index-test` asserts it
+  equal to that method's own inline scan at every replay entry, so the
+  view arrives proven rather than arriving with its own session. Until
+  site 6 lands, that inline scan is a second implementation of this
+  answer -- disclosed here, and the one place this concern does not yet
+  meet R-no-second-path."
+  [world excluded-id]
+  (let [index (:eligible-index world)]
+    (when (nil? index)
+      (throw (ex-info "no :eligible-index on this world -- ADR-0180 site 5 reads the index and never rebuilds the scan"
+                      {:excluded-id excluded-id :view :bed-swap})))
+    (into [] (comp (filter val) (map key) (remove #(= excluded-id %))) index)))
+
 (def reinstatable-event-types
   "The event classes a cancel decide reinstates state FROM, and therefore
   the only ones `run`'s `:reinstate-index` records (ADR-0169).
@@ -517,11 +697,27 @@
   and `:registration-index` structurally even though it is this
   charter's and not the census's. `update-cancel-index`'s own docstring
   says why that makes it the only one of the four with no eviction
-  case."
+  case.
+
+  AND `:eligible-index` MAKES IT SEVENTEEN -- ADR-0180 site 5,
+  2026-09-07, the ONE sub-map of `:patients` from which BOTH churn
+  candidate views are read: `decide :merge`'s eligible list and `decide
+  :bed-swap`'s. It rides this fold under the same contract, and it is
+  back on the pre/post patient pair the first three read rather than on
+  the event. The two sites that decline it decline it for the same
+  reason: `replay` returns entries and `reinstated-state` returns a
+  patient state, and a candidate sub-map is in neither.
+
+  IT IS THE FIRST OF THE FIVE WHOSE ANSWER'S ORDER IS LOAD-BEARING.
+  `streams/uniform-choice` resolves positionally, so `merge-eligible`
+  owes VECTOR identity and not set identity -- which is why that
+  function's docstring carries a hash-order argument the other four
+  needed no equivalent of."
   #{:encounter-stamp :warm-up-mark :log-ordinal :reinstate-index
     :citation-index :registration-index :patient-bootstrap
     :patient-state :bed-index :boarder-index :board :cancel-index
-    :log-mirror :log-accumulator :state-history :replay-entries})
+    :eligible-index :log-mirror :log-accumulator :state-history
+    :replay-entries})
 
 (def run-loop-projection
   "Census site 1 -- `ehrt.sim-engine.run`'s in-loop fold. THE FULL
@@ -568,6 +764,20 @@
   open the index and `last-uncancelled` throws on a missing one
   (`rulings.md#R-raw-read`) rather than answering nil, because nil is
   this query's 'no such event' answer and would be a wrong one.
+
+  `:eligible-index` IS THE SEVENTEENTH AND IS NOT INERT EITHER
+  (ADR-0180 site 5). `decide :merge` asks its candidate question against
+  the world this fold returns, and until site 5 it rebuilt the whole
+  candidate list from `(:patients world)` to ask it -- and scanned the
+  WHOLE log a second time beside that, which site 5 deletes rather than
+  indexes (R-already-merged). Same sentence as the three above. THIS
+  SITE SEEDS IT, as it seeds `:board` and `:cancel-index`, and for the
+  same reason: `decide` runs BEFORE the batch that would open the index
+  and `merge-eligible` THROWS on a missing one rather than answering an
+  empty candidate list, which would be a legal-looking answer that
+  rejects every merge. `decide :bed-swap` does NOT read it yet; site 6
+  repoints that method, and until then its inline scan is the one place
+  this concern has a second implementation.
 
   `:replay-entries` is inert here for a different reason -- not that its
   branch never fires, but that nothing READS what it accumulates.
@@ -616,6 +826,14 @@
   events to be checked, never as a query to be answered -- so declining
   costs the check phase nothing and saves it a per-event map update over
   50.97% of its wall. Not one of the arc's thirty-nine cells either.
+
+  NOR THE SEVENTEENTH, `:eligible-index` (ADR-0180 site 5, 2026-09-07),
+  and the argument is the same one a fourth time: `replay` returns
+  ENTRIES, a sub-map of the merge-eligible patients is not in one, and
+  nothing at this site would read it. `ehrt.sim-check.check` asks no
+  candidate question at all -- churn reaches it as events to be checked,
+  never as a draw to be resolved -- so declining costs the check phase
+  nothing. Not one of the arc's thirty-nine cells either.
 
   Each bullet below names why that pair moved no output -- the cone the
   census's section 3b predicted, as the commit that took it found it,
@@ -838,12 +1056,20 @@
     asked against `run`'s world, one frame above this fallback, and
     never inside it.
 
+  * `:eligible-index` -- ADR-0180 site 5, 2026-09-07, the seventeenth,
+    and inert twice over for the two reasons all three twins above are:
+    a `reinstated-state` is a PATIENT STATE and a candidate sub-map is
+    not in one, and this site's world is `{:patients {}}` so there would
+    be nothing in it to index. The churn decides' own candidate question
+    is asked against `run`'s world, one frame above this fallback, and
+    never inside it.
+
   THERE IS NOTHING OF THE UNIFICATION ARC'S OWN THAT IT DOES NOT GET.
   Site 3 names every one of that arc's thirteen, its ruled end state,
   and it was the SECOND of the three sites to reach it -- site 2 keeps
   one measured, permanent omission, `:warm-up-mark`, for a reason that
   does not apply here (`replay-projection` above, and record section
-  4d). ADR-0180's fourteenth, fifteenth and sixteenth are a different
+  4d). ADR-0180's fourteenth through seventeenth are a different
   question and are answered above."
   #{:encounter-stamp :warm-up-mark :log-ordinal :reinstate-index
     :citation-index :registration-index :patient-bootstrap
@@ -869,23 +1095,31 @@
   `:log-mirror` needs no slot of its own -- it publishes into
   `(:world acc')` under `:ground-truth`, which is where a mid-run
   `decide` reads the log back from. `:log-ordinal` needs none either:
-  its base is derived from `(:world acc)` on entry. Nor do the FOUR
-  world-carried indexes, `:bed-index`, `:boarder-index`, `:board` and
-  `:cancel-index`: each reads and writes its own key of `(:world acc)`,
-  and the last three tolerate that key's ABSENCE on entry, which is what
-  makes the run loop's first batch legal against a seeded world that
-  carries no index yet (`ehrt.sim-engine.run`'s `init-world` seeds every
-  patient `:status :new`, so the index it does not carry is the empty
-  one). `:board` and `:cancel-index` are nonetheless SEEDED at that call
-  site and `:boarder-index` is not, and the asymmetry is a property of
-  the READERS rather than of the concerns: `first-boarder` reads a
-  missing key as nil, which IS the answer; `sim-model/free` calls the
-  board as a predicate and a missing one would throw; and
-  `last-uncancelled` throws on a missing one DELIBERATELY
-  (`rulings.md#R-raw-read`), because nil is that query's own 'no such
-  event' answer and reading a missing index as one would be wrong rather
-  than absent. `run` decides its first `:admission` before the batch
-  that would open any of them.
+  its base is derived from `(:world acc)` on entry. Nor do the FIVE
+  world-carried indexes, `:bed-index`, `:boarder-index`, `:board`,
+  `:cancel-index` and `:eligible-index`: each reads and writes its own
+  key of `(:world acc)`, and the last four tolerate that key's ABSENCE
+  on entry, which is what makes the run loop's first batch legal against
+  a seeded world that carries no index yet (`ehrt.sim-engine.run`'s
+  `init-world` seeds every patient `:status :new`, so the index it does
+  not carry is the empty one). `:board`, `:cancel-index` and
+  `:eligible-index` are nonetheless SEEDED at that call site and
+  `:boarder-index` is not, and the asymmetry is a property of the
+  READERS rather than of the concerns: `first-boarder` reads a missing
+  key as nil, which IS the answer; `sim-model/free` calls the board as a
+  predicate and a missing one would throw; and `last-uncancelled`,
+  `merge-eligible` and `swap-eligible` throw on a missing one
+  DELIBERATELY (`rulings.md#R-raw-read`; ADR-0180's R-read-throws),
+  because an empty answer is a LEGAL answer for each of those queries
+  and reading a missing index as one would be wrong rather than absent.
+  `run` decides its first `:admission` before the batch that would open
+  any of them.
+
+  THE ELIGIBLE INDEX'S SEED IS THE ONE THAT ALSO HAS A CLASS. `{}` is a
+  `PersistentArrayMap` below nine entries and iterates in insertion
+  order, where `merge-eligible`'s answer owes the hash order `:patients`
+  has had since t 0 -- so that seed is `empty-eligible-index` and not a
+  literal, at `init-world` and here (R-empty-carrier).
 
   THE SENTENCE ABOVE READ 'the two world-carried indexes' WHILE LISTING
   THREE until this edit -- a count left behind by site 3's own addition.
@@ -1028,7 +1262,19 @@
                        (projection :cancel-index)
                        (assoc :cancel-index
                               (update-cancel-index (:cancel-index w-next)
-                                                   idx ev participants)))
+                                                   idx ev participants))
+
+                       ;; ADR-0180 site 5: the eligible index, back on
+                       ;; the SAME pre/post participant pair the first
+                       ;; three read after site 4's detour through the
+                       ;; event -- one sub-map serving BOTH churn
+                       ;; candidate views, `decide :merge`'s and (from
+                       ;; site 6) `decide :bed-swap`'s.
+                       (projection :eligible-index)
+                       (assoc :eligible-index
+                              (update-eligible (:eligible-index w-next)
+                                               (:patients w) (:patients w-next)
+                                               participants)))
                      ridx' cidx' gidx' entries']))
                 [world (:reinstate-index world) (:citation-index world)
                  (:registration-index world) (:entries acc)]

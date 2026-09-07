@@ -1310,6 +1310,28 @@
                     ;; patients' cancel index actually IS: no event has
                     ;; been logged, so no patient has a cancellable one.
                     :cancel-index {}
+                    ;; ADR-0180 site 5: the eligible index's SEED, and
+                    ;; the third in-fold index this world carries rather
+                    ;; than waits for, for the same reason the two above
+                    ;; it do -- `decide` runs BEFORE the first batch and
+                    ;; `fold/merge-eligible` THROWS on a missing index
+                    ;; (ADR-0180's R-read-throws) rather than answering
+                    ;; an empty candidate list, which is a LEGAL answer
+                    ;; that would reject every merge in the run.
+                    ;;
+                    ;; IT IS THE ONE SEED HERE WITH A CLASS RATHER THAN
+                    ;; A LITERAL. `{}` reads as a `PersistentArrayMap`
+                    ;; and iterates in INSERTION order below nine
+                    ;; entries, where `:patients` directly above is a
+                    ;; `PersistentHashMap` from t 0 and
+                    ;; `merge-eligible`'s answer owes that order --
+                    ;; ADR-0180's R-empty-carrier, and the reason this
+                    ;; names `fold/empty-eligible-index` rather than
+                    ;; writing a literal that looks right. Empty is
+                    ;; still what these patients' index actually IS:
+                    ;; every one of them is `state/initial-patient`,
+                    ;; whose `:status :new` is never merge-eligible.
+                    :eligible-index fold/empty-eligible-index
                     :order-profiles order-profiles
                     :persona-config persona-config
                     :module-horizon-days module-horizon-days
