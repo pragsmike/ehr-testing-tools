@@ -20,10 +20,11 @@
     same SET in a different order picks a different patient to merge and
     moves every byte after it.
 
-  * BOTH VIEWS, even though only `decide :merge` is repointed this
-    session. Site 6 repoints `decide :bed-swap`; the view it will read
-    is built and proven here, against that method's own inline scan,
-    so it arrives proven rather than arriving with its own session.
+  * BOTH VIEWS, one repointed at site 5 and one at site 6. `decide
+    :merge` reads the merge view, `decide :bed-swap` the swap view, and
+    each was proven here against that method's own inline scan BEFORE
+    the repoint that deleted the scan -- so neither repoint arrived
+    carrying a view it had to prove for itself.
 
   * AT EVERY REPLAY ENTRY, not at the end. An index is a claim about
     every intermediate state, and an end-state-only assertion is exactly
@@ -81,11 +82,12 @@
   THE DUPLICATION IS PERMANENT AND DECLARED, exactly as ADR-0169's six
   `naive-*` invariant bodies and sites 1, 3 and 4's are
   (`rulings.md#R-move-not-improve`: the definitions are MOVED and COPIED
-  here verbatim, and are not improved on the way). `naive-merge-
-  eligible` and `naive-already-merged?` are MOVES -- after the repoint
-  `src` holds no second implementation of either -- and
-  `naive-swap-eligible` is a COPY until site 6, which is the one place
-  this concern does not yet meet R-no-second-path."
+  here verbatim, and are not improved on the way). ALL THREE ARE MOVES
+  now that site 6 has landed: `naive-merge-eligible` and
+  `naive-already-merged?` became moves at site 5, `naive-swap-eligible`
+  when site 6 deleted `decide :bed-swap`'s inline scan. `src` holds no
+  second implementation of any of the three, and this concern meets
+  R-no-second-path at both of its views."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
@@ -117,13 +119,16 @@
          (mapv first))))
 
 (defn- naive-swap-eligible
-  "`decide :bed-swap`'s `eligible` binding, copied here character for
-  character under the same ruling -- and unlike the one above it this is
-  a COPY, because site 5 does not repoint `decide :bed-swap`. That
-  method keeps its inline scan until site 6, so `src` carries two
-  implementations of this answer for exactly as long as that takes; the
-  duplication is DISCLOSED in `fold/swap-eligible`'s own docstring
-  rather than discovered."
+  "`decide :bed-swap`'s `eligible` binding as it stood before ADR-0180
+  site 6, copied here character for character under the same ruling --
+  THE DEFINITION, KEPT AS THE GATE. It was a COPY for as long as site 5
+  had repointed `decide :merge` alone; site 6's repoint deleted that
+  method's inline scan and made this a MOVE, so `src` now holds no
+  second implementation of this answer either.
+
+  Kept, and not called through `decide`, for the reason every `naive-*`
+  in this repository is kept: a law whose reference side is the shipped
+  function is a law that cannot notice the shipped function changing."
   [patients patient-id]
   (->> patients
        (remove (fn [[pid _]] (= pid patient-id)))
@@ -482,7 +487,7 @@
       (is (thrown? clojure.lang.ExceptionInfo (fold/merge-eligible {} "p1"))
           "a world carrying NO index throws rather than rebuilding the scan")
       (is (thrown? clojure.lang.ExceptionInfo (fold/swap-eligible {} "p1"))
-          "-- and so does the view site 6 will read")
+          "-- and so does the swap view `decide :bed-swap` reads (site 6)")
       (is (= [] (fold/merge-eligible {:eligible-index fold/empty-eligible-index} "p1"))
           "where the SEEDED empty index answers [], which is the scan's own answer
            over a world of freshly seeded patients"))))
@@ -594,7 +599,7 @@
             (str label ": the merge view agrees with the definition"))
         (is (= (naive-swap-eligible (:patients w) "no-such-patient")
                (fold/swap-eligible w "no-such-patient"))
-            (str label ": and so does the view site 6 will read"))
+            (str label ": and so does the swap view (site 6)"))
         (is (= (some? (:location p))
                (= [pid] (fold/swap-eligible w "no-such-patient")))
             (str label ": -- and the swap view's answer really does turn on the"

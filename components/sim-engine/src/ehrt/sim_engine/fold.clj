@@ -590,13 +590,14 @@
   a missing index. Filtering by value cannot disturb the order argument,
   which is a statement about the key set alone.
 
-  `decide :bed-swap` DOES NOT READ THIS YET. Site 6 repoints it; site 5
-  builds the view, and `ehrt.sim-engine.eligible-index-test` asserts it
-  equal to that method's own inline scan at every replay entry, so the
-  view arrives proven rather than arriving with its own session. Until
-  site 6 lands, that inline scan is a second implementation of this
-  answer -- disclosed here, and the one place this concern does not yet
-  meet R-no-second-path."
+  `decide :bed-swap` READS THIS, and has since ADR-0180 site 6
+  (2026-09-07). Site 5 built the view and
+  `ehrt.sim-engine.eligible-index-test` asserted it equal to that
+  method's own inline scan at every replay entry, so the repoint
+  inherited a view that was already proven rather than proving one of
+  its own; the scan was deleted with no fallback in the same commit.
+  This concern now meets R-no-second-path at BOTH views -- the sentence
+  that stood here until site 6 disclosed the one place it did not."
   [world excluded-id]
   (let [index (:eligible-index world)]
     (when (nil? index)
@@ -775,9 +776,10 @@
   same reason: `decide` runs BEFORE the batch that would open the index
   and `merge-eligible` THROWS on a missing one rather than answering an
   empty candidate list, which would be a legal-looking answer that
-  rejects every merge. `decide :bed-swap` does NOT read it yet; site 6
-  repoints that method, and until then its inline scan is the one place
-  this concern has a second implementation.
+  rejects every merge. `decide :bed-swap` reads the SECOND view of the
+  same sub-map, and has since site 6 (2026-09-07); its own inline scan
+  was deleted by that repoint, so neither view has a second
+  implementation in `src`.
 
   `:replay-entries` is inert here for a different reason -- not that its
   branch never fires, but that nothing READS what it accumulates.
@@ -1268,8 +1270,8 @@
                        ;; the SAME pre/post participant pair the first
                        ;; three read after site 4's detour through the
                        ;; event -- one sub-map serving BOTH churn
-                       ;; candidate views, `decide :merge`'s and (from
-                       ;; site 6) `decide :bed-swap`'s.
+                       ;; candidate views, `decide :merge`'s (site 5)
+                       ;; and `decide :bed-swap`'s (site 6).
                        (projection :eligible-index)
                        (assoc :eligible-index
                               (update-eligible (:eligible-index w-next)

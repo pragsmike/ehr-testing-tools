@@ -78,9 +78,9 @@
   `log-index/bed-reoccupied-by-someone-else?` ask their occupancy
   question against that same world (`:board`, site 3); the three cancel
   `decide` methods ask `log-index/last-uncancelled-index` its question
-  against it (`:cancel-index`, site 4); and `decide :merge` asks its
-  candidate question against it (`:eligible-index`, site 5 -- `decide
-  :bed-swap` joins it at site 6, off the same sub-map's second view)."
+  against it (`:cancel-index`, site 4); and `decide :merge` and `decide
+  :bed-swap` ask their candidate questions against it
+  (`:eligible-index`, sites 5 and 6, off one sub-map's two views)."
   #{:encounter-stamp :warm-up-mark :log-ordinal :reinstate-index
     :citation-index :registration-index :patient-bootstrap
     :patient-state :bed-index :boarder-index :board :cancel-index

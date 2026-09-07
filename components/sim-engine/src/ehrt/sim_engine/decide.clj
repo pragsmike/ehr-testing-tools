@@ -1412,13 +1412,34 @@
         {:events [transfer-event cancel-event] :advance 0}))))
 
 (defmethod decide :bed-swap
+  ;; ADR-0180 site 6, 2026-09-07. A whole-collection scan used to stand
+  ;; in this `let` and does not now.
+  ;;
+  ;; `eligible` was a scan of the WHOLE `:patients` map per bed-swap
+  ;; step -- 31.38% of the generate phase at 22,500 arrivals, and the
+  ;; top project frame of the 7,500 recording once site 5 had removed
+  ;; what stood above it -- and is now `fold/swap-eligible`, the
+  ;; bed-swap view of the `:eligible-index` sub-map `fold/apply-events`
+  ;; maintains. THE VIEW ARRIVED PROVEN: site 5 built it and
+  ;; `ehrt.sim-engine.eligible-index-test` asserted it equal to the scan
+  ;; deleted here, at every replay entry, before this repoint existed.
+  ;;
+  ;; THE ORDER IS THE OBLIGATION, not the set, exactly as at site 5:
+  ;; `streams/uniform-choice` resolves positionally, so the view owes
+  ;; vector identity down to the position of every element. That
+  ;; argument, its hash-collision hole and the law that detects it live
+  ;; in `fold/merge-eligible`, `fold/swap-eligible` and that test
+  ;; namespace.
+  ;;
+  ;; NOTHING ELSE IN THE METHOD MOVED (`rulings.md#R-move-not-improve`):
+  ;; the same one positional draw, the same caller-side exclusion of the
+  ;; subject, and the same `:illegal-bed-swap` rejection test read off
+  ;; the peer's own state -- which is what keeps the `:with` path, that
+  ;; never reads `eligible` at all, answering exactly as before.
   [{world-rng :world} t world patient-id {:keys [with] :as step}]
   (let [{:keys [patients]} world
         self (get patients patient-id)
-        eligible (->> patients
-                     (remove (fn [[pid _]] (= pid patient-id)))
-                     (filter (fn [[_ p]] (and (= :admitted (:status p)) (some? (:location p)))))
-                     (mapv first))
+        eligible (fold/swap-eligible world patient-id)
         peer-id (cond
                   with with
                   (seq eligible) (streams/uniform-choice world-rng eligible)
