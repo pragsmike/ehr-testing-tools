@@ -46,16 +46,29 @@
 ;; END asserted
 
  :quoted
- {:config-edn-7500 {:wall-s 278.64 :peak-rss-mb 2415}
+ {:config-edn-7500 {:wall-s 106.25 :peak-rss-mb 1927}
   :config-nobed-7500 {:events 125642 :messages 165466 :msg-per-event 1.3170
-                      :wall-s 231.14 :peak-rss-mb 2178}
+                      :wall-s 93.34 :peak-rss-mb 1984}
   :config-bare-7500 {:events 100868 :messages 65457 :msg-per-event 0.6489
-                     :wall-s 142.12 :peak-rss-mb 1780}
+                     :wall-s 42.36 :peak-rss-mb 1135}
   :config-edn-750 {:messages 40291 :msg-per-event 1.2097
-                   :wall-s 54.37 :peak-rss-mb 1228}}
+                   :wall-s 48.20 :peak-rss-mb 1183}}
 
  :provenance
- {:sha "4ddf62c2"
-  :date "2026-09-06"
+ {:sha "2ba3490c"
+  :date "2026-09-07"
   :machine "WSL2, 6c/12t i7-10750H, 15 GiB, OpenJDK 21.0.7, JVM defaults as shipped -- MaxHeapSize 3.88 GB, bin/ehrt sets no JVM options"
-  :method "one warm-up run, then two timed runs per cell, one JVM per run, a fresh spool target per run, /usr/bin/time -v around each; every figure is the mean of the two timed runs, and both runs of every cell produced the identical event and message counts"}}
+  :method "one warm-up run, then two timed runs per cell, one JVM per run, a fresh spool target per run, /usr/bin/time -v around each; every wall is the mean of the two timed runs, and peak RSS is that process's own maximum resident set size in MiB, meaned the same way. The two timed runs of every cell wrote a BYTE-IDENTICAL events.edn and spooled the same number of messages -- byte identity rather than count identity, which is the stronger claim and the cheaper one."
+
+  ;; The counts above last moved under ADR-0179 (merge transfer). The
+  ;; walls last moved under ADR-0180's seven-site programme, which
+  ;; shortened this configuration's generate phase 2.5x to 3.4x and
+  ;; moved no count at all: config.edn at 7,500 wrote an events.edn
+  ;; whose sha-256 is 096959857076f22901fa92a9fd71cca0edbc469b109118b6a469fcf0b49dc2b2,
+  ;; the digest .agents/plans/2026-09-05-7-event-divergence.md recorded
+  ;; for this cell before any of those sites landed.
+  :prior {:sha "4ddf62c2" :date "2026-09-06"
+          :walls {:config-edn-7500 278.64 :config-nobed-7500 231.14
+                  :config-bare-7500 142.12 :config-edn-750 54.37}
+          :peak-rss-mb {:config-edn-7500 2415 :config-nobed-7500 2178
+                        :config-bare-7500 1780 :config-edn-750 1228}}}}

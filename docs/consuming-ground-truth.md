@@ -563,7 +563,11 @@ Measured on the traffic-scale programme's own reference machine — WSL2,
 6c/12t i7-10750H, 15 GiB, OpenJDK 21.0.7, JVM defaults as shipped
 (`MaxHeapSize` 3.88 GB; `bin/ehrt` sets no JVM options). The commands
 and the per-run figures are
-[`demos/scenarios/dense-7500/README.md`](../demos/scenarios/dense-7500/README.md);
+[`demos/scenarios/dense-7500/README.md`](../demos/scenarios/dense-7500/README.md),
+and every number in the table below is quoted from that scenario's own
+committed
+[`figures.edn`](../demos/scenarios/dense-7500/figures.edn) — one file,
+two documents, and a gate that fails when they stop agreeing;
 the 2026-08-29 programme's own method, which the three labelled
 paragraphs below still report, is in
 `.agents/plans/2026-08-24-traffic-scale-program.md`'s appendix.
@@ -573,20 +577,25 @@ emitter.**
 
 | Cell | events | messages | msg/event | process wall |
 |---|---|---|---|---|
-| all nine opt-in keys | 167,197 | 222,819 | **1.3327** | 278.64 s |
-| the same, less `:bed-cycle` | 125,642 | 165,466 | **1.3170** | 231.14 s |
-| no opt-in key at all | 100,868 | 65,457 | **0.6489** | 142.12 s |
+| all nine opt-in keys | 167,197 | 222,819 | **1.3327** | 106.25 s |
+| the same, less `:bed-cycle` | 125,642 | 165,466 | **1.3170** | 93.34 s |
+| no opt-in key at all | 100,868 | 65,457 | **0.6489** | 42.36 s |
 
 **All three rows are one generation of one committed configuration**,
-re-measured 2026-09-06 at `4ddf62c2`, after the merge-transfer
-ruling[^adr-0179] moved all three (the scenario README names the
-movement and links its derivation): they are
+re-measured 2026-09-07 at `2ba3490c`. Two different things have moved
+them, and the difference is worth keeping straight: their COUNTS last
+moved under the merge-transfer ruling[^adr-0179], while their WALLS
+moved again afterwards, and by much more, under the index-and-fold
+programme[^adr-0180] — which shortened this configuration's generate
+phase between 2.5× and 3.4× and left every event and message count
+above exactly where it was. The scenario README names both movements
+and links their derivations. They are
 [`demos/scenarios/dense-7500/`](../demos/scenarios/dense-7500/README.md)'s
 `config.edn`, `config-nobed.edn` and `config-bare.edn` at `--seed
 20260824 --patients 7500 --churn`, and you can re-run any of them.
 Warm-up plus two timed runs per cell, one JVM per run, a fresh spool
 target per run; every figure is the mean of the two, and both runs of
-every cell produced identical event and message counts. **The wall is
+every cell wrote a byte-identical event log. **The wall is
 the whole `corpus generate` PROCESS** under `/usr/bin/time -v`, JVM
 startup included — so it is not comparable line-for-line with the
 in-process phase totals quoted below. One seed on one machine: read it
@@ -764,3 +773,5 @@ different faults rather than three ways of saying the same thing.
 - `demos/scenarios/ed-tuesday/config.edn` and `demos/scenarios/clinic-decade/config.edn` — the authored examples
 
 [^adr-0179]: Design record [ADR-0179](../notes/ADRs.md).
+
+[^adr-0180]: Design record [ADR-0180](../notes/ADRs.md).

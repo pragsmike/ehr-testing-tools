@@ -135,18 +135,31 @@ heap rather than the log's.
 
 ## What to look for
 
-Witnessed 2026-09-06 at `4ddf62c2`, seed 20260824, `--churn`, on the
+Witnessed 2026-09-07 at `2ba3490c`, seed 20260824, `--churn`, on the
 traffic-scale programme's own reference machine (WSL2, 6c/12t
 i7-10750H, 15 GiB, OpenJDK 21.0.7, JVM defaults as shipped --
 `MaxHeapSize` 3.88 GB, `bin/ehrt` sets no JVM options). One warm-up
 run, then two timed runs per cell, one JVM per run, a fresh spool
 target per run, `/usr/bin/time -v` around each; every figure below is
 the mean of the two timed runs, and both runs of every one of the four
-cells produced the IDENTICAL event and message counts. The wall is the
-whole `bin/ehrt corpus generate sim` PROCESS, JVM startup included, and
-not an in-process phase total.
+cells wrote a BYTE-IDENTICAL `events.edn` and spooled the same number
+of messages. The wall is the whole `bin/ehrt corpus generate sim`
+PROCESS, JVM startup included, and not an in-process phase total; peak
+RSS is that process's own maximum resident set size, in MiB.
 
-**These cells were re-measured after ADR-0179**, which releases the bed
+**Not one figure below lives in this file.** They live in
+[`figures.edn`](figures.edn), which
+[`docs/consuming-ground-truth.md`](../../../docs/consuming-ground-truth.md#scale)'s
+Scale table quotes too, and `ehrt.docs-tooling.dense-7500-figures-test`
+fails when either document stops agreeing with it.
+`bin/demo-exerciser-dense-7500` rewrites that file's counts from its
+own artefacts on every `make integration` run, so a moved count is a
+dirty tree at the run rather than a paragraph nobody re-reads. Before
+both existed, these cells sat at a measurement taken one commit before
+ADR-0180's site 1 and survived all seven of its sites without one of
+them going red.
+
+**The counts last moved under ADR-0179**, which releases the bed
 an absorbed record was holding at the instant of a merge and carries a
 pending result across to the survivor. Every one of the four moved, and
 not all in the same direction -- the all-keys cell by **+7** events,
@@ -160,14 +173,29 @@ the event, which also settles that ADR-0178 (landed between the
 per-event derivation is
 [`.agents/plans/2026-09-05-7-event-divergence.md`](../../../.agents/plans/2026-09-05-7-event-divergence.md).
 
+**The walls moved again on 2026-09-07 and the counts did not**, which
+is the distinction this table is now gated to keep. ADR-0180's
+seven-site programme shortened the generate phase without touching the
+log: `config.edn` at 7,500 wrote an `events.edn` whose sha-256 is
+`096959857076f2...`, the same digest the 7-event derivation recorded
+for this cell before any of those sites landed, and all four cells
+reproduced their event and message counts to the event. What moved is
+the wall -- 278.64 -> 106.25 s at the headline cell, 231.14 -> 93.34,
+142.12 -> 42.36, and only 54.37 -> 48.20 at 750 arrivals, which barely
+moves because that cell is dominated by the same 15,000-person
+demographic timeline the programme did not touch. Peak RSS fell with
+them except at `config-nobed.edn`, whose own two timed runs differ by
+97 MiB: read that column as a GC high-water mark under a 3.88 GB
+default heap, not as a footprint.
+
 **The measured cells:**
 
 | cell | arrivals | events | messages | msg/event | process wall | peak RSS |
 |---|---|---|---|---|---|---|
-| `config.edn` | 7,500 | **167,197** | **222,819** | **1.3327** | 278.64 s | 2,415 MB |
-| `config-nobed.edn` | 7,500 | **125,642** | **165,466** | **1.3170** | 231.14 s | 2,178 MB |
-| `config-bare.edn` | 7,500 | **100,868** | **65,457** | **0.6489** | 142.12 s | 1,780 MB |
-| `config.edn` | 750 | **33,306** | **40,291** | **1.2097** | 54.37 s | 1,228 MB |
+| `config.edn` | 7,500 | **167,197** | **222,819** | **1.3327** | 106.25 s | 1,927 MB |
+| `config-nobed.edn` | 7,500 | **125,642** | **165,466** | **1.3170** | 93.34 s | 1,984 MB |
+| `config-bare.edn` | 7,500 | **100,868** | **65,457** | **0.6489** | 42.36 s | 1,135 MB |
+| `config.edn` | 750 | **33,306** | **40,291** | **1.2097** | 48.20 s | 1,183 MB |
 
 **`:scheduling` IS WHAT SPREADS THE CENSUS, and it is worth knowing
 before you cut the opt-in keys down.** `config-bare.edn` is the
