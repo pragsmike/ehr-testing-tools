@@ -30,7 +30,7 @@ Three commits, no engine code in any of them.
 |---|---|
 | `10414cca` | the aggregator's two new tables, and four CPU recordings |
 | `60359c46` | the allocation tables, the `-Xmx8g` GC run, and the EdnReader correction |
-| (step 3) | the dated `measurements.md` section and the roadmap pointer |
+| `385d7f0d` | the dated `measurements.md` section and the roadmap pointer |
 
 `profile-cell.sh` gained a project-frame table carrying SELF and INCLUSIVE
 share side by side (it was self-only), an `apply-events` concern breakdown,
@@ -47,7 +47,7 @@ names only the sentinel each came from.
 | artifact | sentinel |
 |---|---|
 | four CPU recordings | `/tmp/prof-run.done` = `0 0` |
-| CPU re-aggregations (3 passes, see §4) | `/tmp/agg-run.done`, `/tmp/agg2.done`, `/tmp/agg3.done`, `/tmp/agg4.done`, all zeros |
+| CPU re-aggregations (FOUR passes, see §4) | `/tmp/agg-run.done`, `/tmp/agg2.done`, `/tmp/agg3.done`, `/tmp/agg4.done`, all zeros |
 | `-Xmx8g` GC run | `/tmp/gc-run.done` = `7d105743…78e0a` |
 | `make test` | `/tmp/mt.done` |
 
@@ -177,15 +177,23 @@ assertion-count movement was owed or seen.
 
 ## 7. Background processes
 
-Nine harness-tracked background jobs, each judged by the sentinel its own
+TEN harness-tracked background jobs, each judged by the sentinel its own
 command wrote and each terminated before this section was written: one `/tmp`
 search probe; one FAILED detached launch (below); the four profile recordings
 (`/tmp/prof-run.done` = `0 0`); FOUR re-aggregation passes
 (`/tmp/agg-run.done`, `/tmp/agg2.done`, `/tmp/agg3.done`, `/tmp/agg4.done`,
 all zeros — one per instrument fault in §4's F1 and F2); the `-Xmx8g` GC run
 (`/tmp/gc-run.done` carrying the digest itself); and `make test`
-(`/tmp/mt.done` = `0`). Everything else — `bin/preflight`, `make
+(`/tmp/mt.done` = `0`); and the CI waiter (`/tmp/ci-wait.done` =
+`completed success 2f243c79…`). Everything else — `bin/preflight`, `make
 state-derived`, and a dozen `jfr print` probes — ran in the foreground.
+
+The CI waiter polls on a 30-second interval INSIDE its own job, which is the
+shape R-sentinel asks for and not the shape it forbids: the waiting is the
+job's, the session reads only the file it writes. `gh run watch --exit-status`
+was deliberately not used — the site-4 record has it reporting complete while
+the run was still `in_progress` — so it tests `status` explicitly and reads
+`conclusion` only after.
 
 **`nohup … & disown` INSIDE `wsl -e bash -lc` DOES NOT SURVIVE**, confirmed
 live: the first launch of the recording driver was killed the moment that
@@ -210,3 +218,21 @@ top of it, and a close-marker commit follows once CI is verified green with
 `gh run view`. Baseline for the whole session was `63d5ee64`.
 
 ## 9. CI
+
+All four commits went out in ONE push, so GitHub Actions ran once, at the tip.
+Verified with `gh run view` rather than assumed, and read from the waiter's own
+sentinel (`/tmp/ci-wait.done`) before being confirmed a second time directly:
+
+| commit | run | conclusion |
+|---|---|---|
+| `2f243c79` (tip, covering `10414cca`, `60359c46`, `385d7f0d`) | 34073537109 | **success** |
+
+`bin/post-push-verify` ran immediately after the push, all three checks
+passing: `origin/main` matches the tip, every commit message in
+`63d5ee64..2f243c79` is pure ASCII, and the CI run was reported once rather
+than awaited (AR-CI-4) — this section is where it was awaited. `gitleaks`
+scanned 1,488 commits and 44.02 MB at the push hook and found no leaks.
+
+Each of the four pushed messages was diffed against the file that produced it;
+every diff was exactly one trailing blank line, which is `git log --format=%B`'s
+own formatting artefact and not a mismatch.
