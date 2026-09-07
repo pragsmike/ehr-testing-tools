@@ -38,7 +38,7 @@
 | person-simulator (what :persons costs) | 3 | 0.03% |
 | patient-simulator (the module cohort's walk) | 9 | 0.10% |
 | select-person (NOT on any prior list -- full pool scan per arrival) | 0 | 0.00% |
-| EDN parsing of the input log (reader, not invariants) | 30 | 0.35% |
+| EDN parsing of the input log -- EdnReader, which is what clojure.edn/read uses (cli/read-ground-truth-stdin); LispReader here read 0.35% of a phase whose parse is 20% | 1736 | 20.12% |
 | malli (residue after the 642d70a validator hoist) | 127 | 1.47% |
 
 #### Top-15 PROJECT frames, self AND inclusive

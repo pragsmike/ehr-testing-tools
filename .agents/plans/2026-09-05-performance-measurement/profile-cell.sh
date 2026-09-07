@@ -81,7 +81,7 @@ ehrt.sim_check.check|sim-check, whole namespace
 ehrt.person_simulator|person-simulator (what :persons costs)
 ehrt.patient_simulator|patient-simulator (the module cohort's walk)
 ehrt.sim_engine.run$select_person|select-person (NOT on any prior list -- full pool scan per arrival)
-clojure.lang.LispReader|EDN parsing of the input log (reader, not invariants)
+clojure.lang.EdnReader|EDN parsing of the input log -- EdnReader, which is what clojure.edn/read uses (cli/read-ground-truth-stdin); LispReader here read 0.35% of a phase whose parse is 20%
 malli.core|malli (residue after the 642d70a validator hoist)
 SITES
 

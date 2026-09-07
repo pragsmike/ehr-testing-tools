@@ -155,11 +155,31 @@ the page cache exactly as well as a full repeat of the cell would.
 ## The other two instruments
 
 [`profile-cell.sh`](profile-cell.sh) flight-records a cell's generate
-and check phases and aggregates `jdk.ExecutionSample` two ways — self
-time by top frame, and INCLUSIVE share for a list of named sites, which
-is the one that answers whether `occupancy-board` still shows and at
-what share. Zero new dependency: the recorder ships in the JVM and the
-reader is `jfr`, a JDK 21 tool.
+and check phases and aggregates `jdk.ExecutionSample` four ways — self
+time by top frame; INCLUSIVE share for a list of named sites, which is
+the one that answers whether `occupancy-board` still shows and at what
+share; PROJECT FRAMES with self and inclusive share side by side, which
+is the one that names a site nobody thought to name; and the
+`apply-events` CONCERN BREAKDOWN, which un-sums the one fold ADR-0180
+moved four indexes into. Zero new dependency: the recorder ships in the
+JVM and the reader is `jfr`, a JDK 21 tool.
+
+Its `--alloc` mode aggregates `jdk.ObjectAllocationSample` from the
+SAME recordings — `settings=profile` enables allocation sampling at a
+`300/s` throttle already, so the allocation profile and the CPU profile
+describe one run rather than two — by allocating project frame and by
+class, weight-summed rather than sample-counted.
+
+**A named site is only as good as the class it names.** This list held
+`clojure.lang.LispReader` for "EDN parsing of the input log" and
+reported 0.35% of a check phase whose parse is 20%: `clojure.edn/read`
+uses `EdnReader`, a different class. The project-frame table is what
+caught it, which is the argument for having both.
+
+[`gc-summarize.py`](gc-summarize.py) reduces one `-Xlog:gc*` log to the
+two figures the live-set question needs — peak PRE-collection occupancy
+(what a max heap must exceed) and the POST-collection floor (what the
+run actually retains) — plus a decimated series small enough to commit.
 
 [`scenario-census.sh`](scenario-census.sh) runs
 [`census-src/ehrt/perf/scenario_census.clj`](census-src/ehrt/perf/scenario_census.clj)
