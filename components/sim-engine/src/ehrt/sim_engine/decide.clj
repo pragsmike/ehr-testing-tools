@@ -259,7 +259,7 @@
                       (patient-simulator/compile-trajectory trajectory (:facility world) reg-t history?)))]
      {:persona persona :compiled compiled})))
 
-(defmethod decide :registered
+(defmethod decide :registered decide-registered
   [{rng :patient} t world patient-id {:keys [closure]}]
   ;; :active-mrn is REQUIRED here, not merely conventional: :registered
   ;; is now every patient's FIRST event, and `ehrt.sim-engine.fold/replay`
@@ -437,7 +437,7 @@
                (not= :expired (:status patient)))
       patient)))
 
-(defmethod decide :demographic-update
+(defmethod decide :demographic-update decide-demographic-update
   [_streams t world patient-id {:keys [cause field value person-event-id]}]
   (let [patient (demographic-target world patient-id)
         prior (get (:demographics patient) field)]
@@ -453,7 +453,7 @@
                  :participants [{:patient-id patient-id :role :subject}]}]
        :advance 0})))
 
-(defmethod decide :coverage-change
+(defmethod decide :coverage-change decide-coverage-change
   [_streams t world patient-id {:keys [cause payer person-event-id]}]
   (let [patient (demographic-target world patient-id)
         prior (:payer (:demographics patient))]
@@ -525,7 +525,7 @@
   (let [named (fn [c] (:name (first (filter #(= c (:class %)) (:wards facility)))))]
     (or (named want) (named :inpatient) (named :ed) (:name (first (:wards facility))))))
 
-(defmethod decide :person-encounter
+(defmethod decide :person-encounter decide-person-encounter
   ;; ADR-0173 section 2(c). The step carries WHAT the encounter is; this
   ;; method decides WHETHER it may happen at all, and prepends the
   ;; ordinary three-step encounter when it may.
@@ -565,7 +565,7 @@
                        {:type :delay :from stay-minutes :to stay-minutes}
                        {:type :discharge}]})))
 
-(defmethod decide :repeat-arrival
+(defmethod decide :repeat-arrival decide-repeat-arrival
   ;; ARC 3B SWEEP 1 (ADR-0174 section 2(a), ruling A1). A REPEAT ARRIVAL
   ;; -- an arrival ordinal whose person already has a patient -- queued
   ;; NOTHING before this sweep, because a second `:admission` for a
@@ -642,7 +642,7 @@
 
 (defn days->seconds [d] (* 86400 (long d)))
 
-(defmethod decide :appointment
+(defmethod decide :appointment decide-appointment
   ;; The step carries WHAT is being booked (`:lead-seconds`,
   ;; `:appointment-class`, `:reason`) and WHAT RUNS at `:scheduled-t` if
   ;; it is kept (`:steps`). Both of this sweep's two producers build the
@@ -723,7 +723,7 @@
                     :prepend-steps stamped}
       {:events [booking] :advance lead-seconds :prepend-steps stamped})))
 
-(defmethod decide :no-show
+(defmethod decide :no-show decide-no-show
   ;; Emitted AT `:scheduled-t` (ADR-0174 section 2(b)'s own table) and
   ;; opening nothing -- which is precisely why a no-show cannot be
   ;; DERIVED from an encounter, the alternative that section rejects.
@@ -760,7 +760,7 @@
                   (assoc :residence residence))]
        :advance 0})))
 
-(defmethod decide :identity-fill
+(defmethod decide :identity-fill decide-identity-fill
   ;; ADR-0173 section 2(d), the `:fill` branch of `:identity-resolution`:
   ;; the placeholder patient KEEPS their patient-id and their MRN, and
   ;; every demographic field is filled in from the person's real
@@ -786,7 +786,7 @@
   [_streams t world patient-id step]
   (identity-fill-outcome t world patient-id step))
 
-(defmethod decide :identification-merge
+(defmethod decide :identification-merge decide-identification-merge
   ;; ADR-0173 section 2(d), the `:merge` branch. The event is churn's own
   ;; `:merge` -- same kind, same `:survivor`/`:merged` roles, same
   ;; `:surviving-mrn`/`:merged-mrn`/`:merged-mrns` payload -- so
@@ -1026,7 +1026,7 @@
   [step]
   (if-let [id (:appointment-id step)] {:appointment-id id} {}))
 
-(defmethod decide :admission
+(defmethod decide :admission decide-admission
   [{world-rng :world facility-rng :facility} t world patient-id
    {:keys [location force-placement] :as step}]
   ;; ADR-0171: the bed choice is WORLD (its candidate set is `free`
@@ -1069,7 +1069,7 @@
                          (appointment-ref-field step))]
          :advance 0}))))
 
-(defmethod decide :delay
+(defmethod decide :delay decide-delay
   [{rng :patient} _t _world _patient-id {:keys [from to]}]
   ;; :from/:to are authored in MINUTES (pathway.clj IR, unchanged --
   ;; sim/ADR-0011 decision 1's authoring-ergonomics carve-out); the engine
@@ -1091,7 +1091,7 @@
   {:events []
    :advance (* 60 (if (= from to) from (streams/rand-int-in rng from to)))})
 
-(defmethod decide :transfer
+(defmethod decide :transfer decide-transfer
   ;; ARC 3B SWEEP 2 (ADR-0174 ruling D1): `:facility` joins because the
   ;; TURNAROUND draw for the bed this transfer vacates is a facility
   ;; draw -- it reads a ward's config and no patient state at all.
@@ -1207,7 +1207,7 @@
      :bed-ready true
      :participants [{:patient-id waiting-id :role :subject}]}))
 
-(defmethod decide :discharge
+(defmethod decide :discharge decide-discharge
   ;; ARC 3B SWEEP 2 (ADR-0174 section 2(c)): `:facility` joins for the
   ;; turnaround draw, and this is the ONE existing behaviour arc 3b
   ;; CHANGES rather than extends. With `:bed-cycle` on, the paired
@@ -1298,7 +1298,7 @@
 ;; emits nothing, so the bed stays correctly occupied and only the
 ;; check-side enumeration was incomplete.
 
-(defmethod decide :bed-cleaning
+(defmethod decide :bed-cleaning decide-bed-cleaning
   [{facility-rng :facility} t world _patient-id {:keys [bed ward]}]
   (if (= :dirty (bed-status world bed))
     {:events [(bed-status-change t bed ward :dirty :cleaning nil)]
@@ -1308,7 +1308,7 @@
                          :steps [{:type :bed-ready :bed bed :ward ward}]}}
     {:events [] :advance 0}))
 
-(defmethod decide :bed-ready
+(defmethod decide :bed-ready decide-bed-ready
   [{world-rng :world facility-rng :facility} t world _patient-id {:keys [bed ward]}]
   (if-not (= :cleaning (bed-status world bed))
     {:events [] :advance 0}
@@ -1371,7 +1371,7 @@
                :reason reason}]
     {:events [event] :advance 0 :rejected (merge {:reason reason :patient-id patient-id} extra)}))
 
-(defmethod decide :cancel-admit
+(defmethod decide :cancel-admit decide-cancel-admit
   [_streams t world patient-id step]
   ;; ADR-0180 site 4: the maintained index, read not rebuilt -- and this
   ;; method needs the LOG for nothing else, so its `ground-truth`
@@ -1386,7 +1386,7 @@
                    :participants [{:patient-id patient-id :role :subject}]}]
          :advance 0}))))
 
-(defmethod decide :transfer-in-error
+(defmethod decide :transfer-in-error decide-transfer-in-error
   [{world-rng :world} t world patient-id {:keys [location force-placement]}]
   (let [{:keys [facility patients ground-truth]} world
         ;; ADR-0180 site 3: the maintained board, read not rebuilt.
@@ -1411,7 +1411,7 @@
                           :participants [{:patient-id patient-id :role :subject}]}]
         {:events [transfer-event cancel-event] :advance 0}))))
 
-(defmethod decide :bed-swap
+(defmethod decide :bed-swap decide-bed-swap
   ;; ADR-0180 site 6, 2026-09-07. A whole-collection scan used to stand
   ;; in this `let` and does not now.
   ;;
@@ -1467,7 +1467,7 @@
                                   (assoc :encounter-id (:encounter-id (:encounter peer))))}}]
        :advance 0})))
 
-(defmethod decide :merge
+(defmethod decide :merge decide-merge
   ;; ADR-0180 site 5, 2026-09-07. TWO whole-collection scans used to
   ;; stand in this `let` and neither does now.
   ;;
@@ -1524,7 +1524,7 @@
 ;; --- M3: order/result (auto-paired, docs/sim-theory.edn's order-profiles
 ;; catalytic) ---------------------------------------------------------------
 
-(defmethod decide :order
+(defmethod decide :order decide-order
   [{rng :patient} t world patient-id {:keys [profile]}]
   (let [{:keys [patients ground-truth order-profiles]} world
         patient (get patients patient-id)
@@ -1587,14 +1587,14 @@
      :schedule-followup {:t result-t :patient-id patient-id
                          :steps [{:type :result-followup :result-event result-event}]}}))
 
-(defmethod decide :result-followup
+(defmethod decide :result-followup decide-result-followup
   [_streams _t _world _patient-id {:keys [result-event]}]
   {:events [result-event] :advance 0})
 
 ;; --- M5b: :outpatient-visit / :outpatient-visit-end (components/patient-simulator/docs/gmf-interpreter.md
 ;; section 4's sketch, items 5-7) --------------------------------------------
 
-(defmethod decide :outpatient-visit
+(defmethod decide :outpatient-visit decide-outpatient-visit
   [{facility-rng :facility} t world patient-id step]
   ;; Item 5: NO sim-model/allocate call -- an outpatient encounter occupies
   ;; no bed, so there is no ladder to consult. Still gets an attending
@@ -1618,7 +1618,7 @@
                      (appointment-ref-field step))]
      :advance 0}))
 
-(defmethod decide :outpatient-visit-end
+(defmethod decide :outpatient-visit-end decide-outpatient-visit-end
   [_streams t world patient-id step]
   (let [patient (get-in world [:patients patient-id])]
     {:events [(merge {:event :outpatient-visit-end :t t :active-mrn (:active-mrn patient)
@@ -1635,7 +1635,7 @@
 ;; consumes RNG -- their content was already fully sampled by the GMF
 ;; interpreter (M5a); CompileTrajectory/the engine only replay it.
 
-(defmethod decide :procedure
+(defmethod decide :procedure decide-procedure
   [_streams t world patient-id {:keys [codes] :as step}]
   (let [patient (get-in world [:patients patient-id])]
     {:events [(merge {:event :procedure :t t :active-mrn (:active-mrn patient) :codes codes
@@ -1643,7 +1643,7 @@
                      (citation-fields step))]
      :advance 0}))
 
-(defmethod decide :observation
+(defmethod decide :observation decide-observation
   [_streams t world patient-id {:keys [codes] :as step}]
   (let [patient (get-in world [:patients patient-id])]
     {:events [(merge {:event :observation :t t :active-mrn (:active-mrn patient) :codes codes}
@@ -1658,7 +1658,7 @@
 ;; :observations vector, mirroring how the compiled IR step itself
 ;; bundles children (never one event per child).
 
-(defmethod decide :diagnostic-report
+(defmethod decide :diagnostic-report decide-diagnostic-report
   [_streams t world patient-id {:keys [codes observations] :as step}]
   (let [patient (get-in world [:patients patient-id])]
     {:events [(merge {:event :diagnostic-report :t t :active-mrn (:active-mrn patient) :observations observations}
@@ -1667,7 +1667,7 @@
                      (citation-fields step))]
      :advance 0}))
 
-(defmethod decide :medication-order
+(defmethod decide :medication-order decide-medication-order
   [_streams t world patient-id {:keys [codes] :as step}]
   (let [patient (get-in world [:patients patient-id])]
     {:events [(merge {:event :medication-order :t t :active-mrn (:active-mrn patient) :codes codes
@@ -1696,7 +1696,7 @@
   (when (contains? world :person-index)
     (get (:person-index world) person-id)))
 
-(defmethod decide :medication-end
+(defmethod decide :medication-end decide-medication-end
   [_streams t world patient-id {:keys [order-citation] :as step}]
   ;; Resolved by CITATION match against ground-truth, never a pathway-
   ;; position index (pathway.clj's own :medication-end docstring) -- the
@@ -1732,7 +1732,7 @@
 ;; decide/evolve shape :medication-order/:medication-end establish,
 ;; two defmethod-pairs up.
 
-(defmethod decide :care-plan-start
+(defmethod decide :care-plan-start decide-care-plan-start
   [_streams t world patient-id {:keys [codes activities] :as step}]
   (let [patient (get-in world [:patients patient-id])]
     {:events [(merge {:event :care-plan-start :t t :active-mrn (:active-mrn patient) :codes codes}
@@ -1741,7 +1741,7 @@
                      (citation-fields step))]
      :advance 0}))
 
-(defmethod decide :care-plan-end
+(defmethod decide :care-plan-end decide-care-plan-end
   [_streams t world patient-id {:keys [care-plan-citation] :as step}]
   ;; Resolved by CITATION match against ground-truth, never a pathway-
   ;; position index -- the same glass-box, position-independent
@@ -1758,7 +1758,7 @@
                      (citation-fields step))]
      :advance 0}))
 
-(defmethod decide :cancel-transfer
+(defmethod decide :cancel-transfer decide-cancel-transfer
   [_streams t world patient-id step]
   (let [ground-truth (:ground-truth world)
         ;; ADR-0180 site 4: the maintained index, read not rebuilt.
@@ -1790,7 +1790,7 @@
                      :participants [{:patient-id patient-id :role :subject}]}]
            :advance 0})))))
 
-(defmethod decide :cancel-discharge
+(defmethod decide :cancel-discharge decide-cancel-discharge
   [_streams t world patient-id step]
   (let [ground-truth (:ground-truth world)
         ;; ADR-0180 site 4: the maintained index, read not rebuilt.

@@ -99,7 +99,7 @@
   once per participant."
   (fn [_patient event] (:event event)))
 
-(defmethod evolve :registered
+(defmethod evolve :registered evolve-registered
   ;; ADR-0173 section 2(b): `:demographics` is seeded HERE, from the same
   ;; Persona, and `:persona` keeps its t0 meaning untouched -- so all
   ;; fourteen t0-only census sites read exactly what they always read.
@@ -135,7 +135,7 @@
 ;; field in it, which would be a demographic state claiming every other
 ;; field is unknown.
 
-(defmethod evolve :demographic-update
+(defmethod evolve :demographic-update evolve-demographic-update
   ;; ARC 3A PART 4: `:cause :identity-fill` is the one branch that writes
   ;; the WHOLE demographic state rather than one field of it, because
   ;; that is what the fact is -- the record now belongs to a known
@@ -152,7 +152,7 @@
     (cond-> patient
       (some? (:demographics patient)) (assoc-in [:demographics field] value))))
 
-(defmethod evolve :coverage-change
+(defmethod evolve :coverage-change evolve-coverage-change
   [patient {:keys [payer]}]
   (cond-> patient
     (some? (:demographics patient)) (assoc-in [:demographics :payer] payer)))
@@ -197,7 +197,7 @@
   [patient appointment-id]
   (resolve-appointment patient appointment-id :kept))
 
-(defmethod evolve :admission
+(defmethod evolve :admission evolve-admission
   ;; ARC 3B SWEEP 1: opens the encounter. `open-encounter` reads the
   ;; PRE-admission patient, so the ordinal it takes counts what this
   ;; patient had before, never including the encounter being opened.
@@ -219,11 +219,11 @@
              :encounter (encounters/open-encounter patient event))
       (fold-conditions t encounter-id conditions)))
 
-(defmethod evolve :transfer
+(defmethod evolve :transfer evolve-transfer
   [patient {:keys [location home-ward]}]
   (assoc patient :location location :home-ward home-ward))
 
-(defmethod evolve :discharge
+(defmethod evolve :discharge evolve-discharge
   ;; ARC 3B SWEEP 1: the non-expired arm CLOSES the encounter -- conj the
   ;; open record, stamped with the state the discharge itself leaves,
   ;; onto `:encounters` and drop `:encounter`. THE `:expired` ARM IS
@@ -249,18 +249,18 @@
 
 ;; --- M2b: churn family evolves -------------------------------------------
 
-(defmethod evolve :cancel-admit
+(defmethod evolve :cancel-admit evolve-cancel-admit
   [patient _event]
   (-> patient
       (assoc :status :new)
       (dissoc :class :home-ward :location :attending :admitted-at)
       encounters/cancel-open-encounter))
 
-(defmethod evolve :cancel-transfer
+(defmethod evolve :cancel-transfer evolve-cancel-transfer
   [patient {:keys [home-ward location]}]
   (assoc patient :home-ward home-ward :location location))
 
-(defmethod evolve :cancel-discharge
+(defmethod evolve :cancel-discharge evolve-cancel-discharge
   ;; M6 Task 2 finding: :class must be part of the reinstatement, not
   ;; merely :home-ward/:location/:attending -- a degenerate but
   ;; structurally legal churn sequence (cancel-admit against an
@@ -283,11 +283,11 @@
       ;; encounter, not two.
       encounters/reopen-encounter))
 
-(defmethod evolve :bed-swap
+(defmethod evolve :bed-swap evolve-bed-swap
   [patient {:keys [swap]}]
   (assoc patient :location (get-in swap [(:patient-id patient) :to])))
 
-(defmethod evolve :merge
+(defmethod evolve :merge evolve-merge
   ;; ADR-0179 R-bed. The `:merged` arm used to set a status and nothing
   ;; else, which is how the absorbed record kept the bed it held at the
   ;; instant it stopped being a patient: nothing after the merge ever
@@ -322,7 +322,7 @@
 ;; --- sim/ADR-0012: :step-rejected -- truth about the run, never a state
 ;; transition (the attempted step never actually happened) --------------
 
-(defmethod evolve :step-rejected
+(defmethod evolve :step-rejected evolve-step-rejected
   [patient _event]
   patient)
 
@@ -330,11 +330,11 @@
 ;; (docs/patient-state-model.md's accumulator has no order/result-history
 ;; field; the log itself is the history, queried directly, sim/ADR-0008) ------
 
-(defmethod evolve :order-placed
+(defmethod evolve :order-placed evolve-order-placed
   [patient _event]
   patient)
 
-(defmethod evolve :result-available
+(defmethod evolve :result-available evolve-result-available
   ;; M6 Task 1: EVERY analyte in :results becomes its own ObservationRecord
   ;; -- order-profiles' richer shape (reference-range/computed abnormal
   ;; flag) is exactly what Observation.referenceRange/interpretation
@@ -356,7 +356,7 @@
 ;; named exception to "never nil-bed while admitted" (docs/patient-state-
 ;; model.md's event-validity table, the conditional row this milestone adds).
 
-(defmethod evolve :outpatient-visit
+(defmethod evolve :outpatient-visit evolve-outpatient-visit
   ;; ARC 3B SWEEP 3: the SECOND opener, and the one a follow-up produces
   ;; -- so this is where a scheduled return visit closes its own
   ;; appointment `:kept`.
@@ -367,7 +367,7 @@
              :encounter (encounters/open-encounter patient event))
       (fold-conditions t encounter-id conditions)))
 
-(defmethod evolve :outpatient-visit-end
+(defmethod evolve :outpatient-visit-end evolve-outpatient-visit-end
   [patient {:keys [t]}]
   (-> patient
       (assoc :status :discharged :discharged-at t)
@@ -379,7 +379,7 @@
 ;; (`keep-appointment`, below), because "kept" is not an event -- it is
 ;; the encounter happening.
 
-(defmethod evolve :appointment
+(defmethod evolve :appointment evolve-appointment
   ;; A SECOND BOOKING ARCHIVES THE OPEN ONE rather than dropping it --
   ;; appointments can overlap (see `next-appointment-ordinal`), and a
   ;; dropped record both loses its resolution and un-monotones the
@@ -399,7 +399,7 @@
                     :appointment-class appointment-class}
              reason (assoc :reason reason)))))
 
-(defmethod evolve :reschedule
+(defmethod evolve :reschedule evolve-reschedule
   ;; NOT terminal: it moves `:scheduled-t` and leaves the record open,
   ;; which is why the id is kept rather than re-minted. Like the three
   ;; resolutions it must reach a DISPLACED record too, for
@@ -412,11 +412,11 @@
               (fn [as] (mapv #(if (= appointment-id (:appointment-id %)) (move %) %)
                              (or as [])))))))
 
-(defmethod evolve :appointment-cancel
+(defmethod evolve :appointment-cancel evolve-appointment-cancel
   [patient {:keys [appointment-id]}]
   (resolve-appointment patient appointment-id :cancelled))
 
-(defmethod evolve :no-show
+(defmethod evolve :no-show evolve-no-show
   [patient {:keys [appointment-id]}]
   (resolve-appointment patient appointment-id :no-show))
 
@@ -425,7 +425,7 @@
 ;; set, M6 Task 1 -- "keep the resource set to what state actually
 ;; holds," applied by never accumulating what nothing renders).
 
-(defmethod evolve :procedure [patient _event] patient)
+(defmethod evolve :procedure evolve-procedure [patient _event] patient)
 
 ;; --- M6 Task 1: :observation/:medication-order/:medication-end now land
 ;; in the clinical-content accumulator (`ehrt.sim-engine.state`'s own
@@ -433,7 +433,7 @@
 ;; MedicationRequest resources render from exactly these records,
 ;; nothing re-derived from the log.
 
-(defmethod evolve :observation
+(defmethod evolve :observation evolve-observation
   [patient {:keys [t codes encounter-id] :as event}]
   (update patient :observations (fnil conj [])
           (cond-> (merge {:codes codes :t t} (state/observation-value-fields event))
@@ -444,7 +444,7 @@
 ;; :result-available's own per-analyte flattening already establishes
 ;; (below), reused rather than a third accumulator shape invented.
 
-(defmethod evolve :diagnostic-report
+(defmethod evolve :diagnostic-report evolve-diagnostic-report
   [patient {:keys [t observations encounter-id]}]
   (update patient :observations (fnil into [])
           (mapv (fn [{:keys [codes] :as entry}]
@@ -452,13 +452,13 @@
                     encounter-id (assoc :encounter-id encounter-id)))
                 observations)))
 
-(defmethod evolve :medication-order
+(defmethod evolve :medication-order evolve-medication-order
   [patient {:keys [t codes citation encounter-id]}]
   (update patient :medication-orders (fnil conj [])
           (cond-> {:codes codes :citation citation :ordered-t t :status :active}
             encounter-id (assoc :encounter-id encounter-id))))
 
-(defmethod evolve :medication-end
+(defmethod evolve :medication-end evolve-medication-end
   ;; Citation-based, position-independent resolution (this project's
   ;; standing preference over a fragile index, docs/patient-state-
   ;; model.md's deterministic-event-id section) -- matches
@@ -480,14 +480,14 @@
 ;; defmethod-pair up -- CarePlan itself is v2-silent (R3), this record
 ;; exists for the fold and a future sim-emit-fhir consumer.
 
-(defmethod evolve :care-plan-start
+(defmethod evolve :care-plan-start evolve-care-plan-start
   [patient {:keys [t codes activities citation encounter-id]}]
   (update patient :care-plans (fnil conj [])
           (cond-> {:codes codes :citation citation :started-t t :status :active}
             activities (assoc :activities activities)
             encounter-id (assoc :encounter-id encounter-id))))
 
-(defmethod evolve :care-plan-end
+(defmethod evolve :care-plan-end evolve-care-plan-end
   [patient {:keys [t care-plan-citation]}]
   (if-let [idx (when care-plan-citation
                  (last (keep-indexed (fn [i m] (when (and (= :active (:status m)) (= care-plan-citation (:citation m))) i))
