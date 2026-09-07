@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# The VERDICT bracket (ADR-0180 site 7, ruling R-verdict-bracket,
+# 2026-09-07): does `check-all` return the same answer when it is
+# HANDED a record projection as when it folds one for itself?
+#
+# WHY THIS EXISTS AND `bin/ground-truth-bracket` DOES NOT DO IT. Site 7
+# moves no ground-truth byte BY CONSTRUCTION -- it changes only how the
+# checker gets its records -- so the ground-truth bracket reports
+# IDENTICAL before the session starts and would still report IDENTICAL
+# if every invariant in the catalog had been quietly disabled. It is
+# necessary here and it says almost nothing. What site 7 actually owes
+# is VERDICT identity, and this is the instrument for that claim.
+#
+# THIS IS NOT A REGRESSION-ORACLE CLAIM either
+# (`rulings.md#R-oracle-script-contract` reserves that phrase for
+# `bin/regression-oracle`'s own whole-pair digests) and it is not a
+# ground-truth bracket: it digests VERDICTS -- `check-all`'s violation
+# vector -- and no corpus byte at all. A site-7 commit owes both lines:
+# this one IDENTICAL and `bin/ground-truth-bracket` IDENTICAL.
+#
+# ONE TREE, NOT TWO REFS. Both brackets in `bin/` compare two commits
+# through disposable worktrees; this one compares two WAYS THROUGH THE
+# SAME TREE, so it runs against the working tree as edited -- which is
+# the point, since the thing under test is a call shape a session is in
+# the middle of changing.
+#
+# Usage:
+#   bin/check-verdict-bracket                 # roots + control + all three cells
+#   bin/check-verdict-bracket --roots-only    # roots + control (the cheap form)
+#   bin/check-verdict-bracket a2500-nopersons # roots + control + one named cell
+#
+# THE ORACLE ROOTS ARE REGENERATED ON EVERY RUN, into a temporary
+# directory outside the tree: they are the same roots
+# `bin/regression-oracle` digests, and reading them from a stale
+# directory would be a comparison against a corpus this tree no longer
+# produces.
+#
+# Exit 0 on IDENTICAL, 1 on DIFFERS, on an empty population, or on a
+# negative control whose own violation vector came back empty.
+set -euo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+cd -- "$repo_root"
+
+work="$(mktemp -d)"
+cleanup() { rm -rf "$work"; }
+trap cleanup EXIT
+
+roots="$work/roots"
+mkdir -p "$roots"
+
+# The oracle's own entry point, through its own component interface --
+# `bin/regression-oracle` invokes exactly this namespace (AR-P-3). The
+# `:oracle-run` alias is what puts `components/patient-simulator/test`
+# on the path, where the vendored-module fleet the batch roots walk
+# lives; `bin/oracle-lib.sh` adds the same path for the same reason.
+echo "== regenerating the oracle's roots into $roots ==" >&2
+clojure -J-Xmx6g \
+        -Sdeps '{:aliases {:oracle-run {:extra-paths ["components/patient-simulator/test"]}}}' \
+        -M:dev:oracle-run -m ehrt.oracle.interface "$roots" >&2
+
+# `-J-Xmx10g` IS NOT TIDINESS. This process holds a whole cell's
+# ground-truth log AND both of the projections under comparison at once,
+# which no shipped command ever does: `ehrt sim run` streams its log to
+# stdout and exits, and `ehrt sim check` reads one and holds no run. At
+# the top cell that is several copies of a 175 MB corpus's worth of
+# structure against a 3.88 GB default `MaxHeapSize`, and an instrument
+# that dies of its own footprint reports nothing about the code it was
+# pointed at.
+clojure -J-Xmx10g \
+        -Sdeps '{:aliases {:verdict-bracket {:extra-paths ["bin/check-verdict-bracket-src"
+                                                           "components/patient-simulator/test"]}}}' \
+        -M:dev:verdict-bracket -m ehrt.check-verdict.bracket \
+        "$roots" ".agents/plans/2026-09-05-performance-measurement" "$@"
