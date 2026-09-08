@@ -138,9 +138,17 @@ the thing you want to diff between two runs.
 merges; it does not say whether any absorbed a patient who was holding
 a bed, or whether a result ever landed after its own subject was merged
 away — and those decide whether a corpus can exercise the case you are
-about to write a test for. One 533,147-event run here holds 33,681
-results and **zero** landing post-merge, so that case is not reachable
-by generating more. The inventory is the fixed set of columns that says
+about to write a test for. Those 2,850 merges yield **43** results
+landing post-merge across a 533,147-event run holding 33,681 results in
+all, and the 7,500-arrival cell of
+[`demos/scenarios/dense-7500/`](../demos/scenarios/dense-7500/README.md)
+— `config.edn` byte for byte — yields **21**. The case is reachable;
+it is just far too thin for any count of merges or of results to stand
+in for. A first pass over these same logs read that column as zero, and
+the zero was the predicate asking for a state the engine cannot produce
+rather than the case being out of reach
+([the correction](../.agents/plans/2026-09-05-performance-measurement/measurements.md)).
+The inventory is the fixed set of columns that says
 so: results landing after their subject moved, was discharged or was
 merged; merges absorbing a bed-holder; cancels reinstating a bed; peak
 ward census against capacity.
