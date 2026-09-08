@@ -131,9 +131,11 @@ bin/ehrt sim run --seed 20260824 --patients 750 --churn --config demos/scenarios
 demonstration, and the decade below the headline cell runs in a
 fraction of its time. The same flag works at any arrival count, and
 [`docs/consuming-ground-truth.md`](../../../docs/consuming-ground-truth.md#scale)
-is where the case for taking it at 10^6 is argued -- **it is the only
-path that reaches that decade**, and the reason is the emitter's peak
-heap rather than the log's.
+is where the case for taking it at scale is argued -- **it is the
+cheaper path on heap, by a margin that widens as the corpus grows**,
+because the emitter's peak rather than the log's is what binds first.
+Whether it is the ONLY path that reaches 10^6 is not something this
+repository has run.
 
 ## What to look for
 

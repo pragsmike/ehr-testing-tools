@@ -186,8 +186,8 @@ Emit as the run goes rather than accumulating a whole corpus in memory
 first, so corpus size stops being bounded by heap. The measurement cuts
 both ways: with an emitter running the emit phase binds first
 ([Scale](consuming-ground-truth.md#scale)); with **no emitter at all**,
-on `--format ground-truth`, the retained log still reaches the shipped
-3.88 GB ceiling on its own at ~533,000 events.
+on `--format ground-truth`, the retained log is still held whole in
+memory and binds on its own further up the same curve.
 
 *Today:* `--format ground-truth` is the cheap path; a consumer who
 writes their own emitter is not paying the emit phase at all.

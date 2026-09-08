@@ -572,8 +572,11 @@ the 2026-08-29 programme's own method, which the three labelled
 paragraphs below still report, is in
 `.agents/plans/2026-08-24-traffic-scale-program.md`'s appendix.
 
-**10^5 events is comfortable; 10^6 is not, and the reason is the
-emitter.**
+**10^5 events is comfortable. The decade above it has since been
+entered — this configuration has been run to 22,500 arrivals under the
+index-and-fold programme[^adr-0180] — but that cell is not quoted here
+until it is a committed one, and 10^6 events have not been run at
+all.**
 
 | Cell | events | messages | msg/event | process wall |
 |---|---|---|---|---|
@@ -621,7 +624,8 @@ volume per event at 10^3, and 2.11× at 10^5**.
 **Generate dominates, and it is super-linear.** Log-log slope over the
 10^4 → 10^5 decade, all-keys series: generate **1.624**, the person
 layer **1.061** (linear, and 13% of the cell), check **sub-linear at
-0.914**. The remaining generate-side super-linearity is tracked at
+0.914**. The remaining generate-side super-linearity this reports has
+since been worked and closed —
 `.agents/plans/roadmap.md#performance-residual-sites`.
 
 **Ground-truth-only is the cheap path, and it is the only one that
@@ -635,7 +639,11 @@ emission, not the log.** A consumer who takes `--format ground-truth`
 and writes their own emitter is not paying it. Emit and spool together
 are 11% of a 10^5 wall (13.0 s of 118.9 s), so on wall clock the saving
 is modest; on heap at 10^6 it is the whole difference between running
-and not.
+and not. **That last conclusion is superseded in DIRECTION by the
+index-and-fold programme**[^adr-0180], which moved both the walls and
+the peak heap this arithmetic was projected from — the figures above
+stay un-re-measured, so what the decline rests on has moved and by how
+much is not stated here.
 
 ## Provenance
 
