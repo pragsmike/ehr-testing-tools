@@ -171,5 +171,26 @@ No roadmap row changed: `performance-residual-sites` was already CLOSED
 before this session, and this session cited it rather than moving it.
 
 Background processes started and terminated: three `make test` runs,
-each run to completion and reaped by the harness; no waiter was left
-running.
+each run to completion and reaped by the harness, and one harness
+monitor over the CI run, which timed out and was not re-armed. Nothing
+was left running.
+
+## One finding, this session's own instrumentation
+
+**The CI monitor never fired, and its silence read exactly like "still
+running".** Its probe passed a jq format string through a nested `wsl -e
+bash -lc` quoting layer, which mangled it; the loop's own `|| true` then
+swallowed the resulting error, so for an hour it compared an error
+string against the terminal-status pattern once a minute and matched
+nothing. The run itself concluded `success` in 16m05s, well inside the
+window, and `gh run view` read that back directly the moment the
+timeout notification arrived.
+
+Two lessons, one standing and one new. The standing one is this
+wrapper's: a format string carrying `\(` does not survive the crossing,
+and anything with nested quoting belongs in a file rather than inline
+(the same hazard bit a second time in this session, on the edit that
+added this very paragraph). The new one is the monitor's: a probe whose
+failure mode is SILENCE must print its failure rather than suppress it
+-- `|| true` is the wrong default for a watcher, because the shape of a
+broken probe and the shape of a job still running are identical.
