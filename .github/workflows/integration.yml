@@ -1,13 +1,23 @@
 # Nightly/manual integration workflow (ENF-1 doctrine, restored
 # ADR-0004, 2026-07-28, carve-loss recovery session -- original:
-# notes/tools/prompts/2026-07-25-enf1-enforcement-wave.md). Runs
-# `projects/integration`'s own suite: every namespace that needs real
-# cached artifacts, network, and the real FHIR validator subprocess --
+# notes/tools/prompts/2026-07-25-enf1-enforcement-wave.md). Runs `make
+# integration`, which is the single definition of this tier: first
+# `projects/integration`'s own suite -- every namespace that needs real
+# cached artifacts, network, and the real FHIR validator subprocess,
 # which the per-push lane (.github/workflows/test.yml) deliberately
-# excludes (`skip:integration`). Scheduled nightly plus on-demand via
-# workflow_dispatch, never on push/PR; its failure reports without
-# blocking anything -- nothing in this repo's branch protection or
-# test.yml references this workflow's status.
+# excludes (`skip:integration`) -- under the suite's own tmpdir,
+# out/test-tmp, cleared per run; then the ten exerciser scripts, each
+# replaying a demo scenario's or use case's own documented command
+# sequence under per-step exit-code assertions. Invoking the Makefile
+# target rather than `poly test` directly is what closes ADR-0120's
+# disclosed scope note (notes/adr/0120-manual-s2-exerciser-and-
+# chapter3.md): until now every exerciser header claimed
+# "integration-tier only (`make integration`)" while no exerciser had
+# ever run in CI. The per-push lane still admits no exerciser.
+# Scheduled nightly plus on-demand via workflow_dispatch, never on
+# push/PR; its failure reports without blocking anything -- nothing in
+# this repo's branch protection or test.yml references this workflow's
+# status.
 #
 # ENF-1's own stop-clause, quoted verbatim (notes/tools/prompts/
 # 2026-07-25-enf1-enforcement-wave.md, Step 3): "If any secret/licensing
@@ -25,6 +35,11 @@
 # A live external distribution point (GitHub's release-asset hosting)
 # failing is signal about artifact availability, not CI flakiness to
 # retry around.
+#
+# The three artifacts primed below serve the suite only: the ten
+# exercisers are sim-only, and gov.nist coordinates already resolve
+# from hit-nexus for project:integration (projects/integration/deps.edn
+# :mvn/repos), so the job gains no new network by running them.
 
 name: Integration
 
@@ -85,5 +100,5 @@ jobs:
       - name: poly check
         run: clojure -M:poly check
 
-      - name: poly test :all project:integration
-        run: clojure -M:poly test :all project:integration
+      - name: make integration
+        run: make integration
