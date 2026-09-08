@@ -44,13 +44,36 @@ help:
 	@echo "  mirror-nist  - build ~/.ehrt/nist-mirror/ from this user's own ~/.m2 cache, sha256-verified against artifacts.lock.edn (ADR-0053) -- offline determinism without redistribution"
 	@echo "  verify-nist-lock - check every hit-nexus-sourced artifacts.lock.edn entry's sha256 against ~/.m2 (ADR-0053); also runs as part of 'test'"
 
+# THE SUITE GETS ITS OWN TMPDIR, cleared per run (2026-09-07). 62 call
+# sites across 33 test namespaces create temp files and directories and
+# not one of them deletes what it made -- `File/createTempFile` has no
+# cleanup of its own and `deleteOnExit` cannot remove a non-empty
+# directory -- so every run used to leave a few thousand entries in /tmp
+# permanently. One measurement: 1,060,928 entries, 37 GB, 451,209 of
+# them over a month old, on a machine whose WSL disk had run out.
+#
+# -J-Djava.io.tmpdir redirects all 62 at once, present and future, with
+# no test edit and so no risk to the suite; the rm -rf bounds it at one
+# run's worth. It is CONTAINMENT, not a fix -- the tests still leak,
+# they just leak somewhere the tool already owns and always deletes
+# (.gitignore's out/ is "always safe to delete"). Fixing the 62 sites
+# properly is a separate change; this one is what stops the bleeding.
+#
+# Deliberately NOT in deps.edn's own aliases: a bare `clojure -M:poly
+# test` would then need a directory nothing had created yet, and
+# `createTempFile` fails outright against a missing tmpdir. Here the
+# recipe that sets it is the recipe that makes it.
+TEST_TMP := $(CURDIR)/out/test-tmp
+
 test:
+	rm -rf "$(TEST_TMP)" && mkdir -p "$(TEST_TMP)"
 	clojure -M:poly check
-	clojure -M:poly test :all skip:integration
+	clojure -J-Djava.io.tmpdir="$(TEST_TMP)" -M:poly test :all skip:integration
 	bin/verify-nist-lock
 
 integration:
-	clojure -M:poly test :all project:integration
+	rm -rf "$(TEST_TMP)" && mkdir -p "$(TEST_TMP)"
+	clojure -J-Djava.io.tmpdir="$(TEST_TMP)" -M:poly test :all project:integration
 	bin/demo-exerciser-ed-tuesday
 	bin/demo-exerciser-clinic-decade
 	bin/demo-exerciser-dense-7500
