@@ -54,7 +54,16 @@
       file and the file carries the markers the exerciser splices
       between. Either half renamed without the other leaves a rewrite
       that changes nothing, which would read as `every count still
-      holds` forever."
+      holds` forever.
+
+  (g) THE FRONT DOOR QUOTES IT TOO -- the workspace README's own
+      msg/event sentence is a third quoting document, and it is prose
+      rather than a table row, so (b)'s population closure cannot reach
+      it. It went stale exactly the way the two tables did: it still
+      published the pre-ADR-0179 counts after both re-measures. Its two
+      bolded figures are located by the paragraph's opening clause and
+      held to the same merged file -- exactly two, so a third figure
+      added there fails rather than going unchecked."
   (:require [clojure.edn :as edn]
             [clojure.java.shell :as shell]
             [clojure.string :as str]
@@ -64,6 +73,7 @@
 (def ^:private readme-path "demos/scenarios/dense-7500/README.md")
 (def ^:private scale-doc-path "docs/consuming-ground-truth.md")
 (def ^:private exerciser-path "bin/demo-exerciser-dense-7500")
+(def ^:private root-readme-path "README.md")
 
 (def ^:private readme-header
   "| cell | arrivals | events | messages | msg/event | process wall | peak RSS |")
@@ -234,3 +244,52 @@
                  " -- the splice would then change nothing, which reads as 'every count still holds'"))
         (is (str/includes? script marker)
             (str exerciser-path " no longer carries " (pr-str marker) " -- see above"))))))
+
+;; -- (g) the front door's own two figures --
+
+(def ^:private root-readme-anchor
+  "The opening clause of the workspace README's msg/event sentence.
+  Reworded, the locator below finds nothing and this gate fails by
+  name rather than looping over an empty paragraph
+  (`rulings.md#R-empty-population-is-red`)."
+  "How much wire traffic one event turns into depends on what you switch")
+
+(def ^:private root-readme-figure-re
+  "A bold run opening on a decimal. The run may wrap a line -- the
+  README writes `**1.3327 messages per\\nevent**` -- so the whole run is
+  matched and its leading decimal taken."
+  #"\*\*([0-9]+\.[0-9]+)[^*]*\*\*")
+
+(defn- root-readme-figures
+  "The bolded figures of that one paragraph, in document order. nil when
+  the anchor clause is gone."
+  []
+  (let [lines (str/split-lines (slurp root-readme-path))
+        idx (first (keep-indexed #(when (str/includes? %2 root-readme-anchor) %1) lines))]
+    (when idx
+      (->> (drop idx lines)
+           (take-while #(not (str/blank? %)))
+           (str/join "\n")
+           (re-seq root-readme-figure-re)
+           (mapv #(Double/parseDouble (second %)))))))
+
+(deftest the-front-door-quotes-the-figures-file-test
+  (let [cells (merged-cells (figures))
+        found (root-readme-figures)]
+    (testing "the paragraph is located and publishes exactly two figures"
+      (is (= 2 (count found))
+          (str root-readme-path " publishes " (pr-str found) " under "
+               (pr-str root-readme-anchor)
+               " -- this gate holds exactly two msg/event figures there; a reworded "
+               "clause reads as none, and a third figure would go unchecked")))
+    (testing "all nine opt-in keys"
+      (is (== (:msg-per-event (:config-edn-7500 cells)) (first found))
+          (str root-readme-path " quotes " (first found)
+               " for the all-keys cell but " figures-path " holds "
+               (:msg-per-event (:config-edn-7500 cells))
+               " -- re-measure through the figures file, never a document")))
+    (testing "no opt-in key at all"
+      (is (== (:msg-per-event (:config-bare-7500 cells)) (second found))
+          (str root-readme-path " quotes " (second found)
+               " for the bare cell but " figures-path " holds "
+               (:msg-per-event (:config-bare-7500 cells)) " -- see above")))))
