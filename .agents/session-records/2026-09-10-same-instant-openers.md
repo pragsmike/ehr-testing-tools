@@ -72,6 +72,12 @@ The prediction the bracket tests is the one the prompt made: a VALID corpus neve
 has two pending openers at one instant, so shape B changes no byte of one. It
 held.
 
+`R-full-suite-before-push`, on the final tree (`d7c5f05d`, both commits in
+place): **MAKE_EXIT=0, 428 `Test results:` lines, 28,561 passes, 0 failures, 0
+errors.** Unpiped to `/tmp/suite.log`; the wrapper ends with `exit "$MAKE_EXIT"`.
+Per-machine counts are not comparable to a runner's and no claim is made that
+they are.
+
 Note what the bracket is BLIND to here, stated rather than left implied: its 38
 roots are fixed-seed golden runs, and none of them is a dense multi-thousand-
 arrival run with a person pool. The dense-6000 run in section 4 is what covers
