@@ -44,10 +44,33 @@
   ABSENT: `(= :new (:status patient))` -- this project's
   single-encounter horizon, the expression that was here before, so a
   run with no `:encounters` key behaves byte-for-byte as it always
-  has."
+  has.
+
+  `:pending-openers` IS A RESERVATION, and it is what makes this
+  question answerable at the instant it is asked (2026-09-10). THE
+  GUARD RUNS AT DECIDE TIME; ITS OPENER IS DEFERRED THROUGH THE QUEUE
+  -- every producer of an encounter answers with STEPS rather than with
+  an event, so `(:encounter patient)` is still nil when a SECOND
+  producer asks at the SAME `t`. Two arrival ordinals binding one
+  person at one instant is the shape that found this in the field
+  (`bin/demo-exerciser-dense-7500`, `--patients 6000 --seed 20260824
+  --churn`, ordinals 1897 and 1898): both openers fired and
+  `admission-only-when-no-open-encounter` went red over the finished
+  log. `run`'s loop carries the set of patient-ids whose next step IS
+  an opener and overlays it on the world it hands `decide`; this reads
+  it, so the runtime guard and the log-time invariant see the same
+  world again.
+
+  ABSENT AND EMPTY ARE THE SAME ANSWER -- `contains?` on nil is false
+  -- which is the hand-built-world tolerance every carried index in
+  `init-world` already has, on the KEY and never on an entry. And it
+  rides the OPT-IN arm ONLY: without `:encounter-minting` the legacy
+  `:new` test stands untouched, so no byte of a run without
+  `:encounters` can move through this function."
   [world patient]
   (if (:encounter-minting world)
     (and (nil? (:encounter patient))
+         (not (contains? (:pending-openers world) (:patient-id patient)))
          (not (#{:merged :expired} (:status patient))))
     (= :new (:status patient))))
 

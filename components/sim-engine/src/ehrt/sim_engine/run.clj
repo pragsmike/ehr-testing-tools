@@ -34,6 +34,11 @@
   unchanged by construction: nothing was enabled, disabled or reordered.
   Three requires went dead with the fold that used them -- `encounters`,
   `evolve` and `log-index`, whose only uses here were inside it.
+  `encounters` CAME BACK on 2026-09-10, for the pending-opener
+  reservation the loop now carries: the two opener names it reads
+  (`compiled-encounter-openers`) live there beside the guard that reads
+  the reservation, and naming them twice here is how the two would
+  drift.
 
   Extracted OUTPUT-IDENTICAL: every form below is `engine.clj`'s own
   text, moved and not rewritten. FOURTEEN call sites are qualified that
@@ -73,6 +78,7 @@
             [ehrt.sim-engine.churn :as churn]
             [ehrt.sim-engine.config :as config]
             [ehrt.sim-engine.decide :as decide]
+            [ehrt.sim-engine.encounters :as encounters]
             [ehrt.sim-engine.fold :as fold]
             [ehrt.sim-engine.order-profiles :as order-profiles]
             [ehrt.sim-engine.person-fold :as person-fold]
@@ -1494,7 +1500,47 @@
            state-history {}
            ;; ADR-0180 site 7: the replay entries, threaded exactly as
            ;; `ground-truth` above is and persisted at the same place.
-           entries (transient [])]
+           entries (transient [])
+           ;; 2026-09-10: THE PENDING-OPENER RESERVATION -- the patient-
+           ;; ids whose next queued step is an encounter opener that has
+           ;; been DECIDED but not yet FOLDED. Loop-local and nothing
+           ;; else: it is overlaid on the world handed to `decide` (one
+           ;; call site, below) and reaches `fold/apply-events`,
+           ;; `ground-truth`, `state-history`, `entries` and the log
+           ;; NOWHERE -- so `engine/replay` and every consumer of a
+           ;; finished log are untouched by construction, and no new
+           ;; event kind exists.
+           ;;
+           ;; WHY IT EXISTS. `encounter-openable?` is asked at decide
+           ;; time, and every producer of an encounter answers with
+           ;; STEPS rather than with an event -- so two producers landing
+           ;; at one `t` on one patient both see `(:encounter patient)`
+           ;; nil and both open. `bin/demo-exerciser-dense-7500` found
+           ;; it live at `--patients 6000 --seed 20260824 --churn`,
+           ;; where arrival ordinals 1897 and 1898 bound one person at
+           ;; t 114720: 1897's own `:admission` was re-pushed at a
+           ;; seq-no past `seq-start`, 1898's `:repeat-arrival` still sat
+           ;; at `[t 1898]` and therefore sorted FIRST, and the run went
+           ;; `:self-check-failed` on
+           ;; `admission-only-when-no-open-encounter`.
+           ;;
+           ;; ADDED OFF `remaining'`, NOT OFF `:prepend-steps`, and that
+           ;; is the one place this differs from the shape the session
+           ;; prompt sketched. A `:prepend-steps` test names the hook and
+           ;; the repeat arrival -- 1898's half -- and MISSES 1897's,
+           ;; whose opener is the head of its own re-pushed pathway tail
+           ;; after `decide :registered` and was prepended by nothing.
+           ;; `remaining'` IS `prepend-steps` ++ `remaining`, so it is
+           ;; the one expression that names both halves.
+           ;;
+           ;; CLEARED ON APPLY, never on a re-queue whose head merely
+           ;; stopped being an opener: a patient may hold more than one
+           ;; queue entry (a `:result-followup` rides the queue too), and
+           ;; recomputing membership per pop would let the WRONG entry
+           ;; retract a live reservation. A reservation a `:merged`
+           ;; patient never clears is inert -- `encounter-openable?`
+           ;; refuses them on `:status` first.
+           reserved #{}]
       (if (empty? queue)
         (final-result ground-truth state-history entries nil)
         (let [[[t _] {:keys [patient-id steps]} queue'] (pop-min queue)
@@ -1556,10 +1602,15 @@
                                                (inc n)])
                                             [queue' seq-no]
                                             carried)]
-              (recur queue'' seq-no' world ground-truth state-history entries))
+              (recur queue'' seq-no' world ground-truth state-history entries reserved))
             (let [{:keys [events advance exhausted schedule-followup prepend-steps]}
+                  ;; THE OVERLAY, and the only place it happens: the
+                  ;; reservation is a fact about the QUEUE, so it lives
+                  ;; where the queue does and is handed to `decide` as
+                  ;; part of the world it asks its questions of.
+                  ;; `encounters/encounter-openable?` is its only reader.
                   (decide/decide (assoc base-streams :patient (get streams-by-pid patient-id))
-                          t world patient-id step)]
+                          t (assoc world :pending-openers reserved) patient-id step)]
               ;; A :rejected decide outcome (an illegal cancel/bed-swap/
               ;; merge -- Task 1's validity-table enforcement) is NOT a
               ;; run-halting condition, unlike :exhausted: it means THIS
@@ -1657,8 +1708,25 @@
                   ;; are both just steps entering the SAME queue (the
                   ;; pathway-ir union, docs/sim-theory.edn), not two
                   ;; competing sources.
-                  remaining' (into (vec prepend-steps) remaining)]
+                  remaining' (into (vec prepend-steps) remaining)
+                  ;; 2026-09-10: the reservation's two halves, in the
+                  ;; order they have to run. CLEAR first -- every opener
+                  ;; this batch actually applied is now FOLDED, so that
+                  ;; patient's `(:encounter patient)` answers for itself
+                  ;; and the reservation has done its job. The subject is
+                  ;; the event's first participant, which is what
+                  ;; `encounters/stamp-encounter` reads for the same
+                  ;; question. Then RESERVE, if what this patient is
+                  ;; about to take next is itself an opener.
+                  reserved' (cond-> (reduce (fn [acc e]
+                                              (if (encounters/compiled-encounter-openers (:event e))
+                                                (disj acc (:patient-id (first (:participants e))))
+                                                acc))
+                                            reserved
+                                            events)
+                              (encounters/compiled-encounter-openers (:type (first remaining')))
+                              (conj patient-id))]
               (if (seq remaining')
                 (recur (assoc queue'' [(+ t advance) seq-no'] {:patient-id patient-id :steps remaining'})
-                       (inc seq-no') world'' ground-truth' state-history' entries')
-                (recur queue'' seq-no' world'' ground-truth' state-history' entries'))))))))))))))
+                       (inc seq-no') world'' ground-truth' state-history' entries' reserved')
+                (recur queue'' seq-no' world'' ground-truth' state-history' entries' reserved'))))))))))))))

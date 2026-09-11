@@ -260,3 +260,135 @@
                                   :event-id "q-a#2" :injury-class :burn}])]]]
       (let [r (check/check-all (:ground-truth (run/run (assoc cfg :encounters true))) facility)]
         (is (= :ok (:status r)) (str label ": " (pr-str (:violations (:payload r)))))))))
+
+;; --- SAME-INSTANT OPENERS (2026-09-10) -----------------------------------
+;;
+;; The defect these two gate was found in the field, not here:
+;; `bin/demo-exerciser-dense-7500` went `:self-check-failed` on
+;; `admission-only-when-no-open-encounter` at `--patients 6000 --seed
+;; 20260824 --churn`, for two arrival ordinals (1897 and 1898) landing
+;; at ONE instant and binding ONE person.
+;;
+;; THE GUARD IS ASKED AT DECIDE TIME; ITS OPENER IS DEFERRED THROUGH THE
+;; QUEUE. Ordinal 1897 (the FIRST arrival, so `PID-001897-...` is the
+;; patient both ordinals resolve to) decides its own `:registered` and
+;; re-pushes the rest of its pathway -- `:admission` at its head -- at
+;; `[t seq-no]` with a seq-no past `seq-start`. Ordinal 1898s
+
+;; --- SAME-INSTANT OPENERS (2026-09-10) -----------------------------------
+;;
+;; The defect these gate was found in the field, not here:
+;; `bin/demo-exerciser-dense-7500` went `:self-check-failed` on
+;; `admission-only-when-no-open-encounter` at `--patients 6000 --seed
+;; 20260824 --churn`, for two arrival ordinals (1897 and 1898) landing
+;; at ONE instant and binding ONE person.
+;;
+;; THE GUARD IS ASKED AT DECIDE TIME; ITS OPENER IS DEFERRED THROUGH THE
+;; QUEUE. Ordinal 1897 (the FIRST arrival, so `PID-001897-...` is the
+;; patient both ordinals resolve to) decides its own `:registered` and
+;; re-pushes the rest of its pathway -- `:admission` at its head -- at
+;; `[t seq-no]` with a seq-no past `seq-start`. Ordinal 1898's
+;; `:repeat-arrival` still sits at `[t 1898]`, sorts FIRST, asks
+;; `encounter-openable?` of a patient whose admission has not been
+;; FOLDED yet, and prepends a second `:admission`. Both then fire.
+;;
+;; Two patients and a one-person pool at `:arrival-gap 0` is the whole
+;; reproduction: `rand-int-in rng 0 0` draws from a one-wide range, so
+;; every arrival lands at t 0, and the 6000-patient run is this shape
+;; with 5998 arrivals of noise around it.
+
+(defn- same-instant-base
+  "Two arrivals, one person, one instant, `:encounters` on."
+  [pathway events]
+  {:seed seed :patients 2 :arrival-gap 0 :facility facility
+   :pathway pathway
+   :persons (assoc pool :events (vec events))
+   :encounters true})
+
+(deftest both-arrivals-of-the-same-instant-fixture-land-at-t-0
+  (testing "the fixture's own premise, asserted rather than assumed --
+            the same discipline `base`'s arrival instants get"
+    (is (= [0 0] (:arrivals (#'run/prelude (same-instant-base brief-pathway [])))))
+    (is (= ["q-a" "q-a"] (:bindings (run/person-plan (same-instant-base brief-pathway []))))
+        "and both bind the one person, so the second arrival is a REPEAT")))
+
+(deftest two-walk-in-arrivals-at-one-instant-open-one-encounter
+  (testing "a pending opener is not a folded one: the first arrival's
+            `:admission` is queued, not applied, when the repeat
+            arrival's guard asks -- so `(:encounter patient)` is still
+            nil and the guard says yes a second time"
+    (let [gt (:ground-truth (run/run (same-instant-base brief-pathway [])))
+          admissions (of-kind gt :admission)]
+      (is (seq gt) "the fixture ran nothing")
+      (is (= 1 (count (of-kind gt :registered)))
+          "one person, one patient -- the second arrival is a repeat")
+      (is (= 1 (count admissions))
+          (str "two openers at one instant for one patient: "
+               (pr-str (mapv (juxt :t :encounter-id) admissions))))
+      (is (empty? (check/admission-only-when-no-open-encounter gt))
+          "the runtime guard and the log-time invariant are one rule")
+      (is (= :ok (:status (check/check-all gt facility)))))))
+
+;; A HOOK AND A REPEAT ARRIVAL AT ONE INSTANT is the same defect through
+;; a different pair of producers, and it needs a fixture the plain
+;; `base` cannot build: `hook-plan` only puts an encounter on a patient
+;; who is CLINICALLY IDLE (whose whole queue is their `:registered`),
+;; while a repeat arrival only queues anything if its pathway HAS steps
+;; -- and one `:pathway` key cannot be both. `assign-pathway`'s explicit
+;; `{:patient-ordinal i :pathway ...}` override is what makes the two
+;; compatible: ordinal 0 walks nothing, ordinal 1 walks the brief stay.
+;;
+;; The hook must also land AFTER its person's own first arrival
+;; (`after-own-arrival?` is strict), so `:arrival-gap` cannot be 0 here
+;; and the instant is READ off the fixture rather than written into it.
+
+(def ^:private idle-pathway
+  "Registers and walks nothing -- what keeps ordinal 0's patient
+  `clinically-idle?`, which is `hook-plan`'s own static half of the
+  single-encounter guard."
+  {:name "idle" :steps []})
+
+(def ^:private split-pathways
+  [{:patient-ordinal 0 :pathway idle-pathway}
+   {:patient-ordinal 1 :pathway brief-pathway}])
+
+(defn- hook-and-repeat-base
+  "Two arrivals, one person; ordinal 1's REPEAT arrival and an
+  occupational-injury hook on the same patient at ONE instant."
+  [hook-t]
+  {:seed seed :patients 2 :arrival-gap 100 :facility facility
+   :pathways split-pathways
+   :persons (assoc pool :events (if hook-t
+                                  [{:event :occupational-injury :person-id "q-a"
+                                    :t hook-t :event-id "q-a#1" :injury-class :strain}]
+                                  []))
+   :encounters true})
+
+(defn- second-arrival-t []
+  (nth (:arrivals (#'run/prelude (hook-and-repeat-base nil))) 1))
+
+(deftest the-hook-and-repeat-fixture-puts-two-producers-at-one-instant
+  (testing "the fixture's premise, read off the tree rather than assumed"
+    (let [t (second-arrival-t)]
+      (is (pos? t) "the hook must land AFTER its person's own first arrival")
+      (is (= [0 t] (:arrivals (#'run/prelude (hook-and-repeat-base t))))
+          "and seeding the hook shifts no arrival draw")
+      (is (= ["q-a" "q-a"] (:bindings (run/person-plan (hook-and-repeat-base t))))))))
+
+(deftest a-hook-and-a-repeat-arrival-at-one-instant-open-one-encounter
+  (testing "the repeat arrival pops first and prepends its opener; the
+            hook's `:person-encounter` sits at a LOWER seq-no than the
+            re-pushed opener, so it asks `encounter-openable?` of a
+            patient whose admission is queued and unfolded, and opens a
+            second encounter at the same instant"
+    (let [t (second-arrival-t)
+          gt (:ground-truth (run/run (hook-and-repeat-base t)))
+          admissions (of-kind gt :admission)]
+      (is (seq gt) "the fixture ran nothing")
+      (is (= 1 (count (of-kind gt :registered)))
+          "one person, one patient")
+      (is (= 1 (count admissions))
+          (str "two openers at one instant for one patient: "
+               (pr-str (mapv (juxt :t :encounter-id) admissions))))
+      (is (empty? (check/admission-only-when-no-open-encounter gt)))
+      (is (= :ok (:status (check/check-all gt facility)))))))
