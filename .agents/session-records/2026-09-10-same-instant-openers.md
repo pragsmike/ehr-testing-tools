@@ -173,3 +173,46 @@ asked for it: the collision is not a scarcity artifact of a shrinking pool.
   one instant in the first place. Left to the design channel.
 
 HEAD landed: `c282409f` (payload), plus this record.
+
+## Correction 2026-09-12
+
+Two errata in this record, swept the same week. Both are documentation; no form
+moved and no byte of any log moves with them. The sections above stand as
+written -- this section corrects them, it does not rewrite them.
+
+**(1) The citation in `decide :person-encounter`.** Section 5 names the stale
+citation -- `prelude`'s `encounter-free?`, a var that does not exist in the live
+tree -- and leaves it for a later sweep. That sweep ran 2026-09-12:
+[`decide.clj:543-550`](../../components/sim-engine/src/ehrt/sim_engine/decide.clj)
+now cites `prelude`'s LOCAL `clinically-idle?`
+([`run.clj:655-663`](../../components/sim-engine/src/ehrt/sim_engine/run.clj), a
+`let` binding inside `prelude`, not a var) and states what it actually tests: the
+patient's COMPILED steps are empty and every AUTHORED step is a `:registered` --
+nothing authored past registration. Comment lines only; `clojure -M:poly check`
+OK; `grep -rn "encounter-free?" components/` empty.
+
+**(2) The premise stated at line 72 is NARROWER than the mechanism.** That line
+states the prediction the bracket tested as "a VALID corpus never has two pending
+openers at ONE INSTANT", and as a statement of what the bracket tested it stands.
+The reservation itself is wider than one instant. `run.clj:1721-1728` adds a
+patient to `reserved'` whenever an opener heads their REMAINING tail --
+`(encounters/compiled-encounter-openers (:type (first remaining')))`, read with no
+reference to `advance` -- so the reservation is also held across a POSITIVE
+DELAY, in front of an authored opener that carries no guard of its own, and not
+only at the same `t`. `encounters/encounter-openable?`'s `:pending-openers` test
+([`encounters.clj:49-73`](../../components/sim-engine/src/ehrt/sim_engine/encounters.clj))
+reads that set without qualification.
+
+**The wider case is CORRECT, not an over-reach.** A gated opener asking while a
+committed unguarded one is still queued in front of it is refused, rather than
+opening a stay that the finished log would pass only by luck of interleaving --
+which is the same answer `admission-only-when-no-open-encounter` gives over the
+log, arrived at before the events exist rather than after. And it costs the
+bracket nothing: no shipped pathway puts a `:delay` before an opener, so the
+wider arm is unreachable in every corpus the bracket digests and the IDENTICAL
+verdict recorded above is unaffected.
+
+**Shape A is PARKED, not ruled** (author, 2026-09-12): with shape B landed, a
+pre-loop drop of the duplicate same-minute selection would produce the same log,
+so the question of whether that reselection is a second arrival at all can wait
+without costing anything.

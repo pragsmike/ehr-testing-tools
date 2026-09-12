@@ -540,12 +540,14 @@
   ;; on a patient who has already been DISCHARGED now opens their second
   ;; encounter -- and one landing while their first is still OPEN still
   ;; mints nothing, which is the half of the old rule that survives.
-  ;; `run` also refuses
-  ;; these statically, before the run, for a patient whose own queue
-  ;; contains an encounter at all (`prelude`'s `encounter-free?`); this
-  ;; guard is the runtime half, and the two are deliberately both
-  ;; present -- a static analysis that turns out to be wrong shows up
-  ;; here as a skipped encounter rather than as a red invariant.
+  ;; `run` also refuses these statically, before the run, for a patient
+  ;; who is not CLINICALLY IDLE -- `prelude`'s LOCAL `clinically-idle?`
+  ;; (a `let` binding, not a var), which tests that the patient's
+  ;; COMPILED steps are empty and that every AUTHORED step is a
+  ;; `:registered`: nothing authored past registration. This guard is
+  ;; the runtime half, and the two are deliberately both present -- a
+  ;; static analysis that turns out to be wrong shows up here as a
+  ;; skipped encounter rather than as a red invariant.
   ;;
   ;; THE WHOLE TRIPLE IS PREPENDED OR NONE OF IT IS. A `:delay` and a
   ;; `:discharge` queued behind an admission that did not happen would
