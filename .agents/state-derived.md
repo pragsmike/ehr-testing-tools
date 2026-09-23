@@ -45,7 +45,7 @@ Oracle roots: `appendicitis`, `sore-throat`, `ear-infections`, `sinusitis`, `dea
 
 | fact | count |
 |---|---|
-| `*_test.clj` namespaces under any brick's own `test/` | 229 |
+| `*_test.clj` namespaces under any brick's own `test/` | 230 |
 | docs-tooling gate namespaces | 49 |
 
 Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entry_path_test`, `brick_test_composition_test`, `citation_gate_test`, `cli_tombstone_test`, `demo_exerciser_fresh_test`, `dense_7500_figures_test`, `docsgen_closure_test`, `docsgen_test`, `event_log_doc_test`, `exercised_sources_coverage_test`, `exercised_sources_test`, `exit_truthfulness_test`, `front_door_fence_gate_test`, `ground_truth_bracket_test`, `hand_owned_asset_freshness_test`, `index_completeness_test`, `invocation_lint_test`, `io_vocabulary_lint_test`, `license_text_pointer_test`, `link_footnote_gate_test`, `lint_test`, `mermaid_render_test`, `notice_verbatim_test`, `oracle_coverage_test`, `patient_simulator_charter_test`, `person_simulator_charter_test`, `pipeline_test`, `post_push_verify_range_test`, `process_law_citation_test`, `project_classpath_test`, `provenance_leaf_law_test`, `quickstart_fresh_test`, `readme_presence_test`, `resource_nesting_test`, `roadmap_lint_test`, `root_alias_completeness_test`, `sim_emit_hl7_dependency_test`, `sim_purity_lint_test`, `sim_theory_head_hop_test`, `skill_mirror_currency_test`, `stale_path_test`, `state_derived_test`, `strip_fresh_test`, `structure_currency_test`, `test_source_live_path_lint_test`, `traces_fresh_test`, `usecases_test`
@@ -55,7 +55,7 @@ Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entr
 | register | count |
 |---|---|
 | ADR files (`notes/adr/NNNN-*.md`) | 179 |
-| roadmap rows (all sections) | 81 |
+| roadmap rows (all sections) | 82 |
 | rulings rows | 113 |
 | rulings rows superseded | 6 |
 | session records | 261 |
@@ -65,7 +65,7 @@ Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entr
 
 | section | rows | tokens in use |
 |---|---|---|
-| Next | 5 | `OPEN` |
+| Next | 6 | `CLOSED`, `OPEN` |
 | Externals | 8 | `EXTERNAL` |
 | Deferred | 20 | `DEFERRED` |
 | Done | 48 | `CLOSED` |
@@ -79,7 +79,7 @@ Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entr
 | :corpus | 7 | 1900 | 2045 | 2045 | 145 |
 | :docs | 5 | 785 | 785 | 785 | 0 |
 | :judge | 8 | 975 | 1000 | 1000 | 25 |
-| :onboarding | 10 | 1472 | 1530 | 1530 | 58 |
+| :onboarding | 10 | 1495 | 1530 | 1530 | 35 |
 | :sim | 6 | 1347 | 1405 | 1405 | 58 |
 
 ## What this page reads

@@ -271,6 +271,18 @@ instant would collide, and MSH-10 uniqueness is what
 -- the same shape `:bed-status-change`'s arm already uses to
 disambiguate two legs of one bed at one instant.
 
+> **2026-09-23, ADR-0181:** the GROUND-TRUTH half of that sentence has
+> moved. `control-id-for` no longer builds `mrn-trigger-t`: every arm
+> now ends in `#<log index>` (ADR-0181, Accepted, candidate 3), because
+> the default branch was measured non-injective in five event classes
+> and an arm turned out not to be a guarantee -- `:merge` collided
+> against its own arm. **Nothing about a restatement's own id moved**:
+> chatter and the ladder still mint `mrn-trigger-t-<ordinal>` through
+> `assign-restatement-ordinals`, byte for byte. The marker is `#`
+> rather than `-` precisely so that the two families stay disjoint,
+> which is the claim this paragraph made by saying a ground-truth id
+> had no fourth part at all.
+
 **Volume, measured.** The probe corpus carries 193
 `:demographic-update` (causes: `:residence-move` 157,
 `:identity-correction` 22, `:residence-loss` 7, `:identity-fill` 7;

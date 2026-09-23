@@ -462,14 +462,17 @@
   ladders existed, which is what makes `no rung => no byte change` an
   assertable property rather than a hope.
 
-  INDICES, NOT CONTROL IDS, and the difference is load-bearing:
-  `control-id-for` is not injective over `:result-available` -- two
-  results for one patient at one second mint the same MSH-10, which is a
-  pre-existing collision (`:bed-status-change`'s own arm of
-  `control-id-for` is the shape that fixes this class, and doing it here
-  would move every existing corpus's bytes, so it is rowed rather than
-  smuggled into an emission sweep). A ladder keyed on that id would put
-  final codes on the wrong twin.
+  INDICES, NOT CONTROL IDS, and the difference was load-bearing when
+  this was written: `control-id-for` was not injective over
+  `:result-available` -- two results for one patient at one second
+  minted the same MSH-10 -- and a ladder keyed on that id would have
+  put final codes on the wrong twin. The sweep rowed the fix rather
+  than smuggling it into an emission sweep, and ADR-0181 candidate 3
+  took it on 2026-09-23: MSH-10 now ends in the log index and IS
+  injective (`roadmap.md#oru-control-id-collision`, CLOSED). This
+  function keeps naming indices anyway, which is now a preference --
+  it is the identity the rung already needs for its basis lookup, and
+  it costs no parsing.
 
   A RUNG MUST LAND STRICTLY INSIDE THE INTERVAL. `(< t0 rung-t t1)` is
   checked after rounding, not before, so a fraction that rounds onto

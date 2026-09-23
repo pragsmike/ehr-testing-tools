@@ -146,20 +146,27 @@
 
 (deftest positional-pairing-survives-duplicate-control-ids
   (testing "THE REASON THE PAIRING IS POSITIONAL rather than a lookup.
-            `control-id-for`'s DEFAULT branch is NON-INJECTIVE -- two
-            events of one trigger family for one patient at one second
-            mint the same MSH-10 -- and several shipped corpora carry
-            duplicates today (`roadmap.md#oru-control-id-collision`,
-            measured by class in ADR-0181, which corrects that row's
-            earlier `:result-available` reading; the literal pair below
-            is a REAL colliding id from seed-424242, where both sides
-            are `:observation`/`:diagnostic-report`). MSA-2 equality is
-            asserted PER PAIR and is NOT a
-            global bijection: a control id may legitimately appear on
-            two pairs, and a pairing keyed on MSH-10 would acknowledge
-            one twin twice and the other never. This gate uses a
-            hand-built pair; `ehrt.conformance.mllp-pairing-test` runs
-            the same law over the REAL seed-424242 spool."
+            until 2026-09-23 `control-id-for`'s DEFAULT branch was
+            NON-INJECTIVE -- two events of one trigger family for one
+            patient at one second minted the same MSH-10 -- and several
+            shipped corpora carried duplicates, measured by class in
+            ADR-0181. The literal pair below is a REAL colliding id
+            from seed-424242, where both sides were
+            `:observation`/`:diagnostic-report`.
+
+            THAT ROW IS CLOSED (`roadmap.md#oru-control-id-collision`;
+            MSH-10 carries the log index) AND THIS GATE DOES NOT
+            RELAX. A `--sink mllp://` carries FOREIGN corpora, which
+            may repeat an MSH-10 for any reason of their own, so MSA-2
+            equality stays asserted PER PAIR and is NOT a global
+            bijection: a control id may legitimately appear on two
+            pairs, and a pairing keyed on MSH-10 would acknowledge one
+            twin twice and the other never. The pair here was always
+            hand-built, which is why nothing about this gate moved when
+            the generator stopped producing one;
+            `ehrt.conformance.mllp-pairing-test` states the same law
+            over a REAL seed-424242 spool with its own hand-built
+            duplicate appended."
     (let [ids ["MRN189-R01-119086260" "MRN189-R01-119086260" "MRN2-A01-20"]
           {:keys [summary failure received]} (deliver-all! (mapv msg ids))]
       (is (nil? failure))

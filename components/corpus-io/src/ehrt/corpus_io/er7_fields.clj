@@ -126,12 +126,22 @@
   ARC 4 SWEEP 5 (ADR-0175 design (g)): the MLLP sink reads this to
   state its own ACK pairing law -- MSA-2 must echo the MSH-10 of the
   message at the same POSITION. It is deliberately not used as a KEY
-  anywhere: `ehrt.sim-emit-hl7.segments/control-id-for` is known
-  non-injective on its default branch, for any trigger family
-  (`roadmap.md#oru-control-id-collision`, measured by class in
-  ADR-0181, which corrects that row's earlier `:result-available`
-  reading), so two messages in one shipped corpus can carry the same
-  value here."
+  anywhere, and the reason OUTLIVED the defect that first stated it.
+
+  Until 2026-09-23, `ehrt.sim-emit-hl7.segments/control-id-for` was
+  known non-injective on its default branch for any trigger family, so
+  two messages in one SHIPPED corpus could carry the same value here.
+  ADR-0181 candidate 3 closed that: MSH-10 now carries the log index
+  and this project's own output is injective over any one corpus
+  (`ehrt.sim.run-test/control-id-for-is-injective-over-every-corpus-
+  this-lane-runs`). THIS FUNCTION STILL DOES NOT KEY ON IT. A reader of
+  a v2 stream is reading whatever wrote it, and a FOREIGN corpus may
+  repeat an MSH-10 for any reason of its own; position is the only
+  identity this layer can rely on either way. One exception is this
+  project's own and is rowed rather than hidden: `messages/dft-message`
+  mints `mrn-P03-t` without going through `control-id-for`, so DFT^P03
+  is still outside that injectivity claim
+  (`roadmap.md#dft-control-id-collision`)."
   [message]
   (msh-field (first-segment message) 10))
 

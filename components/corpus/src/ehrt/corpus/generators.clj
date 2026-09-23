@@ -167,8 +167,12 @@
   the base spool and this file can say which base message each
   subscriber file came from. That is the whole content of the author's
   own 2026-08-28 ruling (collision option (b)) -- identity is the log
-  index, never MSH-10, which `control-id-for` is known non-injective
-  over (`roadmap.md#oru-control-id-collision`).
+  index, never MSH-10, which `control-id-for` was known non-injective
+  over. ADR-0181 candidate 3 settled that by AGREEING with this ruling
+  rather than overturning it: since 2026-09-23 MSH-10 ends in the log
+  index, so the two identities now name the same thing and
+  `:base-indices` is the one that does not have to be parsed out of a
+  string (`roadmap.md#oru-control-id-collision`, CLOSED).
 
   Both sidecars end in `.edn`, so neither is a gate/play/batch
   candidate even for a reader pointed straight at a subscriber

@@ -900,8 +900,13 @@
                   ;; unavailable from here.
                   ;;
                   ;; IDENTITY IS THE LOG INDEX, never MSH-10, which
-                  ;; `control-id-for` is known non-injective over
-                  ;; (`roadmap.md#oru-control-id-collision`).
+                  ;; `control-id-for` WAS known non-injective over.
+                  ;; ADR-0181 candidate 3 (2026-09-23) settled that by
+                  ;; agreeing with this ruling rather than overturning
+                  ;; it: MSH-10 now ENDS in the log index, so the two
+                  ;; identities name the same thing and this table
+                  ;; still keys on the one that needs no parsing
+                  ;; (`roadmap.md#oru-control-id-collision`, CLOSED).
                   (and fan-out (= "hl7" emit))
                   (as-> payload (assoc payload :fan-out
                                        (emit-hl7/plan-fan-out (:messages payload) fan-out site-profile)))))))))))))

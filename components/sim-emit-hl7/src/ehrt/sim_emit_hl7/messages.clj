@@ -590,12 +590,15 @@
   ;; `:result-available` whose order actually grew a rung, nil for every
   ;; other event and every un-laddered order. It is passed per event
   ;; rather than looked up from a set of control ids on purpose:
-  ;; `control-id-for` is not injective over `:result-available` (two
-  ;; results for one patient at one second mint the same MSH-10, a
-  ;; PRE-EXISTING collision this sweep neither introduces nor fixes),
-  ;; and a ladder keyed on a non-injective id would put final codes on
-  ;; the wrong twin. `emit-wire` has the log index in hand and passes
-  ;; the decision, not the key.
+  ;; `control-id-for` was not injective over `:result-available` (two
+  ;; results for one patient at one second minted the same MSH-10, a
+  ;; PRE-EXISTING collision this sweep neither introduced nor fixed),
+  ;; and a ladder keyed on a non-injective id would have put final
+  ;; codes on the wrong twin. ADR-0181 candidate 3 fixed the id
+  ;; (2026-09-23) and this argument still holds, now as a preference
+  ;; rather than a necessity: `emit-wire` has the log index in hand
+  ;; and passes the DECISION, not the key, which is one fewer thing
+  ;; to keep in step with a rendering detail.
   ;; ARC 4 SWEEP 4 (ADR-0175 ruling B1): `siu` is the `:siu` emission
   ;; profile (nil = off), and it is the ONE argument here that can turn
   ;; a REGISTERED kind back into no message at all. Every other entry in

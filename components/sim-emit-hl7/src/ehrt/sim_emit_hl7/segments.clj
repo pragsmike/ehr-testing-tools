@@ -139,12 +139,15 @@
   trigger-t`, from its first message. It is the only family here that
   did not have to LEARN that -- sweep 3 measured the DEFAULT three-part
   key NON-INJECTIVE and rowed the fix
-  (`roadmap.md#oru-control-id-collision`; ADR-0181 corrects that row's
-  attribution of it to `:result-available`, whose own same-second pair
-  no corpus has ever produced), and a patient can hold more
-  than one open appointment, so `mrn-S12-t` would collide the moment two
-  bookings landed on one second. The appointment id is the discriminator
-  the log already carries.
+  (`roadmap.md#oru-control-id-collision`, CLOSED 2026-09-23 by the
+  ruling below; ADR-0181 corrected that row's attribution of it to
+  `:result-available`, whose own same-second pair no corpus has ever
+  produced), and a patient can hold more than one open appointment, so
+  `mrn-S12-t` would collide the moment two bookings landed on one
+  second. The appointment id is the discriminator the log already
+  carries, and it is kept: the log index makes it redundant for
+  UNIQUENESS but it is still the only part of this id that says WHICH
+  appointment a reader is looking at.
 
   ADR-0181, RULED 2026-09-23: EVERY arm above now ends in
   `log-index-marker` plus the event's own `::log-index`, so the id is

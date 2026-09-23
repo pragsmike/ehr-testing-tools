@@ -34,19 +34,42 @@ with them.
   hash-order dependence" at site 5 and names this row instead. Retire only as a DECLARED
   oracle change -- sorting `eligible` moves every churn-bearing golden
   root -- never as a site session's judgment call.
-- OPEN **[oru-control-id-collision]** PRIORITY 3 -- `control-id-for`'s DEFAULT
-  branch (`mrn-trigger-t`) is non-injective wherever two events of ONE trigger
-  family land on one patient in one second. RE-MEASURED 2026-09-23 over seven
-  roots (ADR-0181), and the row's old reading was wrong twice over: the
+- CLOSED 2026-09-23 (`32344ca9`) **[oru-control-id-collision]** -- `control-id-for`'s
+  DEFAULT branch (`mrn-trigger-t`) was non-injective wherever two events of ONE
+  trigger family landed on one patient in one second. RE-MEASURED 2026-09-23 over
+  seven roots (ADR-0181), and the row's old reading was wrong twice over: the
   `:result-available`-against-itself case it named has an EMPTY population in
   every root (0 of 7, including the 1,028 result events of dense-7500 @750),
-  while FIVE other classes are live -- that cell carries 43 groups (25 A02
+  while FIVE other classes were live -- that cell carried 43 groups (25 A02
   `:transfer`, 8 A12, 2 A40 `:merge`, 8 R01 cross-type), and seed-424242's 2
-  groups plus the clinic-decade demo's 3 (NOT 1) are all `:observation`/
+  groups plus the clinic-decade demo's 3 (NOT 1) were all `:observation`/
   `:diagnostic-report` in corpora that place no order at all. Anchor kept though
-  `oru` now misnames it (10 citations). Key shape UNRULED, three candidates in
-  ADR-0181; any fix moves HL7 bytes and never ground truth, its own declared
-  sweep; sweep 5's fan-out must either wait for it or derive from log indices.
+  `oru` always misnamed it (10 citations). CLOSED by ADR-0181 candidate 3, ruled
+  by the author 2026-09-23: MSH-10 carries the LOG INDEX, appended to every arm
+  as `#<0-based position>` -- the old id is a strict PREFIX of the new one, so a
+  held id finds its successor by prefix and the id names the event's own place in
+  the log. Minted at emission from a key the funnel stamps on its own copy of the
+  log; ground truth did not move (`bin/ground-truth-bracket 2b52fc57 HEAD`
+  IDENTICAL on all 38 digested roots). The declared oracle change is
+  `bin/regression-oracle --declared-digest-change`: 36 roots DIFFER and 5 are
+  IDENTICAL -- the three batch roots with no `:hl7` key plus `dermatitis` and
+  `veteran-self-harm`, whose `:hl7` half is present and EMPTY. The gate is
+  `ehrt.sim.run-test/control-id-for-is-injective-over-every-corpus-this-lane-runs`,
+  over four gated corpora and the dense-7500 750 cell.
+- OPEN **[dft-control-id-collision]** PRIORITY 4 -- `messages/dft-message` mints
+  its own MSH-10, `mrn-P03-t`, WITHOUT going through `control-id-for`, so
+  ADR-0181's log-index suffix does not reach it and DFT^P03 keeps a three-part
+  key. Found 2026-09-23 while landing that record's candidate 3, by rendering the
+  dense-7500 750 cell before and after: 2,609 of that cell's 40,291 messages are
+  DFT^P03 and none of their ids moved. It is the SAME defect the closed row
+  above names -- two encounter closes for one patient at one second mint one id
+  -- in the one message family that does not read the fixed function. NOT
+  MEASURED LIVE: no duplicate DFT id occurs in any root
+  `ehrt.sim.run-test`'s own injectivity gate runs, so like the closed row's own
+  `:result-available` case this is reachable-in-principle rather than witnessed.
+  Fixing it is a BUILDER change (the id is built inline in `dft-message`), which
+  is why the landing session fenced it rather than smuggling it in, and it is a
+  declared oracle change of its own.
 - OPEN **[cancel-discharge-reopens-an-encounter-that-never-closes]** PRIORITY 4 --
   MEASURED 2026-08-29 while tracing `roadmap.md#ts-3-outpatient-opens-over-an-encounter`,
   and it is a population fact rather than one patient's: a legal

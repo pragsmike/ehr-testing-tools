@@ -45,15 +45,21 @@
     message never sent.
 
   POSITIONAL, not a lookup, and that is load-bearing rather than
-  convenient: `control-id-for`'s default branch is NON-INJECTIVE for
-  any trigger family and several shipped corpora carry duplicate
-  MSH-10s today (`roadmap.md#oru-control-id-collision`; measured by
-  class 2026-09-23 in ADR-0181 -- `seed-424242-clinic-decade` carries 6
-  duplicates in 2 groups, the clinic-decade demo 10 in 3, and the
-  dense-7500 750-arrival cell 86 in 43, the last mostly A02/A12/A40
-  rather than ORU at all). MSA-2 equality is therefore
-  asserted PER PAIR and is NOT a global bijection: a control id may
-  legitimately appear on two pairs. A pairing keyed on MSH-10 would
+  convenient. Until 2026-09-23 `control-id-for`'s default branch was
+  NON-INJECTIVE for any trigger family and several shipped corpora
+  carried duplicate MSH-10s -- `seed-424242-clinic-decade` 8 messages
+  in 2 groups, the clinic-decade demo 10 in 3, the dense-7500
+  750-arrival cell 86 in 43, the last mostly A02/A12/A40 rather than
+  ORU at all (measured by class in ADR-0181). **That is fixed**:
+  candidate 3 gave MSH-10 the log index and no corpus this project
+  generates can repeat one
+  (`roadmap.md#oru-control-id-collision`, CLOSED).
+
+  THE LAW DOES NOT RELAX, and the reason is that this layer does not
+  only carry this project's output. A `--sink mllp://` delivers
+  FOREIGN corpora, which may repeat an MSH-10 for any reason of their
+  own, so MSA-2 equality stays asserted PER PAIR and is NOT a global
+  bijection: a control id may legitimately appear on two pairs. A pairing keyed on MSH-10 would
   acknowledge one twin twice and the other never; a positional pairing
   survives the duplicates untouched. Two gates say so:
   `mllp_test/positional-pairing-survives-duplicate-control-ids` over a

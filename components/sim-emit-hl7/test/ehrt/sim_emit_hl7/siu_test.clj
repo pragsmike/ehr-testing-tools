@@ -294,11 +294,13 @@
     (testing "the key is four parts, and the appointment id is the third-from-last"
       (is (= "MRN000001-APT-A-S12-100#1" (msh-10 (first siu)))))
     (testing "TWO BOOKINGS FOR ONE PATIENT AT ONE SECOND still mint distinct MSH-10s --
-              the collision the DEFAULT three-part key does NOT survive
-              (`roadmap.md#oru-control-id-collision`; ADR-0181 measures which
-              families actually hit it, and `:result-available` is not among
-              them), avoided here from the first message rather than repaired
-              later"
+              the collision the DEFAULT three-part key did NOT survive
+              (`roadmap.md#oru-control-id-collision`, CLOSED 2026-09-23 by
+              ADR-0181 candidate 3, which measured which families actually hit
+              it -- `:result-available` was not among them). The appointment id
+              avoided it here from the first message rather than repairing it
+              later; the log index now makes every arm safe the same way, and
+              this assertion holds on BOTH grounds"
       ;; ADR-0181: `t` is no longer the id's LAST `-`-part -- a
       ;; ground-truth id now ends `...-<t>#<log index>` -- so the
       ;; selector names the instant and the marker together instead of
