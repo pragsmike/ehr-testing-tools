@@ -104,7 +104,12 @@
   ([ground-truth reference-date utc-offset facility providers]
    (emit ground-truth reference-date utc-offset facility providers nil))
   ([ground-truth reference-date utc-offset facility providers site-profile]
-   (let [demographics (timelines/demographics-timeline ground-truth)]
+   ;; ADR-0181 (2026-09-23): FUNNEL 1 of five. Every event this stage
+   ;; hands to a builder -- and so to `control-id-for` -- carries its own
+   ;; log index from here on. The stamped log is this call's own copy and
+   ;; reaches nothing outside it.
+   (let [ground-truth (segments/stamp-log-index ground-truth)
+         demographics (timelines/demographics-timeline ground-truth)]
      (into [] (mapcat (partial messages/event->messages reference-date utc-offset facility providers demographics site-profile {}))
            ground-truth))))
 
@@ -174,7 +179,14 @@
          offsets (or offsets {})
          chatter (or chatter [])
          charges (or charges {})
-         ground-truth (vec ground-truth)
+         ;; ADR-0181 (2026-09-23): FUNNEL 2 of five, and the one that
+         ;; makes the other funnels' agreement load-bearing -- the
+         ;; latency offset a message rides is looked up under the id
+         ;; `plan-latency` minted for the SAME event, and a ladder rung
+         ;; rides its basis event's. All three stamp the same whole log,
+         ;; so all three agree; `map-indexed`'s own `i` below is that
+         ;; same index and stays the sort key it always was.
+         ground-truth (segments/stamp-log-index ground-truth)
          rungs (:rungs ladders)
          final-result-indices (or (:final ladders) #{})
          spans (when (seq chatter) (timelines/encounter-spans ground-truth))

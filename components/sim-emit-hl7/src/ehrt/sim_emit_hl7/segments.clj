@@ -58,6 +58,70 @@
             [ehrt.sim-emit-hl7.er7 :as er7]
             [ehrt.sim-emit-hl7.site-profile :as site-profile]))
 
+;; --- ADR-0181 candidate 3, ruled 2026-09-23: MSH-10 CARRIES THE LOG
+;; INDEX ------------------------------------------------------------------
+;;
+;; ADR-0181 measured `control-id-for`'s default `mrn-trigger-t` branch
+;; NON-INJECTIVE in five event classes -- 43 duplicate groups covering
+;; 86 messages at the `dense-7500` 750-arrival cell, thirty-five of
+;; them ADT rather than ORU, and `:merge` colliding with an arm of its
+;; own. The author ruled the third of that record's three candidates:
+;; the log index, which the 2026-08-28 fan-out ruling had already made
+;; this project's identity of record (`ehrt.sim-emit-hl7.fan-out`:
+;; identity is the log index, never MSH-10). It is total, ordered, and
+;; minted by nothing.
+;;
+;; GROUND TRUTH DOES NOT MOVE. The index is stamped onto the emitter's
+;; OWN COPY of the log, at the funnel, and never reaches
+;; `ehrt.sim-engine.run`'s output, `check`, or any EDN this project
+;; writes -- `::log-index` exists for exactly as long as one `emit`/
+;; `emit-wire`/`plan-latency`/`plan-ladders`/`identifiers` call, which
+;; is why it is namespaced and why the key is this namespace's rather
+;; than the event schema's.
+
+(def log-index-marker
+  "The one byte between an id's pre-change parts and its log index.
+
+  `#` RATHER THAN `-`, and the reason is a live collision, not taste.
+  Every restatement this emitter makes -- chatter's A08/A31/A28 and the
+  ladder's O01/R01, both through
+  `ehrt.sim-emit-hl7.planners/assign-restatement-ordinals` -- already
+  mints `mrn-trigger-t-<ordinal>`. A `-` marker would give a
+  ground-truth id that same four-part shape, and the two families would
+  begin colliding the day a log index happened to equal an ordinal at
+  one `(mrn, trigger, t)` -- which is precisely the hazard
+  `assign-restatement-ordinals`' own docstring relied on NOT existing
+  when it wrote that a ground-truth id has no ordinal suffix. `#` keeps
+  them disjoint by construction: a ground-truth id contains it and a
+  restatement id never does.
+
+  Channel-recommended, then verified rather than assumed: it is not an
+  HL7 v2 delimiter (those are `|^~\\&`), so it needs no escaping and
+  moves no field boundary, and it survives `corpus-io`'s own ER7 reader
+  and both judge tiers with no new finding class attributable to
+  MSH-10 (this session's step 3)."
+  "#")
+
+(defn stamp-log-index
+  "Ground-truth log -> the same events, each carrying its own 0-based
+  POSITION in that log under `::log-index`.
+
+  THE ONE STAMPING FUNCTION, called at every funnel that hands events
+  to `control-id-for`: `emit`, `emit-wire`, `plan-latency`,
+  `plan-ladders`, and `ehrt.sim.identifiers`. One function rather than
+  five `map-indexed`s because the index has to AGREE across them --
+  `emit-wire` looks a latency offset up under the id `plan-latency`
+  minted, and a ladder rung rides the offset of the basis event it
+  restates -- and five independent stampings of one log is exactly the
+  kind of agreement that holds until it doesn't.
+
+  Idempotent by value on a log already stamped in order, since the
+  index is the position and nothing else. It does NOT recover from
+  being handed a SUBSET of a log: stamp the whole log, then filter,
+  never the other way round."
+  [ground-truth]
+  (into [] (map-indexed (fn [i ev] (assoc ev ::log-index i))) ground-truth))
+
 (defn control-id-for
   "MSH-10 (message control id) for one ground-truth event -- the SAME
   construction every message-builder call site uses, extracted
@@ -80,29 +144,62 @@
   no corpus has ever produced), and a patient can hold more
   than one open appointment, so `mrn-S12-t` would collide the moment two
   bookings landed on one second. The appointment id is the discriminator
-  the log already carries."
-  [{:keys [event t active-mrn surviving-mrn participants swap bed to appointment-id]}]
+  the log already carries.
+
+  ADR-0181, RULED 2026-09-23: EVERY arm above now ends in
+  `log-index-marker` plus the event's own `::log-index`, so the id is
+  injective over any single log by construction and no arm owes an
+  injectivity argument of its own any more. That is the point of
+  putting it on every arm rather than only on the default branch:
+  ADR-0181 finding 3 measured `:merge` -- which already HAD a
+  discriminator -- colliding with itself when one survivor absorbed two
+  records at one instant, so an arm was demonstrably not a guarantee.
+  The four-part SIU key, the bed key and the swap key all stay exactly
+  as they were and simply gain the suffix; the pre-change id is a
+  strict PREFIX of the new one in every arm.
+
+  IT THROWS on a registered event carrying no `::log-index`, and that
+  is deliberate. A missing stamp means a funnel forgot to call
+  `stamp-log-index`; the alternative -- falling back to the old
+  three-part id -- would mint something no reader could distinguish
+  from a pre-change id and that collides exactly as before, silently.
+  Programmer error, so an exception rather than
+  `ehrt.kernel.result`'s envelope (this workspace's own
+  result-not-throw rule names that exact exception). The registry is
+  consulted FIRST, so an event outside it is still nil whether stamped
+  or not, and `plan-latency`'s own `when-let` and `event->messages`'
+  own empty-vector path keep walking raw logs unharmed."
+  [{:keys [event t active-mrn surviving-mrn participants swap bed to appointment-id] :as ev}]
   (when-let [{:keys [trigger]} (registry/message-type-registry event)]
-    (case event
-      (:appointment :reschedule :appointment-cancel :no-show)
-      (str active-mrn "-" appointment-id "-" trigger "-" t)
+    (let [log-index (::log-index ev)]
+      (when-not (integer? log-index)
+        (throw (ex-info (str "ehrt.sim-emit-hl7.segments/control-id-for: no ::log-index on a "
+                             event " event -- the funnel that handed it here did not call "
+                             "stamp-log-index. Minting the pre-ADR-0181 three-part id instead "
+                             "would be a silent collision, so this fails closed.")
+                        {:event event :t t ::log-index log-index})))
+      (str
+       (case event
+             (:appointment :reschedule :appointment-cancel :no-show)
+             (str active-mrn "-" appointment-id "-" trigger "-" t)
 
-      ;; ARC 3B SWEEP 2: a bed event has no `:active-mrn` to key on --
-      ;; it has no patient. The BED plus the status it is moving TO is
-      ;; what makes it unique, and the status is in the key rather than
-      ;; only the bed because a ward tuned to a zero-minute leg would
-      ;; otherwise put two legs of one bed's cycle at the same `t`.
-      :bed-status-change
-      (str bed "-" (name to) "-" trigger "-" t)
+             ;; ARC 3B SWEEP 2: a bed event has no `:active-mrn` to key on --
+             ;; it has no patient. The BED plus the status it is moving TO is
+             ;; what makes it unique, and the status is in the key rather than
+             ;; only the bed because a ward tuned to a zero-minute leg would
+             ;; otherwise put two legs of one bed's cycle at the same `t`.
+             :bed-status-change
+             (str bed "-" (name to) "-" trigger "-" t)
 
-      :bed-swap
-      (let [[p1 p2] (mapv :patient-id participants)]
-        (str (:active-mrn (get swap p1)) "+" (:active-mrn (get swap p2)) "-" trigger "-" t))
+             :bed-swap
+             (let [[p1 p2] (mapv :patient-id participants)]
+               (str (:active-mrn (get swap p1)) "+" (:active-mrn (get swap p2)) "-" trigger "-" t))
 
-      :merge
-      (str surviving-mrn "-" trigger "-" t)
+             :merge
+             (str surviving-mrn "-" trigger "-" t)
 
-      (str active-mrn "-" trigger "-" t))))
+             (str active-mrn "-" trigger "-" t))
+       log-index-marker log-index))))
 
 (defn msh-segment
   "MSH-3/4/5/6/12 (sending/receiving app+facility, version id) render

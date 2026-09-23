@@ -62,8 +62,11 @@
 
 (deftest the-emitted-oru-for-a-diagnostic-report-event-is-structurally-correct
   (let [{:keys [ground-truth facility providers]} (run/run run-config)
+        ;; ADR-0181: the STAMPED log -- `control-id-for` below mints
+        ;; this event's GROUND-TRUTH-side id, which is how the ORU is
+        ;; then found among the messages.
         dr-event (first (filter #(and (= :diagnostic-report (:event %)) (some :value-code (:observations %)))
-                                ground-truth))
+                                (segments/stamp-log-index ground-truth)))
         messages (emit/emit ground-truth "2024-01-01" "+00:00" facility providers)
         control-id (segments/control-id-for dr-event)
         oru (first (filter #(re-find (re-pattern (str "\\Q" control-id "\\E")) %) messages))

@@ -200,7 +200,7 @@
   (let [messages (wire both-ladders)
         oru-rungs (filterv #(and (rung? %) (= "ORU^R01" (msh-9 %))) messages)
         orm-rungs (filterv #(and (rung? %) (= "ORM^O01" (msh-9 %))) messages)
-        final-cbc (first (filter #(= "MRN000001-R01-5200" (msh-10 %)) messages))]
+        final-cbc (first (filter #(= "MRN000001-R01-5200#4" (msh-10 %)) messages))]
     (is (seq oru-rungs) "ORU rung population")
     (is (seq orm-rungs) "ORM rung population")
     (is (some? final-cbc) "the terminal CBC result message")
@@ -238,8 +238,8 @@
           "rung 0 is :scheduled, rung 1 :in-progress -- read off the two rungs of ONE order")
       (is (= #{"SC" "IP"} (into #{} (map #(field (segment % "ORC") 5)) orm-rungs))))
     (testing "the two LADDERED finals carry F in both fields; the un-laddered one carries neither"
-      (let [laddered (filterv #(#{"MRN000001-R01-5200" "MRN000001-R01-6200"} (msh-10 %)) finals)
-            unladdered (filterv #(= "MRN000001-R01-7000" (msh-10 %)) finals)]
+      (let [laddered (filterv #(#{"MRN000001-R01-5200#4" "MRN000001-R01-6200#5"} (msh-10 %)) finals)
+            unladdered (filterv #(= "MRN000001-R01-7000#8" (msh-10 %)) finals)]
         (is (= 2 (count laddered)))
         (is (= 1 (count unladdered)))
         (is (every? #(= "F" (field (segment % "OBR") 25)) laddered))
@@ -257,7 +257,7 @@
                                      {:ladders (plan both-ladders)})
         oru-rungs (filterv #(and (rung? %) (= "ORU^R01" (msh-9 %))) messages)
         orm-rungs (filterv #(and (rung? %) (= "ORM^O01" (msh-9 %))) messages)
-        laddered-finals (filterv #(#{"MRN000001-R01-5200" "MRN000001-R01-6200"} (msh-10 %))
+        laddered-finals (filterv #(#{"MRN000001-R01-5200#4" "MRN000001-R01-6200#5"} (msh-10 %))
                                  messages)]
     (testing "the site profile wins in all three positions, rungs and terminal alike"
       (is (every? #(= "XX" (field (segment % "OBR") 25)) oru-rungs))
@@ -278,7 +278,7 @@
         ;; one place this sweep edits an existing message's bytes, and
         ;; they are excluded by control-id, named, rather than by a
         ;; filter that would hide a third mover.
-        moved-ids #{"MRN000001-R01-5200" "MRN000001-R01-6200"}
+        moved-ids #{"MRN000001-R01-5200#4" "MRN000001-R01-6200#5"}
         untouched (filterv #(and (not (rung? %)) (not (moved-ids (msh-10 %)))) laddered)]
     (is (= (filterv #(not (moved-ids (msh-10 %))) plain) untouched)
         "every message that is neither a rung nor a laddered order's own terminal result is
@@ -359,7 +359,7 @@
 ;; --- The clock: a rung never overtakes the message it restates ------------
 
 (deftest a-rung-rides-its-basis-event-s-own-latency-offset
-  (let [offsets {"MRN000001-O01-1200" 1800 "MRN000001-R01-5200" 3600}
+  (let [offsets {"MRN000001-O01-1200#2" 1800 "MRN000001-R01-5200#4" 3600}
         messages (wire both-ladders offsets nil)
         transmit (into {} (map (juxt msh-10 msh-7)) messages)
         of-order-2 #{"MRN000001-O01-1600-0" "MRN000001-O01-2000-0"}
@@ -367,26 +367,26 @@
         orm-rungs (filterv #(of-order-2 (msh-10 %)) messages)
         oru-rungs (filterv #(of-result-4 (msh-10 %)) messages)]
     (testing "the offsets actually bite -- an offset nothing applies proves nothing"
-      (is (= "20240101005000+0000" (transmit "MRN000001-O01-1200"))
+      (is (= "20240101005000+0000" (transmit "MRN000001-O01-1200#2"))
           "t=1200 is 00:20:00; the order transmits 1800s later, at 00:50:00"))
     (testing "every ORM rung of the offset order transmits at or after that order"
       (is (= 2 (count orm-rungs)))
-      (is (every? #(<= (compare (transmit "MRN000001-O01-1200") (msh-7 %)) 0) orm-rungs)))
+      (is (every? #(<= (compare (transmit "MRN000001-O01-1200#2") (msh-7 %)) 0) orm-rungs)))
     (testing "every ORU rung of the offset result transmits at or before that result"
       (is (= 2 (count oru-rungs)))
-      (is (every? #(<= (compare (msh-7 %) (transmit "MRN000001-R01-5200")) 0) oru-rungs)))
+      (is (every? #(<= (compare (msh-7 %) (transmit "MRN000001-R01-5200#4")) 0) oru-rungs)))
     (testing "and the ordering holds in the emitted SEQUENCE, not only in the field"
       (let [ids (mapv msh-10 messages)
             pos (into {} (map-indexed (fn [i id] [id i])) ids)]
-        (is (every? #(< (long (pos "MRN000001-O01-1200")) (long (pos (msh-10 %)))) orm-rungs))
-        (is (every? #(> (long (pos "MRN000001-R01-5200")) (long (pos (msh-10 %)))) oru-rungs))))))
+        (is (every? #(< (long (pos "MRN000001-O01-1200#2")) (long (pos (msh-10 %)))) orm-rungs))
+        (is (every? #(> (long (pos "MRN000001-R01-5200#4")) (long (pos (msh-10 %)))) oru-rungs))))))
 
 (deftest the-latency-plan-for-every-non-ladder-message-is-untouched
-  (let [offsets {"MRN000001-O01-1200" 1800 "MRN000001-R01-5200" 3600
-                 "MRN000001-A01-1000" 600}
+  (let [offsets {"MRN000001-O01-1200#2" 1800 "MRN000001-R01-5200#4" 3600
+                 "MRN000001-A01-1000#1" 600}
         without (emit/emit-wire log ref-date utc-offset facility providers nil offsets)
         with (wire both-ladders offsets nil)
-        moved-ids #{"MRN000001-R01-5200" "MRN000001-R01-6200"}]
+        moved-ids #{"MRN000001-R01-5200#4" "MRN000001-R01-6200#5"}]
     (is (= (filterv #(not (moved-ids (msh-10 %))) without)
            (filterv #(and (not (rung? %)) (not (moved-ids (msh-10 %)))) with))
         "byte-equal under a real latency profile too: the ladder inserts, it never re-times")))

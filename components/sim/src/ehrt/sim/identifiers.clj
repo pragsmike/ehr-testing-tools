@@ -76,7 +76,20 @@
   would make an IDENTITY inventory depend on rendering settings, which
   is what this projection exists not to do."
   [ground-truth]
-  (into (sorted-set) (keep emit-hl7/control-id-for) ground-truth))
+  ;; ADR-0181 (2026-09-23): FUNNEL 5 of five. This projection exists so
+  ;; that the inventory can never disagree with what a real emission
+  ;; renders, and an emission now stamps its own copy of the log before
+  ;; minting any id -- so this one does too, through the SAME exported
+  ;; function, rather than a second `map-indexed` here that would be a
+  ;; second place for the two to drift apart.
+  ;;
+  ;; The inventory's own values MOVE for this change, and that is the
+  ;; whole point: every MSH-10 gains its marker and index, so a reader
+  ;; holding a pre-change list finds each old id as the PREFIX of its
+  ;; successor. `:patient-ids`, `:mrns`, `:visit-beds`,
+  ;; `:fhir-resource-ids` and `:provider-npis` do not move at all.
+  (into (sorted-set) (keep emit-hl7/control-id-for)
+        (emit-hl7/stamp-log-index ground-truth)))
 
 (defn- fhir-resource-ids
   [fhir-bundles]

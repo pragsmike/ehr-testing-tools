@@ -250,9 +250,13 @@
         (is (= 2 (count colliding)))
         (is (= #{"MRN000001-A31-90000-0" "MRN000001-A31-90000-1"}
                (set (map msh-10 colliding))))))
-    (testing "and a ground-truth event's own control id still carries NO
-              ordinal, so the two id spaces cannot collide"
-      (is (= "MRN000001-A01-1000" (segments/control-id-for (nth log 1)))))))
+    (testing "and a GROUND-TRUTH event's own control id carries the
+              ADR-0181 marker and its log index rather than an ordinal,
+              so the two id spaces still cannot collide -- that is now
+              what `#` buys, where until 2026-09-23 it was the absence
+              of any fourth part at all"
+      (is (= "MRN000001-A01-1000#1"
+             (segments/control-id-for (nth (segments/stamp-log-index log) 1)))))))
 
 ;; --- The interleave: chatter rides emit-wire's own sort, and the
 ;; latency plan for every non-chatter message is untouched. ---------------

@@ -119,6 +119,12 @@
   `ehrt.sim-emit-hl7.site-profile`'s own default-profile identity
   already established for site profiles."
   [^java.util.Random rng ground-truth latency-profile]
+  ;; ADR-0181 (2026-09-23): FUNNEL 3 of five. The stamp goes on BEFORE
+  ;; the keep, never inside it, because the index is a position in the
+  ;; whole log and this function's own `keep` drops events -- stamping
+  ;; downstream of a filter would number the survivors, not the log.
+  ;; The draw-and-discard law is untouched: one `.nextDouble` per event
+  ;; of the log, in log order, stamped or not.
   (into {}
         (keep (fn [ev]
                 (let [draw (.nextDouble rng)
@@ -126,7 +132,7 @@
                   (when (and from-minutes to-minutes)
                     (when-let [control-id (segments/control-id-for ev)]
                       [control-id (long (Math/round (* 60.0 (+ from-minutes (* draw (- to-minutes from-minutes))))))])))))
-        ground-truth))
+        (segments/stamp-log-index ground-truth)))
 
 ;; --- ARC 4 SWEEP 2 (ADR-0175 design (a), ruling B1): re-statement chatter --
 ;; A08 / A31 / A28 / IN1-only. `plan-chatter` is `plan-latency`'s
@@ -254,11 +260,23 @@
   than two.
 
   MSH-10 is `mrn-trigger-t-<ordinal>` for every restatement this
-  emitter makes. A ground-truth event's own id has NO ordinal suffix,
-  so a restatement id can never collide with one; the trigger keeps
-  chatter's A08/A31/A28 apart from the ladder's O01/R01; and the
+  emitter makes. A ground-truth event's own id ends in
+  `segments/log-index-marker` plus its log index -- `#<n>`, never
+  `-<n>` -- so a restatement id can never collide with one; the trigger
+  keeps chatter's A08/A31/A28 apart from the ladder's O01/R01; and the
   ordinal is what keeps two restatements of one patient at one instant
-  apart. THE FOUR-PART KEY IS THE IDENTITY TUPLE, not ADR-0175 section
+  apart.
+
+  THAT FIRST CLAUSE IS ADR-0181'S, 2026-09-23, and it REPLACES the
+  sentence that stood here until then: 'a ground-truth event's own id
+  has NO ordinal suffix'. That was true of the three-part key and
+  stopped being true the day MSH-10 began carrying the log index, at
+  which point a `-` marker would have made the two families the same
+  four-part shape and collided them the first time an index equalled an
+  ordinal at one `(mrn, trigger, t)`. The marker is what carries the
+  claim now, and it is `#` for exactly this reason -- see
+  `segments/log-index-marker`, which states the same fact from the
+  other side. Nothing about a restatement's own id moved. THE FOUR-PART KEY IS THE IDENTITY TUPLE, not ADR-0175 section
   4's three-part `(basis-event-index, trigger, ordinal)` -- sweep 2
   measured that triple non-injective (two periodic restatements inside
   one patient-day share a basis, a trigger and an ordinal and differ
@@ -466,7 +484,12 @@
   [ground-truth ladders]
   (if-not (map? ladders)
     {:rungs [] :final #{}}
-    (let [evs (vec ground-truth)
+    ;; ADR-0181 (2026-09-23): FUNNEL 4 of five -- the ladder basis
+    ;; lookup. `:basis-control-id` below is the id of the event a rung
+    ;; restates, and `emit-wire` looks that rung's latency offset up
+    ;; under it, so this stamping and `emit-wire`'s must agree event for
+    ;; event. They do, because both stamp the same whole log.
+    (let [evs (segments/stamp-log-index ground-truth)
           families [{:family :oru :trigger "R01" :fractions (vec (:rungs ladders))
                      :ladder registry/result-status-ladder :basis :result}
                     {:family :orm :trigger "O01" :fractions (vec (:order-rungs ladders))

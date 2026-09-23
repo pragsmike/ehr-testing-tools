@@ -254,7 +254,11 @@
                        :pathway {:name "ad" :steps [{:type :admission :location "Renal"}
                                                     {:type :delay :from 30 :to 30}
                                                     {:type :discharge}]}})
-          bed-events (filterv #(= :bed-status-change (:event %)) ground-truth)
+          ;; ADR-0181: STAMPED first, then filtered -- never the other
+          ;; way round, or the indices would number the bed events
+          ;; rather than the log. Ground-truth side throughout.
+          bed-events (filterv #(= :bed-status-change (:event %))
+                              (segments/stamp-log-index ground-truth))
           messages (mapcat #(messages/event->messages ref-date utc-offset facility providers {} nil {} %)
                            bed-events)
           expected (mapv (fn [ev] [(:bed ev) "ADT^A20"
@@ -1144,7 +1148,13 @@
     (let [{:keys [ground-truth facility providers]} (run/run {:seed seed :patients patients})
           messages (emit/emit ground-truth ref-date utc-offset facility providers)
           rendered-control-ids (into #{} (map #(message/get-field-first-value (parser/parse %) "MSH" 10)) messages)
-          derived-control-ids (into #{} (keep segments/control-id-for) ground-truth)]
+          ;; ADR-0181: derived off the STAMPED log, which is exactly
+          ;; what `emit` itself renders from -- so this property still
+          ;; compares the one derivation against the real wire rather
+          ;; than against itself. Both sides move together; the
+          ;; equality is the claim, not the literal ids.
+          derived-control-ids (into #{} (keep segments/control-id-for)
+                                    (segments/stamp-log-index ground-truth))]
       (= rendered-control-ids derived-control-ids))))
 
 ;; --- ADR-0150 S-Z: the ADT family sees the WHOLE event ---------------------

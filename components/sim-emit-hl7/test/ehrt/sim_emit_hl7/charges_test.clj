@@ -148,7 +148,7 @@
               that close already renders"
       (let [i (first (keep-indexed #(when (= "DFT^P03" (msh-9 %2)) %1) messages))]
         (is (= "ADT^A03" (msh-9 (nth messages (dec i)))))
-        (is (= "MRN000001-A03-91000" (msh-10 (nth messages (dec i)))))
+        (is (= "MRN000001-A03-91000#5" (msh-10 (nth messages (dec i)))))
         (is (= "MRN000001-P03-91000" (msh-10 (nth messages i))))))
     (testing "an :outpatient-visit-end renders NO ADT -- its registry
               silence stands -- and the DFT is the only message it
@@ -265,7 +265,7 @@
           msh-7 (fn [m] (nth (str/split (first (str/split m #"\r")) #"\|") 6))
           by-id (into {} (map (juxt msh-10 identity)) messages)]
       (is (seq offsets) "the latency profile must actually bite, or this is vacuous")
-      (is (= (msh-7 (get by-id "MRN000001-A03-91000"))
+      (is (= (msh-7 (get by-id "MRN000001-A03-91000#5"))
              (msh-7 (get by-id "MRN000001-P03-91000")))
           "the DFT and the ADT^A03 for one discharge transmit together")
       (testing "and EVN-2 stays CLINICAL on both -- MSH-7 alone moves"

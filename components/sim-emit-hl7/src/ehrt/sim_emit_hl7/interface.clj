@@ -25,6 +25,15 @@
 
 (defn control-id-for [ev] (emit-hl7/control-id-for ev))
 
+(defn stamp-log-index
+  "Ground-truth log -> the same events carrying their own log indices.
+  ADR-0181 (2026-09-23): `control-id-for` now throws on an event that
+  has not been through here, so the two are exported together and no
+  external caller can hold one without the other. See
+  ehrt.sim-emit-hl7.segments/stamp-log-index."
+  [ground-truth]
+  (emit-hl7/stamp-log-index ground-truth))
+
 (defn emit
   ([ground-truth reference-date utc-offset]
    (emit-hl7/emit ground-truth reference-date utc-offset))

@@ -28,6 +28,7 @@
   (:require [clojure.test :refer [deftest is testing]]
             [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim-emit-hl7.messages :as messages]
+            [ehrt.sim-emit-hl7.segments :as segments]
             [ehrt.sim-check.check :as check]
             [ehrt.sim-engine.run :as run]
             [ehrt.sim-engine.streams :as streams]))
@@ -142,7 +143,11 @@
         "the two housekeeping legs belong to nobody")))
 
 (deftest every-bed-event-renders-one-adt-a20-of-msh-evn-npu
-  (let [bed-events (of-kind (:ground-truth on) :bed-status-change)
+  (let [;; ADR-0181: STAMPED first, then filtered -- never the other way
+        ;; round, or the indices would number the bed events rather than
+        ;; the log. `event->messages` reaches `control-id-for`, which
+        ;; fails closed on an unstamped event.
+        bed-events (of-kind (segments/stamp-log-index (:ground-truth on)) :bed-status-change)
         msgs (mapcat #(messages/event->messages "2024-01-01" "+00:00" (:facility on) (:providers on) {} nil {} %)
                      bed-events)]
     (is (= (count bed-events) (count msgs)) "one message per bed event")

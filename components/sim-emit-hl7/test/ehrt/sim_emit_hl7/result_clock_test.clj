@@ -100,7 +100,12 @@
   (let [{:keys [ground-truth facility providers]}
         (engine/run {:seed seed :patients 1 :pathways [{:pathway pathway :weight 1}]})
         messages (emit/emit ground-truth ref-date utc-offset facility providers)
-        result-event (first (filter #(= result-event-type (:event %)) ground-truth))]
+        ;; ADR-0181: the STAMPED log. `split-clock-case` below mints
+        ;; this event's own control id to key an offset map on, which
+        ;; is the GROUND-TRUTH side of the marker; `:t` is untouched,
+        ;; so every clinical-time assertion here reads as it did.
+        result-event (first (filter #(= result-event-type (:event %))
+                                    (segments/stamp-log-index ground-truth)))]
     {:ground-truth ground-truth :facility facility :providers providers
      :messages messages :result-event result-event}))
 

@@ -153,6 +153,11 @@
 ;; fifteen went, and both are dropped from the `ns` above.
 
 (def control-id-for segments/control-id-for)
+;; ADR-0181 (2026-09-23): a SECOND public def joins it, for the same
+;; reason the first one has -- `interface.clj` re-exports it, because
+;; `ehrt.sim.identifiers` is the fifth funnel and has to stamp the log
+;; it inventories exactly as the emitter stamps the log it renders.
+(def stamp-log-index segments/stamp-log-index)
 ;; --- moved to `ehrt.sim-emit-hl7.er7` (extraction cluster 4 of 8) --------
 ;;
 ;; NINETEEN forms -- the ER7 escape table and its encoder, the decode map

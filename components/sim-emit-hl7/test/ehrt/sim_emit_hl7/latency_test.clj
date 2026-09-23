@@ -98,7 +98,11 @@
             shifts by the offset, EVN-2 (event/clinical time) does not
             move at all"
     (let [{:keys [ground-truth facility providers]} (run/run {:seed 42 :patients 1})
-          admission (first (filter #(= :admission (:event %)) ground-truth))
+          ;; ADR-0181: drawn from the STAMPED log, because the offset
+          ;; map `emit-wire` reads is keyed on the id a stamped event
+          ;; mints -- the GROUND-TRUTH side of the marker.
+          admission (first (filter #(= :admission (:event %))
+                                   (segments/stamp-log-index ground-truth)))
           control-id (segments/control-id-for admission)
           offset-seconds 3600
           offsets {control-id offset-seconds}
@@ -134,7 +138,9 @@
                                              {:type :discharge}]}
           {:keys [ground-truth facility providers]}
           (run/run {:seed 7 :patients 1 :pathways [{:pathway pathway :weight 1}]})
-          order-placed (first (filter #(= :order-placed (:event %)) ground-truth))
+          ;; ADR-0181: the STAMPED log -- ground-truth side.
+          order-placed (first (filter #(= :order-placed (:event %))
+                                      (segments/stamp-log-index ground-truth)))
           control-id (segments/control-id-for order-placed)
           offsets {control-id 900}
           plain-messages (emit/emit ground-truth ref-date utc-offset facility providers)
@@ -162,7 +168,9 @@
                            {:type :discharge}]}
           {:keys [ground-truth facility providers]}
           (run/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
-          admission (first (filter #(= :admission (:event %)) ground-truth))
+          ;; ADR-0181: the STAMPED log -- ground-truth side.
+          admission (first (filter #(= :admission (:event %))
+                                   (segments/stamp-log-index ground-truth)))
           control-id (segments/control-id-for admission)
           offsets {control-id (* 999 3600)}
           plain-messages (emit/emit ground-truth ref-date utc-offset facility providers)

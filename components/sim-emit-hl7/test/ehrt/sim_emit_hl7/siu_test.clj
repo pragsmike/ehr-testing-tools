@@ -292,33 +292,43 @@
   (let [on (wire {})
         siu (filterv siu? on)]
     (testing "the key is four parts, and the appointment id is the third-from-last"
-      (is (= "MRN000001-APT-A-S12-100" (msh-10 (first siu)))))
+      (is (= "MRN000001-APT-A-S12-100#1" (msh-10 (first siu)))))
     (testing "TWO BOOKINGS FOR ONE PATIENT AT ONE SECOND still mint distinct MSH-10s --
               the collision the DEFAULT three-part key does NOT survive
               (`roadmap.md#oru-control-id-collision`; ADR-0181 measures which
               families actually hit it, and `:result-available` is not among
               them), avoided here from the first message rather than repaired
               later"
-      (let [at-200 (filterv #(= "200" (last (str/split (msh-10 %) #"-"))) siu)]
+      ;; ADR-0181: `t` is no longer the id's LAST `-`-part -- a
+      ;; ground-truth id now ends `...-<t>#<log index>` -- so the
+      ;; selector names the instant and the marker together instead of
+      ;; splitting on `-` and taking the tail. The equality below is
+      ;; still exact, on the ground-truth side of the marker.
+      (let [at-200 (filterv #(re-find #"-200#\d+$" (msh-10 %)) siu)]
         (is (= 2 (count at-200)))
-        (is (= ["MRN000001-APT-A-S14-200" "MRN000001-APT-B-S12-200"]
+        (is (= ["MRN000001-APT-A-S14-200#2" "MRN000001-APT-B-S12-200#3"]
                (sort (mapv msh-10 at-200))))))
     (testing "and MSH-10 is unique across the whole stream, SIU and ADT together"
       (is (= (count on) (count (distinct (map msh-10 on))))))
     (testing "`control-id-for` agrees with what the wire actually renders, which is the
               contract `sim identifiers` depends on"
       (is (= (mapv msh-10 siu)
+             ;; ADR-0181: STAMPED first, then filtered -- never the
+             ;; other way round, or the indices would number the SIU
+             ;; events rather than the log, and this equality against
+             ;; the real wire would compare two different numberings.
              (mapv segments/control-id-for
-                   (filterv #(contains? registry/siu-event-kinds (:event %)) log)))))))
+                   (filterv #(contains? registry/siu-event-kinds (:event %))
+                            (segments/stamp-log-index log))))))))
 
 (deftest an-siu-takes-its-own-event-s-latency-offset
   (testing "unlike a ladder rung, an SIU has no basis message to borrow a lag from: it IS
             its own event, so MSH-7 shifts by that event's own control-id offset while
             every other message stays where it was"
     (let [plain (wire {})
-          offsets {"MRN000001-APT-A-S12-100" 600}
+          offsets {"MRN000001-APT-A-S12-100#1" 600}
           shifted (wire {} offsets nil)
-          apt-a-s12 (fn [ms] (first (filterv #(= "MRN000001-APT-A-S12-100" (msh-10 %)) ms)))]
+          apt-a-s12 (fn [ms] (first (filterv #(= "MRN000001-APT-A-S12-100#1" (msh-10 %)) ms)))]
       (is (= (count plain) (count shifted)))
       (is (= "20240101000140+0000" (msh-7 (apt-a-s12 plain))))
       (is (= "20240101001140+0000" (msh-7 (apt-a-s12 shifted))))
