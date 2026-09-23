@@ -131,7 +131,7 @@ session by fresh regeneration (byte-identical to the values
 `ed-tuesday`'s own README states):
 
 ```
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811003739+0000||ADT^A01|MRN000002-A01-360|P|2.4
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811003739+0000||ADT^A01|MRN000002-A01-360#3|P|2.4
 ```
 
 ## The straddle: one encounter, two individually clean files
@@ -148,10 +148,10 @@ fresh regeneration, MSH segments byte-faithful:
 
 ```
 $ grep 'MRN000002-A01' out/scenarios/ed-tuesday-latency-batches/batch-000.hl7 | tr '\r' '\n' | head -1
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811003739+0000||ADT^A01|MRN000002-A01-360|P|2.4
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811003739+0000||ADT^A01|MRN000002-A01-360#3|P|2.4
 
 $ grep 'MRN000002-A03' out/scenarios/ed-tuesday-latency-batches/batch-002.hl7 | tr '\r' '\n' | head -1
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811021037+0000||ADT^A03|MRN000002-A03-5040|P|2.4
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811021037+0000||ADT^A03|MRN000002-A03-5040#15|P|2.4
 ```
 
 (HL7 v2 segments are `\r`-terminated, not `\n`-terminated — `tr` makes
@@ -160,7 +160,14 @@ segment; `bin/demo-exerciser-ed-tuesday`'s own straddle assertion
 greps for the same MSH-10 control-ID prefixes shown here,
 `MRN000002-A01-` in `batch-000.hl7` and `MRN000002-A03-` in
 `batch-002.hl7`, unparsed segment text and all — this chapter's own
-excerpt is that same check, made visible.)
+excerpt is that same check, made visible.
+
+The two MSH-10s end in `#3` and `#15`: since 2026-09-23 every control
+id this simulator mints carries the event's own 0-based position in the
+ground-truth log,[^log-index-msh10] so a message names the event that
+produced it without a lookup table. The exerciser's own grep is
+unaffected — it matches on the prefix, which is exactly what the id was
+before that change.)
 
 Notice what actually pushed the discharge past the next batch: it
 isn't that her own [encounter](../glossary.md) ran long. Her EVN-2 clinical times —
@@ -270,3 +277,8 @@ statements of the same fact, written at three different sittings, and
 nothing holds them to each other. `bin/demo-exerciser-ed-tuesday`
 asserts the straddle — which is why the straddle survived four sweeps
 intact — and asserts nothing about how many batches there are.
+
+[^log-index-msh10]: `notes/adr/0181-msh-10-collisions-are-a-default-branch-property.md` — the
+    default `mrn-trigger-t` key was measured non-injective in five event classes, and the
+    author ruled the log index as the fix. The pre-change id is a strict PREFIX of the new
+    one, so every control id in this chapter reads as it always did up to the `#`.

@@ -34,42 +34,23 @@ with them.
   hash-order dependence" at site 5 and names this row instead. Retire only as a DECLARED
   oracle change -- sorting `eligible` moves every churn-bearing golden
   root -- never as a site session's judgment call.
-- CLOSED 2026-09-23 (`32344ca9`) **[oru-control-id-collision]** -- `control-id-for`'s
-  DEFAULT branch (`mrn-trigger-t`) was non-injective wherever two events of ONE
-  trigger family landed on one patient in one second. RE-MEASURED 2026-09-23 over
-  seven roots (ADR-0181), and the row's old reading was wrong twice over: the
-  `:result-available`-against-itself case it named has an EMPTY population in
-  every root (0 of 7, including the 1,028 result events of dense-7500 @750),
-  while FIVE other classes were live -- that cell carried 43 groups (25 A02
-  `:transfer`, 8 A12, 2 A40 `:merge`, 8 R01 cross-type), and seed-424242's 2
-  groups plus the clinic-decade demo's 3 (NOT 1) were all `:observation`/
-  `:diagnostic-report` in corpora that place no order at all. Anchor kept though
-  `oru` always misnamed it (10 citations). CLOSED by ADR-0181 candidate 3, ruled
-  by the author 2026-09-23: MSH-10 carries the LOG INDEX, appended to every arm
-  as `#<0-based position>` -- the old id is a strict PREFIX of the new one, so a
-  held id finds its successor by prefix and the id names the event's own place in
-  the log. Minted at emission from a key the funnel stamps on its own copy of the
-  log; ground truth did not move (`bin/ground-truth-bracket 2b52fc57 HEAD`
-  IDENTICAL on all 38 digested roots). The declared oracle change is
-  `bin/regression-oracle --declared-digest-change`: 36 roots DIFFER and 5 are
-  IDENTICAL -- the three batch roots with no `:hl7` key plus `dermatitis` and
-  `veteran-self-harm`, whose `:hl7` half is present and EMPTY. The gate is
-  `ehrt.sim.run-test/control-id-for-is-injective-over-every-corpus-this-lane-runs`,
-  over four gated corpora and the dense-7500 750 cell.
-- OPEN **[dft-control-id-collision]** PRIORITY 4 -- `messages/dft-message` mints
+- OPEN **[dft-control-id-collision]** PRIORITY 3 -- `messages/dft-message` mints
   its own MSH-10, `mrn-P03-t`, WITHOUT going through `control-id-for`, so
   ADR-0181's log-index suffix does not reach it and DFT^P03 keeps a three-part
-  key. Found 2026-09-23 while landing that record's candidate 3, by rendering the
-  dense-7500 750 cell before and after: 2,609 of that cell's 40,291 messages are
-  DFT^P03 and none of their ids moved. It is the SAME defect the closed row
-  above names -- two encounter closes for one patient at one second mint one id
-  -- in the one message family that does not read the fixed function. NOT
-  MEASURED LIVE: no duplicate DFT id occurs in any root
-  `ehrt.sim.run-test`'s own injectivity gate runs, so like the closed row's own
-  `:result-available` case this is reachable-in-principle rather than witnessed.
-  Fixing it is a BUILDER change (the id is built inline in `dft-message`), which
-  is why the landing session fenced it rather than smuggling it in, and it is a
-  declared oracle change of its own.
+  key. It is the SAME defect `#oru-control-id-collision` named -- two encounter
+  closes for one patient at one second mint one id -- in the one message family
+  that does not read the fixed function, and it is what SURVIVED that row's own
+  closure. Found 2026-09-23 while landing ADR-0181 candidate 3, by rendering the
+  dense-7500 750-arrival cell before and after: of the 18,773 MSH-10s that did
+  not move, 16,164 are chatter and ladder restatements (by design) and the
+  remaining 2,609 are DFT^P03 (not). NOT MEASURED LIVE: no duplicate DFT id
+  occurs in any root `ehrt.sim.run-test`'s own injectivity gate runs, so like the
+  `:result-available` case of the row it descends from, this is
+  reachable-in-principle rather than witnessed -- and that gate would catch it
+  the day one appears. Fixing it is a BUILDER change (the id is built inline in
+  `dft-message`, not in `control-id-for`), which is why the landing session
+  fenced it out rather than smuggling it in, and it is a declared oracle change
+  of its own.
 - OPEN **[cancel-discharge-reopens-an-encounter-that-never-closes]** PRIORITY 4 --
   MEASURED 2026-08-29 while tracing `roadmap.md#ts-3-outpatient-opens-over-an-encounter`,
   and it is a population fact rather than one patient's: a legal
@@ -296,6 +277,8 @@ section carries no per-row ledger and no rotation; rows closed before
 One line a row. `CLOSED` here means "no longer a roadmap row", not "the work
 was done" -- each line says which. The section is named `## Done` because that
 is where `ehrt.docs-tooling.roadmap-lint-test` requires a `CLOSED` row to live.
+
+- CLOSED 2026-09-23 32344ca9 **[oru-control-id-collision]** -- DONE. The `mrn-trigger-t` key was non-injective in five classes (43 groups at dense-7500 @750); ADR-0181 candidate 3 gives every arm a `#<0-based log index>` suffix, so the old id is a strict PREFIX of the new and MSH-10 is injective by construction. Ground truth unmoved. Record: `2026-09-23-msh-10-log-index.md`. Residual: `#dft-control-id-collision`.
 
 - CLOSED 2026-09-07 df73b6c8 **[dense-7500-gate-gaps]** -- DONE, both. (a) the exerciser is a step of `make integration`. (b) `demos/scenarios/dense-7500/figures.edn` is the one source; the exerciser rewrites its `:asserted` half from its own run, so the tree-clean check IS the assertion, and `dense-7500-figures-test` holds both quoting documents to it. Re-measured at `2ba3490c`: counts identical, walls 2.5-3.4x shorter. Record: `2026-09-07-dense-7500-gate-gaps.md`.
 - CLOSED 2026-09-07 e6cd1dbb **[performance-residual-sites]** -- DONE, all SEVEN sites of ADR-0180's program, one session each, every commit over byte-identical cell logs, `bin/ground-truth-bracket` IDENTICAL on 38 roots. At 22,500 generate went **1,472.56 -> 98.66 s** (14.9x); site 7 halved check, 112.28 -> 54.17 s, peak heap 3,476 -> 1,985 MB. Residue unchartered: the EDN parse, `licensed-bed-ids`. `.agents/plans/2026-09-05-performance-measurement/measurements.md`.
