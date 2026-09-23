@@ -1794,3 +1794,88 @@
         (is (empty? (remove (comp encounterless-pv1-message-types first) blank))
             (str id " left PV1-19 empty on a message that HAS an open encounter: "
                  (pr-str (frequencies (map first blank)))))))))
+
+;; --- ADR-0181 candidate 3: THE ALL-MESSAGE INJECTIVITY GATE -------------
+;;
+;; The gate ADR-0181's own "what this costs the gates that already
+;; exist" section says was MISSING. Until this one, the only place any
+;; duplicate MSH-10 was ever counted was
+;; `ehrt.conformance.mllp-pairing-test`, over ONE root
+;; (`seed-424242-clinic-decade`) and with an assertion scoped to
+;; `-R01-` -- so the four non-ORU collision classes the `dense-7500`
+;; cell carries (25 A02, 8 A12, 2 A40) were live and unseen for the
+;; whole of arc 4.
+;;
+;; READ OFF THE WIRE, never off `control-id-for` applied to the ground
+;; truth: MSH-10 is what a receiving system actually keys on, and a
+;; gate that re-derived the id from the log would be checking the stamp
+;; against itself -- `pv1-19s` above states the same reason for the same
+;; choice.
+
+(defn- msh-10s
+  "Every message's own MSH-10, in emission order, by splitting the ER7
+  the shipped writer emits. MSH-10 is field 10 of a segment whose
+  encoding characters occupy field 2, so it is index 9 of a `|` split
+  that keeps its empty trailing fields."
+  [messages]
+  (mapv (fn [message]
+          (let [segments (str/split message #"\r\n|\r|\n")
+                msh (first (filter #(str/starts-with? % "MSH") segments))]
+            (nth (str/split msh #"\|" -1) 9 "")))
+        messages))
+
+(defn- duplicate-control-ids
+  "MSH-10 -> how many messages carry it, for every id carried more than
+  once. A sorted map so a failure message reads the same way twice."
+  [messages]
+  (into (sorted-map) (filter (fn [[_ n]] (> n 1))) (frequencies (msh-10s messages))))
+
+(def ^:private dense-7500-cell
+  "The `dense-7500` 750-arrival cell, at `bin/demo-exerciser-dense-7500`'s
+  own opts (that script's second command, verbatim but for `--emit hl7`)
+  -- 33,306 events and 40,291 messages, the largest population this
+  project measures anywhere.
+
+  IT IS HERE AND NOT IN `gated-runs`, on purpose. It is not a gated
+  corpus: it carries no pinned arc-0 baseline, it is not in the
+  equivalence gate, and nothing else in this file touches it. It is
+  here because ADR-0181's finding 3 measured FOUR collision classes
+  that occur in NO other root this project runs under `make test` --
+  `:transfer`/`:transfer` and `:cancel-transfer`/`:cancel-transfer`
+  need a census dense enough to move two patients through one ward in
+  one second, and the four gated corpora never are. A gate for the
+  ruled key shape that could not see thirty-five of the forty-three
+  groups it exists to prevent would be a gate over the minority.
+
+  COST, DISCLOSED: ~29 s of the per-push lane, run once. That is paid
+  knowingly; `demos/scenarios/dense-7500`'s own figures gate is a
+  hand-run exerciser in neither `make` target, so this is the first
+  time any lane measures this cell at all."
+  (delay (run/run-command {:seed 20260824 :patients 750 :churn true
+                           :config "demos/scenarios/dense-7500/config.edn"
+                           :emit "hl7"})))
+
+(deftest control-id-for-is-injective-over-every-corpus-this-lane-runs
+  (testing "ADR-0181 candidate 3, ruled 2026-09-23: MSH-10 carries the
+            log index, so no two messages of one corpus can share one.
+            RED at `2b52fc57` with exactly ADR-0181's own counts -- 2
+            groups / 8 messages at `seed-424242-clinic-decade`, 43 / 86
+            at the `dense-7500` 750 cell, 0 at the other three."
+    (doseq [[id r] (concat (for [{:keys [id]} gated-runs] [id (corpus id)])
+                           [[:dense-7500-750 @dense-7500-cell]])]
+      (testing (str "corpus " id)
+        (is (result/ok? r) (str id ": the run itself failed: " (pr-str (:payload r))))
+        (let [messages (:messages (:payload r))
+              dupes (duplicate-control-ids messages)]
+          (is (pos? (count messages)) (str id " rendered no messages at all"))
+          (is (zero? (count dupes))
+              (str id " carries " (reduce + (vals dupes)) " messages sharing "
+                   (count dupes) " MSH-10s: "
+                   (pr-str (into (sorted-map) (take 8 dupes)))))
+          ;; And the marker actually reaches the wire. Injectivity alone
+          ;; would also be satisfied by a corpus that happened to carry
+          ;; no colliding pair, so this is what keeps the assertion above
+          ;; from passing for the wrong reason -- the ruled shape is
+          ;; present in every root, not merely compatible with them.
+          (is (boolean (some #(str/includes? % "#") (msh-10s messages)))
+              (str id " rendered no MSH-10 carrying the ruled log-index marker")))))))
