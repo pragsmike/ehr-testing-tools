@@ -127,9 +127,11 @@
   state its own ACK pairing law -- MSA-2 must echo the MSH-10 of the
   message at the same POSITION. It is deliberately not used as a KEY
   anywhere: `ehrt.sim-emit-hl7.segments/control-id-for` is known
-  non-injective over `:result-available`
-  (`roadmap.md#oru-control-id-collision`), so two messages in one
-  shipped corpus can carry the same value here."
+  non-injective on its default branch, for any trigger family
+  (`roadmap.md#oru-control-id-collision`, measured by class in
+  ADR-0181, which corrects that row's earlier `:result-available`
+  reading), so two messages in one shipped corpus can carry the same
+  value here."
   [message]
   (msh-field (first-segment message) 10))
 

@@ -146,11 +146,15 @@
 
 (deftest positional-pairing-survives-duplicate-control-ids
   (testing "THE REASON THE PAIRING IS POSITIONAL rather than a lookup.
-            `control-id-for` is NON-INJECTIVE over `:result-available`
-            -- two results for one patient at one second mint the same
-            MSH-10 -- and two shipped corpora carry duplicates today
-            (`roadmap.md#oru-control-id-collision`, arc 4 sweep 3's
-            finding 1). MSA-2 equality is asserted PER PAIR and is NOT a
+            `control-id-for`'s DEFAULT branch is NON-INJECTIVE -- two
+            events of one trigger family for one patient at one second
+            mint the same MSH-10 -- and several shipped corpora carry
+            duplicates today (`roadmap.md#oru-control-id-collision`,
+            measured by class in ADR-0181, which corrects that row's
+            earlier `:result-available` reading; the literal pair below
+            is a REAL colliding id from seed-424242, where both sides
+            are `:observation`/`:diagnostic-report`). MSA-2 equality is
+            asserted PER PAIR and is NOT a
             global bijection: a control id may legitimately appear on
             two pairs, and a pairing keyed on MSH-10 would acknowledge
             one twin twice and the other never. This gate uses a

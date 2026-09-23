@@ -294,9 +294,11 @@
     (testing "the key is four parts, and the appointment id is the third-from-last"
       (is (= "MRN000001-APT-A-S12-100" (msh-10 (first siu)))))
     (testing "TWO BOOKINGS FOR ONE PATIENT AT ONE SECOND still mint distinct MSH-10s --
-              the collision `:result-available`'s own three-part key does NOT survive
-              (`roadmap.md#oru-control-id-collision`), avoided here from the first
-              message rather than repaired later"
+              the collision the DEFAULT three-part key does NOT survive
+              (`roadmap.md#oru-control-id-collision`; ADR-0181 measures which
+              families actually hit it, and `:result-available` is not among
+              them), avoided here from the first message rather than repaired
+              later"
       (let [at-200 (filterv #(= "200" (last (str/split (msh-10 %) #"-"))) siu)]
         (is (= 2 (count at-200)))
         (is (= ["MRN000001-APT-A-S14-200" "MRN000001-APT-B-S12-200"]

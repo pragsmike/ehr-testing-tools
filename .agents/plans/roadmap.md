@@ -34,11 +34,19 @@ with them.
   hash-order dependence" at site 5 and names this row instead. Retire only as a DECLARED
   oracle change -- sorting `eligible` moves every churn-bearing golden
   root -- never as a site session's judgment call.
-- OPEN **[oru-control-id-collision]** PRIORITY 3 -- `control-id-for` not
-  injective over `:result-available` -- 6 live duplicate MSH-10s in seed-424242,
-  1 in clinic-decade demo (sweep-3 record :290); fix moves every corpus, its own
-  declared sweep; sweep 5's fan-out must either wait for it or derive from log
-  indices.
+- OPEN **[oru-control-id-collision]** PRIORITY 3 -- `control-id-for`'s DEFAULT
+  branch (`mrn-trigger-t`) is non-injective wherever two events of ONE trigger
+  family land on one patient in one second. RE-MEASURED 2026-09-23 over seven
+  roots (ADR-0181), and the row's old reading was wrong twice over: the
+  `:result-available`-against-itself case it named has an EMPTY population in
+  every root (0 of 7, including the 1,028 result events of dense-7500 @750),
+  while FIVE other classes are live -- that cell carries 43 groups (25 A02
+  `:transfer`, 8 A12, 2 A40 `:merge`, 8 R01 cross-type), and seed-424242's 2
+  groups plus the clinic-decade demo's 3 (NOT 1) are all `:observation`/
+  `:diagnostic-report` in corpora that place no order at all. Anchor kept though
+  `oru` now misnames it (10 citations). Key shape UNRULED, three candidates in
+  ADR-0181; any fix moves HL7 bytes and never ground truth, its own declared
+  sweep; sweep 5's fan-out must either wait for it or derive from log indices.
 - OPEN **[cancel-discharge-reopens-an-encounter-that-never-closes]** PRIORITY 4 --
   MEASURED 2026-08-29 while tracing `roadmap.md#ts-3-outpatient-opens-over-an-encounter`,
   and it is a population fact rather than one patient's: a legal

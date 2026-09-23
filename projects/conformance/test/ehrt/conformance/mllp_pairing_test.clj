@@ -12,15 +12,26 @@
 
   THE POPULATION IS GENERATED, NOT QUOTED. Arc 4 sweep 3's finding 1
   measured `seed-424242-clinic-decade` as carrying 6 duplicate MSH-10s
-  in 2 groups -- `control-id-for` is non-injective over
-  `:result-available`, two results for one patient at one second mint
-  the same id, and the row is open and priced
+  in 2 groups, and the row is open and priced
   (`roadmap.md#oru-control-id-collision`). A gate that quoted that
   number from a session record would go quiet the day the corpus
   reshuffled. This one regenerates the corpus and asserts the
   duplicates are STILL THERE before asserting anything about pairing --
   because if they ever stop being there, this gate is vacuous and
-  should say so rather than pass."
+  should say so rather than pass.
+
+  WHAT THOSE SIX ACTUALLY ARE, corrected 2026-09-23 (ADR-0181): they
+  are `:observation`/`:diagnostic-report`, which share `control-id-for`'s
+  DEFAULT `mrn-trigger-t` branch. This corpus places no order and
+  carries no `:result-available` event at all, so the row's inherited
+  `:result-available` framing never described it.
+
+  AND WHAT THIS GATE DOES NOT WATCH (same record): the `-R01-`
+  assertion below reads like a no-new-collision-shape guard, but it is
+  scoped to THIS root. The dense-7500 cell carries 43 duplicate groups
+  of which 35 are A02/A12/A40 -- four collision classes that have been
+  live and unseen, because this is the only corpus any gate measures
+  duplicates on."
   (:require [clojure.test :refer [deftest is testing]]
             [ehrt.corpus-io.interface :as corpus-io]
             [ehrt.kernel.interface :as result]

@@ -73,9 +73,11 @@
 
   ARC 4 SWEEP 4: the SIU family keys on FOUR parts, `mrn-appointment-
   trigger-t`, from its first message. It is the only family here that
-  did not have to LEARN that -- sweep 3 measured `:result-available`'s
-  own three-part key NON-INJECTIVE and rowed the fix
-  (`roadmap.md#oru-control-id-collision`), and a patient can hold more
+  did not have to LEARN that -- sweep 3 measured the DEFAULT three-part
+  key NON-INJECTIVE and rowed the fix
+  (`roadmap.md#oru-control-id-collision`; ADR-0181 corrects that row's
+  attribution of it to `:result-available`, whose own same-second pair
+  no corpus has ever produced), and a patient can hold more
   than one open appointment, so `mrn-S12-t` would collide the moment two
   bookings landed on one second. The appointment id is the discriminator
   the log already carries."

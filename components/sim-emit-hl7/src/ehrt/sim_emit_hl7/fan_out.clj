@@ -10,11 +10,13 @@
   whole of what this namespace does.
 
   IDENTITY IS THE LOG INDEX, NEVER MSH-10 (author ruling 2026-08-28,
-  option (b)). `control-id-for` is known NON-INJECTIVE over
-  `:result-available` -- two results for one patient at one second mint
-  the same MSH-10, live in two shipped corpora today
-  (`roadmap.md#oru-control-id-collision`, arc 4 sweep 3's finding 1) --
-  so a subscriber spool keyed on MSH-10 would deliver one twin twice
+  option (b)). `control-id-for`'s DEFAULT `mrn-trigger-t` branch is
+  known NON-INJECTIVE -- two events of one trigger family on one
+  patient at one second mint the same MSH-10, live in every shipped
+  corpus that produces such a pair
+  (`roadmap.md#oru-control-id-collision`; the classes and counts are
+  ADR-0181's, which corrects this row's earlier `:result-available`
+  reading) -- so a subscriber spool keyed on MSH-10 would deliver one twin twice
   and the other never. A message's identity here is its POSITION in
   `emit-wire`'s own output vector, which is total, ordered and minted
   by nothing.
