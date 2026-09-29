@@ -438,7 +438,8 @@ and the four scheduling invariants are no-ops on a log with no
 `:appointment` — but all 46 are still listed in
 `:invariants-checked`. A green check on a thin log is a weaker statement
 than a green check on a rich one, and the report does not distinguish
-them for you. Count the kinds in your own log.
+them for you. Count the kinds in your own log;
+[`ehrt sim describe`](#describing-a-corpus) does it for you.
 
 ## What is not warranted
 
@@ -510,6 +511,83 @@ validation. [`what-is-this.md`](what-is-this.md#scope--what-this-deliberately-do
 is where that is stated normatively; the root
 [`README.md`](../README.md#maturity)'s maturity table is the
 per-capability contract.
+
+## Describing a corpus
+
+**`sim check` tells you the log is consistent. It does not tell you
+what the log contains.** `ehrt sim describe` does. It reads the same
+stdin and prints what the corpus **proves**, set beside what its
+configuration only made **possible**:
+
+```bash
+bin/ehrt sim run --seed 42 --patients 20 --churn --config demos/scenarios/ed-tuesday/config.edn > run.edn
+bin/ehrt sim describe < run.edn
+```
+
+Give it the **full envelope** when you have it. The envelope's manifest
+records every option the run was given (the config file and the flags
+together), so each family row can say whether it was configured. A
+bare `--format ground-truth` vector works too, but it records no
+configuration: every row then reads `:configured :unknown`. `--config`
+beside a bare log fills that in, as your own assertion, except for
+churn: a config file cannot record the `--churn` flag. `--format text`
+prints a short human view of the same report. `--witnesses N` sets how
+many examples each row keeps (default 3). The shape and its version
+contract are in [`formats.md`](formats.md#the-describe-report).
+
+What you get:
+
+- **Identity:** seed, schema, generator, and a hash of the log itself.
+- **Per-kind counts,** with how many distinct subjects each kind
+  touches.
+- **The `:t` range.**
+- **Families:** one row per churn type, scheduling outcome, opt-in
+  family, cited module, pathway name and measure.
+- **Four relationship predicates,** counted both ways.
+
+Every row carries **witnesses**: the events that prove it, located by
+log index, which is also the suffix of every MSH-10 that event lowered
+to. The row to look for is `:configured :yes :observed 0 :witnesses
+[]`: a family you turned on that your corpus contains none of.
+
+**Nothing is inferred.** If the input doesn't say something, the report
+says `:unknown`. If no log could say it, the report says `:unprovable`,
+with the reason. For example, no event records which pathway produced
+it, so every pathway row reads `:unprovable`.
+
+**The module cohort, configured beside observed.** This is the row
+that motivated the verb. `dense-7500`'s `:module-assignment` lists 937
+explicit patient ordinals, and the highest is **7,496**. At its
+7,500-arrival cell, one of its seven module rows reads:
+
+```clojure
+{:group :module, :family "veteran_substance_abuse_treatment",
+ :configured :yes,
+ :configured-detail {:assigned-ordinals 134, :ordinal-range [48 7496],
+                     :patients 7500, :weighted false},
+ :observed 174, :subjects 88, ...}
+```
+
+At `--patients 28000` the same config gives the same `:ordinal-range`
+beside `:patients 28000`. Ordinals past 7,496 are never assigned a
+module, so a 28,000-arrival run has the module cohort of a 7,500-arrival
+run: 3.3% of its arrivals rather than 12.5%. The `:configured-detail`
+comes from the configuration alone. `:observed` and `:subjects` are
+what the log proves. Two numbers are needed because assigning a
+module does not guarantee it produces an event inside the horizon.
+
+**Citations the configuration does not list read `:unknown`, not
+`:no`.** The same cell cites `dense-inpatient`, which is an authored
+pathway step's own `:citation`, and `medications/otc_pain_reliever`,
+which is a submodule a listed module calls. Neither is a name
+`:modules` lists, and the log does not say which kind each one is.
+
+**The predicates are the invariants, counted.** Each predicate's
+`:fails` count is exactly the violation count of the invariant it
+names, on the same log. On a clean corpus `:fails` is 0 and `:holds`
+tells you how much the invariant had to check. At the 7,500 cell,
+10,274 results each belong to an order placed before them, and 34,553
+clinical events landed inside an open stay.
 
 ## Scale
 

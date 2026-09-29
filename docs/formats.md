@@ -1377,6 +1377,90 @@ An admitted patient moves to another bed, either by a pathway step or because a 
 
 ---
 
+## The describe report
+
+`ehrt sim describe` reads an event log on stdin — the bare vector, or
+the full `ehrt sim run` envelope — and prints what that log **proves**,
+set beside what the run's configuration only made **possible**. It is a
+report about one corpus, so it sits on this page beside the log it
+describes. Everything below is `:payload` in the usual envelope;
+`--format text` prints a short human view of the same map instead.
+
+**It is versioned separately.** `:describe-version` is the report's own
+semver, independent of the event schema's version and the manifest's.
+A new key or a new row is a minor bump. A key removed, or a value
+whose meaning changes, is a major bump. This page documents `1.0.0`.
+
+**Equal inputs give equal bytes.** Every map is sorted by key and every
+list has a fixed order, so running `describe` twice over the same log
+prints byte-identical output. You can checksum a report.
+
+| Key | What it holds |
+|---|---|
+| `:describe-version` | `"1.0.0"` |
+| `:identity` | which log this is. Always present: `:source` (`:envelope` or `:bare-log`), `:events`, `:log-sha256`, and `:configured-from` (`:manifest-invocation`, `:caller-config` or `:none`). From an envelope, also: `:seed`, `:config`, `:event-schema-version`, `:generator` and `:churn-flag`, copied from the manifest as written. With `--config`, also: the file's `:config {:path :sha256}` |
+| `:counts` | `:events`, `:subjects` (distinct patient participants), and `:by-kind`, which maps each kind to `{:events n :subjects n}` |
+| `:temporal` | `:min-t` and `:max-t`. When the manifest gives a reference date, also `:min-iso` and `:max-iso`, anchored the way the HL7 emitter anchors timestamps |
+| `:families` | one row per family, in a fixed order (below) |
+| `:predicates` | four relationships, each counted both ways (below) |
+
+**`:log-sha256` is the log's own hash**, not a hash of the input. It
+hashes the log's EDN exactly as `events.edn` holds it, which is also
+`--format ground-truth`'s output without its trailing newline. So an
+envelope and the bare vector cut from it report the same value.
+
+### A family row
+
+| Key | Values |
+|---|---|
+| `:group` | `:churn`, `:scheduling`, `:opt-in`, `:measure`, `:module`, `:pathway` |
+| `:family` | the family's name: a keyword, or the module or pathway name as a string |
+| `:configured` | `:yes`, `:no`, `:unknown`, or `:emergent` (a measure: something no config key turns on by itself) |
+| `:observed` | a count, or `:unprovable` |
+| `:witnesses` | up to `--witnesses` (default 3) witnesses, the first by log index |
+| `:cites` | the invariant or engine rule the observed predicate reads |
+| `:configured-reason`, `:observed-reason` | present when the value is `:unknown` or `:unprovable`, saying why |
+| `:subjects`, `:configured-detail` | module rows only: how many distinct patients the module's events name, and what `:module-assignment` says (`:assigned-ordinals`, `:ordinal-range`, `:weighted`, `:patients`) |
+
+**`:unknown` and `:unprovable` are different claims.** `:unknown` means
+the input doesn't say: a bare log records no configuration, so every
+`:configured` value on one is `:unknown` rather than a guess.
+`:unprovable` means no log could say. For example, no event carries the
+name of the pathway that produced it, so a pathway row is always
+`:observed :unprovable`. **The row that matters most reads
+`:configured :yes :observed 0 :witnesses []`**: the family was turned
+on and the corpus contains none of it.
+
+### A witness
+
+```clojure
+{:index 6, :patient-id "PID-000002-1c9756ce", :related {:opener-index 5}, :t 9900}
+```
+
+`:index` is the event's position in the log. It is stable (the same
+log always gives the same index), and it is the suffix every MSH-10
+lowered from that event ends with. `:encounter-id` appears when the
+event carries one. `:related` holds the other log positions or fields
+the relationship names, such as the cited order's `:order-event-id`. A
+field that doesn't apply is left out, not set to nil.
+
+### The predicates
+
+| Predicate | Holds when | Its `:fails` count equals |
+|---|---|---|
+| `:same-subject-opener-closer` | a discharge or visit end closes an encounter its subject has open | `discharge-closes-an-open-encounter` |
+| `:order-before-result` | a result's cited order exists at or before the result's `:t` | together with the next row, `result-references-existing-order-and-follows-it-in-time` (a result failing either one is one violation) |
+| `:result-belongs-to-order` | the cited order is an `:order-placed` for the result's subject, resolved through any merge at or before the result | (see above) |
+| `:during-encounter` | an order or clinical event lands while its subject is admitted, inside the stamped encounter when one is stamped | `order-only-when-admitted` plus `clinical-content-only-when-admitted` |
+
+Each predicate is `{:holds n :fails n :witnesses {:holds [..] :fails
+[..]} :cites ..}`. Its `:fails` count is the named invariant's
+violation count on the same log. The suite asserts that equality
+against `ehrt sim check`'s own catalog, over a clean log and over one
+with a planted defect for each predicate.
+
+---
+
 ## The corpus manifest
 
 Written as `manifest.edn` in a generated corpus's `--out-dir`. It is
