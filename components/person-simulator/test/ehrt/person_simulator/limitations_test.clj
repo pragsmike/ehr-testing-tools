@@ -90,9 +90,10 @@
       ;; (ADR-0174 section 2(c), arc 3b sweep 2): the bed cycle's own
       ;; `:bed-status-change`; 28 since 1.7.0 (ADR-0174 section 2(b), arc
       ;; 3b sweep 3): scheduling's `:appointment`, `:reschedule`,
-      ;; `:appointment-cancel` and `:no-show`.
-      (is (= 28 (count engine-kinds))
-          (str "expected the CLOSED 28-kind engine vocabulary, parsed " (count engine-kinds))))
+      ;; `:appointment-cancel` and `:no-show`; 29 since 1.10.0 (ADR-0182):
+      ;; `:immunization`.
+      (is (= 29 (count engine-kinds))
+          (str "expected the CLOSED 29-kind engine vocabulary, parsed " (count engine-kinds))))
     (testing "the witness stream carries deaths at all"
       (is (seq (fx/of-kind :person-death))))
     ;; REWRITTEN 2026-08-26 (arc 3a part 3). This assertion used to be

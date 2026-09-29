@@ -237,6 +237,15 @@
                      ;; invalidate by inserting steps around it).
                      [:order-citation {:optional true} Citation]
                      [:citation {:optional true} Citation]]]
+   ;; ADR-0182 (2026-09-29): the Vaccine state's compile target, and an
+   ;; author-facing step like :order -- a scenario may write one directly.
+   ;; :series is carried only when the module (or author) states it:
+   ;; ABSENT otherwise, never 0-defaulted and never nil (ADR-0178).
+   [:immunization [:map
+                   [:type [:= :immunization]]
+                   [:codes [:vector Concept]]
+                   [:series {:optional true} :int]
+                   [:citation {:optional true} Citation]]]
    ;; GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R2(b), G1): a
    ;; paired span mirroring :medication-order/:medication-end verbatim,
    ;; grounded directly against Synthea's own State.java

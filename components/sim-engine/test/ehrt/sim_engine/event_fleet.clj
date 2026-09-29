@@ -1,6 +1,6 @@
 (ns ehrt.sim-engine.event-fleet
   "The deterministic fixture fleet: eight small engine runs whose union
-  produces EXACTLY the 28 kinds `ehrt.sim-engine.event-schema` declares.
+  produces EXACTLY the 29 kinds `ehrt.sim-engine.event-schema` declares.
 
   Lives on the test path, and is shared by two consumers that must not
   be allowed to disagree:
@@ -97,7 +97,13 @@
             :the-plan {:type :care-plan-start
                        :codes [{:system :snomed :code "324911001" :display "Antibiotic therapy"}]
                        :activities [{:system :snomed :code "710824005" :display "Assessment of health"}]
-                       :direct-transition :course}
+                       :direct-transition :the-vaccine}
+            ;; ADR-0182. AFTER every state an end cites back to, so no
+            ;; existing event's back-reference (`:order-event-id`,
+            ;; `:start-event-id`) moves.
+            :the-vaccine {:type :vaccine :series 1
+                          :codes [{:system :cvx :code "115" :display "Tdap vaccine"}]
+                          :direct-transition :course}
             :course {:type :delay :exact {:quantity 10 :unit "days"} :direct-transition :stop-med}
             :stop-med {:type :medication-end :medication-order :the-med :direct-transition :stop-plan}
             :stop-plan {:type :care-plan-end :careplan :the-plan :direct-transition :visit-end}

@@ -1371,12 +1371,13 @@
   the SAME real constraint :procedure's own doc comment already states;
   :care-plan-end is deliberately NOT included, same reason
   :medication-end isn't -- a care plan legitimately continues (and
-  ends) after discharge."
+  ends) after discharge. ADR-0182: :immunization joins -- a vaccine is
+  administered at a visit, never with no encounter open."
   {::records true}
   ([ground-truth] (clinical-content-only-when-admitted ground-truth (engine/replay ground-truth)))
   ([ground-truth records]
    (for [{:keys [event before patient-id]} records
-         :when (and (#{:procedure :observation :medication-order :diagnostic-report :care-plan-start} (:event event))
+         :when (and (#{:procedure :observation :medication-order :diagnostic-report :care-plan-start :immunization} (:event event))
                     (or (not= :admitted (:status before))
                         ;; ADR-0174's table, per-encounter: and the stamp
                         ;; names the OPEN encounter, so a condition

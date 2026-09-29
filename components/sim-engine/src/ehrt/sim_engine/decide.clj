@@ -1685,6 +1685,19 @@
                      (citation-fields step))]
      :advance 0}))
 
+;; ADR-0182 (schema 1.10.0): the Vaccine fact, the same shape as the M5b
+;; kinds above -- no draw (`_streams`), no state change, citation when
+;; compiled. `:series` rides the event only when the step states one
+;; (`select-keys` of an absent key is `{}`): absent, never nil, never 0.
+(defmethod decide :immunization decide-immunization
+  [_streams t world patient-id {:keys [codes] :as step}]
+  (let [patient (get-in world [:patients patient-id])]
+    {:events [(merge {:event :immunization :t t :active-mrn (:active-mrn patient) :codes codes}
+                     (select-keys step [:series])
+                     {:participants [{:patient-id patient-id :role :subject}]}
+                     (citation-fields step))]
+     :advance 0}))
+
 (defn person-entry
   "What `world`'s `:person-index` holds for one person -- the patient a
   returning person resolves to, and what has been minted for them so far

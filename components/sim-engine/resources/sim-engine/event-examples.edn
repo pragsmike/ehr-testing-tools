@@ -174,6 +174,15 @@
   :attending "3408513729",
   :participants [{:patient-id "PID-000001-14cf8bfe", :role :subject}],
   :warm-up false},
+ :immunization
+ {:event :immunization,
+  :t 12182400,
+  :active-mrn "MRN000002",
+  :codes [{:system :cvx, :code "115", :display "Tdap vaccine"}],
+  :series 1,
+  :participants [{:patient-id "PID-000001-01564f61", :role :subject}],
+  :citation {:module "schema-fixture-mod", :state :the-vaccine},
+  :warm-up false},
  :medication-end
  {:event :medication-end,
   :t 13046400,

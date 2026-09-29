@@ -41,7 +41,8 @@
     ;; scheduling's four -- `:appointment`, `:reschedule`,
     ;; `:appointment-cancel`, `:no-show` -- joined the closed vocabulary,
     ;; on top of 1.6.0's own `:bed-status-change`.
-    (is (= 28 (count kinds)))
+    ;; 29 as of 1.10.0 (ADR-0182): `:immunization`.
+    (is (= 29 (count kinds)))
     (doseq [k kinds]
       (is (str/includes? block (str "#### `" k "`"))
           (str "no section rendered for " k))

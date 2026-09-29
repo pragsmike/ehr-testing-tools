@@ -164,6 +164,12 @@
    ;; derivability-property row, and a `witnessed-message-types` claim.
    ;; ADR-0173's own Consequences name it as a candidate for a later
    ;; arc rather than leaving it as a silence a reader has to notice.
+   ;;
+   ;; ADR-0182 (contract 1.10.0): `:immunization` deliberately gets NO
+   ;; entry here either -- ground truth only, the `:procedure` precedent.
+   ;; Its real v2 shape is VXU^V04 (an RXA segment this emitter does not
+   ;; build), the follow-on ADR-0182 names rather than a message invented
+   ;; in the same slice as the kind.
    })
 
 (def skeleton-message-types

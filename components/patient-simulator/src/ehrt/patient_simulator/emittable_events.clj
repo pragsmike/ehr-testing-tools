@@ -90,12 +90,12 @@
    ;; any phase (`compile-trajectory`'s own explicit clause, ADR-0036
    ;; AR-3).
    :supply-list     {:trajectory-event :supply-list     :ground-truth #{}}
-   ;; AllergyOnset/Vaccine reach `compile-trajectory`'s `:else` -- real
-   ;; trajectory events (ADR-0040 AR-5) with no compile clause of their
+   ;; AllergyOnset reaches `compile-trajectory`'s `:else` -- a real
+   ;; trajectory event (ADR-0040 AR-5) with no compile clause of its
    ;; own, so no IR step and no log event. Named here rather than left
-   ;; to be rediscovered.
+   ;; to be rediscovered. (Vaccine, its former pair, reaches the log
+   ;; since ADR-0182 -- below.)
    :allergy-onset   {:trajectory-event :allergy-onset   :ground-truth #{}}
-   :vaccine         {:trajectory-event :vaccine         :ground-truth #{}}
 
    ;; --- reaches the log ---------------------------------------------
    ;; Encounter -> `encounter->step`: :emergency/:inpatient compile to
@@ -129,6 +129,8 @@
    :medication-end    {:trajectory-event :medication-end    :ground-truth #{:medication-end}}
    :care-plan-start   {:trajectory-event :care-plan-start   :ground-truth #{:care-plan-start}}
    :care-plan-end     {:trajectory-event :care-plan-end     :ground-truth #{:care-plan-end}}
+   ;; Vaccine -> `vaccine->step` (ADR-0182).
+   :vaccine           {:trajectory-event :vaccine           :ground-truth #{:immunization}}
    ;; Death -> `death->step`, which is a :discharge step carrying
    ;; `:disposition :expired` (ADR-0028 C4). There is no `:death`
    ;; ground-truth event kind at all -- the log's own 24-kind closed

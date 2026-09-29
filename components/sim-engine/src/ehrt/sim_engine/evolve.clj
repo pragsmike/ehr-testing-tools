@@ -427,6 +427,10 @@
 
 (defmethod evolve :procedure evolve-procedure [patient _event] patient)
 
+;; ADR-0182: :immunization is log-only the same way -- no PatientState
+;; field, since nothing renders one yet (FHIR Immunization is a follow-on).
+(defmethod evolve :immunization evolve-immunization [patient _event] patient)
+
 ;; --- M6 Task 1: :observation/:medication-order/:medication-end now land
 ;; in the clinical-content accumulator (`ehrt.sim-engine.state`'s own
 ;; header comment above `PatientState`) -- EmitState's Observation/

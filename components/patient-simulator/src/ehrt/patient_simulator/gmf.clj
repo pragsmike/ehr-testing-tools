@@ -196,9 +196,9 @@
    ;; encounter/diagnose distinction at all upstream -- `process` always
    ;; records the immunization). :series is upstream's own primitive
    ;; `int` field (always some value, JSON-authored or Java's own
-   ;; zero-default); this loader leaves it optional and lets the
-   ;; interpreter supply the same zero-default `Counter`'s own :amount
-   ;; field already establishes for an absent primitive-int JSON field.
+   ;; zero-default); this loader leaves it optional. ADR-0182 (2026-09-29):
+   ;; the interpreter no longer supplies the zero-default -- an absent
+   ;; "series" stays absent all the way to the `:immunization` event.
    "Vaccine" :vaccine})
 
 (def ^:private code-system->keyword

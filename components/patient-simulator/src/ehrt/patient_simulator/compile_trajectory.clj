@@ -41,6 +41,11 @@
     down (`care-plan-start->step`/`care-plan-end->step`) -- `:codes`/
     `:activities` verbatim, `:care-plan-citation` resolved the same
     `:references`-index way `:order-citation` already is.
+  - `:vaccine` -- ADR-0182: compiles to a standalone `:immunization`
+    step (`vaccine->step`), `:codes` verbatim, `:series` only when the
+    trajectory event carries one (absent otherwise, ADR-0178), plus
+    `:citation`. Not a registration-time fact kind: a pre-horizon
+    Vaccine is dropped, the `:procedure` precedent.
   - `:condition-onset`/`:condition-end` -- compile to an ANNOTATION on
     the most recently compiled Encounter-mapped step (`:conditions`, a
     vector pathway.clj's Citation/ConditionAnnotation schemas define),
@@ -293,6 +298,13 @@
 
 (defn- medication-order->step [event] {:type :medication-order :codes (:codes event) :citation (citation event)})
 
+(defn- vaccine->step
+  "ADR-0182: `:series` rides the step only when the Vaccine state stated
+  one -- the interpreter emits no key otherwise, and neither does this."
+  [event]
+  (cond-> {:type :immunization :codes (:codes event) :citation (citation event)}
+    (contains? event :series) (assoc :series (:series event))))
+
 (defn- medication-end->step
   [trajectory event]
   (let [order-event (referenced-event trajectory event)]
@@ -361,8 +373,11 @@
   :procedure already is. `:supply-list` does NOT join this set -- it
   never compiles to a step at all, any phase (its own explicit
   unconditional clause, above), so there is nothing for pre-horizon
-  dropping to add."
-  #{:encounter :encounter-end :procedure :observation :death :diagnostic-report :imaging-study})
+  dropping to add. ADR-0182: `:vaccine` joins -- it now compiles to an
+  `:immunization` step, and a pre-horizon one is exactly as irrelevant
+  as a pre-horizon `:procedure` (it was dropped before too, by the
+  `:else` it no longer reaches)."
+  #{:encounter :encounter-end :procedure :observation :death :diagnostic-report :imaging-study :vaccine})
 
 (def ^:private pre-horizon-fact-types
   "The ratified item 5 condensed set: ConditionOnset/ConditionEnd/
@@ -614,6 +629,10 @@
 
           (= :medication-order event-type)
           (recur more (emit-with-delay steps last-t event (medication-order->step event))
+                 registration-facts (:t event) encounter-closed? straddle-open? suppressed-straddle-spans)
+
+          (= :vaccine event-type)
+          (recur more (emit-with-delay steps last-t event (vaccine->step event))
                  registration-facts (:t event) encounter-closed? straddle-open? suppressed-straddle-spans)
 
           (= :medication-end event-type)

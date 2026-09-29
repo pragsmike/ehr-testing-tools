@@ -369,8 +369,40 @@
   visit, so no existing corpus byte moves.
 
   MADE UNDER THE WAIVER, disclosed: no deprecation release was run, and
+  none is owed in any case, since nothing was removed.
+
+  1.10.0 (2026-09-29, ADR-0182, downstream request of the same date) is
+  the IMMUNIZATION: ONE new kind, `:immunization` -- `:active-mrn`,
+  `:codes` (the coded product, CVX), `:series` OPTIONAL and present only
+  when the source states one, `:citation` optional. The GMF interpreter
+  has emitted a Vaccine fact since Wave I (ADR-0040 AR-5); until now
+  `compile-trajectory` dropped it, so no log ever held one.
+
+  NO BUMP IS OWED, AND THIS ONE IS TAKEN -- 1.7.0's situation and 1.7.0's
+  reason. `classify-change` against the frozen 1.9.0 baseline returns
+
+    {:additive? true, :breaking []}
+
+  since a new kind is one of the two shapes its own docstring names as
+  non-breaking. The bump is taken because `:event-schema-version` is a
+  consumer's only handle on what a log can CONTAIN, and a 1.10.0 log may
+  carry a kind a 1.9.0-era consumer dispatching on `:event` has never
+  seen. A 1.9.0-ERA LOG VALIDATES UNCHANGED AGAINST 1.10.0: nothing
+  existing moved. No existing corpus contains the kind -- no vendored
+  module carries a Vaccine state -- so no existing corpus byte moves.
+
+  `:series` IS ABSENT, NEVER A DEFAULTED 0 AND NEVER NIL (ADR-0178). The
+  interpreter's Wave I zero-default is withdrawn with this kind: in the
+  log, a 0 nobody authored would read as a stated series.
+
+  THE KIND REACHES NO WIRE in 1.10.0, declared rather than left to be
+  discovered: no HL7 registry entry (VXU^V04 is the follow-on) and no
+  FHIR Immunization resource. Absent from the registry is the shipped
+  no-message pattern `:outpatient-visit-end` already follows.
+
+  MADE UNDER THE WAIVER, disclosed: no deprecation release was run, and
   none is owed in any case, since nothing was removed."
-  "1.9.0")
+  "1.10.0")
 
 ;; --- shared leaf schemas --------------------------------------------------
 ;;
@@ -931,6 +963,18 @@
             :transition "No state change; the log itself is the record."}
            [:active-mrn :string]
            [:codes [:vector sim-model/Concept]]
+           [:citation {:optional true} sim-model/Citation])]
+
+    [:immunization
+     (kind :immunization
+           {:doc "A vaccine is administered during an open encounter: the coded product (CVX), and the dose's place in its series when the source states one. Deliberately renders no HL7 message and no FHIR resource yet."
+            :transition "No state change; the log itself is the record."}
+           [:active-mrn :string]
+           [:codes [:vector sim-model/Concept]]
+           ;; 1.10.0 (ADR-0182): present only when the module or the
+           ;; author stated a series -- ABSENT otherwise, never a
+           ;; defaulted 0 and never nil (ADR-0178).
+           [:series {:optional true} :int]
            [:citation {:optional true} sim-model/Citation])]
 
     [:observation

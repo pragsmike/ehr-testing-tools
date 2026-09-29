@@ -2041,10 +2041,14 @@
       ;; GMF coverage Wave I (2026-08-04, ADR-0040 AR-5): Vaccine -- an
       ;; unconditional leaf write, State.java's own Vaccine.process
       ;; verbatim (no target-encounter/diagnose distinction exists
-      ;; upstream at all). :series defaults to 0, the SAME zero-default
-      ;; a genuinely absent Java primitive int carries.
+      ;; upstream at all). ADR-0182 (2026-09-29) SUPERSEDES Wave I's
+      ;; zero-default for :series: the event now reaches the log as
+      ;; `:immunization`, where a 0 nobody authored reads as a stated
+      ;; series. The key rides only when the state carries it (ADR-0178).
       :vaccine (emit-and-advance module-id ctx rng state :vaccine
-                                  {:codes (:codes state) :series (or (:series state) 0)} tables)))))
+                                  (cond-> {:codes (:codes state)}
+                                    (contains? state :series) (assoc :series (:series state)))
+                                  tables)))))
 
 ;; --- GMF coverage Wave F (2026-08-03, ADR-0036 AR-4): honest-absence, at
 ;; the walk boundary -- `step` itself still THROWS `honest-absence` (the

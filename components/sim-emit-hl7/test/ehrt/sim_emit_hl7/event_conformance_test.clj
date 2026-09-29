@@ -99,9 +99,14 @@
       ;; cannot see and a reader should: they render only when `:siu` is
       ;; on. `message-type-registry` says a kind CAN reach the wire; for
       ;; these four it does not say it always does.
+      ;;
+      ;; 10 -> 11 (ADR-0182, schema 1.10.0): `:immunization` joins the
+      ;; contract with NO registry entry -- VXU^V04 is the follow-on
+      ;; ADR-0182 names. Recorded in its own `:doc`, the registry comment and
+      ;; docs/formats.md, the three places this gate names.
       (is (= #{:registered :step-rejected :outpatient-visit-end :procedure
                :medication-order :medication-end :care-plan-start :care-plan-end
-               :demographic-update :coverage-change}
+               :demographic-update :coverage-change :immunization}
              silent)
           (str "the set of contract kinds this emitter renders no message for "
                "changed to " (sort silent) " -- that is a real change in what "

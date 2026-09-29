@@ -905,8 +905,9 @@
   scopes -- DERIVED from that invariant's subject rather than
   hand-picked, so a sixth clinical kind joining it joins this operator
   with it. That is ADR-0166's error ledger applied here too: the whole
-  reason the referential family above is a cross product."
-  #{:procedure :observation :medication-order :diagnostic-report :care-plan-start})
+  reason the referential family above is a cross product. The sixth
+  arrived with ADR-0182: `:immunization`."
+  #{:procedure :observation :medication-order :diagnostic-report :care-plan-start :immunization})
 
 (def ^:private orphan-patient-id
   "A patient id no run can mint. Fixed rather than drawn, for the same
