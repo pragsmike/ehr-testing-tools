@@ -3,7 +3,7 @@
 
 # Session prompts — index
 
-Generated index of [`.agents/prompts`](.) — 255 files. The convention, what a record contains, and where this sits relative to every other register are in [`README.md`](README.md); annotations that used to ride these rows are in [`../plans/state-history-2026-08.md`](../plans/state-history-2026-08.md), dated.
+Generated index of [`.agents/prompts`](.) — 256 files. The convention, what a record contains, and where this sits relative to every other register are in [`README.md`](README.md); annotations that used to ride these rows are in [`../plans/state-history-2026-08.md`](../plans/state-history-2026-08.md), dated.
 
   * 2026-08-01-agent-ux-capture.md
   * 2026-08-01-migration-session-1.md
@@ -259,4 +259,5 @@ Generated index of [`.agents/prompts`](.) — 255 files. The convention, what a 
   * 2026-09-12-errata-opener-guard.md
   * 2026-09-23-msh-10-log-index.md
   * 2026-09-23-oru-control-id.md
+  * 2026-09-29-immunization-kind.md
   * 2026-09-29-outpatient-order-location.md
