@@ -453,6 +453,43 @@
         admission-msg (first (emit/emit ground-truth ref-date utc-offset facility providers))]
     (is (= "I" (message/get-field-first-value (parser/parse admission-msg) "PV1" 2)))))
 
+;; --- schema 1.9.0: an order under an outpatient visit. ORM^O01 and
+;; ORU^R01 derive PV1-2 from the EVENT -- `:outpatient` when the order
+;; event carries no `:location` (the patient held no bed), `:inpatient`
+;; otherwise -- rather than passing `:inpatient` unconditionally. PV1-3
+;; is empty when there is no location, exactly as on the A04 above.
+
+(defn- order-wire [pathway]
+  (let [{:keys [ground-truth facility providers]}
+        (run/run {:seed 11 :patients 1 :pathways [{:pathway pathway :weight 1}]})
+        messages (emit/emit ground-truth ref-date utc-offset facility providers)
+        pv1 (fn [re] (let [m (first (filter #(re-find re %) messages))]
+                       (when m
+                         (let [p (parser/parse m)]
+                           [(message/get-field-first-value p "PV1" 2)
+                            (or (message/get-field-first-value p "PV1" 3) "")]))))]
+    {:orm (pv1 #"\^O01") :oru (pv1 #"\^R01")}))
+
+(deftest an-outpatient-order-renders-pv1-2-o-and-empty-pv1-3-on-orm-and-oru
+  (let [{:keys [orm oru]} (order-wire {:name "outpatient-order"
+                                       :steps [{:type :outpatient-visit}
+                                               {:type :order :profile :cbc}
+                                               {:type :delay :from 30 :to 30}
+                                               {:type :outpatient-visit-end}]})]
+    (is (= ["O" ""] orm) "ORM^O01")
+    (is (= ["O" ""] oru) "ORU^R01")))
+
+(deftest an-inpatient-order-still-renders-pv1-2-i-and-its-bed
+  (let [{:keys [orm oru]} (order-wire {:name "inpatient-order"
+                                       :steps [{:type :admission :location "Renal"}
+                                               {:type :order :profile :cbc}
+                                               {:type :delay :from 30 :to 30}
+                                               {:type :discharge}]})]
+    (is (= "I" (first orm)) "ORM^O01")
+    (is (= "I" (first oru)) "ORU^R01")
+    (is (not= "" (second orm)) "PV1-3 carries the bed")
+    (is (= (second orm) (second oru)))))
+
 ;; --- M5b: :observation -> ORU^R01 (OBX only, no ORC/OBR -- unsolicited,
 ;; not order-linked); :procedure/:medication-order/:medication-end are
 ;; truth-only, per the mapping table (components/patient-simulator/docs/gmf-interpreter.md section 1) --

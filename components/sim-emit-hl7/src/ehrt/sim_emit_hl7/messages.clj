@@ -297,6 +297,16 @@
 ;; --- M3: ORM^O01 + ORU^R01 (docs/sim-theory.edn's order-profiles
 ;; catalytic, components/sim/docs/operational-models.md) -----------------------------------
 
+(defn- order-patient-class
+  "PV1-2 for ORM^O01/ORU^R01, read off the EVENT (schema 1.9.0): an order
+  event carries no `:location` exactly when its patient held no bed -- an
+  order under an `:outpatient-visit` -- and that renders `:outpatient`.
+  Every order event before 1.9.0 carried a location, so every one still
+  renders `:inpatient`, the class these two builders passed
+  unconditionally until now."
+  [{:keys [location]}]
+  (if location :inpatient :outpatient))
+
 
 (defn- orm-message
   "ORM^O01: order placed. No EVN segment -- EVN is an ADT-specific
@@ -353,7 +363,7 @@
        parser/DEFAULT-DELIMITERS
        (segments/msh-segment site-profile type+trigger control-id transmit-ts)
        (segments/pid-segment active-mrn (timelines/demographics-at demographics (:patient-id (first participants)) t))
-       (segments/pv1-segment site-profile :inpatient facility-name location nil provider nil (:encounter-id ev))
+       (segments/pv1-segment site-profile (order-patient-class ev) facility-name location nil provider nil (:encounter-id ev))
        (if stage (segments/orc-segment control-id site-profile stage) (segments/orc-segment control-id))
        (segments/obr-segment 1 concept)
        (er7/z-segments-for site-profile demographics ev))))))
@@ -416,7 +426,7 @@
        parser/DEFAULT-DELIMITERS
        (segments/msh-segment site-profile type+trigger control-id transmit-ts)
        (segments/pid-segment active-mrn (timelines/demographics-at demographics (:patient-id (first participants)) t))
-       (segments/pv1-segment site-profile :inpatient facility-name location nil provider nil (:encounter-id ev))
+       (segments/pv1-segment site-profile (order-patient-class ev) facility-name location nil provider nil (:encounter-id ev))
        (segments/orc-segment control-id)
        (if stage
          (segments/obr-segment 1 concept clinical-ts site-profile stage)
