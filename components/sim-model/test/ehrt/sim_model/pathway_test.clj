@@ -141,3 +141,19 @@
   (is (pathway/valid? {:name "t" :steps [{:type :admission :location "Renal" :citation a-citation
                                            :conditions [{:event :condition-onset :codes [a-concept] :citation a-citation}]}]})))
 
+;; --- ADR-0182: :immunization, the Vaccine state's compile target and an
+;; author-facing step in its own right. :series is carried only when the
+;; module states it (absent, never 0-defaulted, never nil -- ADR-0178).
+
+(def ^:private a-vaccine {:system :cvx :code "115" :display "Tdap vaccine"})
+
+(deftest immunization-step-is-valid-ir-with-and-without-series-and-citation
+  (is (pathway/valid? {:name "t" :steps [{:type :immunization :codes [a-vaccine] :series 1 :citation a-citation}]}))
+  (is (pathway/valid? {:name "t" :steps [{:type :immunization :codes [a-vaccine]}]})
+      ":series and :citation are both optional"))
+
+(deftest immunization-step-refuses-a-nil-series-and-a-missing-codes-key
+  (is (not (pathway/valid? {:name "t" :steps [{:type :immunization :codes [a-vaccine] :series nil}]}))
+      "present-and-nil is not absent (ADR-0178)")
+  (is (not (pathway/valid? {:name "t" :steps [{:type :immunization :series 1}]}))))
+

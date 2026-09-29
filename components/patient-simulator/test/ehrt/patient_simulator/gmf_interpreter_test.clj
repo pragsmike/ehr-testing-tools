@@ -2793,10 +2793,14 @@
             :shot {:type :vaccine :codes vaccine-codes :direct-transition :done}
             :done {:type :terminal}}})
 
-(deftest vaccine-with-no-series-defaults-to-zero
+;; ADR-0182 supersedes Wave I's zero-default: once the event reaches the
+;; log, a 0 nobody authored would read as a stated series. Absent when
+;; the module states none (ADR-0178).
+(deftest vaccine-with-no-series-carries-no-series-key
   (let [ctx (assoc (ctx-for (persona-at 1)) :current :shot)
         outcome (interp/step vaccine-no-series-module (Random. 1) ctx)]
-    (is (= 0 (:series (first (:events outcome)))))))
+    (is (= :vaccine (:event (first (:events outcome)))))
+    (is (not (contains? (first (:events outcome)) :series)))))
 
 (deftest vaccine-consumes-no-rng
   (let [ctx (assoc (ctx-for (persona-at 1)) :current :tdap)

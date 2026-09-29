@@ -593,3 +593,55 @@
         "the dropped straddling encounter never sets encounter-closed?, so
          the loop finds the NEXT (fully horizon) encounter and compiles
          it as this run's own operational one")))
+
+;; --- ADR-0182: Vaccine reaches the log. Before it, `:vaccine` fell to the
+;; compile loop's `:else` and produced nothing; now it compiles to an
+;; `:immunization` step. `"series"` rides the step ONLY when the module
+;; JSON states it -- absent, never 0-defaulted (ADR-0178). A hand-built
+;; module, not a vendored one: no vendored module carries a Vaccine state.
+
+(def ^:private vaccine-visit-json
+  (str "{\"name\": \"VaccineVisit\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Visit\"},"
+       "  \"Visit\": {\"type\": \"Encounter\", \"encounter_class\": \"wellness\","
+       "             \"codes\": [{\"system\": \"SNOMED-CT\", \"code\": \"185345009\", \"display\": \"Encounter for symptom\"}],"
+       "             \"direct_transition\": \"Tdap\"},"
+       "  \"Tdap\": {\"type\": \"Vaccine\", \"series\": 1,"
+       "            \"codes\": [{\"system\": \"CVX\", \"code\": 115, \"display\": \"Tdap vaccine\"}],"
+       "            \"direct_transition\": \"Pneumo\"},"
+       "  \"Pneumo\": {\"type\": \"Vaccine\","
+       "              \"codes\": [{\"system\": \"CVX\", \"code\": 33, \"display\": \"PPSV23\"}],"
+       "              \"direct_transition\": \"End_Visit\"},"
+       "  \"End_Visit\": {\"type\": \"EncounterEnd\", \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest a-module-vaccine-compiles-to-an-immunization-carrying-series-only-when-stated
+  (let [module (:payload (gmf/load-module "vaccine-visit" vaccine-visit-json))
+        p (adult 7)
+        reg-t (interp/dob-epoch-day p)
+        {:keys [trajectory]} (interp/run-module module (Random. 7) p reg-t)
+        vaccines (filterv #(= :vaccine (:event %)) trajectory)
+        {:keys [steps]} (ct/compile-trajectory trajectory facility reg-t)
+        shots (filterv #(= :immunization (:type %)) steps)]
+    (is (= 2 (count vaccines)) "the walk reaches both Vaccine states -- otherwise this gate is vacuous")
+    (testing "the trajectory event carries :series only when the state does"
+      (is (= [1 ::absent] (mapv #(get % :series ::absent) vaccines))))
+    (is (= [:outpatient-visit :immunization :immunization :outpatient-visit-end]
+           (mapv :type (remove #(= :delay (:type %)) steps))))
+    (is (= [{:codes [{:system :cvx :code "115" :display "Tdap vaccine"}] :series 1
+             :citation {:module "vaccine-visit" :state :tdap}}
+            {:codes [{:system :cvx :code "33" :display "PPSV23"}]
+             :citation {:module "vaccine-visit" :state :pneumo}}]
+           (mapv #(dissoc % :type) shots)))
+    (is (sim-model/valid? {:name "compiled" :steps steps}))))
+
+(deftest a-pre-horizon-vaccine-is-dropped-not-compiled
+  (testing "a Vaccine is not a registration-time fact kind: before the
+            horizon it is dropped with its encounter, never promoted and
+            never compiled outside one"
+    (let [trajectory [(ev :encounter {:t 10 :pre-horizon true :encounter-class :wellness :codes []})
+                      (ev :vaccine {:t 10 :pre-horizon true :codes [{:system :cvx :code "115" :display "Tdap vaccine"}] :series 1})
+                      (ev :encounter-end {:t 10 :pre-horizon true :references 0})]
+          {:keys [steps registration-facts]} (ct/compile-trajectory trajectory facility 100)]
+      (is (not-any? #(= :immunization (:type %)) steps))
+      (is (empty? registration-facts)))))

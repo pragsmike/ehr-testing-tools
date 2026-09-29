@@ -1360,6 +1360,44 @@
     (is (= [[:location]] (mapv :in (:errors (event-schema/explain-event (assoc placed :location nil)))))
         "present-and-nil is not")))
 
+;; --- schema 1.10.0 (ADR-0182): :immunization, the Vaccine fact as a
+;; ground-truth kind. Authored here the way downstream can author it
+;; today; the compiled route is patient-simulator's to prove. No draw,
+;; no state change, clinical content -- so it lives inside an open
+;; encounter like every other kind in that class.
+
+(def ^:private tdap {:system :cvx :code "115" :display "Tdap vaccine"})
+
+(def ^:private immunization-pathway
+  {:name "immunization" :steps [{:type :outpatient-visit}
+                                {:type :immunization :codes [tdap] :series 1}
+                                {:type :delay :from 30 :to 30}
+                                {:type :outpatient-visit-end}]})
+
+(deftest an-authored-immunization-lands-once-inside-its-visit-and-self-checks-clean
+  (let [{:keys [ground-truth] :as r} (run/run {:seed 11 :patients 1
+                                               :pathways [{:pathway immunization-pathway :weight 1}]})
+        kinds (mapv :event ground-truth)
+        shots (filterv #(= :immunization (:event %)) ground-truth)]
+    (is (= [:registered :outpatient-visit :immunization :outpatient-visit-end] kinds)
+        "exactly one :immunization, between the visit's opener and its closer")
+    (is (= [{:codes [tdap] :series 1}] (mapv #(select-keys % [:codes :series]) shots)))
+    (let [checked (check/check-all ground-truth (:facility r))]
+      (is (result/ok? checked)
+          (str "the self-check's own instrument, over the whole catalog: "
+               (pr-str (:violations (:payload checked))))))))
+
+(deftest an-immunization-carries-series-only-when-its-step-states-one
+  (let [world0 (world-of {"P1" (state/initial-patient "P1" "MRN000001")})
+        decide-one (fn [step] (first (:events (decide/decide (streams/one-stream (Random. 1)) 0 world0 "P1" step))))
+        stated (decide-one {:type :immunization :codes [tdap] :series 2})
+        unstated (decide-one {:type :immunization :codes [tdap]})]
+    (is (= 2 (:series stated)))
+    (is (not (contains? unstated :series)) "absent, never 0-defaulted (ADR-0178)")
+    (is (nil? (event-schema/explain-event (assoc unstated :warm-up false))) "absent is legal")
+    (is (= [[:series]] (mapv :in (:errors (event-schema/explain-event (assoc unstated :warm-up false :series nil)))))
+        "present-and-nil is not")))
+
 (defspec outpatient-visits-never-occupy-a-bed-for-any-seed 150
   (prop/for-all [seed (gen/large-integer* {:min 0})]
     (let [pathway {:name "outpatient" :steps [{:type :outpatient-visit}

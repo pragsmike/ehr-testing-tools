@@ -446,6 +446,29 @@
              {:event :medication-order :t 7 :codes [a-concept] :participants (subject "P1")}]]
     (is (empty? (check/clinical-content-only-when-admitted log)))))
 
+;; ADR-0182: :immunization joins the class -- a vaccine is given at a
+;; visit, never with no encounter open.
+
+(def ^:private a-vaccine {:system :cvx :code "115" :display "Tdap vaccine"})
+
+(deftest clinical-content-only-when-admitted-detects-an-immunization-with-no-open-encounter
+  (testing "before any encounter"
+    (is (= [:clinical-content-only-when-admitted]
+           (mapv :invariant (check/clinical-content-only-when-admitted
+                             [{:event :immunization :t 0 :codes [a-vaccine] :participants (subject "P1")}])))))
+  (testing "after the encounter closed"
+    (is (= [:clinical-content-only-when-admitted]
+           (mapv :invariant (check/clinical-content-only-when-admitted
+                             [{:event :outpatient-visit :t 0 :participants (subject "P1")}
+                              {:event :outpatient-visit-end :t 5 :participants (subject "P1")}
+                              {:event :immunization :t 6 :codes [a-vaccine] :participants (subject "P1")}]))))))
+
+(deftest clinical-content-only-when-admitted-holds-for-an-immunization-inside-a-visit
+  (is (empty? (check/clinical-content-only-when-admitted
+               [{:event :outpatient-visit :t 0 :participants (subject "P1")}
+                {:event :immunization :t 1 :codes [a-vaccine] :series 1 :participants (subject "P1")}
+                {:event :outpatient-visit-end :t 5 :participants (subject "P1")}]))))
+
 (deftest medication-end-references-existing-order-and-follows-it-in-time-detects-phantom-order
   (let [log [{:event :medication-end :t 0 :order-event-id 99 :participants (subject "P1")}]]
     (is (seq (check/medication-end-references-existing-order-and-follows-it-in-time log)))))
