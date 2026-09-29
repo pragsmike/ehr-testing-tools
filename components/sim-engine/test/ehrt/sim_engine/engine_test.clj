@@ -1398,6 +1398,54 @@
     (is (= [[:series]] (mapv :in (:errors (event-schema/explain-event (assoc unstated :warm-up false :series nil)))))
         "present-and-nil is not")))
 
+;; ADR-0182 step 3: the PRODUCER. One run, both routes to the kind -- a
+;; hand-authored module cohort on explicit ordinals (one wellness visit,
+;; a Vaccine stating "series" and one not) and a weighted authored Renal
+;; stay carrying an `:immunization` step. The SAME config as the oracle's
+;; `immunization` root (`ehrt.oracle.digest/immunization-pair`); the two
+;; are kept in step by hand, since sim-engine cannot depend on oracle.
+
+(def ^:private immunization-fixture-module
+  (:payload (patient-simulator/load-module "immunization-fixture"
+                                           (slurp (io/resource "ehrt/sim/fixtures/immunization-fixture.json")))))
+
+(def ^:private immunization-cohort (range 4))
+
+(def ^:private immunization-producer-config
+  {:seed 20260929 :patients 12 :arrival-gap 90
+   :pathways (into (mapv (fn [i] {:patient-ordinal i :pathway {:name "module-only" :steps []}})
+                         immunization-cohort)
+                   [{:pathway {:name "renal-stay-immunized"
+                               :steps [{:type :admission :location "Renal"}
+                                       {:type :immunization :codes [tdap] :series 1}
+                                       {:type :delay :from 60 :to 60}
+                                       {:type :discharge}]}
+                     :weight 1}])
+   :modules [(patient-simulator/singleton-closure immunization-fixture-module)]
+   :module-assignment (mapv (fn [i] {:patient-ordinal i :module-id "immunization-fixture"})
+                            immunization-cohort)
+   :module-horizon-days 3650})
+
+(deftest both-producers-reach-the-log-and-self-check-clean
+  (let [{:keys [ground-truth] :as r} (run/run immunization-producer-config)
+        shots (filterv #(= :immunization (:event %)) ground-truth)
+        compiled (filterv :citation shots)
+        authored (filterv (complement :citation) shots)]
+    (is (= 16 (count shots))
+        "4 module patients x 2 Vaccine states + 8 authored stays x 1 step")
+    (testing "the compiled route: :series on the Tdap state that states it, absent on the one that does not"
+      (is (= 8 (count compiled)))
+      (is (= {[:tdap-dose 1] 4 [:pneumococcal-dose ::absent] 4}
+             (frequencies (map (juxt (comp :state :citation) #(get % :series ::absent)) compiled)))))
+    (testing "the authored route"
+      (is (= 8 (count authored)))
+      (is (every? #(= 1 (:series %)) authored)))
+    (is (= 12 (count (filter #(contains? % :series) shots))) ":series present on exactly the stated ones")
+    (let [checked (check/check-all ground-truth (:facility r))]
+      (is (result/ok? checked)
+          (str "the self-check's own instrument, over the whole catalog: "
+               (pr-str (:violations (:payload checked))))))))
+
 (defspec outpatient-visits-never-occupy-a-bed-for-any-seed 150
   (prop/for-all [seed (gen/large-integer* {:min 0})]
     (let [pathway {:name "outpatient" :steps [{:type :outpatient-visit}

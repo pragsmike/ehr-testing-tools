@@ -1,0 +1,73 @@
+{
+  "name": "Immunization Fixture",
+  "remarks": [
+    "Hand-authored GMF fixture for ADR-0182 (the :immunization kind): this",
+    "project's own authored data, not derived from or copied out of any real",
+    "Synthea module, so it carries no NOTICE/provenance obligation the way a",
+    "vendored module would. No vendored module carries a Vaccine state; this",
+    "fixture is the compiled producer the oracle's `immunization` root and",
+    "ehrt.sim-engine.engine-test run. One wellness visit, two Vaccine states:",
+    "the first states its series, the second does not, so the log carries",
+    ":series on exactly the first. The walk loops a year at a time until the",
+    "run's registration year (reference-birth-year + 1), so the visit is",
+    "horizon content for every DOB the persona sampler can draw. A LOOP, not",
+    "a Date Guard: the interpreter jumps time only for Age guards, and a",
+    "failing Date guard blocks the walk for good. Both CVX codes were",
+    "already in the tree (gmf_test.clj)."
+  ],
+  "states": {
+    "Initial": {
+      "type": "Initial",
+      "direct_transition": "Registration_Year_Check"
+    },
+
+    "Registration_Year_Check": {
+      "type": "Simple",
+      "conditional_transition": [
+        {"condition": {"condition_type": "Date", "operator": ">=", "year": 2025}, "transition": "Wellness_Visit"},
+        {"transition": "Wait_A_Year"}
+      ]
+    },
+
+    "Wait_A_Year": {
+      "type": "Delay",
+      "exact": {"quantity": 365, "unit": "days"},
+      "direct_transition": "Registration_Year_Check"
+    },
+
+    "Wellness_Visit": {
+      "type": "Encounter",
+      "encounter_class": "wellness",
+      "codes": [
+        {"system": "SNOMED-CT", "code": "185345009", "display": "Encounter for symptom"}
+      ],
+      "direct_transition": "Tdap_Dose"
+    },
+
+    "Tdap_Dose": {
+      "type": "Vaccine",
+      "series": 1,
+      "codes": [
+        {"system": "CVX", "code": 115, "display": "Tdap vaccine"}
+      ],
+      "direct_transition": "Pneumococcal_Dose"
+    },
+
+    "Pneumococcal_Dose": {
+      "type": "Vaccine",
+      "codes": [
+        {"system": "CVX", "code": 33, "display": "PPSV23"}
+      ],
+      "direct_transition": "End_Visit"
+    },
+
+    "End_Visit": {
+      "type": "EncounterEnd",
+      "direct_transition": "Done"
+    },
+
+    "Done": {
+      "type": "Terminal"
+    }
+  }
+}
