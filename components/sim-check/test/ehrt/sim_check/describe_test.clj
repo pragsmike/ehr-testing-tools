@@ -48,7 +48,7 @@
   (let [a (describe/describe @immunization-log)
         b (describe/describe (:ground-truth (run/run immunization-producer-config)))]
     (is (= (pr-str a) (pr-str b)) "a fresh run of the same root, described, gives the same bytes")
-    (is (= describe/describe-version (:describe-version a) "1.0.0"))))
+    (is (= describe/describe-version (:describe-version a) "1.1.0"))))
 
 ;; --- step 1 (b): the golden --------------------------------------------------
 
@@ -204,6 +204,47 @@
   (let [log @immunization-log]
     (is (= (describe/describe log)
            (describe/describe log {:records (engine/replay log)})))))
+
+;; --- slice 2: the manifest's assignment record ------------------------------
+
+(defn- with-record
+  "The immunization root described as its envelope would be: the run's
+  own options as the configuration, and the engine's assignment record
+  in the manifest."
+  []
+  (let [{:keys [ground-truth assignments]} (run/run immunization-producer-config)
+        opts (select-keys immunization-producer-config [:patients :pathways :module-assignment])]
+    (describe/describe ground-truth
+                       {:manifest {:assignments assignments}
+                        :configuration {:source :manifest-invocation
+                                        :opts (assoc opts :modules ["immunization-fixture"])
+                                        :churn-profile nil}})))
+
+(deftest a-pathway-row-is-observed-from-the-assignment-record
+  (let [r (with-record)]
+    (is (= {:configured :yes :observed 4 :subjects 4}
+           (select-keys (row r "module-only") [:configured :observed :subjects]))
+        "four ordinals assigned; each walked its module, so each has an event past :registered")
+    (is (= {:configured :yes :observed 8 :subjects 8}
+           (select-keys (row r "renal-stay-immunized") [:configured :observed :subjects])))
+    (let [ws (:witnesses (row r "renal-stay-immunized"))]
+      (is (= 3 (count ws)))
+      (is (apply < (map :index ws)) "first-k, by each patient's first event past :registered")
+      (is (every? #(not= :registered (:event (nth @immunization-log (:index %)))) ws)))))
+
+(deftest a-module-row-is-observed-from-the-assignment-record
+  (let [m (row (with-record) "immunization-fixture")]
+    (is (= {:configured :yes :assigned 4 :assigned-subjects 4}
+           (select-keys m [:configured :assigned :assigned-subjects]))
+        "four ordinals the record assigned the module, and all four cite it in the log")))
+
+(deftest without-the-record-pathways-stay-unprovable-and-modules-carry-no-assignment
+  (let [r (describe/describe @immunization-log
+                             {:configuration {:source :caller-config
+                                              :opts (select-keys immunization-producer-config [:pathways])
+                                              :churn-profile :unknown}})]
+    (is (= :unprovable (:observed (row r "module-only"))))
+    (is (not-any? #(contains? % :assigned) (:families r)))))
 
 (deftest the-text-view-renders-the-same-map
   (let [r (describe/describe @immunization-log)

@@ -277,20 +277,46 @@
                "not a name :modules lists: an authored step's own :citation, or a submodule a listed module calls; the log does not say which")))))
 
 (defn pathway-rows
-  "One row per configured pathway NAME, observed `:unprovable`: no event
-  carries the name of the pathway that produced it, so the log cannot
-  prove which pathway a patient walked. Slice 2 (a manifest assignment
-  record) is what would make this row observable."
-  [configuration]
-  (let [opts (:opts configuration)
-        names (into (sorted-set)
-                    (keep :name)
-                    (cond-> (mapv :pathway (:pathways opts))
-                      (:pathway opts) (conj (:pathway opts))))]
-    (for [n names]
-      {:group :pathway :family n
-       :cites "config :pathway/:pathways :name"
-       :configured :yes
-       :observed :unprovable
-       :observed-reason (str "no event field records which pathway produced it (an authored step's "
-                             ":citation is free text, not the pathway's name); a manifest assignment record would")})))
+  "One row per pathway NAME.
+
+  WITHOUT an assignment record (a bare log, or any manifest written
+  before slice 2) the row is observed `:unprovable`: no event carries
+  the name of the pathway that produced it, so the log cannot prove
+  which pathway a patient walked.
+
+  WITH one (ADR-0183 slice 2: the manifest's `:assignments`, the run's
+  own record of what each arrival ordinal was assigned), `observed` is
+  what the record carries, per name -- `{name {:ordinals n :subjects s
+  :witnesses [..]}}`: `:observed` is the ordinals assigned the name,
+  `:subjects` the assigned patients with at least one event past
+  `:registered`, and the witnesses are those patients' first such
+  events. A name the record carries but the configuration does not list
+  is the engine's plain `:pathway` default, and reads `:unknown`, never
+  `:no`, on the module rows' own ground."
+  ([configuration] (pathway-rows configuration nil))
+  ([configuration observed]
+   (let [opts (:opts configuration)
+         configured-names (into (sorted-set)
+                                (keep :name)
+                                (cond-> (mapv :pathway (:pathways opts))
+                                  (:pathway opts) (conj (:pathway opts))))
+         names (into configured-names (keys observed))]
+     (for [n names
+           :let [listed? (contains? configured-names n)]]
+       (if observed
+         (let [{:keys [ordinals subjects witnesses]} (get observed n)]
+           (cond-> {:group :pathway :family n
+                    :cites "manifest :assignments (the run's record of each arrival ordinal's pathway), joined to the subjects' events past :registered"
+                    :configured (if listed? :yes :unknown)
+                    :observed (or ordinals 0)
+                    :subjects (or subjects 0)
+                    :witnesses (or witnesses [])}
+             (not listed?)
+             (assoc :configured-reason
+                    "not a name :pathway/:pathways lists: the engine's default pathway, which the configuration does not name")))
+         {:group :pathway :family n
+          :cites "config :pathway/:pathways :name"
+          :configured :yes
+          :observed :unprovable
+          :observed-reason (str "no event field records which pathway produced it (an authored step's "
+                                ":citation is free text, not the pathway's name); a manifest assignment record would")})))))

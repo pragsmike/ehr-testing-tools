@@ -231,6 +231,19 @@
       (is (= (pr-str ground-truth) (slurp (io/file out-dir "events.edn"))))
       (is (= ground-truth (edn/read-string (slurp (io/file out-dir "events.edn"))))))))
 
+(deftest sim-manifest-edn-carries-the-runs-assignment-record-test
+  ;; ADR-0183 slice 2: a REAL run, not a fake -- the record is the
+  ;; engine's, and manifest.edn is sim's manifest verbatim, so a bare
+  ;; events.edn kept beside it can still be described per pathway.
+  (let [out-dir (temp-dir)
+        entry (generators/lookup :sim)
+        params-result (generators/resolve-params :sim {:seed 7 :patients 2})]
+    (is (kernel/ok? params-result))
+    (is (kernel/ok? ((:execute-fn entry) (:payload params-result) out-dir)))
+    (let [m (edn/read-string (slurp (io/file out-dir "manifest.edn")))]
+      (is (= [0 1] (map :ordinal (:assignments m))))
+      (is (= :engine-params (get-in m [:config :hashed]))))))
+
 (deftest sim-execute-fn-no-messages-is-its-own-rejection-test
   (let [out-dir (temp-dir)
         entry (generators/lookup :sim)

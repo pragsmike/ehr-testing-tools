@@ -354,6 +354,33 @@
                      first)
                 .getPath)))))
 
+(defn- bytes-sha256
+  [^bytes bs]
+  (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+    (apply str (map #(format "%02x" %) (.digest md bs)))))
+
+(defn- read-config-file
+  "`merge-config-file`'s body, returning the config FILE's own identity
+  beside the merged opts: `(result/ok {:opts merged :config {:path
+  <as given> :sha256 <of the file's bytes> :hashed :file}})`, `:config`
+  absent when opts name no file. ADR-0183 slice 2: `run-command` needs
+  the path and the hash for its manifest, and the file is read ONCE --
+  the bytes hashed are the bytes parsed. The two rejections are
+  `merge-config-file`'s, unchanged, because they are the same code."
+  [opts]
+  (if-let [path (:config opts)]
+    (if (.exists (io/file path))
+      (try
+        (let [bs (java.nio.file.Files/readAllBytes (.toPath (io/file path)))]
+          (result/ok {:opts (merge (edn/read-string (String. bs "UTF-8")) (dissoc opts :config))
+                      :config {:path path :sha256 (bytes-sha256 bs) :hashed :file}}))
+        (catch Exception e
+          (result/error :config-unreadable {:path path :message (.getMessage e)})))
+      (let [sibling (similar-sibling-config path)]
+        (result/error :config-not-found
+                       (cond-> {:path path} sibling (assoc :did-you-mean sibling)))))
+    (result/ok {:opts opts})))
+
 (defn merge-config-file
   "M4 Task 0: `:config` (a path to an EDN file) supplies the data-heavy
   engine keys that have no CLI flag of their own (`:pathway`/
@@ -373,18 +400,16 @@
   {:path path}` (U4: plus `:did-you-mean` when a same-stem sibling
   exists), and a present-but-unparseable file is `result/error
   :config-unreadable {:path path :message ...}`, never a raw JVM
-  exception reaching the CLI shell. Callers must unwrap the Result."
+  exception reaching the CLI shell. Callers must unwrap the Result.
+
+  ADR-0183 slice 2: the reading lives in `read-config-file`, which also
+  returns the file's path and hash; this is its projection to the
+  merged opts, so every other caller sees exactly what it always did."
   [opts]
-  (if-let [path (:config opts)]
-    (if (.exists (io/file path))
-      (try
-        (result/ok (merge (edn/read-string (slurp path)) (dissoc opts :config)))
-        (catch Exception e
-          (result/error :config-unreadable {:path path :message (.getMessage e)})))
-      (let [sibling (similar-sibling-config path)]
-        (result/error :config-not-found
-                       (cond-> {:path path} sibling (assoc :did-you-mean sibling)))))
-    (result/ok opts)))
+  (let [r (read-config-file opts)]
+    (if (result/ok? r)
+      (result/ok (:opts (:payload r)))
+      r)))
 
 (defn check-command
   "The `sim check` capability: a ground-truth log plus THIS run's own
@@ -440,8 +465,7 @@
 
 (defn- file-sha256
   [path]
-  (let [md (java.security.MessageDigest/getInstance "SHA-256")]
-    (apply str (map #(format "%02x" %) (.digest md (java.nio.file.Files/readAllBytes (.toPath (io/file path))))))))
+  (bytes-sha256 (java.nio.file.Files/readAllBytes (.toPath (io/file path)))))
 
 (defn- describe-input
   "The two input shapes `sim describe` reads: the bare ground-truth
@@ -492,6 +516,47 @@
 
     :else (result/ok nil)))
 
+(defn- read-manifest-file
+  "ADR-0183 slice 2: a run's manifest kept BESIDE a bare log -- the
+  `manifest.edn` `corpus generate sim` writes next to `events.edn`, or
+  any `sim run` manifest saved on its own. Named rejections on the
+  config file's pattern: `:manifest-not-found`, `:manifest-unreadable`."
+  [path]
+  (if (.exists (io/file path))
+    (try
+      (let [m (edn/read-string (slurp path))]
+        (if (map? m)
+          (result/ok m)
+          (result/error :manifest-unreadable {:path path :message "not an EDN map"})))
+      (catch Exception e
+        (result/error :manifest-unreadable {:path path :message (.getMessage e)})))
+    (result/error :manifest-not-found {:path path})))
+
+(defn- describe-manifest
+  "Where the run's manifest comes from: the envelope's own, a
+  `--manifest` sidecar beside a bare log, or nowhere. Returns
+  `(result/ok {:manifest m :source s})`; the two combinations that
+  would name a run twice are rejected rather than reconciled."
+  [envelope-manifest manifest-path config-path]
+  (cond
+    (and envelope-manifest manifest-path)
+    (result/rejected :manifest-with-envelope
+                     {:manifest manifest-path
+                      :hint "the envelope already carries its manifest; drop --manifest"})
+
+    (and manifest-path config-path)
+    (result/rejected :config-with-manifest
+                     {:config config-path :manifest manifest-path
+                      :hint "the manifest already records the run's options; drop --config"})
+
+    manifest-path
+    (let [r (read-manifest-file manifest-path)]
+      (if (result/ok? r)
+        (result/ok {:manifest (:payload r) :source :bare-log+manifest})
+        r))
+
+    :else (result/ok {:manifest envelope-manifest})))
+
 (defn describe-command
   "The `sim describe` capability (ADR-0183): a ground-truth log -- bare,
   or inside the `sim run` envelope -- to the report of what it PROVES,
@@ -502,10 +567,12 @@
   than writing a third copy of them.
 
   opts: `:config` (a path; with a BARE log only -- an envelope already
-  records its run's options), `:witnesses` (non-negative integer, per
-  row, default 3), `:format` (nil/\"edn\" for the report map, \"text\"
-  for its human view as `:bare-text`)."
-  [input {:keys [config witnesses format]}]
+  records its run's options), `:manifest` (a path to the run's manifest,
+  with a BARE log only: slice 2's sidecar, identity source
+  `:bare-log+manifest`), `:witnesses` (non-negative integer, per row,
+  default 3), `:format` (nil/\"edn\" for the report map, \"text\" for its
+  human view as `:bare-text`)."
+  [input {:keys [config manifest witnesses format]}]
   (cond
     (not (contains? #{nil "edn" "text"} format))
     (result/rejected :unknown-format {:format format :valid-options ["edn" "text"]})
@@ -517,17 +584,22 @@
     (let [in (describe-input input)]
       (if-not (result/ok? in)
         in
-        (let [{:keys [log manifest]} (:payload in)
-              configuration (describe-configuration manifest config)]
-          (if-not (result/ok? configuration)
-            configuration
-            (let [report (check/describe log {:manifest manifest
-                                              :configuration (:payload configuration)
-                                              :witnesses witnesses})
-                  r (result/ok report)]
-              (if (= "text" format)
-                (vary-meta r assoc :bare-text (check/describe-text report))
-                r))))))))
+        (let [{:keys [log] envelope-manifest :manifest} (:payload in)
+              m (describe-manifest envelope-manifest manifest config)]
+          (if-not (result/ok? m)
+            m
+            (let [{:keys [manifest source]} (:payload m)
+                  configuration (describe-configuration manifest config)]
+              (if-not (result/ok? configuration)
+                configuration
+                (let [report (check/describe log (cond-> {:manifest manifest
+                                                          :configuration (:payload configuration)
+                                                          :witnesses witnesses}
+                                                   source (assoc :source source)))
+                      r (result/ok report)]
+                  (if (= "text" format)
+                    (vary-meta r assoc :bare-text (check/describe-text report))
+                    r))))))))))
 
 (defn- unknown-fan-out-message-types
   "Every `TYPE^TRIGGER` a `:fan-out` table names that this emitter
@@ -693,10 +765,14 @@
   engine without running a real simulation against sentinel data."
   ([opts] (run-command opts {}))
   ([raw-opts {:keys [engine-run-fn] :or {engine-run-fn engine/run}}]
-   (let [config-result (merge-config-file raw-opts)]
+   (let [config-result (read-config-file raw-opts)]
      (if-not (result/ok? config-result)
        config-result
-       (let [opts (:payload config-result)
+       (let [opts (:opts (:payload config-result))
+             ;; ADR-0183 slice 2: the file's own path and byte hash, or
+             ;; nil for an inline config (hashed below, once
+             ;; `engine-params` exists).
+             config-file (:config (:payload config-result))
              {:keys [seed patients emit at reference-date utc-offset warm-up-seconds churn churn-profile site-profile
                      modules module-initial-attributes latency chatter charges ladders siu fan-out]} opts
              conflicts (incompatible-assignments opts)
@@ -903,9 +979,16 @@
                 (cond-> {:ground-truth ground-truth
                          :manifest (manifest/build {:seed seed
                                                     :engine-params engine-params
-                                                    :config {:path "(inline)"
-                                                             :sha256 (apply str (repeat 64 "0"))}
-                                                    :invocation {:verb "run" :opts opts}})
+                                                    ;; ADR-0183 slice 2: a real hash. The
+                                                    ;; file's bytes when `--config` named
+                                                    ;; one; otherwise the engine params as
+                                                    ;; printed, and `:hashed` says which.
+                                                    :config (or config-file
+                                                                {:path "(inline)"
+                                                                 :sha256 (bytes-sha256 (.getBytes ^String (pr-str engine-params) "UTF-8"))
+                                                                 :hashed :engine-params})
+                                                    :invocation {:verb "run" :opts opts}
+                                                    :assignments (:assignments engine-result)})
                          :summary {:patients (or patients 1)
                                    :events (count ground-truth)}}
                   (= "hl7" emit)

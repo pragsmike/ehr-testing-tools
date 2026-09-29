@@ -93,7 +93,7 @@
 (defn describe!
   "Delegates to ehrt.sim.interface/describe-command (ADR-0183, `ehrt sim
   describe`) -- the stdin value (a bare ground-truth vector, or the `sim
-  run` envelope) plus opts (:config, :witnesses, :format) pass through
+  run` envelope) plus opts (:config, :manifest, :witnesses, :format) pass through
   unchanged. :describe-fn is injectable, the same -fn convention as
   check!'s :check-all-fn."
   [input {:keys [describe-fn] :as opts}]

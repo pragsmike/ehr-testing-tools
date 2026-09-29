@@ -49,6 +49,23 @@
     (is (every? int? (vals (:seeds m)))
         "and :seeds stays int-valued, which is what forced D1 over D2")))
 
+(deftest the-assignment-record-and-hash-marker-ride-the-open-map
+  ;; ADR-0183 slice 2: both additions are additive at the provenance
+  ;; seam -- `:schema-version` stays "1.1" and the real schema still
+  ;; accepts the manifest.
+  (let [record [{:ordinal 0 :patient-id "p" :pathway "x" :module nil :person-id nil
+                 :repeat? false :placeholder? false}]
+        m (manifest/build {:seed 1 :engine-params {}
+                           :config {:path "(inline)" :sha256 (apply str (repeat 64 "a")) :hashed :engine-params}
+                           :invocation {} :assignments record})]
+    (is (provenance/valid-v1-1? m))
+    (is (= "1.1" (:schema-version m)))
+    (is (= record (:assignments m)))
+    (is (not (contains? (manifest/build {:seed 1 :engine-params {} :invocation {}
+                                         :config {:path "x" :sha256 (apply str (repeat 64 "a"))}})
+                        :assignments))
+        "no record given, no key")))
+
 ;; --- go-public Task 2: version single-sourced, manifest honest -----------
 
 (deftest generator-version-defaults-to-the-single-version-source

@@ -1943,4 +1943,69 @@
   (let [env (rare-merge-envelope)
         r (run/describe-command env {:format "text"})]
     (is (= (:payload (run/describe-command env {})) (:payload r)))
-    (is (str/includes? (:bare-text (meta r)) "describe 1.0.0"))))
+    (is (str/includes? (:bare-text (meta r)) "describe 1.1.0"))))
+
+;; --- ADR-0183 slice 2: the manifest records the assignment and the config --
+
+(defn- sha256-hex [^bytes bs]
+  (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+    (apply str (map #(format "%02x" %) (.digest md bs)))))
+
+(def ^:private named-stay-pathways
+  [{:pathway {:name "named-stay" :steps [{:type :admission :location "Renal"}
+                                          {:type :discharge}]}
+    :weight 1}])
+
+(deftest run-command-with-a-config-file-hashes-the-files-own-bytes
+  (let [tmp (java.io.File/createTempFile "slice2-config" ".edn")]
+    (try
+      (spit tmp (str ";; a comment is part of the bytes\n" (pr-str {:pathways named-stay-pathways})))
+      (let [m (get-in (run/run-command {:seed 1 :patients 2 :config (.getPath tmp)}) [:payload :manifest])]
+        (is (= {:path (.getPath tmp)
+                :sha256 (sha256-hex (java.nio.file.Files/readAllBytes (.toPath tmp)))
+                :hashed :file}
+               (:config m))
+            "the path as given, the sha256 of the file's bytes, and a marker saying so"))
+      (finally (.delete tmp)))))
+
+(deftest run-command-inline-hashes-its-engine-params-and-says-so
+  (let [m (get-in (run/run-command {:seed 1 :patients 2 :pathways named-stay-pathways}) [:payload :manifest])]
+    (is (= "(inline)" (get-in m [:config :path])))
+    (is (= :engine-params (get-in m [:config :hashed])))
+    (is (not= (apply str (repeat 64 "0")) (get-in m [:config :sha256])) "no longer the placeholder")
+    (is (= (sha256-hex (.getBytes (pr-str (:engine-params m)) "UTF-8")) (get-in m [:config :sha256])))))
+
+(deftest run-command-manifest-carries-the-engines-assignment-record
+  (let [m (get-in (run/run-command {:seed 1 :patients 3 :pathways named-stay-pathways}) [:payload :manifest])]
+    (is (= [0 1 2] (map :ordinal (:assignments m))))
+    (is (every? #(= "named-stay" (:pathway %)) (:assignments m)))))
+
+(deftest describe-command-observes-pathways-from-the-assignment-record
+  (let [env (run/run-command {:seed 1 :patients 3 :pathways named-stay-pathways :encounters true})
+        row (describe-row (:payload (run/describe-command env {})) "named-stay")]
+    (is (= {:configured :yes :observed 3 :subjects 3}
+           (select-keys row [:configured :observed :subjects])))
+    (is (= 3 (count (:witnesses row))))
+    (testing "an envelope without the record reads :unprovable, exactly as before slice 2"
+      (let [old (update-in env [:payload :manifest] dissoc :assignments)]
+        (is (= :unprovable (:observed (describe-row (:payload (run/describe-command old {})) "named-stay"))))))))
+
+(deftest describe-command-reads-a-manifest-beside-a-bare-log
+  (let [env (run/run-command {:seed 1 :patients 3 :pathways named-stay-pathways})
+        tmp (java.io.File/createTempFile "slice2-manifest" ".edn")]
+    (try
+      (spit tmp (pr-str (get-in env [:payload :manifest])))
+      (let [log (get-in env [:payload :ground-truth])
+            report (:payload (run/describe-command log {:manifest (.getPath tmp)}))]
+        (is (= :bare-log+manifest (get-in report [:identity :source])))
+        (is (= :manifest-invocation (get-in report [:identity :configured-from])))
+        (is (= 3 (:observed (describe-row report "named-stay"))))
+        (testing "the rest of the report is the envelope's"
+          (is (= (dissoc (:payload (run/describe-command env {})) :identity)
+                 (dissoc report :identity)))))
+      (testing "and the named rejections"
+        (is (= :manifest-with-envelope (:category (run/describe-command env {:manifest (.getPath tmp)}))))
+        (is (= :config-with-manifest
+               (:category (run/describe-command [] {:manifest (.getPath tmp) :config (.getPath tmp)}))))
+        (is (= :manifest-not-found (:category (run/describe-command [] {:manifest "/no/such/manifest.edn"})))))
+      (finally (.delete tmp)))))

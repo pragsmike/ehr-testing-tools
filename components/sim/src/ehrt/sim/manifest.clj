@@ -59,8 +59,16 @@
   presented as if it meant something -- see that function's own
   docstring for the full reasoning. Both fields are mandatory
   regardless (a caller may still pass its own :version/:sha256), so
-  nothing downstream learns to tolerate their absence."
-  [{:keys [seed engine-params config invocation version sha256]}]
+  nothing downstream learns to tolerate their absence.
+
+  ADR-0183 slice 2: `:assignments`, when given, is the engine's own
+  assignment record (`ehrt.sim-engine.run/run`'s docstring has its
+  shape) and is written top-level, verbatim -- additive on the same
+  open-map ground as `:event-schema-version` below, so `:schema-version`
+  stays \"1.1\". Absent, the key is absent (an injected engine that
+  produces no record, and every manifest written before slice 2)."
+  [{:keys [seed engine-params config invocation version sha256 assignments]}]
+  (cond->
   {:schema-version "1.1"
    ;; Author ruling Q-A (a), 2026-08-16 (event-log contract arc): the
    ;; ground-truth event log is a PUBLIC, VERSIONED contract, so every
@@ -100,4 +108,5 @@
    :config config
    :invocation invocation
    :canonicalizers-applied []
-   :environment (environment)})
+   :environment (environment)}
+    assignments (assoc :assignments assignments)))

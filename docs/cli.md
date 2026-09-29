@@ -263,6 +263,7 @@ Reports what a corpus PROVES beside what its configuration merely made POSSIBLE,
 | Flag | Default | Meaning |
 |---|---|---|
 | `--config` | — | with a BARE log only: the EDN file the run used, taken as your assertion of what it was configured with. An envelope already records its run's options, so the two together are rejected. The --churn flag is not in any config file, so churn reads :unknown unless the file itself names :churn or :churn-profile |
+| `--manifest` | — | with a BARE log only: the run's own manifest -- the manifest.edn `ehrt corpus generate sim` writes beside events.edn, or a saved `sim run` manifest. It records the run's options and, since describe 1.1.0, what each arrival was assigned, so pathway rows count what was realized instead of reading :unprovable. Not with --config, and not with an envelope, which carries its own |
 | `--witnesses` | `3` | witnesses per family and predicate (non-negative integer), the first by log index |
 | `--format` | — | "text": a concise human view of the same report. Default: the EDN envelope; --json works as always |
 

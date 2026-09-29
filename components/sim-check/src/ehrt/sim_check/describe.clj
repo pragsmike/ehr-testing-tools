@@ -47,8 +47,13 @@
 (def describe-version
   "The report's OWN version, independent of the event schema's and the
   manifest's. Semver: a new key or row is minor, a changed meaning or a
-  removed key is major."
-  "1.0.0")
+  removed key is major.
+
+  1.1.0 (ADR-0183 slice 2): the `:bare-log+manifest` identity source,
+  and pathway/module rows observed from the manifest's `:assignments`
+  when it carries one. A report over input without that record is
+  1.0.0's, byte for byte, but for this string."
+  "1.1.0")
 
 (def default-witnesses 3)
 
@@ -68,11 +73,11 @@
     (apply str (map #(format "%02x" %) (.digest md)))))
 
 (defn- identity-section
-  [log manifest configuration]
+  [log manifest configuration source]
   (let [base {:events (count log) :log-sha256 (log-sha256 log)}]
     (if manifest
       (merge base
-             {:source :envelope
+             {:source (or source :envelope)
               :seed (get-in manifest [:seeds :primary])
               :config (:config manifest)
               :event-schema-version (:event-schema-version manifest)
@@ -207,10 +212,46 @@
     ;; per-patient facts, updated AFTER this record's rows read them
     (cond-> acc
       (check/encounter-openers kind) (assoc-in [:last-opener patient-id] index)
-      (= :transfer kind) (assoc-in [:last-transfer patient-id] index))))
+      (= :transfer kind) (assoc-in [:last-transfer patient-id] index)
+      ;; slice 2: each subject's FIRST event past `:registered` -- kept
+      ;; only when an assignment record will read it, one witness per
+      ;; patient, the first by log index because the pass is in order
+      (and (:first-activity acc) (not= :registered kind))
+      (update :first-activity
+              (fn [fa] (reduce (fn [fa p] (if (contains? fa p) fa (assoc fa p (witness (assoc rec :patient-id p) []))))
+                               fa pids))))))
+
+(defn- pathways-observed
+  "The assignment record, per pathway name: ordinals assigned, the
+  assigned patients with an event past `:registered`, and the first
+  `k` of those patients' first such events, by log index. nil without a
+  record, which keeps the pathway rows `:unprovable`."
+  [assignments acc]
+  (when assignments
+    (let [fa (:first-activity acc)]
+      (into {}
+            (for [[n as] (group-by :pathway assignments)
+                  :when n
+                  :let [active (keep fa (distinct (map :patient-id as)))]]
+              [n {:ordinals (count as)
+                  :subjects (count active)
+                  :witnesses (vec (take (:k acc) (sort-by :index active)))}])))))
+
+(defn- with-module-assignment
+  "A module row joined to the record: `:assigned`, the ordinals the run
+  assigned this module, and `:assigned-subjects`, how many of those
+  patients the log shows citing it. Unchanged without a record."
+  [row assignments acc]
+  (if assignments
+    (let [pids (into #{} (comp (filter #(= (:family row) (:module %))) (map :patient-id)) assignments)
+          citing (get-in acc [:modules (:family row) :subjects] #{})]
+      (assoc row
+             :assigned (count (filter #(= (:family row) (:module %)) assignments))
+             :assigned-subjects (count (filter citing pids))))
+    row))
 
 (defn- family-section
-  [rows configuration acc]
+  [rows configuration acc assignments]
   (let [fixed (map-indexed
                (fn [i row]
                  (let [ws (if (:closed-by row)
@@ -228,12 +269,15 @@
                               "the input names no configuration"
                               "the setting that decides this is not recorded in the input")))))
                rows)
-        modules (for [row (catalog/module-rows configuration (keys (:modules acc)))
+        modules (for [row (catalog/module-rows configuration
+                                               (into (set (keys (:modules acc)))
+                                                     (keep :module) assignments))
                       :let [{:keys [events subjects witnesses]} (get-in acc [:modules (:family row)])]]
-                  (cond-> (assoc row :observed (or events 0) :subjects (count subjects)
-                                 :witnesses (or witnesses []))
+                  (cond-> (-> (assoc row :observed (or events 0) :subjects (count subjects)
+                                     :witnesses (or witnesses []))
+                              (with-module-assignment assignments acc))
                     (nil? configuration) (assoc :configured-reason "the input names no configuration")))
-        pathways (catalog/pathway-rows configuration)]
+        pathways (catalog/pathway-rows configuration (pathways-observed assignments acc))]
     (vec (concat fixed modules pathways))))
 
 (defn- canonical
@@ -245,20 +289,27 @@
 
 (defn describe
   "The report over `log`. `opts`:
-    :manifest       the run manifest when the input was an envelope
+    :manifest       the run manifest when the input was an envelope, or
+                    was given beside a bare log; its `:assignments`
+                    (slice 2), when present, is what the pathway and
+                    module rows are observed from
+    :source         the identity source a manifest came by (default
+                    `:envelope`; `:bare-log+manifest` for a sidecar)
     :configuration  `{:source .. :opts .. :churn-profile .. :config ..}`,
                     or nil when nothing names the configuration
     :witnesses      witnesses per row (default 3)
     :records        `engine/replay`'s records when the caller has them"
   ([log] (describe log {}))
-  ([log {:keys [manifest configuration witnesses records]}]
+  ([log {:keys [manifest source configuration witnesses records]}]
    (let [k (or witnesses default-witnesses)
          log (vec log)
          rows catalog/rows
          indexed-rows (vec (map-indexed vector rows))
          records (or records (engine/replay log))
-         init {:k k :log log :merges (check/merges-forward log)
-               :subjects #{} :by-kind {} :last-opener {} :last-transfer {}}
+         assignments (:assignments manifest)
+         init (cond-> {:k k :log log :merges (check/merges-forward log)
+                       :subjects #{} :by-kind {} :last-opener {} :last-transfer {}}
+                assignments (assoc :first-activity {}))
          acc (reduce (fn [acc [i rec]] (step k indexed-rows acc (assoc rec :index i)))
                      init (map-indexed vector records))
          by-kind (into (sorted-map)
@@ -275,10 +326,10 @@
                           (keys predicate-cites))]
      (canonical
       {:describe-version describe-version
-       :identity (identity-section log manifest configuration)
+       :identity (identity-section log manifest configuration source)
        :counts {:events (count log) :subjects (count (:subjects acc)) :by-kind by-kind}
        :temporal (temporal-section (:min-t acc) (:max-t acc) manifest)
-       :families (family-section rows configuration acc)
+       :families (family-section rows configuration acc assignments)
        :predicates predicates}))))
 
 ;; --- the human view ---------------------------------------------------------
