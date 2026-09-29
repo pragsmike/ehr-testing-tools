@@ -337,8 +337,40 @@
   time that conservatism has bought a bump rather than an argument.
 
   MADE UNDER THE WAIVER, disclosed: no deprecation release was run, and
+  none is owed in any case, since nothing was removed.
+
+  1.9.0 (2026-09-29, downstream report of the same date, author ruling
+  \"(A)\") is the OUTPATIENT ORDER: `:location` becomes OPTIONAL on
+  `:order-placed` and `:result-available`, and is ABSENT when the
+  ordering patient holds no bed. `:outpatient-visit` has always been
+  this schema's one sanctioned admitted-without-a-bed case and
+  `order-only-when-admitted` has always admitted an order there, yet
+  both order kinds required a closed `Location` and `decide :order`
+  wrote the patient's nil into each -- so an authored pathway
+  `:outpatient-visit` -> `:order` ran to `:self-check-failed` on
+  `every-event-is-schema-valid` alone. The engine emitted what its own
+  schema refused. No non-bed location is manufactured to fill the key
+  (the ruling's refused reading): an order placed in clinic has no ward
+  and no bed, and the log says so by carrying none. PRESENT-AND-NIL
+  STAYS INVALID (ADR-0178).
+
+  THIS BUMP IS OWED, and `classify-change` against the frozen 1.8.0
+  baseline says so with two reasons:
+
+    :order-placed: key changed: :location (required -> optional)
+    :result-available: key changed: :location (required -> optional)
+
+  A 1.8.0-ERA LOG VALIDATES UNCHANGED AGAINST 1.9.0 -- every order
+  event such a log carries has a `Location`, which is still accepted.
+  The breaking direction is a CONSUMER'S: one that read `:location` off
+  every order event as a map must now read it as possibly absent, which
+  is what a consumer already does for `:admitted` patients of `:class
+  :outpatient`. No shipped scenario authors an order under an outpatient
+  visit, so no existing corpus byte moves.
+
+  MADE UNDER THE WAIVER, disclosed: no deprecation release was run, and
   none is owed in any case, since nothing was removed."
-  "1.8.0")
+  "1.9.0")
 
 ;; --- shared leaf schemas --------------------------------------------------
 ;;
@@ -842,7 +874,9 @@
            [:active-mrn :string]
            [:profile :keyword]
            [:concept sim-model/Concept]
-           [:location Location]
+           ;; OPTIONAL since 1.9.0: absent when the ordering patient
+           ;; holds no bed -- an order under an `:outpatient-visit`.
+           [:location {:optional true} Location]
            [:attending :string])]
 
     [:result-available
@@ -856,7 +890,9 @@
            ;; it came from.
            [:order-event-id :int]
            [:concept sim-model/Concept]
-           [:location Location]
+           ;; OPTIONAL since 1.9.0 -- see :order-placed above; the
+           ;; result carries its order's location, so the two agree.
+           [:location {:optional true} Location]
            [:attending :string]
            [:results [:vector ResultEntry]])]
 

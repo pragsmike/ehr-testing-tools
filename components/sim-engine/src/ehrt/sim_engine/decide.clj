@@ -1532,10 +1532,17 @@
         patient (get patients patient-id)
         prof (get order-profiles profile)
         order-idx (count ground-truth)
-        order-event {:event :order-placed :t t :active-mrn (:active-mrn patient)
-                     :profile profile :concept (:concept prof)
-                     :location (:location patient) :attending (:attending patient)
-                     :participants [{:patient-id patient-id :role :subject}]}
+        ;; Schema 1.9.0: an order under an `:outpatient-visit` has no
+        ;; bed, and `:location` is then ABSENT on both events, never
+        ;; present-and-nil (ADR-0178). Dropped after construction rather
+        ;; than assoc'd conditionally, so an inpatient order's map is
+        ;; built exactly as it always was.
+        bedless? (nil? (:location patient))
+        order-event (cond-> {:event :order-placed :t t :active-mrn (:active-mrn patient)
+                             :profile profile :concept (:concept prof)
+                             :location (:location patient) :attending (:attending patient)
+                             :participants [{:patient-id patient-id :role :subject}]}
+                      bedless? (dissoc :location))
         ;; :turnaround-minutes is authored (in the profile) the same
         ;; minutes-authored way :delay's IR is (docs/patient-state-
         ;; model.md's durations rule); converted to seconds here, the
@@ -1567,11 +1574,12 @@
         ;; back here); PV1 context for both messages reflects where the
         ;; specimen was ordered, the same convention real order/result
         ;; pairs use when a patient's location changes between the two.
-        result-event {:event :result-available :t result-t :active-mrn (:active-mrn patient)
-                      :profile profile :order-event-id order-idx :concept (:concept prof)
-                      :location (:location patient) :attending (:attending patient)
-                      :results results
-                      :participants [{:patient-id patient-id :role :subject}]}]
+        result-event (cond-> {:event :result-available :t result-t :active-mrn (:active-mrn patient)
+                              :profile profile :order-event-id order-idx :concept (:concept prof)
+                              :location (:location patient) :attending (:attending patient)
+                              :results results
+                              :participants [{:patient-id patient-id :role :subject}]}
+                       bedless? (dissoc :location))]
     ;; The result event is fully computed NOW (all its RNG draws happen
     ;; in this one decide call, same "decided atomically" precedent
     ;; transfer-in-error already sets) but is NEVER returned directly in

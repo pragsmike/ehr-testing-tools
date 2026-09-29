@@ -1338,8 +1338,10 @@
         orders (filterv #(#{:order-placed :result-available} (:event %)) ground-truth)]
     (is (= [:order-placed :result-available] (mapv :event orders))
         "the pathway reaches both order kinds -- otherwise this gate is vacuous")
-    (is (= [] (:violations (:payload (check/check-all ground-truth (:facility r)))))
-        "the self-check's own instrument, over the whole catalog")
+    (let [checked (check/check-all ground-truth (:facility r))]
+      (is (result/ok? checked)
+          (str "the self-check's own instrument, over the whole catalog: "
+               (pr-str (:violations (:payload checked))))))
     (testing "absent, not present-and-nil (ADR-0178)"
       (is (not-any? #(contains? % :location) orders)))))
 
