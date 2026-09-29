@@ -245,3 +245,4 @@ append-only, never-reassigned rule stands.
 - **ADR-0180** — indexes ride the fold: the generate-quadratic program — [`0180-indexes-ride-the-fold.md`](adr/0180-indexes-ride-the-fold.md) — Accepted
 - **ADR-0181** — MSH-10 collisions are a property of the default branch, not of `:result-available` — [`0181-msh-10-collisions-are-a-default-branch-property.md`](adr/0181-msh-10-collisions-are-a-default-branch-property.md) — Accepted 2026-09-23
 - **ADR-0182** — `:immunization` joins the log: the Vaccine fact becomes a ground-truth kind — [`0182-immunization-joins-the-log.md`](adr/0182-immunization-joins-the-log.md) — Accepted 2026-09-29
+- **ADR-0183** — `sim describe`: what a corpus proves, beside what its configuration made possible — [`0183-sim-describe.md`](adr/0183-sim-describe.md) — Accepted 2026-09-29
