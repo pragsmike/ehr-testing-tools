@@ -570,7 +570,8 @@
     [:person-event-id {:optional true} :string]]]
   [:order-placed
    [:map
-    {:doc "A diagnostic order is placed against an order profile.",
+    {:doc
+     "A diagnostic order is placed against an order profile. An order under an :outpatient-visit carries no :location -- the patient holds no bed.",
      :transition "No state change; the log itself is the record.",
      :closed true}
     [:event [:= :order-placed]]
@@ -607,7 +608,7 @@
   [:result-available
    [:map
     {:doc
-     "An order's results come back, one entry per analyte, with abnormal flags already computed against each reference range.",
+     "An order's results come back, one entry per analyte, with abnormal flags already computed against each reference range. Carries its order's :location, so it too has none under an :outpatient-visit.",
      :transition "Appends to the patient's :observations accumulator.",
      :closed true}
     [:event [:= :result-available]]

@@ -869,7 +869,7 @@
 
     [:order-placed
      (kind :order-placed
-           {:doc "A diagnostic order is placed against an order profile."
+           {:doc "A diagnostic order is placed against an order profile. An order under an :outpatient-visit carries no :location -- the patient holds no bed."
             :transition "No state change; the log itself is the record."}
            [:active-mrn :string]
            [:profile :keyword]
@@ -881,7 +881,7 @@
 
     [:result-available
      (kind :result-available
-           {:doc "An order's results come back, one entry per analyte, with abnormal flags already computed against each reference range."
+           {:doc "An order's results come back, one entry per analyte, with abnormal flags already computed against each reference range. Carries its order's :location, so it too has none under an :outpatient-visit."
             :transition "Appends to the patient's :observations accumulator."}
            [:active-mrn :string]
            [:profile :keyword]
