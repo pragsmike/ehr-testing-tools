@@ -1384,12 +1384,18 @@ the full `ehrt sim run` envelope — and prints what that log **proves**,
 set beside what the run's configuration only made **possible**. It is a
 report about one corpus, so it sits on this page beside the log it
 describes. Everything below is `:payload` in the usual envelope;
-`--format text` prints a short human view of the same map instead.
+`--format text` prints a short human view of the same map instead. A
+bare vector can bring its run's manifest along as a file, `--manifest
+manifest.edn`, and is then described as the envelope would be.
 
 **It is versioned separately.** `:describe-version` is the report's own
 semver, independent of the event schema's version and the manifest's.
 A new key or a new row is a minor bump. A key removed, or a value
-whose meaning changes, is a major bump. This page documents `1.0.0`.
+whose meaning changes, is a major bump. This page documents `1.1.0`.
+`1.1.0` added the `:bare-log+manifest` source and the rows a manifest's
+assignment record makes observable (below). Over input without that
+record, a `1.1.0` report is the `1.0.0` report with only the version
+string changed.
 
 **Equal inputs give equal bytes.** Every map is sorted by key and every
 list has a fixed order, so running `describe` twice over the same log
@@ -1397,8 +1403,8 @@ prints byte-identical output. You can checksum a report.
 
 | Key | What it holds |
 |---|---|
-| `:describe-version` | `"1.0.0"` |
-| `:identity` | which log this is. Always present: `:source` (`:envelope` or `:bare-log`), `:events`, `:log-sha256`, and `:configured-from` (`:manifest-invocation`, `:caller-config` or `:none`). From an envelope, also: `:seed`, `:config`, `:event-schema-version`, `:generator` and `:churn-flag`, copied from the manifest as written. With `--config`, also: the file's `:config {:path :sha256}` |
+| `:describe-version` | `"1.1.0"` |
+| `:identity` | which log this is. Always present: `:source` (`:envelope`, `:bare-log+manifest` or `:bare-log`), `:events`, `:log-sha256`, and `:configured-from` (`:manifest-invocation`, `:caller-config` or `:none`). With a manifest (an envelope's, or `--manifest`), also: `:seed`, `:config`, `:event-schema-version`, `:generator` and `:churn-flag`, copied from the manifest as written. With `--config`, also: the file's `:config {:path :sha256}` |
 | `:counts` | `:events`, `:subjects` (distinct patient participants), and `:by-kind`, which maps each kind to `{:events n :subjects n}` |
 | `:temporal` | `:min-t` and `:max-t`. When the manifest gives a reference date, also `:min-iso` and `:max-iso`, anchored the way the HL7 emitter anchors timestamps |
 | `:families` | one row per family, in a fixed order (below) |
@@ -1420,16 +1426,27 @@ envelope and the bare vector cut from it report the same value.
 | `:witnesses` | up to `--witnesses` (default 3) witnesses, the first by log index |
 | `:cites` | the invariant or engine rule the observed predicate reads |
 | `:configured-reason`, `:observed-reason` | present when the value is `:unknown` or `:unprovable`, saying why |
-| `:subjects`, `:configured-detail` | module rows only: how many distinct patients the module's events name, and what `:module-assignment` says (`:assigned-ordinals`, `:ordinal-range`, `:weighted`, `:patients`) |
+| `:subjects`, `:configured-detail` | module rows: how many distinct patients the module's events name, and what `:module-assignment` says (`:assigned-ordinals`, `:ordinal-range`, `:weighted`, `:patients`) |
+| `:assigned`, `:assigned-subjects` | module rows, only when the manifest carries `:assignments`: how many arrival ordinals the run assigned this module, and how many of those patients the log shows citing it |
 
 **`:unknown` and `:unprovable` are different claims.** `:unknown` means
 the input doesn't say: a bare log records no configuration, so every
 `:configured` value on one is `:unknown` rather than a guess.
 `:unprovable` means no log could say. For example, no event carries the
-name of the pathway that produced it, so a pathway row is always
-`:observed :unprovable`. **The row that matters most reads
+name of the pathway that produced it, so from the log alone a pathway
+row is `:observed :unprovable`. **The row that matters most reads
 `:configured :yes :observed 0 :witnesses []`**: the family was turned
 on and the corpus contains none of it.
+
+**A pathway row with the assignment record.** When the manifest carries
+`:assignments` (below), a pathway row is observed from it instead:
+`:observed` is how many arrival ordinals the run assigned that pathway,
+`:subjects` is how many of those patients have at least one event past
+`:registered`, and the witnesses are those patients' first such events,
+the first by log index. A name the record carries that the
+configuration doesn't list is the engine's default pathway, and reads
+`:configured :unknown`. A manifest written before the record existed
+still gives `:unprovable`.
 
 ### A witness
 
@@ -1519,6 +1536,40 @@ A real manifest (paths and hashes elided):
  :canonicalizers-applied [],
  :environment {:locale "en-US", :timezone "UTC", :jvm-version "21.0.12"}}
 ```
+
+### A simulator run's manifest
+
+`ehrt sim run` writes the same schema, in its envelope's `:manifest`,
+and `ehrt corpus generate sim` spools that map verbatim as
+`manifest.edn` beside `events.edn`. Two things are particular to it.
+Both are additive keys on an open map, so `:schema-version` stays
+`"1.1"`.
+
+**`:config` says what it hashed.** `:hashed :file` means `--config`
+named a file: `:path` is the path as given and `:sha256` is the hash of
+the file's bytes. `:hashed :engine-params` means no file was given:
+`:path` is `"(inline)"` and `:sha256` is the hash of the manifest's own
+`:engine-params` as printed. Manifests written before this change
+carry a zero hash and no `:hashed`.
+
+**`:assignments` records what each arrival was assigned**, one entry
+per arrival ordinal, in ordinal order:
+
+```clojure
+{:ordinal 4, :patient-id "PID-000005-…", :pathway "renal-stay-immunized",
+ :module nil, :person-id nil, :repeat? false, :placeholder? false}
+```
+
+`:pathway` is the assigned pathway's `:name`. `:module` is the assigned
+module's id, or nil. `:person-id` is the person the arrival bound to
+when the run has `:persons`. `:repeat?` is true when the arrival
+resolved to a patient an earlier arrival already made, so its
+`:patient-id` is that earlier one's. `:placeholder?` is true when the
+arrival landed inside an identity-unavailable window. Patients a
+person event created (a newborn, an unidentified presentation) had no
+arrival, so they have no entry. This record is what lets `ehrt sim
+describe` count pathways and module cohorts as assigned, instead of
+reading them as unprovable.
 
 ---
 

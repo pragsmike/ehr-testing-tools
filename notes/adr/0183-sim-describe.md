@@ -1,7 +1,8 @@
 ## ADR-0183 — `sim describe`: what a corpus proves, beside what its configuration made possible
 
 **Status:** Accepted 2026-09-29 (author ruling "Go" for slice 1; build
-session same day, R30). Report version **`:describe-version "1.0.0"`**.
+session same day, R30). Report version **`:describe-version "1.0.0"`**;
+`"1.1.0"` since slice 2 (landed the same day, section at the end).
 
 ### Context
 
@@ -158,3 +159,52 @@ docs already quote.
   `immunization` root included. No generator code changed, and the
   check.clj edits only change six vars from private to public.
 - No roadmap row: slice 2 is named here, not queued.
+
+### Slice 2, landed (2026-09-29)
+
+Author ruling "next", 2026-09-29; build session same day, R30. Report
+version **`:describe-version "1.1.0"`**. Provenance only: no
+ground-truth byte and no draw moved.
+
+1. **The engine's assignment record.** `run/run`'s result carries
+   `:assignments`, one entry per arrival ordinal: `{:ordinal
+   :patient-id :pathway :module :person-id :repeat? :placeholder?}`.
+   Every fact is read where `prelude` already had it. `steps-for` now
+   returns the pathway it resolved beside its steps, so the name comes
+   from the single existing `pathway-for` call; the module id is the
+   closure's `:root` that `module-for` already returned; binding, owner
+   and placeholder are the pre-loop's own. It rides `final-result`'s
+   base map, so the drained queue and `:exhausted` both hand it out.
+   Hook-minted patients had no arrival and get no entry.
+2. **The manifest's `:config` is real.** `merge-config-file`'s body
+   moved into a private `read-config-file` that also returns the path
+   as given and the sha256 of the bytes it parsed (one read); the
+   public function projects to the merged opts, so its callers and its
+   two rejections are unchanged. `run-command` writes `{:path :sha256
+   :hashed :file}` for `--config`, and `{:path "(inline)" :sha256
+   <of (pr-str engine-params)> :hashed :engine-params}` otherwise.
+3. **The manifest carries `:assignments`** verbatim, top-level.
+   `ManifestV1_1` is an open map (its `:config` included) and no test
+   pins the key set, so `:schema-version` stays `"1.1"`, as the channel
+   expected. `corpus generate sim` spools the manifest verbatim, so
+   `manifest.edn` carries it with no corpus code change.
+4. **Describe reads it.** `--manifest PATH` beside a bare log gives
+   identity source `:bare-log+manifest` and a report equal to the
+   envelope's but for `:identity`. `--manifest` with an envelope is
+   `:manifest-with-envelope`, with `--config` `:config-with-manifest`,
+   and a bad path `:manifest-not-found`/`:manifest-unreadable`. With
+   `:assignments`, a pathway row reads `:observed` (ordinals assigned),
+   `:subjects` (assigned patients with an event past `:registered`) and
+   witnesses (those patients' first such events, by log index); a
+   name the configuration does not list (the engine's default
+   pathway) is `:configured :unknown`. Module rows gain `:assigned`
+   and `:assigned-subjects`. Without the record every row is as 1.0.0
+   wrote it: the committed golden's diff is the version string alone.
+
+**`:repeat?` means "not this person's owning arrival".** A placeholder
+arrival owns itself, so it is never a repeat, even for a person bound
+earlier; that is `prelude`'s own `owner-ordinal` rule, recorded as is.
+
+**Proofs.** `bin/ground-truth-bracket f4251226 2f4e16ee`: IDENTICAL on
+all 39 digested roots (3 interpreter-layer roots skipped by name, as
+always). `bin/regression-oracle`: see the session record.

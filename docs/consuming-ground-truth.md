@@ -530,7 +530,21 @@ together), so each family row can say whether it was configured. A
 bare `--format ground-truth` vector works too, but it records no
 configuration: every row then reads `:configured :unknown`. `--config`
 beside a bare log fills that in, as your own assertion, except for
-churn: a config file cannot record the `--churn` flag. `--format text`
+churn: a config file cannot record the `--churn` flag.
+
+**Generate with the envelope, or keep `manifest.edn` beside
+`events.edn`.** `ehrt corpus generate sim` writes both, and
+`--manifest` hands the manifest to a bare log, which is then described
+exactly as its envelope would be:
+
+```bash
+bin/ehrt sim describe --manifest out/corpus/sim-s42-p20/manifest.edn < out/corpus/sim-s42-p20/events.edn
+```
+
+A manifest also records what each arrival was **assigned**: which
+pathway, which module. With it, `describe` answers configured-versus-
+realized per pathway rather than `:unprovable`. A bare vector kept
+with no manifest describes exactly as before. `--format text`
 prints a short human view of the same report. `--witnesses N` sets how
 many examples each row keeps (default 3). The shape and its version
 contract are in [`formats.md`](formats.md#the-describe-report).
@@ -553,7 +567,11 @@ to. The row to look for is `:configured :yes :observed 0 :witnesses
 **Nothing is inferred.** If the input doesn't say something, the report
 says `:unknown`. If no log could say it, the report says `:unprovable`,
 with the reason. For example, no event records which pathway produced
-it, so every pathway row reads `:unprovable`.
+it, so from the log alone every pathway row reads `:unprovable`. The
+manifest's assignment record is what moves it: a pathway row then
+reads how many arrivals were assigned the pathway (`:observed`), how
+many of those patients did anything past registration (`:subjects`),
+and witnesses for them.
 
 **The module cohort, configured beside observed.** This is the row
 that motivated the verb. `dense-7500`'s `:module-assignment` lists 937
@@ -575,6 +593,11 @@ run: 3.3% of its arrivals rather than 12.5%. The `:configured-detail`
 comes from the configuration alone. `:observed` and `:subjects` are
 what the log proves. Two numbers are needed because assigning a
 module does not guarantee it produces an event inside the horizon.
+With the manifest's assignment record, the row also carries
+`:assigned`, the arrivals the run actually assigned the module, and
+`:assigned-subjects`, how many of those the log shows citing it. That
+is the cohort read from the run itself, not worked out from the
+configuration.
 
 **Citations the configuration does not list read `:unknown`, not
 `:no`.** The same cell cites `dense-inpatient`, which is an authored
@@ -741,7 +764,8 @@ subprocess `:invocation`. A sim manifest looks like this:
 | `:stream-scheme` | `"1.0"` | which RNG stream partition produced it |
 | `:engine-params` | the engine keys this run used | the flag-reachable half of the config |
 | `:invocation` | `{:verb "run" :opts {…}}` | **the whole config, engine and emission keys alike** |
-| `:config` | `{:path :sha256}` | the `--config` file by content hash; `"(inline)"` when there was none |
+| `:config` | `{:path :sha256 :hashed}` | the `--config` file as given, by the hash of its bytes (`:hashed :file`); with no file, `"(inline)"` and the hash of `:engine-params` as printed (`:hashed :engine-params`). An older manifest carries a zero hash and no `:hashed` |
+| `:assignments` | `[{:ordinal 0 :patient-id … :pathway "…" :module nil …} …]` | what each arrival ordinal was assigned: the pathway name, the module id, the bound person. What `ehrt sim describe` reads to count pathways (shape: [`formats.md`](formats.md#a-simulator-runs-manifest)) |
 | `:environment` | `{:locale :timezone :jvm-version}` | provenance only. The log carries no wall clock, and the timezone half of that is verified directly under [Determinism](#determinism) |
 | `:runtime` | absent for a sim run | the JVM artifact record, for externally-generated corpora |
 | `:canonicalizers-applied` | `[]` | ordered `[id version]` pairs |
