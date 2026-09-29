@@ -438,6 +438,97 @@
                          (or facility sim-model/default-facility)
                          (or warm-up-seconds 0))))))
 
+(defn- file-sha256
+  [path]
+  (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+    (apply str (map #(format "%02x" %) (.digest md (java.nio.file.Files/readAllBytes (.toPath (io/file path))))))))
+
+(defn- describe-input
+  "The two input shapes `sim describe` reads: the bare ground-truth
+  vector, or the `sim run` `:ok` envelope, whose manifest then
+  identifies the run. Anything else is `:malformed-input`, the same
+  category `sim check` gives a non-vector."
+  [input]
+  (cond
+    (vector? input) (result/ok {:log input})
+    (and (map? input) (= :ok (:status input)) (vector? (get-in input [:payload :ground-truth])))
+    (result/ok {:log (get-in input [:payload :ground-truth]) :manifest (get-in input [:payload :manifest])})
+    :else (result/rejected :malformed-input
+                           {:message "expected a ground-truth EDN vector, or the `ehrt sim run` :ok envelope carrying one"})))
+
+(defn- describe-configuration
+  "What the input says the run was configured with, or nil when it says
+  nothing. An envelope's manifest records the run's merged options in
+  `:invocation :opts` -- config file and flags together -- so it is
+  complete. A caller's `--config` beside a BARE log is taken as the
+  caller's assertion, and only for what a config file can say: the
+  churn profile is resolved only when the file itself names `:churn` or
+  `:churn-profile`, because otherwise the `--churn` flag decided it and
+  a bare log records no flags."
+  [manifest config-path]
+  (cond
+    (and manifest config-path)
+    (result/rejected :config-with-envelope
+                     {:config config-path
+                      :hint (str "the envelope's manifest already records the run's options; "
+                                 "drop --config, or describe the bare log (sim run --format ground-truth)")})
+
+    manifest
+    (result/ok (when-let [opts (get-in manifest [:invocation :opts])]
+                 {:source :manifest-invocation :opts opts
+                  :churn-profile (effective-churn-profile opts)}))
+
+    config-path
+    (let [merged (merge-config-file {:config config-path})]
+      (if-not (result/ok? merged)
+        merged
+        (let [opts (:payload merged)]
+          (result/ok {:source :caller-config
+                      :config {:path config-path :sha256 (file-sha256 config-path)}
+                      :opts opts
+                      :churn-profile (if (or (contains? opts :churn) (contains? opts :churn-profile))
+                                       (effective-churn-profile opts)
+                                       :unknown)}))))
+
+    :else (result/ok nil)))
+
+(defn describe-command
+  "The `sim describe` capability (ADR-0183): a ground-truth log -- bare,
+  or inside the `sim run` envelope -- to the report of what it PROVES,
+  set beside what its configuration made POSSIBLE
+  (`ehrt.sim-check.describe`). Beside `check-command` because it is the
+  same orchestration step, input to configuration to a pass over the
+  log, and it shares `merge-config-file`'s two named rejections rather
+  than writing a third copy of them.
+
+  opts: `:config` (a path; with a BARE log only -- an envelope already
+  records its run's options), `:witnesses` (non-negative integer, per
+  row, default 3), `:format` (nil/\"edn\" for the report map, \"text\"
+  for its human view as `:bare-text`)."
+  [input {:keys [config witnesses format]}]
+  (cond
+    (not (contains? #{nil "edn" "text"} format))
+    (result/rejected :unknown-format {:format format :valid-options ["edn" "text"]})
+
+    (not (or (nil? witnesses) (nat-int? witnesses)))
+    (result/rejected :invalid-witnesses {:witnesses witnesses :hint "--witnesses takes a non-negative integer"})
+
+    :else
+    (let [in (describe-input input)]
+      (if-not (result/ok? in)
+        in
+        (let [{:keys [log manifest]} (:payload in)
+              configuration (describe-configuration manifest config)]
+          (if-not (result/ok? configuration)
+            configuration
+            (let [report (check/describe log {:manifest manifest
+                                              :configuration (:payload configuration)
+                                              :witnesses witnesses})
+                  r (result/ok report)]
+              (if (= "text" format)
+                (vary-meta r assoc :bare-text (check/describe-text report))
+                r))))))))
+
 (defn- unknown-fan-out-message-types
   "Every `TYPE^TRIGGER` a `:fan-out` table names that this emitter
   cannot produce -- THE ALLOW-LIST LAW's own measurement (ADR-0175

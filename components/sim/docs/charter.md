@@ -58,6 +58,13 @@ Five of `kernel`'s seven result vars; see UNCLEAR-S1.
   flagless call is **byte-identical** to the 1-arity `check-all`.
   Lives beside `run-command`'s own self-check call deliberately —
   it is the same orchestration step (config → facility → catalog).
+- `describe-command` — the `sim describe` capability (ADR-0183):
+  `(describe-command input opts)` → what the log **proves** beside what
+  its configuration made **possible**. `input` is the bare log or the
+  `sim run` envelope, whose manifest then says what was configured;
+  `--config` goes with a bare log only. Shares `merge-config-file`'s
+  rejections with `check-command`. Added 2026-09-29 as the frozen
+  surface's second ruled baseline edit.
 - `check-all` — the invariant catalog directly, four arities:
   `(check-all ground-truth)`,
   `+ facility-config`, `+ warm-up-seconds`, `+ order-profiles-config`.

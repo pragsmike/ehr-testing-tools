@@ -73,19 +73,24 @@
 ;; Every invariant below reads the encounter through these three, so
 ;; there is ONE reading of "which encounter is this event's" and not
 ;; one per row.
+;;
+;; PUBLIC since ADR-0183 (2026-09-29), with `merges-forward` and
+;; `resolves-through-merges?` below: `ehrt.sim-check.describe` counts the
+;; relationships these read, and its contract is that each count IS the
+;; invariant's own -- so it reads them here rather than restating them.
 
-(def ^:private encounter-openers
+(def encounter-openers
   "The two event kinds that OPEN an encounter -- and therefore mint its
   id (`ehrt.sim-engine.streams/encounter-id-for`)."
   #{:admission :outpatient-visit})
 
-(def ^:private encounter-closers
+(def encounter-closers
   "The two event kinds that CLOSE one. `:cancel-admit` is deliberately
   absent: it un-does an admission rather than ending a stay, and the
   encounter it cancels is marked, never closed."
   #{:discharge :outpatient-visit-end})
 
-(defn- encounter-id-of
+(defn encounter-id-of
   "The encounter-id an event carries FOR one patient: its top-level
   `:encounter-id`, or -- for a `:bed-swap`, the one kind that names two
   encounters at once -- that patient's own side of the `:swap`
@@ -109,7 +114,7 @@
         (:encounter-id event))
       (get-in event [:swap patient-id :encounter-id])))
 
-(defn- carried-encounter-is-not-the-open-one?
+(defn carried-encounter-is-not-the-open-one?
   "Whether an event names an encounter that was NOT the subject's open
   one immediately before it -- the per-encounter half of the three
   validity rows ADR-0174's table moves per-encounter. An event carrying
@@ -1247,7 +1252,7 @@
                         (carried-encounter-is-not-the-open-one? event before patient-id)))]
      {:invariant :order-only-when-admitted :patient-id patient-id :at (:t event)})))
 
-(defn- merges-forward
+(defn merges-forward
   "The `:merge` relation, absorbed patient-id -> `{:survivor .. :t ..}`.
   At most one entry per absorbed id in any log the engine writes
   (`decide :merge`'s own `already-merged?` guard), and the FIRST merge
@@ -1264,7 +1269,7 @@
               m))
           {} ground-truth))
 
-(defn- resolves-through-merges?
+(defn resolves-through-merges?
   "ADR-0179 R-inv: `from` IS `to`, or was merged into it by a `:merge`
   at `:t` at or before `at`.
 

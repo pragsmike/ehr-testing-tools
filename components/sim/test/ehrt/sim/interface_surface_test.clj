@@ -36,7 +36,15 @@
   An ADDITION, and only an addition -- no var renamed, removed or
   re-arited, so AR-M4-3's own harm model (`corpus` depending on this
   façade's stability in-process, ADR-0012) is untouched: the five vars
-  `corpus` actually calls are byte-identical."
+  `corpus` actually calls are byte-identical.
+
+  BASELINE EDIT 2, 2026-09-29: `describe-command`, arity 2, ADDED under
+  the author's ruling of that day (ADR-0183), the same shape as edit 1:
+  `ehrt sim describe` needs `merge-config-file` exactly as `sim check`
+  does, so the sim verbs keep ONE pair of config rejections. The session
+  asked before widening, the gate went red on the widened façade, and
+  only then did this literal move. Additive only -- no var renamed,
+  removed or re-arited."
   (:require [clojure.test :refer [deftest is testing]]
             [ehrt.sim.interface]))
 
@@ -44,6 +52,8 @@
   {"check-all" #{1 2 3 4}
    ;; BASELINE EDIT 1, 2026-09-01, ruled -- see the ns docstring.
    "check-command" #{2}
+   ;; BASELINE EDIT 2, 2026-09-29, ruled -- see the ns docstring.
+   "describe-command" #{2}
    "error" #{2}
    "git-sha" #{0}
    "identifiers-command" #{1}

@@ -16,7 +16,8 @@
   and it is the only caller of it. The union rule is unchanged -- the
   arity is here because a live src-scope caller reaches it, which is
   what put the other four here too."
-  (:require [ehrt.sim-check.check :as check]))
+  (:require [ehrt.sim-check.check :as check]
+            [ehrt.sim-check.describe :as describe]))
 
 (defn check-all
   ([ground-truth] (check/check-all ground-truth))
@@ -34,3 +35,13 @@
   ;; frozen at four arities by AR-M4-3: nothing needs it there.
   ([ground-truth facility-config warm-up-seconds order-profiles-config records]
    (check/check-all ground-truth facility-config warm-up-seconds order-profiles-config records)))
+
+;; ADR-0183 (2026-09-29): `ehrt sim describe` -- what a log PROVES beside
+;; what its configuration made POSSIBLE. Here because `ehrt.sim.run/
+;; describe-command`, a live src-scope caller, reaches both: the union
+;; rule this seam has always followed.
+(defn describe
+  ([log] (describe/describe log))
+  ([log opts] (describe/describe log opts)))
+
+(defn describe-text [report] (describe/render-text report))

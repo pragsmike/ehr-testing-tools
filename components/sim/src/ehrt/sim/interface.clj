@@ -46,6 +46,13 @@
   ;; flagless call is byte-identical to the 1-arity `check-all` above.
   [ground-truth opts] (run/check-command ground-truth opts))
 
+(defn describe-command
+  ;; ADR-0183 (2026-09-29), BASELINE EDIT 2 of this frozen surface,
+  ;; author-ruled: `ehrt sim describe` -- a log, bare or in its run
+  ;; envelope, to the report of what it proves beside what its
+  ;; configuration made possible. See `ehrt.sim.run/describe-command`.
+  [input opts] (run/describe-command input opts))
+
 (defn identifiers-command [opts] (identifiers/identifiers-command opts))
 
 (defn run-command [opts] (run/run-command opts))

@@ -15,7 +15,8 @@ Extracted from `components/sim` at sim split B, M4 (ADR-0043,
 
 ## 2. Interface contract
 
-One function, four arities. The seam's contents are **exactly the
+`check-all`, four arities, and since ADR-0183 `describe` and
+`describe-text`. The seam's contents are **exactly the
 union of what residual sim's own src-scope callers reach today** —
 `interface.clj`'s façade delegation, all four arities, and `run.clj`'s
 3-arity call — found by fresh call-position grep, **not by
@@ -30,6 +31,14 @@ precedent). Test-scope callers repoint to this component's internal
   - `(check-all ground-truth facility-config warm-up-seconds)`.
   - `(check-all ground-truth facility-config warm-up-seconds
     order-profiles-config)`.
+- `describe` — the `sim describe` report (ADR-0183):
+  `(describe log)` / `(describe log opts)` → what the log **proves**
+  (identity, kind counts and subjects, temporal range, observed
+  families, four relationship predicates, witnesses by log index) beside
+  what `opts`' `:configuration` made **possible**. What the input does
+  not say is `:unknown`; what no log can say is `:unprovable`.
+- `describe-text` — `(describe-text report)` → the concise human view
+  of that same map.
 
 The arities exist because **four invariants need config to judge
 correctly.** Q14(a) (2026-09-01) records what happens without it: `ehrt
@@ -45,6 +54,10 @@ sound; the checker was starved.**
 - The **invariant catalog** itself: which invariants exist, what each
   one is called, and what a violation of it looks like.
 - The **verdict** `check-all` returns over a log.
+- The **describe report**, versioned by its own `:describe-version`,
+  and its family catalog (`describe_catalog.clj`, data in one file).
+  Each predicate's `:fails` IS its invariant's violation count, so the
+  report reads the relationships through `check.clj`, never a copy.
 
 The event log it reads is `sim-engine`'s `Event` contract; the
 facility and order-profile configs are `sim-model`'s. This brick owns
@@ -79,7 +92,9 @@ the *judgement*, not the *shapes*.
 - **Not a CLI capability.** `ehrt sim check` is `sim`'s
   `check-command`, which lives beside `run-command`'s own self-check
   call deliberately — the same orchestration step (config → facility →
-  catalog). This brick supplies only the catalog.
+  catalog). This brick supplies only the catalog. `ehrt sim describe`
+  is the same split: `sim`'s `describe-command` resolves the input and
+  its configuration, and this brick supplies the report.
 - **Does not widen its own seam for tests.** Test-scope callers reach
   `check` directly; the seam stays sized by src-scope callers.
 
