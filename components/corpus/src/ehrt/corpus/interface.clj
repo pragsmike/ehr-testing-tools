@@ -147,5 +147,6 @@
 ;; ---- the sim adapter (ADR-0005: in-process since 2026-07-28) ----
 (def sim-run! sim-adapter/run!)
 (def sim-check! sim-adapter/check!)               ; P3-6 parity mount (2026-08-01)
+(def sim-describe! sim-adapter/describe!)         ; ADR-0183 (2026-09-29)
 (def sim-identifiers! sim-adapter/identifiers!)    ; P3-6 parity mount (2026-08-01)
 (def sim-version! sim-adapter/version!)            ; P3-6 parity mount (2026-08-01)

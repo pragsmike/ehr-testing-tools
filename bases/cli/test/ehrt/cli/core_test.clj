@@ -385,7 +385,7 @@
   (let [r (cli/dispatch ["help" "sim" "frobnicate"] {} {})]
     (is (result/error? r))
     (is (= :unknown-command (:category r)))
-    (is (= #{"run" "check" "mutate" "identifiers" "version"} (set (:valid-options (:payload r)))))
+    (is (= #{"run" "check" "describe" "mutate" "identifiers" "version"} (set (:valid-options (:payload r)))))
     (is (= "run: ehrt help sim" (:hint (:payload r))))
     (is (= 2 (cli/result->exit-code r)))))
 
@@ -686,8 +686,35 @@
 (deftest dispatch-sim-unknown-verb-names-every-sim-verb-test
   (let [r (cli/dispatch ["sim" "explode"] {} {})]
     (is (= :unknown-command (:category r)))
-    (is (= #{"run" "check" "mutate" "identifiers" "version"}
+    (is (= #{"run" "check" "describe" "mutate" "identifiers" "version"}
            (set (:valid-options (:payload r)))))))
+
+;; ---- `ehrt sim describe` (ADR-0183) ----
+
+(deftest dispatch-routes-sim-describe-test
+  (let [called (atom nil)
+        r (cli/dispatch ["sim" "describe"] {:witnesses 2}
+                        {:sim-describe-fn (fn [opts] (reset! called opts) (result/ok {}))})]
+    (is (result/ok? r))
+    (is (= {:witnesses 2} @called))))
+
+(deftest sim-describe-command-reads-both-stdin-shapes-test
+  (let [envelope (cli/sim-run-command {:seed 1 :patients 1})]
+    (testing "the full envelope: its manifest identifies the run"
+      (with-in-str (pr-str envelope)
+        (let [r (cli/sim-describe-command {})]
+          (is (result/ok? r))
+          (is (= :envelope (get-in r [:payload :identity :source]))))))
+    (testing "the bare vector, as `sim run --format ground-truth` writes it"
+      (with-in-str (pr-str (:ground-truth (:payload envelope)))
+        (let [r (cli/sim-describe-command {:format "text"})]
+          (is (= :bare-log (get-in r [:payload :identity :source])))
+          (is (string? (:bare-text (meta r)))))))
+    (testing "sim check's three rejections, and a map that is no envelope"
+      (with-in-str "" (is (= :empty-input (:category (cli/sim-describe-command {})))))
+      (with-in-str "]" (is (= :unreadable-input (:category (cli/sim-describe-command {})))))
+      (with-in-str "{:not :an-envelope}"
+        (is (= :malformed-input (:category (cli/sim-describe-command {}))))))))
 
 (deftest sim-check-command-runs-invariant-catalog-over-stdin-test
   (let [run-result (cli/sim-run-command {:seed 1 :patients 1})

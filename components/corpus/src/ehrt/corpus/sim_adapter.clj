@@ -90,6 +90,15 @@
      (check-all-fn ground-truth)
      (sim/check-command ground-truth opts))))
 
+(defn describe!
+  "Delegates to ehrt.sim.interface/describe-command (ADR-0183, `ehrt sim
+  describe`) -- the stdin value (a bare ground-truth vector, or the `sim
+  run` envelope) plus opts (:config, :witnesses, :format) pass through
+  unchanged. :describe-fn is injectable, the same -fn convention as
+  check!'s :check-all-fn."
+  [input {:keys [describe-fn] :as opts}]
+  ((or describe-fn sim/describe-command) input (dissoc opts :describe-fn)))
+
 (defn identifiers!
   "Delegates to ehrt.sim.interface/identifiers-command -- opts pass
   through unchanged (:seed, :patients, :config; see

@@ -129,6 +129,7 @@ the `sim` component itself).
 
 - `sim-run!` — mounts `ehrt sim run`.
 - `sim-check!` — mounts `ehrt sim check`. *P3-6 parity mount.*
+- `sim-describe!` — mounts `ehrt sim describe`. *ADR-0183.*
 - `sim-identifiers!` — mounts `ehrt sim identifiers`. *P3-6.*
 - `sim-version!` — mounts `ehrt sim version`. *P3-6.*
 

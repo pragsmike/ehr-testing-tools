@@ -140,6 +140,7 @@
     ["doctor" nil] :doctor-fn
     ["sim" "run"] :sim-run-fn
     ["sim" "check"] :sim-check-fn
+    ["sim" "describe"] :sim-describe-fn
     ["sim" "mutate"] :sim-mutate-fn
     ["sim" "identifiers"] :sim-identifiers-fn
     ["sim" "version"] :sim-version-fn
@@ -167,7 +168,7 @@
     ["check" nil]
     ["version" nil]
     ["doctor" nil]
-    ["sim" "run"] ["sim" "check"] ["sim" "mutate"] ["sim" "identifiers"] ["sim" "version"]
+    ["sim" "run"] ["sim" "check"] ["sim" "describe"] ["sim" "mutate"] ["sim" "identifiers"] ["sim" "version"]
     ["show" nil]
     ["play" nil]})
 

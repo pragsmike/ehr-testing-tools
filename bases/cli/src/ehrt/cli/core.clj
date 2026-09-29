@@ -112,6 +112,9 @@
    ;; ADR-0111: ehrt corpus batch's own --interval, in minutes -- the
    ;; same whole-count convention --seed/--board already use.
    :interval {:coerce :long}
+   ;; ADR-0183: `ehrt sim describe --witnesses N`, witnesses per row --
+   ;; a whole count, the same convention --seed/--board use.
+   :witnesses {:coerce :long}
    :utc-offset {:coerce :string}
    ;; --width (AR-EP-3, ux epilogue, `notes/adr/0065-ux-epilogue.md`):
    ;; kept a string, not :coerce :long -- babashka.cli throws on a
@@ -2422,15 +2425,23 @@
   Extracted 2026-09-01 (ADR-0176) when `ehrt sim mutate` became the
   second verb on this contract: two verbs reading the same stdin shape
   must give the same rejection categories AND the same messages, and a
-  second hand-written copy is how that stops being true."
-  []
-  (let [log (try (edn/read {:eof ::eof} (java.io.PushbackReader. *in*))
-                 (catch Exception _e ::unreadable))]
-    (cond
-      (= ::eof log) (result/rejected :empty-input {:message "expected a ground-truth EDN vector on stdin"})
-      (= ::unreadable log) (result/rejected :unreadable-input {:message "stdin was not readable EDN"})
-      (not (vector? log)) (result/rejected :malformed-input {:message "expected a vector of event maps"})
-      :else (result/ok {:log log}))))
+  second hand-written copy is how that stops being true.
+
+  ADR-0183: `ehrt sim describe` is the third verb, and it ALSO reads the
+  `sim run` envelope, whose manifest identifies the run. `envelope?`
+  lets a map through as the value it is; the verb behind it (`ehrt.sim.
+  run/describe-command`) judges its shape. `sim check` and `sim mutate`
+  call the 0-arity, and their three rejections are unchanged."
+  ([] (read-ground-truth-stdin false))
+  ([envelope?]
+   (let [log (try (edn/read {:eof ::eof} (java.io.PushbackReader. *in*))
+                  (catch Exception _e ::unreadable))]
+     (cond
+       (= ::eof log) (result/rejected :empty-input {:message "expected a ground-truth EDN vector on stdin"})
+       (= ::unreadable log) (result/rejected :unreadable-input {:message "stdin was not readable EDN"})
+       (and envelope? (map? log)) (result/ok {:log log})
+       (not (vector? log)) (result/rejected :malformed-input {:message "expected a vector of event maps"})
+       :else (result/ok {:log log})))))
 
 (defn sim-check-command
   "`ehrt sim check`: mounts sim's own invariant catalog
@@ -2468,6 +2479,21 @@
     (if-not (result/ok? in)
       in
       (sim/sim-check! (:log (:payload in)) opts))))
+
+(defn sim-describe-command
+  "`ehrt sim describe` (ADR-0183): what a corpus PROVES, beside what its
+  configuration made POSSIBLE -- `ehrt.sim.interface/describe-command`,
+  via the sim adapter's `describe!`, over the value read from stdin: the
+  bare ground-truth vector (`sim run --format ground-truth`), or the
+  full `sim run` envelope, whose manifest then says what was
+  configured. Same stdin read as `sim check`, with the envelope let
+  through. `--format text` comes back as `:bare-text` metadata, the same
+  channel `sim run --format ground-truth` uses."
+  [opts]
+  (let [in (read-ground-truth-stdin true)]
+    (if-not (result/ok? in)
+      in
+      (sim/sim-describe! (:log (:payload in)) opts))))
 
 (defn sim-mutate-command
   "`ehrt sim mutate`: applies one EVENT-LOG mutation operator to a
@@ -2861,7 +2887,7 @@
   ([args opts] (dispatch args opts {}))
   ([args opts {:keys [fetch-fn fetch-all-fn resolve-fn generate-fn generate-sim-fn mutate-fn intake-fn operators-fn batch-fn
                        gate-v2-fn gate-fhir-fn gate-v2-nist-fn check-fn version-fn doctor-fn
-                       sim-run-fn sim-check-fn sim-mutate-fn sim-identifiers-fn sim-version-fn show-fn play-fn columns-env-fn]
+                       sim-run-fn sim-check-fn sim-describe-fn sim-mutate-fn sim-identifiers-fn sim-version-fn show-fn play-fn columns-env-fn]
                :or {columns-env-fn #(System/getenv "COLUMNS")
                     fetch-fn fetch-command
                     fetch-all-fn fetch-all-command
@@ -2880,6 +2906,7 @@
                     doctor-fn doctor-command
                     sim-run-fn sim-run-command
                     sim-check-fn sim-check-command
+                    sim-describe-fn sim-describe-command
                     sim-mutate-fn sim-mutate-command
                     sim-identifiers-fn sim-identifiers-command
                     sim-version-fn sim-version-command
@@ -3002,6 +3029,7 @@
            "sim" (case action
                    "run" (sim-run-fn opts)
                    "check" (sim-check-fn opts)
+                   "describe" (sim-describe-fn opts)
                    "mutate" (sim-mutate-fn opts)
                    "identifiers" (sim-identifiers-fn opts)
                    "version" (sim-version-fn opts)

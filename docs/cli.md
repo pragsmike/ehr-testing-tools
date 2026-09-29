@@ -256,6 +256,16 @@ Runs the invariant catalog (capacity/surge-ladder, timestamp-monotone, and frien
 |---|---|---|
 | `--config` | `the shipped default facility and a zero warm-up window` | path to the EDN file the run used (same flag, same file, as `ehrt sim run`) -- its `:facility` and `:warm-up-seconds` are what the config-needing invariants are then checked against, exactly the pair the run's own self-check uses. `:order-profiles` is NOT threaded, here or in the run's self-check, so `result-analytes-match-order-profile` reads the shipped defaults either way |
 
+### `ehrt sim describe`
+
+Reports what a corpus PROVES beside what its configuration merely made POSSIBLE, read from stdin: the bare ground-truth vector (`ehrt sim run --format ground-truth | ehrt sim describe`) or the full `ehrt sim run` envelope, whose manifest then records what the run was configured with. A deterministic, versioned EDN map (its own :describe-version): identity, per-kind counts and subject participation, the :t range, configured-versus-observed families -- a family configured with ZERO witnesses included -- and four relationship predicates, each with small exact witnesses located by log index. Nothing is inferred: what the input does not say is :unknown, and what no log can say is :unprovable, with the reason (docs/consuming-ground-truth.md, "Describing a corpus"; shape: docs/formats.md).
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--config` | — | with a BARE log only: the EDN file the run used, taken as your assertion of what it was configured with. An envelope already records its run's options, so the two together are rejected. The --churn flag is not in any config file, so churn reads :unknown unless the file itself names :churn or :churn-profile |
+| `--witnesses` | `3` | witnesses per family and predicate (non-negative integer), the first by log index |
+| `--format` | — | "text": a concise human view of the same report. Default: the EDN envelope; --json works as always |
+
 ### `ehrt sim mutate`
 
 Injects ONE event-level defect into a ground-truth EDN vector read from stdin and writes the mutant to stdout -- a filter, so `ehrt sim run --format ground-truth | ehrt sim mutate --operator-id ID --seed N | ehrt sim check` is the whole loop: inject a named defect class, and see the checker report that class and nothing else. Mutating the event log rather than a rendered file means every emitter downstream inherits one mutated truth, instead of the same defect having to be written once per format (`ehrt corpus mutate` is the file-level verb, and stays the right one for faults that only exist once a record is written out as bytes). With no --operator-id, this is a byte-identical pass-through.
