@@ -27,6 +27,14 @@ residual `sim`'s own src **and test** trees call, found by grep.
   defaults to.
 - `control-id-for` — `(control-id-for ev)` → the MSH-10 control id for
   an event.
+- `stamp-log-index` — `(stamp-log-index ground-truth)` → the same
+  events, each carrying its own 0-based position in that log (under a
+  namespaced key that reaches no engine output, no `check` and no EDN
+  this project writes). ADR-0181: every ground-truth MSH-10 now ends
+  `#<log index>`, and `control-id-for` **throws** on a registered event
+  that has not been stamped, so the two are exported together. Stamp
+  the WHOLE log, then filter: handed a subset, the index numbers the
+  survivors rather than the log.
 - `emit` — `GT × reference-date × utc-offset [× facility × providers
   [× site-profile]]` → rendered messages. Three arities on this seam;
   `emit-hl7`'s own **2-arg** arity has zero real external callers and
