@@ -1879,3 +1879,68 @@
           ;; present in every root, not merely compatible with them.
           (is (boolean (some #(str/includes? % "#") (msh-10s messages)))
               (str id " rendered no MSH-10 carrying the ruled log-index marker")))))))
+
+;; --- ADR-0183: `sim describe`, the verb ------------------------------------
+
+(defn- describe-row [report family] (first (filter #(= family (:family %)) (:families report))))
+
+(defn- rare-merge-envelope []
+  (run/run-command {:seed 1 :patients 3 :churn-profile {:merge 1.0E-9}}))
+
+(deftest describe-command-reads-an-envelope-and-its-manifest-says-what-was-configured
+  (let [env (rare-merge-envelope)
+        r (run/describe-command env {})
+        report (:payload r)]
+    (is (result/ok? r))
+    (is (= {:source :envelope :seed 1 :configured-from :manifest-invocation :churn-flag false}
+           (select-keys (:identity report) [:source :seed :configured-from :churn-flag])))
+    (is (= (get-in env [:payload :manifest :event-schema-version])
+           (get-in report [:identity :event-schema-version])))
+    (testing "step 1 (c): configured at a rate three patients cannot realize"
+      (is (= {:configured :yes :observed 0 :witnesses []}
+             (select-keys (describe-row report :merge) [:configured :observed :witnesses]))))
+    (testing "the manifest's reference date anchors the ISO instants"
+      (is (= "2024-01-01T00:00:00+00:00" (get-in report [:temporal :min-iso]))))))
+
+(deftest describe-command-on-a-bare-log-names-no-configuration
+  (let [log (get-in (rare-merge-envelope) [:payload :ground-truth])
+        report (:payload (run/describe-command log {}))]
+    (is (= :bare-log (get-in report [:identity :source])))
+    (is (every? #{:unknown :emergent} (map :configured (:families report))))
+    (is (= :unknown (:configured (describe-row report :merge)))
+        "the same log, stripped of its envelope, can no longer say what was configured")))
+
+(deftest describe-command-takes-a-callers-config-beside-a-bare-log
+  (let [tmp (java.io.File/createTempFile "describe-config" ".edn")
+        pathways [{:pathway {:name "named-stay" :steps [{:type :admission :location "Renal"}
+                                                        {:type :discharge}]}
+                   :weight 1}]]
+    (try
+      (spit tmp (pr-str {:pathways pathways :encounters true}))
+      (let [log (get-in (run/run-command {:seed 1 :patients 2 :pathways pathways :encounters true})
+                        [:payload :ground-truth])
+            report (:payload (run/describe-command log {:config (.getPath tmp)}))]
+        (is (= :caller-config (get-in report [:identity :configured-from])))
+        (is (re-matches #"[0-9a-f]{64}" (get-in report [:identity :config :sha256])))
+        (is (= {:configured :yes :observed :unprovable}
+               (select-keys (describe-row report "named-stay") [:configured :observed])))
+        (is (= :yes (:configured (describe-row report :repeat-encounter))))
+        (is (= :unknown (:configured (describe-row report :merge)))
+            "the --churn flag decided churn, and a bare log records no flags"))
+      (finally (.delete tmp)))))
+
+(deftest describe-command-rejections-are-named
+  (is (= :config-with-envelope
+         (:category (run/describe-command (rare-merge-envelope) {:config "x.edn"}))))
+  (is (= :malformed-input (:category (run/describe-command {:not "an envelope"} {}))))
+  (is (= :unknown-format (:category (run/describe-command [] {:format "json"}))))
+  (is (= :invalid-witnesses (:category (run/describe-command [] {:witnesses -1}))))
+  (testing "the config rejection is the one `sim check` gives, not a copy"
+    (is (= :config-not-found
+           (:category (run/describe-command [] {:config "/no/such/describe-config.edn"}))))))
+
+(deftest describe-command-text-format-is-bare-text-of-the-same-report
+  (let [env (rare-merge-envelope)
+        r (run/describe-command env {:format "text"})]
+    (is (= (:payload (run/describe-command env {})) (:payload r)))
+    (is (str/includes? (:bare-text (meta r)) "describe 1.0.0"))))

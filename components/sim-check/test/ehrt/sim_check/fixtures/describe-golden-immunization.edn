@@ -1,0 +1,233 @@
+{:counts
+ {:by-kind
+  {:admission {:events 8, :subjects 8},
+   :discharge {:events 8, :subjects 8},
+   :immunization {:events 16, :subjects 12},
+   :outpatient-visit {:events 4, :subjects 4},
+   :outpatient-visit-end {:events 4, :subjects 4},
+   :registered {:events 12, :subjects 12}},
+  :events 52,
+  :subjects 12},
+ :describe-version "1.0.0",
+ :families
+ [{:cites "churn step :cancel-admit (decide :cancel-admit)",
+   :configured :unknown,
+   :configured-reason "the input names no configuration",
+   :family :cancel-admit,
+   :group :churn,
+   :observed 0,
+   :witnesses []}
+  {:cites
+   "churn step :cancel-transfer (decide :cancel-transfer); excludes :in-error",
+   :configured :unknown,
+   :configured-reason "the input names no configuration",
+   :family :cancel-transfer,
+   :group :churn,
+   :observed 0,
+   :witnesses []}
+  {:cites "churn step :cancel-discharge (decide :cancel-discharge)",
+   :configured :unknown,
+   :configured-reason "the input names no configuration",
+   :family :cancel-discharge,
+   :group :churn,
+   :observed 0,
+   :witnesses []}
+  {:cites
+   "churn step :transfer-in-error (decide :transfer-in-error): the :cancel-transfer carrying :in-error true",
+   :configured :unknown,
+   :configured-reason "the input names no configuration",
+   :family :transfer-in-error,
+   :group :churn,
+   :observed 0,
+   :witnesses []}
+  {:cites "churn step :bed-swap (decide :bed-swap)",
+   :configured :unknown,
+   :configured-reason "the input names no configuration",
+   :family :bed-swap,
+   :group :churn,
+   :observed 0,
+   :witnesses []}
+  {:cites
+   "churn step :merge (decide :merge): a :merge carrying no :cause (docs: an ordinary merge)",
+   :configured :unknown,
+   :configured-reason "the input names no configuration",
+   :family :merge,
+   :group :churn,
+   :observed 0,
+   :witnesses []}
+  {:cites "config/Scheduling :no-show-rate",
+   :configured :unknown,
+   :configured-reason "the input names no configuration",
+   :family :no-show,
+   :group :scheduling,
+   :observed 0,
+   :witnesses []}
+  {:cites "config/Scheduling :reschedule-rate",
+   :configured :unknown,
+   :configured-reason "the input names no configuration",
+   :family :reschedule,
+   :group :scheduling,
+   :observed 0,
+   :witnesses []}
+  {:cites "config/Scheduling :cancel-rate",
+   :configured :unknown,
+   :configured-reason "the input names no configuration",
+   :family :appointment-cancel,
+   :group :scheduling,
+   :observed 0,
+   :witnesses []}
+  {:cites
+   "config/Scheduling :follow-up (decide :discharge books it with :reason \"Follow-up\")",
+   :configured :unknown,
+   :configured-reason "the input names no configuration",
+   :family :follow-up,
+   :group :scheduling,
+   :observed 0,
+   :witnesses []}
+  {:cites "config-keys :bed-cycle",
+   :configured :unknown,
+   :configured-reason "the input names no configuration",
+   :family :bed-cycle,
+   :group :opt-in,
+   :observed 0,
+   :witnesses []}
+  {:cites
+   "admission-only-when-no-open-encounter: an opener whose subject was :discharged before it",
+   :configured :unknown,
+   :configured-reason "the input names no configuration",
+   :family :repeat-encounter,
+   :group :opt-in,
+   :observed 0,
+   :witnesses []}
+  {:cites "config-keys :persons: a :registered carrying :person-id",
+   :configured :unknown,
+   :configured-reason "the input names no configuration",
+   :family :persons-bound,
+   :group :opt-in,
+   :observed 0,
+   :witnesses []}
+  {:cites
+   "every-placeholder-registration-is-resolved-or-still-open: a :registered carrying :identity :placeholder",
+   :configured :unknown,
+   :configured-reason "the input names no configuration",
+   :family :placeholder,
+   :group :opt-in,
+   :observed 0,
+   :witnesses []}
+  {:cites
+   "clinical-content-only-when-admitted (the :immunization kind)",
+   :configured :unknown,
+   :configured-reason "the input names no configuration",
+   :family :immunization,
+   :group :opt-in,
+   :observed 16,
+   :witnesses
+   [{:index 6,
+     :patient-id "PID-000004-3fd4aaaf",
+     :related {:series 1},
+     :t 10560}
+    {:index 9,
+     :patient-id "PID-000005-42bd6cde",
+     :related {:series 1},
+     :t 10800}
+    {:index 14,
+     :patient-id "PID-000006-b5724e46",
+     :related {:series 1},
+     :t 16020}]}
+  {:cites
+   "result-references-existing-order-and-follows-it-in-time (ADR-0179 R-inv): the cited order names a subject merged into the result's",
+   :configured :emergent,
+   :family :result-after-merge,
+   :group :measure,
+   :observed 0,
+   :witnesses []}
+  {:cites
+   "order-only-when-admitted (a result is deliberately not scoped to the stay): the subject is :discharged or :expired as the result lands",
+   :configured :emergent,
+   :family :pending-result-at-discharge,
+   :group :measure,
+   :observed 0,
+   :witnesses []}
+  {:cites
+   "transfer-only-when-admitted: a :transfer of the result's subject logged after the cited order and before the result",
+   :configured :emergent,
+   :family :transfer-between-order-and-result,
+   :group :measure,
+   :observed 0,
+   :witnesses []}
+  {:cites
+   "step-rejected-reason-is-documented: the two -bed-reoccupied rejections log-index/bed-reoccupied-by-someone-else? produces",
+   :configured :emergent,
+   :family :bed-reoccupied-by-someone-else,
+   :group :measure,
+   :observed 0,
+   :witnesses []}
+  {:cites
+   "every-encounter-is-opened-and-closed-or-still-open: a :cancel-discharge whose subject is never discharged again",
+   :configured :emergent,
+   :family :reinstated-stay-without-closer,
+   :group :measure,
+   :observed 0,
+   :witnesses []}
+  {:cites
+   "events carrying :citation {:module ..}: a compiled module's stamp, or an authored step's own",
+   :configured :unknown,
+   :configured-reason "the input names no configuration",
+   :family "immunization-fixture",
+   :group :module,
+   :observed 16,
+   :subjects 4,
+   :witnesses
+   [{:index 36, :patient-id "PID-000002-08fff8d9", :t 9162360}
+    {:index 37, :patient-id "PID-000002-08fff8d9", :t 9162360}
+    {:index 38, :patient-id "PID-000002-08fff8d9", :t 9162360}]}],
+ :identity
+ {:configured-from :none,
+  :events 52,
+  :log-sha256
+  "16b8c630c77c0c8850546cd09c70174df13acdf9de08cb4990646c135cfb2c56",
+  :source :bare-log},
+ :predicates
+ {:during-encounter
+  {:cites
+   "order-only-when-admitted + clinical-content-only-when-admitted (by :encounter-id when stamped, by replay state otherwise)",
+   :fails 0,
+   :holds 16,
+   :witnesses
+   {:fails [],
+    :holds
+    [{:index 6, :patient-id "PID-000004-3fd4aaaf", :t 10560}
+     {:index 9, :patient-id "PID-000005-42bd6cde", :t 10800}
+     {:index 14, :patient-id "PID-000006-b5724e46", :t 16020}]}},
+  :order-before-result
+  {:cites
+   "result-references-existing-order-and-follows-it-in-time (its temporal half)",
+   :fails 0,
+   :holds 0,
+   :witnesses {:fails [], :holds []}},
+  :result-belongs-to-order
+  {:cites
+   "result-references-existing-order-and-follows-it-in-time (its referential half, resolved through merges)",
+   :fails 0,
+   :holds 0,
+   :witnesses {:fails [], :holds []}},
+  :same-subject-opener-closer
+  {:cites "discharge-closes-an-open-encounter",
+   :fails 0,
+   :holds 12,
+   :witnesses
+   {:fails [],
+    :holds
+    [{:index 10,
+      :patient-id "PID-000004-3fd4aaaf",
+      :related {:opener-index 5},
+      :t 14160}
+     {:index 11,
+      :patient-id "PID-000005-42bd6cde",
+      :related {:opener-index 8},
+      :t 14400}
+     {:index 15,
+      :patient-id "PID-000006-b5724e46",
+      :related {:opener-index 13},
+      :t 19620}]}}},
+ :temporal {:max-t 21772800, :min-t 0}}
