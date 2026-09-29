@@ -1446,6 +1446,39 @@
           (str "the self-check's own instrument, over the whole catalog: "
                (pr-str (:violations (:payload checked))))))))
 
+;; ADR-0183 slice 2: the ASSIGNMENT RECORD. `run` hands out what each
+;; arrival ordinal was assigned -- captured where `prelude` already
+;; resolved it, so no draw is added (`bin/ground-truth-bracket` is that
+;; half's proof, not this test).
+
+(def ^:private assignment-keys
+  #{:ordinal :patient-id :pathway :module :person-id :repeat? :placeholder?})
+
+(deftest the-run-hands-out-what-each-arrival-ordinal-was-assigned
+  (let [{:keys [assignments ground-truth]} (run/run immunization-producer-config)
+        logged (set (keep #(:patient-id (first (:participants %))) ground-truth))]
+    (is (= (range 12) (map :ordinal assignments)) "one entry per arrival ordinal, in ordinal order")
+    (is (every? #(= assignment-keys (set (keys %))) assignments))
+    (testing "the explicit-ordinal cohort is exactly what the config names"
+      (is (= (repeat 4 {:pathway "module-only" :module "immunization-fixture"})
+             (map #(select-keys % [:pathway :module]) (take 4 assignments)))))
+    (testing "the weighted remainder drew the one weighted pathway, and no module"
+      (is (= (repeat 8 {:pathway "renal-stay-immunized" :module nil})
+             (map #(select-keys % [:pathway :module]) (drop 4 assignments)))))
+    (testing "no :persons: nobody bound, nobody repeats, no placeholder"
+      (is (every? #(and (nil? (:person-id %)) (false? (:repeat? %)) (false? (:placeholder? %)))
+                  assignments)))
+    (is (= logged (set (map :patient-id assignments))) "every assigned patient id is the one the log carries")))
+
+(deftest an-exhausted-run-still-hands-out-its-assignments
+  (let [tiny {:id :tiny :wards [{:id :renal :name "Renal" :beds 1 :surge-slots 0
+                                 :surge-format "%s-H%02d" :class :inpatient}]}
+        r (run/run {:seed 1 :patients 2 :facility tiny})]
+    (is (some? (:exhausted r)) "the fixture no longer exhausts -- this proves nothing")
+    (is (= [0 1] (map :ordinal (:assignments r))))
+    (is (every? #(= (:name sim-model/sample-admission-discharge) (:pathway %)) (:assignments r))
+        "no :pathways: every arrival walked the plain :pathway, and the record names it")))
+
 (defspec outpatient-visits-never-occupy-a-bed-for-any-seed 150
   (prop/for-all [seed (gen/large-integer* {:min 0})]
     (let [pathway {:name "outpatient" :steps [{:type :outpatient-visit}

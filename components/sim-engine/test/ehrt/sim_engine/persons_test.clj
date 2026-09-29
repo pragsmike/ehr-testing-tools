@@ -189,6 +189,22 @@
       (is (every? (fn [[_ evs]] (= :registered (:event (first evs))))
                   (group-by #(:patient-id (first (:participants %))) (:ground-truth r)))))))
 
+(deftest the-assignment-record-names-each-arrivals-person-and-its-repeats-test
+  ;; ADR-0183 slice 2: the record's person facts are `prelude`'s own
+  ;; bindings, so they must agree with `person-plan`, the other export
+  ;; of the same pre-loop.
+  (let [plan (run/person-plan (assoc (base 8) :persons persons))
+        as (:assignments (run-with-persons 8))
+        earlier? (fn [i p] (some #(= p (nth (:bindings plan) %)) (range i)))]
+    (is (= (:bindings plan) (mapv :person-id as)))
+    (is (some :repeat? as) "no arrival repeated -- the fixture proves nothing about :repeat?")
+    (doseq [{:keys [ordinal person-id patient-id repeat?]} as]
+      (is (= (boolean (and person-id (earlier? ordinal person-id))) repeat?)
+          (str "ordinal " ordinal ": :repeat? is not `an earlier arrival bound this person`"))
+      (when person-id
+        (is (= (get-in plan [:person-index person-id :patient-id]) patient-id)
+            (str "ordinal " ordinal ": the record's patient is not the one the person resolves to"))))))
+
 ;; --- 2(b): the fold -------------------------------------------------------
 
 (deftest the-fold-is-queue-seeded-in-t-order-among-the-engines-own-events-test

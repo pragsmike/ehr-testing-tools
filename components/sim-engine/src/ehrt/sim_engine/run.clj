@@ -522,9 +522,17 @@
         ;; InjectChurn (M2b): ONLY when :churn-profile is actually
         ;; present does this stage run at all -- absent, `steps-for` is
         ;; a no-op and consumes no RNG (see the docstring's fixture note).
+        ;;
+        ;; ADR-0183 slice 2: returns the RESOLVED pathway beside its
+        ;; steps, so the assignment record reads the name this one
+        ;; `pathway-for` call already drew -- a second call would draw
+        ;; again. The draw order (`pathway-for`, then `churn/inject`) is
+        ;; unchanged.
         steps-for (if churn-profile
-                    (fn [i] (:steps (churn/inject (pathway-for i) churn-profile (nth patient-rngs i))))
-                    (fn [i] (:steps (pathway-for i))))
+                    (fn [i] (let [p (pathway-for i)]
+                              {:pathway p :steps (:steps (churn/inject p churn-profile (nth patient-rngs i)))}))
+                    (fn [i] (let [p (pathway-for i)]
+                              {:pathway p :steps (:steps p)})))
         ;; M5b Task 4: module-assignment is resolved eagerly, the SAME
         ;; point :pathways' own assign-pathway draw already occupies (one
         ;; more fixed-consumption draw per patient, ONLY when
@@ -582,8 +590,9 @@
                                ;; without a second `module-for` call,
                                ;; which would draw again.
                                (let [closure (module-for i)
-                                     steps (steps-for i)]
+                                     {:keys [pathway steps]} (steps-for i)]
                                  {:closure closure
+                                  :pathway-name (:name pathway)
                                   :steps (cond
                                            (first-arrival? i)
                                            (into [{:type :registered :closure closure}]
@@ -607,6 +616,22 @@
 
                                            :else [])}))
         initial-entries (into [] (map-indexed (fn [i _] (registered-entry-for i))) arrivals)
+        ;; ADR-0183 slice 2: THE ASSIGNMENT RECORD -- what each arrival
+        ;; ordinal was assigned, read off facts this function already
+        ;; holds (the entry's resolved pathway and closure, the binding,
+        ;; the owner, the placeholder window). Draw-free by construction:
+        ;; nothing here calls `pathway-for` or `module-for`. Arrival
+        ;; ordinals only -- a hook-minted patient was assigned nothing.
+        assignments (mapv (fn [i]
+                            (let [e (nth initial-entries i)]
+                              {:ordinal i
+                               :patient-id (pid-of i)
+                               :pathway (:pathway-name e)
+                               :module (:root (:closure e))
+                               :person-id (nth bindings i)
+                               :repeat? (not (first-arrival? i))
+                               :placeholder? (placeholder? i)}))
+                          (range patients))
         ;; ADR-0173 ruling C1: the four run-config values `compile-patient`
         ;; reads, gathered here because the compile now happens BEFORE
         ;; `init-world` exists. Identical to what `decide :registered`
@@ -932,6 +957,7 @@
      :person-index person-index
      :registrations registrations
      :initial-entries initial-entries
+     :assignments assignments
      :compiled compiled
      :compiled-patients compiled-patients
      :mints mints
@@ -1167,7 +1193,11 @@
   `:patient`-family draw sites in this namespace.
 
   Returns {:ground-truth [event ...] :state-history {patient-id [state
-  ...]} :facility .. :providers [materialized-provider ...]}. The
+  ...]} :facility .. :providers [materialized-provider ...]
+  :assignments [{:ordinal :patient-id :pathway :module :person-id
+  :repeat? :placeholder?} ...]}, the last one entry per arrival ordinal
+  (ADR-0183 slice 2: which pathway NAME and module id each arrival was
+  assigned, for the run manifest). The
   facility and MATERIALIZED providers (real NPIs, not just templates)
   are echoed back so a caller rendering this run's log
   (ehrt.sim-emit-hl7.emit/emit needs facility + providers for PV1)
@@ -1237,7 +1267,7 @@
         ;; person-aware branches the expression that was there before.
         {:keys [world-rng patient-rngs arrivals mrn-for pid-for firsts pid-of
                 person-index initial-entries compiled-patients seeded-steps
-                hook-patient-ordinals]}
+                hook-patient-ordinals assignments]}
         (prelude {:seed seed :patients patients :pathway pathway :pathways pathways
                   :arrival-gap arrival-gap :facility facility :churn-profile churn-profile
                   :persona-config persona-config :modules modules
@@ -1482,12 +1512,18 @@
         ;; hands them over instead. Persisted here, beside `:log`, and
         ;; for the same reason: `final-result` is the one place either
         ;; transient stops being one.
+        ;;
+        ;; ADR-0183 slice 2: `:assignments` rides here, beside the
+        ;; facility and providers, rather than in one caller's `extra`,
+        ;; so EVERY exit path -- the drained queue and `:exhausted`
+        ;; alike -- hands the record out without a caller remembering to.
         final-result (fn [ground-truth state-history entries extra]
                        (merge {:ground-truth (persistent! ground-truth)
                                :state-history state-history
                                :entries (persistent! entries)
                                :facility facility
-                               :providers materialized-providers}
+                               :providers materialized-providers
+                               :assignments assignments}
                               extra))]
     ;; Past every seq-no the queue was SEEDED with -- the arrivals' own
     ;; ordinals and then one per queue-seeded person step -- so a
