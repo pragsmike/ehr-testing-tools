@@ -23,6 +23,7 @@
             [ehrt.sim-engine.assignment :as assignment]
             [ehrt.sim-engine.config :as config]
             [ehrt.sim-engine.decide :as decide]
+            [ehrt.sim-engine.event-schema :as event-schema]
             [ehrt.sim-engine.evolve :as evolve]
             [ehrt.sim-engine.fold :as fold]
             [ehrt.sim-engine.log-index :as log-index]
@@ -1311,6 +1312,51 @@
     (is (= [:registered :outpatient-visit :outpatient-visit-end]
            (mapv :event (log-index/events-for-patient ground-truth (streams/patient-id-for 11 0)))))
     (is (result/ok? (check/check-all ground-truth (:facility result))))))
+
+;; --- schema 1.9.0 (downstream report 2026-09-29, author ruling "(A)"):
+;; an ORDER UNDER AN OUTPATIENT VISIT. `:outpatient-visit` is the schema's
+;; own "one sanctioned admitted-without-a-bed case" and
+;; `order-only-when-admitted` admits an order there, but `:order-placed`
+;; and `:result-available` required a closed `Location` and `decide :order`
+;; wrote the patient's nil into both -- the engine emitted what its own
+;; schema refused, and the in-run self-check (`check-all` over the log)
+;; went `:self-check-failed` on `every-event-is-schema-valid` alone. The
+;; key is now OPTIONAL on both kinds and ABSENT when the patient holds no
+;; bed (ADR-0178: absent, never present-and-nil).
+
+(def ^:private outpatient-order-pathway
+  {:name "outpatient-order" :steps [{:type :outpatient-visit}
+                                    {:type :order :profile :cbc}
+                                    {:type :delay :from 30 :to 30}
+                                    {:type :outpatient-visit-end}]})
+
+(defn- outpatient-order-run []
+  (run/run {:seed 11 :patients 1 :pathways [{:pathway outpatient-order-pathway :weight 1}]}))
+
+(deftest an-order-under-an-outpatient-visit-self-checks-clean
+  (let [{:keys [ground-truth] :as r} (outpatient-order-run)
+        orders (filterv #(#{:order-placed :result-available} (:event %)) ground-truth)]
+    (is (= [:order-placed :result-available] (mapv :event orders))
+        "the pathway reaches both order kinds -- otherwise this gate is vacuous")
+    (is (= [] (:violations (:payload (check/check-all ground-truth (:facility r)))))
+        "the self-check's own instrument, over the whole catalog")
+    (testing "absent, not present-and-nil (ADR-0178)"
+      (is (not-any? #(contains? % :location) orders)))))
+
+(deftest an-outpatient-order-log-was-refused-by-the-schema-row-alone
+  (testing "every row but the schema row admits the log -- the catalog
+            sanctioned this case before the schema did"
+    (let [{:keys [ground-truth] :as r} (outpatient-order-run)]
+      (is (= [] (remove #(= :every-event-is-schema-valid (:invariant %))
+                        (:violations (:payload (check/check-all ground-truth (:facility r))))))))))
+
+(deftest a-present-and-nil-order-location-is-still-refused
+  (let [placed {:event :order-placed :t 0 :active-mrn "MRN000001" :profile :cbc
+                :concept (:concept (:cbc order-profiles/default-profiles))
+                :attending "DR1" :warm-up false :participants [{:patient-id "P1" :role :subject}]}]
+    (is (nil? (event-schema/explain-event placed)) "absent is legal")
+    (is (= [[:location]] (mapv :in (:errors (event-schema/explain-event (assoc placed :location nil)))))
+        "present-and-nil is not")))
 
 (defspec outpatient-visits-never-occupy-a-bed-for-any-seed 150
   (prop/for-all [seed (gen/large-integer* {:min 0})]
