@@ -157,3 +157,26 @@
       "present-and-nil is not absent (ADR-0178)")
   (is (not (pathway/valid? {:name "t" :steps [{:type :immunization :series 1}]}))))
 
+
+;; --- ADR-0184: :allergy-onset, the AllergyOnset state's compile target and
+;; an author-facing step. :allergy-type, :category and :reactions are each
+;; carried only when stated: ABSENT otherwise, never nil (ADR-0178). A
+;; reaction is its Codes and nothing else -- no severity.
+
+(def ^:private a-substance {:system :snomed :code "762952008" :display "Peanut (substance)"})
+(def ^:private a-reaction {:system :snomed :code "49727002" :display "Cough (finding)"})
+
+(deftest allergy-onset-step-is-valid-ir-with-and-without-its-optional-keys
+  (is (pathway/valid? {:name "t" :steps [{:type :allergy-onset :codes [a-substance]
+                                           :allergy-type "allergy" :category "food"
+                                           :reactions [{:codes [a-reaction]}] :citation a-citation}]}))
+  (is (pathway/valid? {:name "t" :steps [{:type :allergy-onset :codes [a-substance]}]})
+      ":allergy-type, :category, :reactions and :citation are all optional"))
+
+(deftest allergy-onset-step-refuses-nil-optionals-a-severity-and-a-missing-codes-key
+  (is (not (pathway/valid? {:name "t" :steps [{:type :allergy-onset :codes [a-substance] :category nil}]}))
+      "present-and-nil is not absent (ADR-0178)")
+  (is (not (pathway/valid? {:name "t" :steps [{:type :allergy-onset :codes [a-substance]
+                                                :reactions [{:codes [a-reaction] :severity :mild}]}]}))
+      "a reaction carries no severity in this slice")
+  (is (not (pathway/valid? {:name "t" :steps [{:type :allergy-onset :category "food"}]}))))

@@ -469,6 +469,30 @@
                 {:event :immunization :t 1 :codes [a-vaccine] :series 1 :participants (subject "P1")}
                 {:event :outpatient-visit-end :t 5 :participants (subject "P1")}]))))
 
+;; ADR-0184: :allergy-onset joins the class -- an allergy is recorded at a
+;; visit, never with no encounter open. (A pre-horizon one is a
+;; registration fact, not a log event, so it never meets this law.)
+
+(def ^:private a-substance {:system :snomed :code "762952008" :display "Peanut (substance)"})
+
+(deftest clinical-content-only-when-admitted-detects-an-allergy-onset-with-no-open-encounter
+  (testing "before any encounter"
+    (is (= [:clinical-content-only-when-admitted]
+           (mapv :invariant (check/clinical-content-only-when-admitted
+                             [{:event :allergy-onset :t 0 :codes [a-substance] :participants (subject "P1")}])))))
+  (testing "after the encounter closed"
+    (is (= [:clinical-content-only-when-admitted]
+           (mapv :invariant (check/clinical-content-only-when-admitted
+                             [{:event :outpatient-visit :t 0 :participants (subject "P1")}
+                              {:event :outpatient-visit-end :t 5 :participants (subject "P1")}
+                              {:event :allergy-onset :t 6 :codes [a-substance] :participants (subject "P1")}]))))))
+
+(deftest clinical-content-only-when-admitted-holds-for-an-allergy-onset-inside-a-visit
+  (is (empty? (check/clinical-content-only-when-admitted
+               [{:event :outpatient-visit :t 0 :participants (subject "P1")}
+                {:event :allergy-onset :t 1 :codes [a-substance] :category "food" :participants (subject "P1")}
+                {:event :outpatient-visit-end :t 5 :participants (subject "P1")}]))))
+
 (deftest medication-end-references-existing-order-and-follows-it-in-time-detects-phantom-order
   (let [log [{:event :medication-end :t 0 :order-event-id 99 :participants (subject "P1")}]]
     (is (seq (check/medication-end-references-existing-order-and-follows-it-in-time log)))))

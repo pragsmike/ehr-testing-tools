@@ -1398,6 +1398,49 @@
     (is (= [[:series]] (mapv :in (:errors (event-schema/explain-event (assoc unstated :warm-up false :series nil)))))
         "present-and-nil is not")))
 
+;; --- schema 1.11.0 (ADR-0184): :allergy-onset, the AllergyOnset fact as a
+;; ground-truth kind. Authored here the way downstream can author it today;
+;; the compiled route is patient-simulator's to prove. No draw, no state
+;; change, clinical content -- so it lives inside an open encounter.
+
+(def ^:private peanut {:system :snomed :code "762952008" :display "Peanut (substance)"})
+(def ^:private cough {:system :snomed :code "49727002" :display "Cough (finding)"})
+
+(def ^:private allergy-pathway
+  {:name "allergy" :steps [{:type :outpatient-visit}
+                           {:type :allergy-onset :codes [peanut] :allergy-type "allergy" :category "food"
+                            :reactions [{:codes [cough]}]}
+                           {:type :delay :from 30 :to 30}
+                           {:type :outpatient-visit-end}]})
+
+(deftest an-authored-allergy-onset-lands-once-inside-its-visit-and-self-checks-clean
+  (let [{:keys [ground-truth] :as r} (run/run {:seed 11 :patients 1
+                                               :pathways [{:pathway allergy-pathway :weight 1}]})
+        kinds (mapv :event ground-truth)
+        onsets (filterv #(= :allergy-onset (:event %)) ground-truth)]
+    (is (= [:registered :outpatient-visit :allergy-onset :outpatient-visit-end] kinds)
+        "exactly one :allergy-onset, between the visit's opener and its closer")
+    (is (= [{:codes [peanut] :allergy-type "allergy" :category "food" :reactions [{:codes [cough]}]}]
+           (mapv #(select-keys % [:codes :allergy-type :category :reactions]) onsets)))
+    (let [checked (check/check-all ground-truth (:facility r))]
+      (is (result/ok? checked)
+          (str "the self-check's own instrument, over the whole catalog: "
+               (pr-str (:violations (:payload checked))))))))
+
+(deftest an-allergy-onset-carries-each-optional-field-only-when-its-step-states-it
+  (let [world0 (world-of {"P1" (state/initial-patient "P1" "MRN000001")})
+        decide-one (fn [step] (first (:events (decide/decide (streams/one-stream (Random. 1)) 0 world0 "P1" step))))
+        stated (decide-one {:type :allergy-onset :codes [peanut] :category "food"})
+        bare (decide-one {:type :allergy-onset :codes [peanut]})]
+    (is (= "food" (:category stated)))
+    (is (not-any? #(contains? stated %) [:allergy-type :reactions]) "only what the step states")
+    (is (not-any? #(contains? bare %) [:allergy-type :category :reactions]) "absent, never nil (ADR-0178)")
+    (is (nil? (event-schema/explain-event (assoc bare :warm-up false))) "absent is legal")
+    (is (= [[:category]] (mapv :in (:errors (event-schema/explain-event (assoc bare :warm-up false :category nil)))))
+        "present-and-nil is not")
+    (is (seq (:errors (event-schema/explain-event (assoc bare :warm-up false :reactions [{:codes [cough] :severity :mild}]))))
+        "a reaction carries no severity in 1.11.0")))
+
 ;; ADR-0182 step 3: the PRODUCER. One run, both routes to the kind -- a
 ;; hand-authored module cohort on explicit ordinals (one wellness visit,
 ;; a Vaccine stating "series" and one not) and a weighted authored Renal

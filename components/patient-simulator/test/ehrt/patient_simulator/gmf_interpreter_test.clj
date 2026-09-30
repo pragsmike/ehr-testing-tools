@@ -2766,6 +2766,56 @@
           outcome (interp/step allergy-onset-module (Random. 1) ctx)]
       (is (= 1 (count (:events outcome)))))))
 
+;; ADR-0184: the stated fields ride the trajectory event, each ONLY when the
+;; state states it. A reaction carries its Code and NO severity: severity is
+;; upstream's per-reaction draw (`ReactionProbabilities.generateSeverity`),
+;; which this interpreter does not take -- so the step draws nothing.
+
+(def ^:private peanut [{:system :snomed :code "762952008" :display "Peanut (substance)"}])
+(def ^:private cough {:system :snomed :code "49727002" :display "Cough (finding)"})
+
+(def allergy-onset-stated-module
+  {:id "allergy-stated-mod" :name "AllergyStated"
+   :states {:initial {:type :initial :direct-transition :peanut}
+            :peanut {:type :allergy-onset :codes peanut :allergy-type "allergy" :category "food"
+                     :reactions [{:reaction cough
+                                  :possible-severities [{:level "mild" :value 0.21} {:level "none" :value 0.79}]}]
+                     :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest allergy-onset-carries-its-stated-fields-and-reactions-without-severity
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :peanut)
+        event (first (:events (interp/step allergy-onset-stated-module (Random. 1) ctx)))]
+    (is (= {:codes peanut :allergy-type "allergy" :category "food" :reactions [{:codes [cough]}]}
+           (select-keys event [:codes :allergy-type :category :reactions])))))
+
+(deftest allergy-onset-with-nothing-stated-carries-none-of-the-three-keys
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :onset)
+        event (first (:events (interp/step allergy-onset-module (Random. 1) ctx)))]
+    (is (= :allergy-onset (:event event)))
+    (is (not-any? #(contains? event %) [:allergy-type :category :reactions]))))
+
+(deftest allergy-onset-with-an-empty-reactions-list-carries-no-reactions-key
+  (testing "upstream records reactions only when the list is non-empty
+            (`AllergyOnset.diagnose`); allergies.json's own Allergy_Unspecified
+            states `\"reactions\": []`"
+    (let [module (assoc-in allergy-onset-module [:states :onset :reactions] [])
+          ctx (assoc (ctx-for (persona-at 1)) :current :onset)
+          event (first (:events (interp/step module (Random. 1) ctx)))]
+      (is (not (contains? event :reactions))))))
+
+(deftest allergy-onset-consumes-no-rng
+  (testing "the patient stream's position is unchanged across the step, even
+            with reactions stated -- no severity draw"
+    (let [ctx (assoc (ctx-for (persona-at 1)) :current :peanut)
+          calls (atom 0)
+          rng (proxy [Random] [(long 1)]
+                (nextDouble [] (swap! calls inc) (proxy-super nextDouble))
+                (nextInt ([n] (swap! calls inc) (proxy-super nextInt n)))
+                (nextLong [] (swap! calls inc) (proxy-super nextLong)))]
+      (interp/step allergy-onset-stated-module rng ctx)
+      (is (= 0 @calls)))))
+
 ;; --- GMF coverage Wave I (2026-08-04, ADR-0040 AR-5): Vaccine -- an
 ;; unconditional leaf write, no target-encounter/diagnose distinction
 ;; upstream at all.

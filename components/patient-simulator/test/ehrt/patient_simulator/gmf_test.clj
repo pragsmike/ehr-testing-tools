@@ -1168,6 +1168,42 @@
       (is (= [{:system :snomed :code "609328004" :display "Allergic disposition (finding)"}] (:codes onset)))
       (is (= :allergist-initial-visit (:target-encounter onset))))))
 
+;; --- ADR-0184: AllergyOnset's three stated fields survive the loader, each
+;; ONLY when the module states it. food_allergy_incidence.json's own
+;; Peanut_Allergy shape (upstream pin 7e08387c), cut to two reactions; the
+;; bare state states none of the three. `reactions` arrives in upstream's
+;; own shape -- a `reaction` Code and its `possible_severities` -- and the
+;; reaction Code is normalized like every other Code this loader reads.
+
+(def allergy-onset-stated-json
+  (str "{\"name\": \"AllergyStated\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Peanut\"},"
+       "  \"Peanut\": {\"type\": \"AllergyOnset\", \"allergy_type\": \"allergy\", \"category\": \"food\","
+       "              \"codes\": [{\"system\": \"SNOMED-CT\", \"code\": \"762952008\", \"display\": \"Peanut (substance)\"}],"
+       "              \"reactions\": ["
+       "                {\"reaction\": {\"system\": \"SNOMED-CT\", \"code\": \"49727002\", \"display\": \"Cough (finding)\"},"
+       "                 \"possible_severities\": [{\"level\": \"mild\", \"value\": 0.21}, {\"level\": \"none\", \"value\": 0.79}]},"
+       "                {\"reaction\": {\"system\": \"SNOMED-CT\", \"code\": \"402387002\", \"display\": \"Allergic angioedema (disorder)\"},"
+       "                 \"possible_severities\": [{\"level\": \"moderate\", \"value\": 0.58}, {\"level\": \"none\", \"value\": 0.42}]}],"
+       "              \"direct_transition\": \"Grass\"},"
+       "  \"Grass\": {\"type\": \"AllergyOnset\","
+       "             \"codes\": [{\"system\": \"SNOMED-CT\", \"code\": \"256277009\", \"display\": \"Grass pollen (substance)\"}],"
+       "             \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest allergy-onset-loads-its-stated-fields-and-only-those
+  (let [loaded (gmf/load-module "allergy-stated" allergy-onset-stated-json)]
+    (is (result/ok? loaded))
+    (let [{:keys [peanut grass]} (:states (:payload loaded))]
+      (testing "the full state: all three, the reaction Codes normalized"
+        (is (= "allergy" (:allergy-type peanut)))
+        (is (= "food" (:category peanut)))
+        (is (= [{:system :snomed :code "49727002" :display "Cough (finding)"}
+                {:system :snomed :code "402387002" :display "Allergic angioedema (disorder)"}]
+               (mapv :reaction (:reactions peanut)))))
+      (testing "the bare state: none of the three, not even as nil"
+        (is (= #{} (set (filter #(contains? grass %) [:allergy-type :category :reactions]))))))))
+
 ;; --- GMF coverage Wave I (2026-08-04, ADR-0040 AR-5): Vaccine -----------
 
 (def vaccine-json

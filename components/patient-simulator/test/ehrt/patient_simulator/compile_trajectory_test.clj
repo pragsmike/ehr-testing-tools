@@ -645,3 +645,63 @@
           {:keys [steps registration-facts]} (ct/compile-trajectory trajectory facility 100)]
       (is (not-any? #(= :immunization (:type %)) steps))
       (is (empty? registration-facts)))))
+
+;; --- ADR-0184: AllergyOnset reaches the log. Before it, `:allergy-onset`
+;; fell to the compile loop's `:else` -- the pair of `:vaccine` ADR-0182
+;; promoted. Inside the horizon it compiles to an `:allergy-onset` step
+;; carrying `:allergy-type`/`:category`/`:reactions` ONLY when the module
+;; states them; BEFORE the horizon it becomes a registration fact, never a
+;; step (an allergy is standing history, the `:condition-onset` class, not
+;; an ephemeral event like a vaccine). A hand-built module: no vendored
+;; module carries an AllergyOnset state.
+
+(def ^:private allergy-visit-json
+  (str "{\"name\": \"AllergyVisit\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Bee\"},"
+       "  \"Bee\": {\"type\": \"AllergyOnset\", \"allergy_type\": \"allergy\", \"category\": \"environment\","
+       "           \"codes\": [{\"system\": \"SNOMED-CT\", \"code\": \"288328004\", \"display\": \"Bee venom (substance)\"}],"
+       "           \"direct_transition\": \"Wait\"},"
+       "  \"Wait\": {\"type\": \"Delay\", \"exact\": {\"quantity\": 3650, \"unit\": \"days\"}, \"direct_transition\": \"Visit\"},"
+       "  \"Visit\": {\"type\": \"Encounter\", \"encounter_class\": \"wellness\","
+       "             \"codes\": [{\"system\": \"SNOMED-CT\", \"code\": \"185345009\", \"display\": \"Encounter for symptom\"}],"
+       "             \"direct_transition\": \"Peanut\"},"
+       "  \"Peanut\": {\"type\": \"AllergyOnset\", \"allergy_type\": \"allergy\", \"category\": \"food\","
+       "              \"codes\": [{\"system\": \"SNOMED-CT\", \"code\": \"762952008\", \"display\": \"Peanut (substance)\"}],"
+       "              \"reactions\": ["
+       "                {\"reaction\": {\"system\": \"SNOMED-CT\", \"code\": \"49727002\", \"display\": \"Cough (finding)\"},"
+       "                 \"possible_severities\": [{\"level\": \"mild\", \"value\": 0.21}, {\"level\": \"none\", \"value\": 0.79}]}],"
+       "              \"direct_transition\": \"Grass\"},"
+       "  \"Grass\": {\"type\": \"AllergyOnset\","
+       "             \"codes\": [{\"system\": \"SNOMED-CT\", \"code\": \"256277009\", \"display\": \"Grass pollen (substance)\"}],"
+       "             \"direct_transition\": \"End_Visit\"},"
+       "  \"End_Visit\": {\"type\": \"EncounterEnd\", \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(def ^:private bee-venom {:system :snomed :code "288328004" :display "Bee venom (substance)"})
+
+(deftest module-allergy-onsets-compile-to-steps-and-a-pre-horizon-one-to-a-registration-fact
+  (let [module (:payload (gmf/load-module "allergy-visit" allergy-visit-json))
+        p (adult 7)
+        ;; registered five years after birth: Bee (at birth) is history,
+        ;; the visit (ten years after birth) is horizon.
+        reg-t (+ (interp/dob-epoch-day p) (* 5 365))
+        {:keys [trajectory]} (interp/run-module module (Random. 7) p reg-t)
+        onsets (filterv #(= :allergy-onset (:event %)) trajectory)
+        {:keys [steps registration-facts]} (ct/compile-trajectory trajectory facility reg-t)
+        allergy-steps (filterv #(= :allergy-onset (:type %)) steps)]
+    (is (= [true false false] (mapv :pre-horizon onsets))
+        "the walk reaches all three states, the first before the horizon -- otherwise this gate is vacuous")
+    (is (= [:outpatient-visit :allergy-onset :allergy-onset :outpatient-visit-end]
+           (mapv :type (remove #(= :delay (:type %)) steps))))
+    (is (= [{:codes [{:system :snomed :code "762952008" :display "Peanut (substance)"}]
+             :allergy-type "allergy" :category "food"
+             :reactions [{:codes [{:system :snomed :code "49727002" :display "Cough (finding)"}]}]
+             :citation {:module "allergy-visit" :state :peanut}}
+            {:codes [{:system :snomed :code "256277009" :display "Grass pollen (substance)"}]
+             :citation {:module "allergy-visit" :state :grass}}]
+           (mapv #(dissoc % :type) allergy-steps)))
+    (testing "the pre-horizon onset is a registration fact, never a step"
+      (is (= [{:event :allergy-onset :codes [bee-venom]
+               :citation {:module "allergy-visit" :state :bee} :references nil}]
+             registration-facts)))
+    (is (sim-model/valid? {:name "compiled" :steps steps}))))
