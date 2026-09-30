@@ -319,3 +319,48 @@ The table's `adhd-seed-45` row reads 66 events. Re-run 2026-09-23 at
 run produces **97**. The duplicate-group count is 0 either way, so no
 finding moves; the figure is corrected here rather than left to be
 re-derived.
+
+### Dated amendment, 2026-09-30 — DFT^P03 joins the index rule; the gate reads every rendered id's shape
+
+Author ruling 2026-09-30, "go", on the session that closed
+`roadmap.md#dft-control-id-collision`. Landed in `39e51282`.
+
+**DFT^P03's MSH-10 is `mrn-P03-t#<log index>`**, the closing event's
+own index, appended through `segments/with-log-index` — now the ONE
+place the suffix is appended; every arm of `control-id-for` ends in it
+too, so the throw on an unstamped event is shared rather than copied.
+The pre-change id is a strict prefix of the new one, which is property
+1 above extended to the family "What this ruling does NOT cover" named.
+An `:outpatient-visit-end` has no registry entry and so no
+`control-id-for`, but it is stamped like every event, so its DFT takes
+the suffix all the same. The DFT's latency offset is still looked up
+under the basis event's own `control-id-for`, unchanged.
+
+A hand-built log with two `:discharge`s for one MRN at one `t` renders
+`MRN000001-P03-91000#3` and `...#4`; before, both were
+`MRN000001-P03-91000`.
+
+**The gate.** `control-id-for-is-injective-over-every-corpus-this-lane-
+runs` already read MSH-10 off the rendered wire — DFTs, restatements
+and rungs included — so its injectivity clause was GREEN at `64d55fec`
+(0 duplicates in every root). What it could not see was a family
+minting ids beside the rule while happening not to collide. It gains a
+SHAPE clause: every MSH-10 ends `#<digits>` (rendered from a
+ground-truth event) or is a restatement's `mrn-trigger-t-<ordinal>`
+over the five restatement triggers. Red at `64d55fec` on exactly the
+DFTs: 114 / 124 / 96 / 8 at the four gated roots, 2,609 at the
+`dense-7500` 750 cell. Green at `39e51282`.
+
+**Measured**, at the four gated roots and the 750 cell rendered at
+`64d55fec` and `39e51282`: every DFT id moved (2,609 at the cell), no
+message of any other family moved on this account, and stripping
+`#<digits>` from every DFT MSH-10 (together with the PV1-2 restoration
+ADR-0174's dated note of the same day describes) reproduces the
+before-wire byte for byte at all five. `gate v2` (HAPI) passes 68/68 on
+both sides over every changed ORU plus 40 DFTs; `gate v2-nist` against
+`COVID19_ELR-v2.3.1` gives an identical finding-code histogram and
+identical per-file codes. `bin/ground-truth-bracket 64d55fec 39e51282`
+IDENTICAL on 39 roots; `bin/regression-oracle ... --declared-digest-
+change` DIFFERS on exactly `chatter-charges` (99 DFTs) among the roots
+this amendment moves. Record:
+`.agents/session-records/2026-09-30-wire-fidelity-pv1-dft.md`.

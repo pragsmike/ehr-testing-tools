@@ -960,3 +960,35 @@ restructure.
 * **`[multi-encounter-horizon]` gets an owner if ruling A goes A1**, and
   the roadmap row says so pending that ruling. Ruling A went A1 on
   2026-08-26, so that row's owner is arc 3b sweep 1.
+
+### Dated note, 2026-09-30 — PV1-2 on the order-less ORU kinds derives from the encounter's class
+
+`:observation` and `:diagnostic-report` render ORU^R01 with PV1-2 read
+from the patient's class at the event's `t`: the most recent opener at
+or before it — `:admission` (and a `:cancel-discharge`, which
+reinstates one) `I`, `:outpatient-visit` `O`, a `:cancel-admit`
+clearing it — and `I` when there is none, the byte both builders
+passed unconditionally before. A close does not clear it. The fold is
+`timelines/class-timeline`, one pass over the log in `emit` and
+`emit-wire`; the engine's own `:class` is state, never an event field,
+so the emitter re-derives it rather than reading it, and
+`components/sim-engine` does not move. The order-linked ORM^O01/ORU^R01
+keep schema 1.9.0's rule (no `:location` on the order event -> `O`),
+and DFT^P03 keeps its own (`:outpatient-visit-end` -> `O`).
+
+Before, every observation a module compiled into an ambulatory
+encounter reached the wire as class `I`. Measured at `64d55fec` vs
+`39e51282`: 13 observations flip `I`->`O` at `seed-424242-clinic-decade`
+(of its 21 order-less ORUs; the other 8 sit under admissions and stay
+`I`), 14 at `seed-5-clinic-decade`, 1 at the `dense-7500` 750 cell, 0
+at `seed-202-ed-tuesday` — each equal to that root's count of
+observation/report events under an outpatient opener, and no
+diagnostic report flips anywhere. `bin/regression-oracle ...
+--declared-digest-change` DIFFERS on exactly the eleven roots carrying
+such an event (`anemia`, `colorectal`, `dementia`, `fibromyalgia`,
+`hypothyroidism`, `osteoarthritis`, `osteoporosis`,
+`total-joint-replacement-engine`, `urinary-tract-infections-engine`,
+`urinary-tract-infections-history-engine`, `veteran-prostate-cancer`)
+plus `chatter-charges` (its DFTs, ADR-0181's amendment of the same
+day), IDENTICAL on the other thirty; ground truth IDENTICAL on every
+root. Record: `.agents/session-records/2026-09-30-wire-fidelity-pv1-dft.md`.

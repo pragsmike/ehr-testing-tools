@@ -34,23 +34,6 @@ with them.
   hash-order dependence" at site 5 and names this row instead. Retire only as a DECLARED
   oracle change -- sorting `eligible` moves every churn-bearing golden
   root -- never as a site session's judgment call.
-- OPEN **[dft-control-id-collision]** PRIORITY 3 -- `messages/dft-message` mints
-  its own MSH-10, `mrn-P03-t`, WITHOUT going through `control-id-for`, so
-  ADR-0181's log-index suffix does not reach it and DFT^P03 keeps a three-part
-  key. It is the SAME defect `#oru-control-id-collision` named -- two encounter
-  closes for one patient at one second mint one id -- in the one message family
-  that does not read the fixed function, and it is what SURVIVED that row's own
-  closure. Found 2026-09-23 while landing ADR-0181 candidate 3, by rendering the
-  dense-7500 750-arrival cell before and after: of the 18,773 MSH-10s that did
-  not move, 16,164 are chatter and ladder restatements (by design) and the
-  remaining 2,609 are DFT^P03 (not). NOT MEASURED LIVE: no duplicate DFT id
-  occurs in any root `ehrt.sim.run-test`'s own injectivity gate runs, so like the
-  `:result-available` case of the row it descends from, this is
-  reachable-in-principle rather than witnessed -- and that gate would catch it
-  the day one appears. Fixing it is a BUILDER change (the id is built inline in
-  `dft-message`, not in `control-id-for`), which is why the landing session
-  fenced it out rather than smuggling it in, and it is a declared oracle change
-  of its own.
 - OPEN **[cancel-discharge-reopens-an-encounter-that-never-closes]** PRIORITY 4 --
   MEASURED 2026-08-29 while tracing `roadmap.md#ts-3-outpatient-opens-over-an-encounter`,
   and it is a population fact rather than one patient's: a legal
@@ -278,6 +261,7 @@ One line a row. `CLOSED` here means "no longer a roadmap row", not "the work
 was done" -- each line says which. The section is named `## Done` because that
 is where `ehrt.docs-tooling.roadmap-lint-test` requires a `CLOSED` row to live.
 
+- CLOSED 2026-09-30 39e51282 **[dft-control-id-collision]** -- DONE. DFT^P03's MSH-10 is `mrn-P03-t#<log index>` through the shared ADR-0181 suffix, old id a strict prefix; the ADR-0181 gate now also holds every rendered MSH-10 to one of two shapes. Same session: order-less ORU PV1-2 reads the encounter's class. Ground truth unmoved. Record: `2026-09-30-wire-fidelity-pv1-dft.md`.
 - CLOSED 2026-09-23 32344ca9 **[oru-control-id-collision]** -- DONE. The `mrn-trigger-t` key was non-injective in five classes (43 groups at dense-7500 @750); ADR-0181 candidate 3 gives every arm a `#<0-based log index>` suffix, so the old id is a strict PREFIX of the new and MSH-10 is injective by construction. Ground truth unmoved. Record: `2026-09-23-msh-10-log-index.md`. Residual: `#dft-control-id-collision`.
 
 - CLOSED 2026-09-07 df73b6c8 **[dense-7500-gate-gaps]** -- DONE, both. (a) the exerciser is a step of `make integration`. (b) `demos/scenarios/dense-7500/figures.edn` is the one source; the exerciser rewrites its `:asserted` half from its own run, so the tree-clean check IS the assertion, and `dense-7500-figures-test` holds both quoting documents to it. Re-measured at `2ba3490c`: counts identical, walls 2.5-3.4x shorter. Record: `2026-09-07-dense-7500-gate-gaps.md`.
