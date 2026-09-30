@@ -486,7 +486,7 @@
       (segments/pv1-segment site-profile (timelines/class-at classes (:patient-id (first participants)) t)
                             facility-name
                             (timelines/location-at locations (:patient-id (first participants))
-                                                   (::segments/log-index ev))
+                                                   (segments/log-index-of ev))
                             nil provider nil (:encounter-id ev))
       (segments/observation-obx-segment 1 clinical-ts ev)
       (er7/z-segments-for site-profile demographics ev)))))
@@ -525,7 +525,7 @@
       (segments/pv1-segment site-profile (timelines/class-at classes (:patient-id (first participants)) t)
                             facility-name
                             (timelines/location-at locations (:patient-id (first participants))
-                                                   (::segments/log-index ev))
+                                                   (segments/log-index-of ev))
                             nil provider nil (:encounter-id ev))
       (segments/orc-segment control-id)
       (segments/obr-segment 1 (first codes) clinical-ts)

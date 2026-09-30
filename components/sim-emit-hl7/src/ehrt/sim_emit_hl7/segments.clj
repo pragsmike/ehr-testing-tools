@@ -122,6 +122,16 @@
   [ground-truth]
   (into [] (map-indexed (fn [i ev] (assoc ev ::log-index i))) ground-truth))
 
+(defn log-index-of
+  "`ev`'s own `::log-index`, nil on an unstamped event -- the READ half
+  of `stamp-log-index`, for a builder outside this namespace that needs
+  the position itself rather than an id suffixed with it
+  (`timelines/location-at`, 2026-09-30). An accessor rather than the
+  alias-qualified keyword at the call site, because the tree-scanning
+  gates read src with a bare reader that cannot resolve `::alias/kw`."
+  [ev]
+  (::log-index ev))
+
 (defn with-log-index
   "`id` + `log-index-marker` + `ev`'s own `::log-index` -- ADR-0181's
   suffix, the ONE place it is appended. `control-id-for` ends every arm
