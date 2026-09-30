@@ -19,25 +19,36 @@ arc**, so the configuration is re-authored here from those two records'
 own descriptions and committed, and the table's rows now cite this
 directory instead of a dead one.
 
-## Three configs, one provenance
+## Four configs, one provenance
 
 | file | what | how it relates to `config.edn` |
 |---|---|---|
 | [`config.edn`](config.edn) | the skeleton **plus all nine opt-in keys** | the provenance -- these are the bytes the other two are cut from |
 | [`config-nobed.edn`](config-nobed.edn) | the same, **less `:bed-cycle`** | `config.edn` with exactly one line deleted |
 | [`config-bare.edn`](config-bare.edn) | the skeleton, **no opt-in key at all** | `config.edn`'s own byte PREFIX, plus a closing brace |
+| [`config-28024.edn`](config-28024.edn) | the same nine keys, **`:persons` sized for 28,024 arrivals** | `config.edn` with exactly one line changed: `:persons {:count 56048}` |
 
-**Both siblings are DERIVED, and each rule is a command rather than a
-description.** Run from this directory, either line reproduces its own
-file byte for byte:
+**All three siblings are DERIVED, and each rule is a command rather
+than a description.** Run from this directory, each line reproduces its
+own file byte for byte:
 
 ```bash
 grep -v '^ :bed-cycle true$' config.edn > config-nobed.edn
 sed -n '1,/^ :module-horizon-days /p' config.edn > config-bare.edn && printf '}\n' >> config-bare.edn
+sed 's/^ :persons {:count 15000 :years 20}$/ :persons {:count 56048 :years 20}/' config.edn > config-28024.edn
 ```
 
-Edit `config.edn` and re-run both lines; never edit a sibling directly.
-Neither derivation is asserted afterwards either -- both are checked,
+Edit `config.edn` and re-run all three lines; never edit a sibling
+directly. **`config-28024.edn` is `config.edn`'s own rule applied at a
+larger arrival count** -- `:persons :count` is twice the arrivals, and
+twice 28,024 is 56,048 -- and it exists because that cell was run and
+is quoted below; its derivation is checked by
+`ehrt.docs-tooling.dense-7500-figures-test` rather than by the
+exerciser, since `make test` runs the former and the exerciser does not
+run that cell.
+
+Neither of the first two derivations is asserted afterwards either --
+both are checked,
 and `bin/demo-exerciser-dense-7500` checks them on every integration
 run -- that script is a step of `make integration`, alongside the
 ed-tuesday and clinic-decade exercisers, and it is the one that makes
@@ -103,6 +114,18 @@ walk length is the vendored modules' business rather than this file's.
 The bound is what sizes the delays; the gate is the run, and all four
 cells below complete.
 
+**The module cohort is ENUMERATED, not a rule, and it stops at 7,496.**
+"Every eighth ordinal" is what `config.edn`'s `:module-assignment`
+spells out row by row -- ordinals 8, 16, ... 7,496, **937 rows** -- and
+`:pathways` pins the same 937 ordinals to `module-only` by the same list.
+`--patients` above 7,500 does not scale it: no ordinal past 7,496 is
+assigned a module, so every arrival beyond that point takes one of the
+three authored pathways. The witness is the 28,024 cell's own
+`ehrt sim describe` row, read over the `sim run` envelope so the
+manifest's assignment record is present:
+`pathway module-only configured yes observed 937 (892 subjects)` --
+937 of 28,024 arrivals, 3.3% of them rather than 12.5%.
+
 ## Generate
 
 ```bash
@@ -112,7 +135,9 @@ bin/ehrt corpus generate sim --seed 20260824 --patients 7500 --churn \
 ```
 
 **This is a minutes-long run, not a seconds-long one** -- see the walls
-under "What to look for" below. `--out-dir` is rejected if it already
+under "What to look for" below. The fourth config, at 28,024 arrivals,
+is generated on the ground-truth-only path instead; its command is in
+the next section. `--out-dir` is rejected if it already
 exists and is non-empty; remove or rename a prior run's own directory
 before regenerating.
 
@@ -136,6 +161,19 @@ cheaper path on heap, by a margin that widens as the corpus grows**,
 because the emitter's peak rather than the log's is what binds first.
 Whether it is the ONLY path that reaches 10^6 is not something this
 repository has run.
+
+**The largest cell this repository HAS run is the fourth config**, at
+28,024 arrivals and on this path, with the heap set explicitly. Run it
+from the workspace root -- `bin/ehrt` sets no JVM options, so this
+calls the same `:ehrt` alias the wrapper does, with `-Xmx8g` in front:
+
+```bash
+clojure -J-Xmx8g -M:ehrt sim run --seed 20260824 --patients 28024 --churn --config demos/scenarios/dense-7500/config-28024.edn --format ground-truth > out/scenarios/dense-7500-28024.edn
+```
+
+It takes minutes, writes a quarter of a gigabyte, and is not run by the
+exerciser; its figures are under "What to look for" below, in their own
+table.
 
 ## What to look for
 
@@ -200,6 +238,25 @@ default heap, not as a footprint.
 | `config-nobed.edn` | 7,500 | **125,642** | **165,466** | **1.3170** | 93.34 s | 1,984 MB |
 | `config-bare.edn` | 7,500 | **100,868** | **65,457** | **0.6489** | 42.36 s | 1,135 MB |
 | `config.edn` | 750 | **33,306** | **40,291** | **1.2097** | 48.20 s | 1,183 MB |
+
+**The ground-truth-only cell** is a different measurement, in its own
+table because it has no message column to fill: `config-28024.edn`,
+measured 2026-09-30 at `dac3d9c8` on the same machine, ONE run of the
+`sim run --format ground-truth` command under "The ground-truth-only
+path" above, `-Xmx8g` explicit, `/usr/bin/time -v` around the whole
+process. Its log is 263,570,096 bytes with sha-256
+`589600c5a8051ff2...549cc335`, and that log has been reproduced byte
+for byte on another host and JDK build. Events and subjects are
+`ehrt sim describe`'s own counts over it.
+
+| cell | arrivals | events | subjects | bytes | process wall | peak RSS |
+|---|---|---|---|---|---|---|
+| `config-28024.edn` | 28,024 | **668,496** | **32,080** | **263,570,096** | 383.10 s | 3,599 MB |
+
+Its wall is NOT comparable with the table above -- a `sim run` that
+emits nothing, against a `corpus generate` that also renders, checks
+and spools -- and neither is its module cohort, which is the
+7,500-arrival run's (see "Why the dwells are what they are").
 
 **`:scheduling` IS WHAT SPREADS THE CENSUS, and it is worth knowing
 before you cut the opt-in keys down.** `config-bare.edn` is the

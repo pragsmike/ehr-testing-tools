@@ -32,23 +32,32 @@
       leaving a zero-row loop passing vacuously
       (`rulings.md#R-empty-population-is-red`).
 
-  (b) POPULATION CLOSURE -- the README's table has a row for every cell
-      in `figures.edn` and no row that the file does not know, and the
-      Scale table's three rows map onto three of those same cells.
+  (b) POPULATION CLOSURE -- the README's two tables together have a row
+      for every cell in `figures.edn` and no row that the file does not
+      know, and the Scale table's four rows map onto four of those same
+      cells.
 
   (c) EVERY QUOTED NUMBER MATCHES -- events, messages, msg/event,
-      process wall and peak RSS, cell by cell, in both documents.
+      process wall and peak RSS, cell by cell, in both documents; and
+      for a ground-truth-only cell, which spools no message, subjects
+      and bytes in place of messages. A Scale cell written as an em
+      dash is a field the file must NOT carry for that cell -- a dash
+      over a figure the file holds is a figure nobody quotes.
 
   (d) `:msg-per-event` IS RE-DERIVED, not trusted: it must equal
       `:messages` over `:events` to four decimal places. A hand
       re-measure that updates two of the three and not the third is
-      the failure this catches.
+      the failure this catches. A cell carrying neither is a
+      ground-truth-only cell and is skipped; a cell carrying one
+      without the other fails.
 
   (e) BOTH DOCUMENTS CARRY THE SAME DATED QUOTATION -- each names
       `:provenance`'s own `:sha` and `:date`, in its own witnessing
       sentence, and that sha resolves to a commit in this repository.
       This is what makes the wall cells honest without asserting them
-      against a live run.
+      against a live run. A cell measured on another occasion carries
+      its OWN dated block under `:cell-provenance`, and both documents
+      must name that one's date and sha too.
 
   (f) THE WRITER AND THE FILE STILL AGREE -- the exerciser names this
       file and the file carries the markers the exerciser splices
@@ -63,7 +72,13 @@
       published the pre-ADR-0179 counts after both re-measures. Its two
       bolded figures are located by the paragraph's opening clause and
       held to the same merged file -- exactly two, so a third figure
-      added there fails rather than going unchecked."
+      added there fails rather than going unchecked.
+
+  (h) THE 28,024 SIBLING IS DERIVED, not authored -- `config-28024.edn`
+      is `config.edn` with its one `:persons` line replaced, byte for
+      byte, by the README's own derivation rule. The other two
+      siblings are checked by `bin/demo-exerciser-dense-7500`; this
+      one is checked here, where the suite runs it."
   (:require [clojure.edn :as edn]
             [clojure.java.shell :as shell]
             [clojure.string :as str]
@@ -78,6 +93,11 @@
 (def ^:private readme-header
   "| cell | arrivals | events | messages | msg/event | process wall | peak RSS |")
 
+(def ^:private readme-gt-header
+  "The README's second table: cells run `--format ground-truth`, which
+  spool no message and so are counted in subjects and bytes instead."
+  "| cell | arrivals | events | subjects | bytes | process wall | peak RSS |")
+
 (def ^:private scale-header
   "| Cell | events | messages | msg/event | process wall |")
 
@@ -87,16 +107,18 @@
   {["`config.edn`" "7,500"] :config-edn-7500
    ["`config-nobed.edn`" "7,500"] :config-nobed-7500
    ["`config-bare.edn`" "7,500"] :config-bare-7500
-   ["`config.edn`" "750"] :config-edn-750})
+   ["`config.edn`" "750"] :config-edn-750
+   ["`config-28024.edn`" "28,024"] :config-28024-28024})
 
 (def ^:private scale-row-keys
   "How the Scale table identifies a row -- by what the config turns on,
-  prose rather than filename -- mapped to the same cell keys. All three
-  are the 7,500-arrival cells; the 750 one is the scenario README's
-  alone."
+  prose rather than filename -- mapped to the same cell keys. Three are
+  the 7,500-arrival cells and the fourth is the ground-truth-only
+  28,024 sibling; the 750 one is the scenario README's alone."
   {"all nine opt-in keys" :config-edn-7500
    "the same, less `:bed-cycle`" :config-nobed-7500
-   "no opt-in key at all" :config-bare-7500})
+   "no opt-in key at all" :config-bare-7500
+   "all nine opt-in keys, 28,024 arrivals, ground truth only" :config-28024-28024})
 
 (defn- figures [] (edn/read-string (slurp figures-path)))
 
@@ -127,10 +149,12 @@
 
 (defn- num
   "A figure as both documents write one: bolded, comma-grouped, and
-  carrying its own unit."
+  carrying its own unit. An em dash is nil -- a field the cell does not
+  have, which (c) holds the figures file to."
   [s]
-  (-> s (str/replace "*" "") (str/replace "," "")
-      (str/replace #"\s*(s|MB)$" "") str/trim Double/parseDouble))
+  (when-not (= "—" (str/trim s))
+    (-> s (str/replace "*" "") (str/replace "," "")
+        (str/replace #"\s*(s|MB)$" "") str/trim Double/parseDouble)))
 
 (defn- readme-quoted []
   (into {} (for [row (table-rows readme-path readme-header)
@@ -139,6 +163,16 @@
              [k {:events (num (nth row 2)) :messages (num (nth row 3))
                  :msg-per-event (num (nth row 4)) :wall-s (num (nth row 5))
                  :peak-rss-mb (num (nth row 6))}])))
+
+(defn- readme-gt-quoted []
+  (into {} (for [row (table-rows readme-path readme-gt-header)
+                 :let [k (readme-row-keys [(nth row 0) (nth row 1)])]
+                 :when k]
+             [k {:events (num (nth row 2)) :subjects (num (nth row 3))
+                 :bytes (num (nth row 4)) :wall-s (num (nth row 5))
+                 :peak-rss-mb (num (nth row 6))}])))
+
+(defn- readme-all-quoted [] (merge (readme-quoted) (readme-gt-quoted)))
 
 (defn- scale-quoted []
   (into {} (for [row (table-rows scale-doc-path scale-header)
@@ -155,6 +189,9 @@
         (str readme-path " has no row under " (pr-str readme-header)
              " -- if that header was reworded, reword it here too; every check below "
              "would otherwise loop over nothing and pass")))
+  (testing "the scenario README's ground-truth-only table"
+    (is (seq (table-rows readme-path readme-gt-header))
+        (str readme-path " has no row under " (pr-str readme-gt-header) " -- see above")))
   (testing "the Scale table"
     (is (seq (table-rows scale-doc-path scale-header))
         (str scale-doc-path " has no row under " (pr-str scale-header) " -- see above"))))
@@ -164,13 +201,13 @@
 (deftest every-published-row-is-a-known-cell-test
   (let [known (set (keys (merged-cells (figures))))]
     (testing "the README publishes exactly the cells figures.edn carries"
-      (is (= known (set (keys (readme-quoted))))
+      (is (= known (set (keys (readme-all-quoted))))
           (str "figures.edn carries " (pr-str known) " and " readme-path " publishes "
-               (pr-str (set (keys (readme-quoted))))
+               (pr-str (set (keys (readme-all-quoted))))
                " -- a row on one side only is a figure with no source or a source no one reads")))
     (testing "every Scale row maps onto one of them"
       (is (= (set (vals scale-row-keys)) (set (keys (scale-quoted))))
-          (str scale-doc-path "'s Scale rows are no longer the three this gate knows -- "
+          (str scale-doc-path "'s Scale rows are no longer the four this gate knows -- "
                "a renamed row label reads here as an absent row")))
     (testing "and the Scale rows are cells figures.edn actually carries"
       (is (every? known (keys (scale-quoted)))))))
@@ -179,7 +216,7 @@
 
 (deftest the-readme-quotes-the-figures-file-test
   (let [cells (merged-cells (figures))]
-    (doseq [[k quoted] (readme-quoted)
+    (doseq [[k quoted] (readme-all-quoted)
             [field want] (get cells k)
             :when (not= field ::overlap)]
       (testing (str k " " field)
@@ -193,10 +230,14 @@
     (doseq [[k quoted] (scale-quoted)
             [field want] quoted]
       (testing (str k " " field)
-        (is (== (double (get (get cells k) field)) want)
+        (if (nil? want)
+          (is (not (contains? (get cells k) field))
+              (str scale-doc-path "'s Scale table dashes " k " " field " but " figures-path
+                   " holds " (get (get cells k) field) " -- a figure the table declines to quote"))
+          (is (and (some? (get (get cells k) field)) (== (double (get (get cells k) field)) want))
             (str scale-doc-path "'s Scale table quotes " want " for " k " " field
                  " but " figures-path " holds " (get (get cells k) field)
-                 " -- these three cells are the ones ADR-0180 found stale twice"))))))
+                 " -- these three cells are the ones ADR-0180 found stale twice")))))))
 
 ;; -- (d) msg/event is re-derived, and the halves do not overlap --
 
@@ -206,11 +247,12 @@
       (is (nil? (::overlap cell))
           (str k " declares " (pr-str (::overlap cell)) " in both :asserted and :quoted -- "
                "the halves divide the work, and a field in both has two sources of truth")))
-    (testing (str k " msg/event")
+    (when (or messages msg-per-event)
+     (testing (str k " msg/event")
       (is (= msg-per-event
              (-> (/ (double messages) events) (* 10000.0) Math/round (/ 10000.0)))
           (str k " carries " msg-per-event " msg/event against " messages " messages over "
-               events " events -- a re-measure moved two of the three and left the third")))))
+               events " events -- a re-measure moved two of the three and left the third"))))))
 
 ;; -- (e) the dated quotation --
 
@@ -226,6 +268,37 @@
     (testing "and the sha is a commit in this repository, not a plausible-looking string"
       (is (zero? (:exit (shell/sh "git" "rev-parse" "--verify" "--quiet" (str sha "^{commit}"))))
           (str figures-path " names " sha ", which does not resolve to a commit here")))))
+
+;; -- (e') a cell measured on another occasion carries its own quotation --
+
+(deftest every-cell-provenance-is-quoted-by-both-documents-test
+  (let [{:keys [cell-provenance] :as figs} (figures)
+        known (set (keys (merged-cells figs)))]
+    (testing "there is at least one, so the loop below is not vacuous"
+      (is (seq cell-provenance)
+          (str figures-path " carries no :cell-provenance -- the 28,024 cell's own dated block is gone")))
+    (doseq [[k {:keys [sha date]}] cell-provenance]
+      (testing (str k " is a cell the file carries")
+        (is (contains? known k)))
+      (testing (str k " is witnessed in both documents")
+        (doseq [path [readme-path scale-doc-path]]
+          (is (str/includes? (slurp path) (str "measured " date " at `" sha "`"))
+              (str path " does not say " k " was measured " date " at " sha))))
+      (testing (str k "'s sha is a commit here")
+        (is (zero? (:exit (shell/sh "git" "rev-parse" "--verify" "--quiet" (str sha "^{commit}")))))))))
+
+;; -- (h) the 28,024 sibling is derived --
+
+(deftest the-28024-sibling-is-derived-test
+  (let [src (slurp "demos/scenarios/dense-7500/config.edn")
+        line " :persons {:count 15000 :years 20}\n"]
+    (testing "config.edn carries the one line the derivation replaces, exactly once"
+      (is (= 1 (count (re-seq (re-pattern (java.util.regex.Pattern/quote line)) src)))))
+    (testing "config-28024.edn is config.edn with that line, and only that line, replaced"
+      (is (= (str/replace src line " :persons {:count 56048 :years 20}\n")
+             (slurp "demos/scenarios/dense-7500/config-28024.edn"))
+          (str "config-28024.edn is no longer config.edn with :persons :count 56048 -- "
+               "re-run the README's derivation line; never edit a sibling directly")))))
 
 ;; -- (f) the writer and the file still agree --
 

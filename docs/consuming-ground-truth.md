@@ -673,19 +673,19 @@ the 2026-08-29 programme's own method, which the three labelled
 paragraphs below still report, is in
 `.agents/plans/2026-08-24-traffic-scale-program.md`'s appendix.
 
-**10^5 events is comfortable. The decade above it has since been
-entered — this configuration has been run to 22,500 arrivals under the
-index-and-fold programme[^adr-0180] — but that cell is not quoted here
-until it is a committed one, and 10^6 events have not been run at
-all.**
+**10^5 events is comfortable, and the decade above it is entered: the
+largest completed run of this configuration is now 28,024 arrivals and
+668,496 events — a committed sibling, quoted in the fourth row below.
+10^6 events have not been run at all.**
 
 | Cell | events | messages | msg/event | process wall |
 |---|---|---|---|---|
 | all nine opt-in keys | 167,197 | 222,819 | **1.3327** | 106.25 s |
 | the same, less `:bed-cycle` | 125,642 | 165,466 | **1.3170** | 93.34 s |
 | no opt-in key at all | 100,868 | 65,457 | **0.6489** | 42.36 s |
+| all nine opt-in keys, 28,024 arrivals, ground truth only | 668,496 | — | — | 383.10 s |
 
-**All three rows are one generation of one committed configuration**,
+**The first three rows are one generation of one committed configuration**,
 re-measured 2026-09-07 at `2ba3490c`. Two different things have moved
 them, and the difference is worth keeping straight: their COUNTS last
 moved under the merge-transfer ruling[^adr-0179], while their WALLS
@@ -704,6 +704,23 @@ the whole `corpus generate` PROCESS** under `/usr/bin/time -v`, JVM
 startup included — so it is not comparable line-for-line with the
 in-process phase totals quoted below. One seed on one machine: read it
 as an order of magnitude, not as a benchmark.
+
+**The fourth row is a different measurement, and its dashes are
+deliberate.** It is
+[`config-28024.edn`](../demos/scenarios/dense-7500/config-28024.edn) —
+`config.edn` with its one `:persons :count` line set by that file's own
+rule to twice the arrivals — at `--seed 20260824 --patients 28024
+--churn --format ground-truth`, measured 2026-09-30 at `dac3d9c8`: ONE
+run, `sim run` rather than `corpus generate`, with the heap set
+explicitly (`-Xmx8g`) rather than left at the default. `--format
+ground-truth` emits no message, so there is no message count to quote,
+and the wall is not comparable with the three above it. The run wrote a
+263,570,096-byte event log whose sha-256 begins `589600c5`, and that
+log has been independently reproduced byte for byte on another host and
+JDK build. **Its module cohort is a 7,500-arrival run's** — see
+[Describing a corpus](#describing-a-corpus) — so read it as the
+all-keys configuration's population, facility and churn at nearly four
+times the arrivals, not as the same mix scaled up.
 
 **The three paragraphs that follow are the 2026-08-29 traffic-scale
 programme's own measurement, and they are NOT re-measured.** The

@@ -20,16 +20,23 @@
 ;; committed one, and the script's own tree-clean postcondition fails
 ;; carrying the diff. Never hand-edit inside the markers.
 ;;
-;; :quoted is HAND-MEASURED and no line of that script touches it. Two
-;; kinds of figure live here, for two different reasons. (1) The two
-;; sibling configs' counts: the README teaches no command for either,
+;; :quoted is HAND-MEASURED and no line of that script touches it. Three
+;; kinds of figure live here, for three different reasons. (1) The two
+;; 7,500-arrival sibling configs' counts: the README teaches no command for either,
 ;; so no run in this tree produces an artefact to count (that README's
 ;; own note on what is deliberately not checked). (2) Every process
-;; wall and peak RSS, for all four cells: a wall is a property of a
+;; wall and peak RSS, for the four :provenance cells: a wall is a property of a
 ;; machine and a load rather than of the corpus, and R-figures-file
 ;; rules the wall cells dated quotations -- never asserted against a
 ;; live run. Re-measure them by hand, update :provenance in the same
 ;; edit, and the gate test then requires both documents to follow.
+;;
+;; (3) The 28,024 sibling's whole cell. It is run `--format
+;; ground-truth` -- no message is emitted, so it is counted in events,
+;; subjects and log bytes instead of messages -- and no exerciser runs
+;; it, so every figure it has is a quotation. It was measured on a
+;; different occasion from the other four, so it carries its OWN dated
+;; block under :cell-provenance below rather than sharing :provenance.
 ;;
 ;; A CELL KEY is `<config file>` and `<arrivals>`, which is how both
 ;; documents identify a row. `:msg-per-event` is `:messages` over
@@ -52,7 +59,23 @@
   :config-bare-7500 {:events 100868 :messages 65457 :msg-per-event 0.6489
                      :wall-s 42.36 :peak-rss-mb 1135}
   :config-edn-750 {:messages 40291 :msg-per-event 1.2097
-                   :wall-s 48.20 :peak-rss-mb 1183}}
+                   :wall-s 48.20 :peak-rss-mb 1183}
+  :config-28024-28024 {:events 668496 :subjects 32080 :bytes 263570096
+                       :wall-s 383.10 :peak-rss-mb 3599}}
+
+ :cell-provenance
+ {:config-28024-28024
+  {:sha "dac3d9c8"
+   :date "2026-09-30"
+   :machine "WSL2, 6c/12t i7-10750H, 15 GiB, OpenJDK 21.0.7, -Xmx8g explicit (clojure -J-Xmx8g -M:ehrt, the alias bin/ehrt execs)"
+   :command "sim run --seed 20260824 --patients 28024 --churn --config demos/scenarios/dense-7500/config-28024.edn --format ground-truth"
+   :method "one run here, /usr/bin/time -v around the whole process, JVM startup included; independently reproduced byte-for-byte downstream on another host and JDK build. :bytes is the stdout event vector's own length; :events and :subjects are `ehrt sim describe`'s over that vector."
+   :events-sha256 "589600c5a8051ff2cad2fd4a82eddc67b52fe7d1cd338ebdaa477298549cc335"
+   ;; The downstream run used its own re-serialization of config.edn
+   ;; with :persons {:count 56048} (sha-256 prefix 7f7070, file not in
+   ;; this tree). It is VALUE-equal to config-28024.edn, not
+   ;; byte-equal, and the byte-identical event log is the evidence.
+   :downstream-config-sha256-prefix "7f7070"}}
 
  :provenance
  {:sha "2ba3490c"
