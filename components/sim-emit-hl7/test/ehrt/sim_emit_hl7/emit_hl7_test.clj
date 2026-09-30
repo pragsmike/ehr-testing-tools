@@ -630,6 +630,68 @@
           parsed (parser/parse oru)]
       (is (= "^^LN" (message/get-field-first-value parsed "OBR" 4))))))
 
+;; --- 2026-09-30: PV1-2 for the ORDER-LESS ORU kinds is the patient's
+;; class at `t`. `:observation` and `:diagnostic-report` carry no order
+;; to read a class off (`order-patient-class` reads an ORDER event's own
+;; `:location`), so they read the encounter's instead: the patient's most
+;; recent opener at or before `t` -- `:admission` I, `:outpatient-visit`
+;; O, a `:cancel-admit` clearing it -- and I when there is none, which is
+;; the byte both builders passed unconditionally before. The population
+;; half, over `seed-424242-clinic-decade` and the `dense-7500` cell, is
+;; `ehrt.sim.run-test`.
+
+(defn- pv1-2-of-r01s [pathway]
+  (let [{:keys [ground-truth facility providers]}
+        (run/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})]
+    (->> (emit/emit ground-truth ref-date utc-offset facility providers)
+         (filter #(re-find #"\^R01" %))
+         (mapv #(message/get-field-first-value (parser/parse %) "PV1" 2)))))
+
+(deftest an-observation-and-a-report-under-an-outpatient-visit-render-pv1-2-o
+  (is (= ["O" "O"]
+         (pv1-2-of-r01s {:name "outpatient-vitals"
+                         :steps [{:type :outpatient-visit :reason "Sinus congestion"}
+                                 {:type :observation :codes [a-concept] :value 38.2 :unit "Cel"}
+                                 {:type :diagnostic-report :codes [a-report-concept]
+                                  :observations [{:codes [an-analyte-concept] :value-code a-value-code}]}
+                                 {:type :delay :from 30 :to 30}
+                                 {:type :outpatient-visit-end}]}))
+      "ORU^R01 for :observation, then for :diagnostic-report"))
+
+(deftest an-observation-and-a-report-under-an-admission-still-render-pv1-2-i
+  (is (= ["I" "I"]
+         (pv1-2-of-r01s {:name "inpatient-vitals"
+                         :steps [{:type :admission :location "Renal"}
+                                 {:type :observation :codes [a-concept] :value 38.2 :unit "Cel"}
+                                 {:type :diagnostic-report :codes [a-report-concept]
+                                  :observations [{:codes [an-analyte-concept] :value-code a-value-code}]}
+                                 {:type :discharge}]}))))
+
+(deftest the-class-an-order-less-oru-renders-follows-the-latest-opener
+  (testing "one hand-built patient walking every transition the fold
+            reads: none yet, an outpatient visit, an admission, the
+            admission cancelled. Each observation carries its own class,
+            not the one the patient ends the log with."
+    (let [subject {:patient-id "PID-000000-c1a55" :role :subject}
+          ev (fn [m] (merge {:participants [subject] :active-mrn "MRN000001" :warm-up false} m))
+          obs (fn [t] (ev {:event :observation :t t :codes [a-concept] :value 1.0 :unit "Cel"}))
+          log [(obs 50)
+               (ev {:event :outpatient-visit :t 100 :encounter-id "ENC-1" :attending "1234567893"})
+               (obs 200)
+               (ev {:event :outpatient-visit-end :t 250 :encounter-id "ENC-1"})
+               (obs 260)
+               (ev {:event :admission :t 300 :encounter-id "ENC-2" :attending "1234567893"
+                    :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}
+                    :home-ward "Renal" :reason "AKI" :forced false})
+               (obs 400)
+               (ev {:event :cancel-admit :t 500 :encounter-id "ENC-2"})
+               (obs 600)]
+          r01s (filter #(re-find #"\^R01" %) (emit/emit log ref-date utc-offset))]
+      (is (= ["I" "O" "O" "I" "I"]
+             (mapv #(message/get-field-first-value (parser/parse %) "PV1" 2) r01s))
+          "none -> I; under the visit -> O; after its end, still the visit's O;
+           under the admission -> I; the admission cancelled -> none -> I"))))
+
 (deftest procedure-and-medication-events-render-no-message
   (let [pathway {:name "clinical" :steps [{:type :admission :location "Renal"}
                                           {:type :procedure :codes [a-concept]}

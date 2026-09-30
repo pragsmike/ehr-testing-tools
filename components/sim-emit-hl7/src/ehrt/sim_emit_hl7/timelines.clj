@@ -1,8 +1,9 @@
 (ns ehrt.sim-emit-hl7.timelines
   "State-at-instant views over the ground-truth log: the per-patient
   demographic timeline and its state-at-t lookup, the per-patient
-  active-MRN timeline and its own, and the encounter-interval census
-  the arc-4 planners read.
+  active-MRN timeline and its own, the per-patient class timeline and
+  its own (2026-09-30, after the extraction below), and the
+  encounter-interval census the arc-4 planners read.
 
   Extracted VERBATIM from `emit_hl7.clj`, the THIRD cluster of that
   file's namespace extraction (`.agents/plans/engine-extraction-
@@ -127,6 +128,51 @@
       (if-let [[et estate] (first entries)]
         (if (<= et t) (recur (rest entries) estate) state)
         state))))
+
+(defn class-timeline
+  "{patient-id [[t class] ...]}, log order, one entry per OPENER -- the
+  patient class the encounter a patient is in says they are, for the
+  message kinds that have nothing else to read it off. `:observation`
+  and `:diagnostic-report` carry no order (so `order-patient-class`'s
+  `:location` rule has nothing to read) and no class of their own.
+
+  `:admission` and a `:cancel-discharge` (which reinstates one) are
+  `:inpatient`, an `:outpatient-visit` is `:outpatient`, and a
+  `:cancel-admit` CLEARS it -- an entry `class-at` reads as no class at
+  all, exactly as the engine's own fold `dissoc`s `:class` there. A close does not clear it: an observation
+  after an `:outpatient-visit-end` is still the visit's, the most recent
+  opener at or before it. Read ONLY through `class-at`.
+
+  One pass, computed unconditionally beside `demographics-timeline`, and
+  a function of the log alone -- the engine's `:class` is state, never
+  an event field, so it is re-derived here rather than read."
+  [ground-truth]
+  (reduce (fn [acc ev]
+            (let [opened (case (:event ev)
+                           (:admission :cancel-discharge) :inpatient
+                           :outpatient-visit :outpatient
+                           :cancel-admit ::cleared
+                           nil)]
+              (if opened
+                (let [pid (:patient-id (first (:participants ev)))]
+                  (assoc acc pid (conj (get acc pid []) [(:t ev) opened])))
+                acc)))
+          {}
+          ground-truth))
+
+(defn class-at
+  "The patient's class AS IT STOOD AT `t`: the most recent opener at or
+  before it, and `:inpatient` when there is none -- no opener yet, a
+  cleared one, or no timeline at all (a nil `classes`, which is every
+  caller that does not compute one). `:inpatient` is the byte both
+  order-less ORU builders passed unconditionally before, so the
+  fallback moves nothing."
+  [classes patient-id t]
+  (let [latest (loop [entries (get classes patient-id) latest nil]
+                 (if-let [[et opened] (first entries)]
+                   (if (<= (long et) (long t)) (recur (rest entries) opened) latest)
+                   latest))]
+    (if (#{:inpatient :outpatient} latest) latest :inpatient)))
 
 (defn encounter-spans
   "{encounter-id {:t0 :t1 :opener :opener-index}} -- one entry per

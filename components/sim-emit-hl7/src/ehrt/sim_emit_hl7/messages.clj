@@ -454,8 +454,16 @@
   field. ADR-0142 renders it: MSH-7 is TRANSMIT time, OBX-14 is
   CLINICAL time (this event's own `:t`, never shifted). There is no
   OBR here at all -- this shape carries no ORC/OBR -- so OBR-7 is not
-  owed and not rendered."
-  [reference-date utc-offset facility providers demographics site-profile offsets
+  owed and not rendered.
+
+  PV1-2 (2026-09-30) is the patient's class at `t`, `timelines/class-at`
+  over `classes` -- the most recent opener's, I when there is none.
+  Before, it was `:inpatient` unconditionally, so every observation a
+  module compiled into an ambulatory encounter reached the wire as an
+  inpatient one. `diagnostic-report-message` reads it the same way; the
+  order-linked ORM/ORU keep `order-patient-class`, which has an order
+  event to read."
+  [reference-date utc-offset facility providers demographics site-profile offsets classes
    {:keys [t active-mrn location attending participants] :as ev}]
   (let [type+trigger (registry/message-type-registry :observation)
         control-id (segments/control-id-for ev)
@@ -468,7 +476,8 @@
       parser/DEFAULT-DELIMITERS
       (segments/msh-segment site-profile type+trigger control-id transmit-ts)
       (segments/pid-segment active-mrn (timelines/demographics-at demographics (:patient-id (first participants)) t))
-      (segments/pv1-segment site-profile :inpatient facility-name location nil provider nil (:encounter-id ev))
+      (segments/pv1-segment site-profile (timelines/class-at classes (:patient-id (first participants)) t)
+                            facility-name location nil provider nil (:encounter-id ev))
       (segments/observation-obx-segment 1 clinical-ts ev)
       (er7/z-segments-for site-profile demographics ev)))))
 
@@ -489,7 +498,7 @@
   embedded child's own OBX-14 are CLINICAL time (this event's own `:t`,
   never shifted). `orm-message` is the one of that list that does NOT
   change -- author ruling Q3, \"Results only; ORM byte-frozen\"."
-  [reference-date utc-offset facility providers demographics site-profile offsets
+  [reference-date utc-offset facility providers demographics site-profile offsets classes
    {:keys [t active-mrn location attending codes observations participants] :as ev}]
   (let [type+trigger (registry/message-type-registry :diagnostic-report)
         control-id (segments/control-id-for ev)
@@ -503,7 +512,8 @@
       parser/DEFAULT-DELIMITERS
       (segments/msh-segment site-profile type+trigger control-id transmit-ts)
       (segments/pid-segment active-mrn (timelines/demographics-at demographics (:patient-id (first participants)) t))
-      (segments/pv1-segment site-profile :inpatient facility-name location nil provider nil (:encounter-id ev))
+      (segments/pv1-segment site-profile (timelines/class-at classes (:patient-id (first participants)) t)
+                            facility-name location nil provider nil (:encounter-id ev))
       (segments/orc-segment control-id)
       (segments/obr-segment 1 (first codes) clinical-ts)
       (concat obx-segments (er7/z-segments-for site-profile demographics ev))))))
@@ -528,9 +538,16 @@
   with FINANCIAL leading on FT1, so MSH EVN PID PV1 FT1+ is that order
   with the optional groups omitted.
 
-  MSH-10 is `mrn-P03-t`: the trigger is part of every control id this
-  emitter mints, so a DFT can never collide with the ADT^A03 rendered
-  from the SAME event at the same instant.
+  MSH-10 is `mrn-P03-t#<log index>`: the trigger is part of every
+  control id this emitter mints, so a DFT can never collide with the
+  ADT^A03 rendered from the SAME event at the same instant, and the
+  closing event's own log index -- `segments/with-log-index`, ADR-0181's
+  suffix, joined 2026-09-30 -- is what keeps two closes of one patient
+  in one second apart. Before that, `mrn-P03-t` was minted beside the
+  index rule and was non-injective by construction; the old id is a
+  strict prefix of the new one. An `:outpatient-visit-end` has no
+  registry entry and so no `control-id-for`, but it is stamped like
+  every event, so its DFT takes the suffix all the same.
 
   THE OFFSET IS LOOKED UP UNDER THE BASIS EVENT'S OWN CONTROL ID, not
   under the DFT's, and the two are deliberately different keys. A DFT is
@@ -546,7 +563,7 @@
   kind of its own, so `never late` was an undeclared special case."
   [reference-date utc-offset facility providers demographics site-profile offsets lines
    {:keys [event t active-mrn location attending participants] :as ev}]
-  (let [control-id (str active-mrn "-P03-" t)
+  (let [control-id (segments/with-log-index (str active-mrn "-P03-" t) ev)
         clinical-ts (hl7-time/hl7-timestamp reference-date t utc-offset)
         transmit-ts (hl7-time/hl7-timestamp reference-date
                                    (hl7-time/transmit-seconds offsets (segments/control-id-for ev) t)
@@ -595,6 +612,10 @@
     ladder-status ev]
    (event->messages reference-date utc-offset facility providers demographics site-profile offsets
                     charges ladder-status nil ev))
+  ([reference-date utc-offset facility providers demographics site-profile offsets charges
+    ladder-status siu ev]
+   (event->messages reference-date utc-offset facility providers demographics site-profile offsets
+                    charges ladder-status siu nil ev))
   ;; ARC 4 SWEEP 3 (ADR-0175 design (b)): `ladder-status` is THIS
   ;; event's own terminal status -- `{:stage :final}` for a
   ;; `:result-available` whose order actually grew a rung, nil for every
@@ -619,8 +640,11 @@
   ;; readers of that map -- `control-id-for`, `skeleton-message-types`
   ;; and the conformance vocabulary check -- all want the four present
   ;; unconditionally.
+  ;; 2026-09-30: `classes` is `timelines/class-timeline`'s output, read
+  ;; by the two order-less ORU builders for PV1-2. Nil -- every arity
+  ;; above -- is the byte those builders passed before, `:inpatient`.
   ([reference-date utc-offset facility providers demographics site-profile offsets charges
-    ladder-status siu {:keys [event] :as ev}]
+    ladder-status siu classes {:keys [event] :as ev}]
    (let [registered (cond
                       (not (registry/message-type-registry event)) []
                       (contains? registry/siu-event-kinds event)
@@ -635,8 +659,8 @@
                       (= :result-available event)
                       [(oru-message reference-date utc-offset facility providers demographics
                                     site-profile offsets ev ladder-status)]
-                      (= :observation event) [(observation-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
-                      (= :diagnostic-report event) [(diagnostic-report-message reference-date utc-offset facility providers demographics site-profile offsets ev)]
+                      (= :observation event) [(observation-message reference-date utc-offset facility providers demographics site-profile offsets classes ev)]
+                      (= :diagnostic-report event) [(diagnostic-report-message reference-date utc-offset facility providers demographics site-profile offsets classes ev)]
                       :else [(single-subject-message reference-date utc-offset facility providers demographics site-profile offsets ev)])
          ;; ARC 4 SWEEP 2 (ADR-0175 design (c)): THE FIRST REAL USE of
          ;; the many-messages-per-event shape this function's own

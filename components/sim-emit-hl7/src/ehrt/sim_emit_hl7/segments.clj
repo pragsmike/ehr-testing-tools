@@ -122,6 +122,26 @@
   [ground-truth]
   (into [] (map-indexed (fn [i ev] (assoc ev ::log-index i))) ground-truth))
 
+(defn with-log-index
+  "`id` + `log-index-marker` + `ev`'s own `::log-index` -- ADR-0181's
+  suffix, the ONE place it is appended. `control-id-for` ends every arm
+  in it, and `dft-message` ends `mrn-P03-t` in it (2026-09-30), so a
+  message family minting its id beside `control-id-for` rather than
+  through it still cannot mint one the index does not make unique.
+
+  THROWS on an event carrying no `::log-index`, for `control-id-for`'s
+  own reason: the fallback would be the un-suffixed id, which collides
+  exactly as before and silently."
+  [id ev]
+  (let [log-index (::log-index ev)]
+    (when-not (integer? log-index)
+      (throw (ex-info (str "ehrt.sim-emit-hl7.segments/control-id-for: no ::log-index on a "
+                           (:event ev) " event -- the funnel that handed it here did not call "
+                           "stamp-log-index. Minting the pre-ADR-0181 three-part id instead "
+                           "would be a silent collision, so this fails closed.")
+                      {:event (:event ev) :t (:t ev) ::log-index log-index})))
+    (str id log-index-marker log-index)))
+
 (defn control-id-for
   "MSH-10 (message control id) for one ground-truth event -- the SAME
   construction every message-builder call site uses, extracted
@@ -174,14 +194,7 @@
   own empty-vector path keep walking raw logs unharmed."
   [{:keys [event t active-mrn surviving-mrn participants swap bed to appointment-id] :as ev}]
   (when-let [{:keys [trigger]} (registry/message-type-registry event)]
-    (let [log-index (::log-index ev)]
-      (when-not (integer? log-index)
-        (throw (ex-info (str "ehrt.sim-emit-hl7.segments/control-id-for: no ::log-index on a "
-                             event " event -- the funnel that handed it here did not call "
-                             "stamp-log-index. Minting the pre-ADR-0181 three-part id instead "
-                             "would be a silent collision, so this fails closed.")
-                        {:event event :t t ::log-index log-index})))
-      (str
+    (with-log-index
        (case event
              (:appointment :reschedule :appointment-cancel :no-show)
              (str active-mrn "-" appointment-id "-" trigger "-" t)
@@ -202,7 +215,7 @@
              (str surviving-mrn "-" trigger "-" t)
 
              (str active-mrn "-" trigger "-" t))
-       log-index-marker log-index))))
+       ev)))
 
 (defn msh-segment
   "MSH-3/4/5/6/12 (sending/receiving app+facility, version id) render

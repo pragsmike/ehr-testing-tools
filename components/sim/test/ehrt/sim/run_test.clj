@@ -1855,6 +1855,12 @@
                            :config "demos/scenarios/dense-7500/config.edn"
                            :emit "hl7"})))
 
+(def ^:private restatement-id
+  "A restatement's MSH-10: `mrn-trigger-t-<ordinal>`, one of the five
+  triggers `assign-restatement-ordinals` mints for. `t` may be negative
+  (a pre-roll history instant), hence the optional sign."
+  #"^[^#]+-(A08|A28|A31|O01|R01)--?\d+-\d+$")
+
 (deftest control-id-for-is-injective-over-every-corpus-this-lane-runs
   (testing "ADR-0181 candidate 3, ruled 2026-09-23: MSH-10 carries the
             log index, so no two messages of one corpus can share one.
@@ -1878,7 +1884,84 @@
           ;; from passing for the wrong reason -- the ruled shape is
           ;; present in every root, not merely compatible with them.
           (is (boolean (some #(str/includes? % "#") (msh-10s messages)))
-              (str id " rendered no MSH-10 carrying the ruled log-index marker")))))))
+              (str id " rendered no MSH-10 carrying the ruled log-index marker"))
+          ;; 2026-09-30: and every id has one of exactly TWO shapes -- a
+          ;; message rendered from a ground-truth event ends in
+          ;; `#<log index>`, a restatement (chatter's A08/A28/A31, a
+          ;; ladder's O01/R01) ends in `-<ordinal>` -- so a message
+          ;; family that mints its own id off to the side of both is
+          ;; seen here even while it happens not to collide. DFT^P03 was
+          ;; that family: `mrn-P03-t`, injective in every root this lane
+          ;; runs and non-injective by construction.
+          (let [bare (remove #(or (re-find #"#\d+$" %) (re-find restatement-id %))
+                             (msh-10s messages))]
+            (is (empty? bare)
+                (str id " renders " (count bare) " MSH-10s of neither ruled shape, e.g. "
+                     (pr-str (take 4 bare))))))))))
+
+;; --- 2026-09-30: PV1-2 on the ORDER-LESS ORU kinds, over real corpora ----
+;;
+;; `:observation` and `:diagnostic-report` render the patient's class at
+;; `t` -- the most recent opener at or before it, a `:cancel-admit`
+;; clearing it, I when there is none. RED before this change for exactly
+;; one reason: both builders passed `:inpatient` unconditionally, so every
+;; module-compiled ambulatory observation reached the wire as class I.
+;;
+;; The event a message renders is read off its OWN MSH-10 -- ADR-0181's
+;; `#<log index>` suffix IS the position in `:ground-truth` -- so this
+;; joins wire to truth without re-deriving an id, and the expected class
+;; is folded here from the log independently of the emitter's own fold.
+
+(defn- expected-classes
+  "log index -> :outpatient/:inpatient, for every order-less ORU event,
+  by one pass over the log in log order."
+  [ground-truth]
+  (first
+   (reduce (fn [[acc opener] [i ev]]
+             (let [pid (:patient-id (first (:participants ev)))]
+               (case (:event ev)
+                 :admission [acc (assoc opener pid :inpatient)]
+                 :cancel-discharge [acc (assoc opener pid :inpatient)]
+                 :outpatient-visit [acc (assoc opener pid :outpatient)]
+                 :cancel-admit [acc (dissoc opener pid)]
+                 (:observation :diagnostic-report)
+                 [(assoc acc i (get opener pid :inpatient)) opener]
+                 [acc opener])))
+           [{} {}]
+           (map-indexed vector ground-truth))))
+
+(defn- pv1-2 [message]
+  (let [pv1 (first (filter #(str/starts-with? % "PV1|") (str/split message #"\r\n|\r|\n")))]
+    (nth (str/split pv1 #"\|" -1) 2 "")))
+
+(deftest order-less-oru-pv1-2-is-the-patients-class-at-t
+  ;; The floors are MEASURED at 64d55fec, not chosen: 424242 carries 13
+  ;; observations under an outpatient visit and 8 order-less ORUs under
+  ;; an admission (6 observations, 2 reports), seed 5 carries 14 and 0,
+  ;; the dense cell 1 and 1,019 -- so the clinic corpora are what make
+  ;; the O half bite and the dense cell is the I control.
+  (doseq [[id r min-o min-i] [[:seed-424242-clinic-decade (corpus :seed-424242-clinic-decade) 13 8]
+                              [:seed-5-clinic-decade (corpus :seed-5-clinic-decade) 14 0]
+                              [:dense-7500-750 @dense-7500-cell 1 1019]]]
+    (testing (str "corpus " id)
+      (let [{:keys [ground-truth messages]} (:payload r)
+            expected (expected-classes ground-truth)
+            rendered (keep (fn [m]
+                             (when-let [[_ i] (re-find #"#(\d+)$" (first (msh-10s [m])))]
+                               (let [i (parse-long i)]
+                                 (when (contains? expected i) [i (pv1-2 m)]))))
+                           messages)
+            wrong (remove (fn [[i code]] (= code ({:outpatient "O" :inpatient "I"} (expected i)))) rendered)
+            by-class (frequencies (map (comp expected first) rendered))]
+        (is (= (count expected) (count rendered))
+            "every observation/report event rendered exactly one ORU")
+        (is (<= min-o (get by-class :outpatient 0))
+            (str id " carries fewer outpatient observations/reports than measured: " by-class))
+        (is (<= min-i (get by-class :inpatient 0))
+            (str id ": the inpatient control went vacuous: " by-class))
+        (is (empty? wrong)
+            (str id ": " (count wrong) " order-less ORUs render the wrong PV1-2, by class: "
+                 (pr-str (frequencies (map (fn [[i code]] [(expected i) code]) wrong)))))))))
 
 ;; --- ADR-0183: `sim describe`, the verb ------------------------------------
 

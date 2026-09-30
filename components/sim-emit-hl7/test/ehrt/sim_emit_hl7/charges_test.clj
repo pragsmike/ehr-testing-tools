@@ -47,7 +47,10 @@
     ENC-2  inpatient, closed TWICE -- discharged at 200000, reinstated
            by a `:cancel-discharge`, re-discharged at 300000;
     ENC-3  an OUTPATIENT visit, which occupies no bed and therefore
-           earns no room-and-board line at all."
+           earns no room-and-board line at all. Its order carries no
+           `:location`, the shape schema 1.9.0 gives an order under a
+           visit (2026-09-30: this fixture hand-authored a bed on it
+           until then, a shape the engine no longer produces)."
   [(ev {:event :registered :t 0 :active-mrn "MRN000001" :persona persona-0})
    (ev {:event :admission :t 1000 :active-mrn "MRN000001" :encounter-id "ENC-1"
         :location bed :attending "1234567893" :home-ward "Renal"
@@ -77,7 +80,7 @@
    (ev {:event :outpatient-visit :t 400000 :active-mrn "MRN000001" :encounter-id "ENC-3"
         :attending "1234567893"})
    (ev {:event :order-placed :t 401000 :active-mrn "MRN000001" :encounter-id "ENC-3"
-        :attending "1234567893" :location bed :profile :cbc
+        :attending "1234567893" :profile :cbc
         :concept {:system :loinc :code "58410-2" :display "CBC panel"}})
    (ev {:event :outpatient-visit-end :t 402000 :active-mrn "MRN000001" :encounter-id "ENC-3"
         :attending "1234567893"})])
@@ -149,11 +152,11 @@
       (let [i (first (keep-indexed #(when (= "DFT^P03" (msh-9 %2)) %1) messages))]
         (is (= "ADT^A03" (msh-9 (nth messages (dec i)))))
         (is (= "MRN000001-A03-91000#5" (msh-10 (nth messages (dec i)))))
-        (is (= "MRN000001-P03-91000" (msh-10 (nth messages i))))))
+        (is (= "MRN000001-P03-91000#5" (msh-10 (nth messages i))))))
     (testing "an :outpatient-visit-end renders NO ADT -- its registry
               silence stands -- and the DFT is the only message it
               produces"
-      (let [i (first (keep-indexed #(when (= "MRN000001-P03-402000" (msh-10 %2)) %1) messages))]
+      (let [i (first (keep-indexed #(when (= "MRN000001-P03-402000#13" (msh-10 %2)) %1) messages))]
         (is (some? i))
         (is (not= "ADT" (subs (msh-9 (nth messages (dec i))) 0 3)))))))
 
@@ -266,10 +269,10 @@
           by-id (into {} (map (juxt msh-10 identity)) messages)]
       (is (seq offsets) "the latency profile must actually bite, or this is vacuous")
       (is (= (msh-7 (get by-id "MRN000001-A03-91000#5"))
-             (msh-7 (get by-id "MRN000001-P03-91000")))
+             (msh-7 (get by-id "MRN000001-P03-91000#5")))
           "the DFT and the ADT^A03 for one discharge transmit together")
       (testing "and EVN-2 stays CLINICAL on both -- MSH-7 alone moves"
-        (is (str/includes? (get by-id "MRN000001-P03-91000") "EVN|P03|20240102011640+0000")))))
+        (is (str/includes? (get by-id "MRN000001-P03-91000#5") "EVN|P03|20240102011640+0000")))))
   (testing "an :outpatient-visit-end has no registry entry and so no
             control id of its own -- there is no ADT to align with, and
             the DFT transmits at its clinical instant"
@@ -277,9 +280,40 @@
           offsets (planners/plan-latency (java.util.Random. 11) log latency)
           messages (emit/emit-wire log ref-date utc-offset facility providers nil offsets
                                        {:charges (:lines (plan))})
-          m (first (filter #(= "MRN000001-P03-402000" (msh-10 %)) messages))]
+          m (first (filter #(= "MRN000001-P03-402000#13" (msh-10 %)) messages))]
       (is (some? m))
       (is (str/includes? m "|20240105154000+0000||DFT^P03|")))))
+
+;; --- 2026-09-30: DFT^P03 joins ADR-0181's index rule -------------------
+
+(deftest two-closes-of-one-patient-in-one-second-render-two-distinct-dft-ids
+  (testing "`mrn-P03-t` is NOT injective: one MRN can close two
+            encounters at one instant, and before this change both
+            DFTs carried the same MSH-10. The id now ends in the
+            closing event's own `#<log index>`, exactly as every
+            ground-truth id has since ADR-0181, and the old id is a
+            strict prefix of it."
+    (let [bed-a {:ward "Renal" :bed "RENAL-01" :placement :licensed}
+          bed-b {:ward "Renal" :bed "RENAL-02" :placement :licensed}
+          adm (fn [t enc b] (ev {:event :admission :t t :active-mrn "MRN000001" :encounter-id enc
+                                 :location b :attending "1234567893" :home-ward "Renal"
+                                 :reason "Acute kidney injury" :forced false}))
+          dis (fn [enc b] (ev {:event :discharge :t 91000 :active-mrn "MRN000001" :encounter-id enc
+                               :location b :attending "1234567893"}))
+          two-closes [(ev {:event :registered :t 0 :active-mrn "MRN000001" :persona persona-0})
+                      (adm 1000 "ENC-A" bed-a)
+                      (adm 2000 "ENC-B" bed-b)
+                      (dis "ENC-A" bed-a)
+                      (dis "ENC-B" bed-b)]
+          ids (mapv msh-10 (dfts (emit/emit-wire two-closes ref-date utc-offset facility providers nil {}
+                                                 {:charges (:lines (planners/plan-charges two-closes charges))})))]
+      (is (= 2 (count ids)) "one DFT per close, or this is vacuous")
+      (is (= 2 (count (distinct ids))) (str "two closes, two MSH-10s: " (pr-str ids)))
+      (is (= ["MRN000001-P03-91000#3" "MRN000001-P03-91000#4"] ids))
+      (is (every? #(and (str/starts-with? % "MRN000001-P03-91000")
+                        (not= % "MRN000001-P03-91000"))
+                  ids)
+          "the pre-change id is a STRICT prefix"))))
 
 ;; --- Determinism: no RNG anywhere in the charge path --------------------
 

@@ -109,8 +109,10 @@
    ;; log index from here on. The stamped log is this call's own copy and
    ;; reaches nothing outside it.
    (let [ground-truth (segments/stamp-log-index ground-truth)
-         demographics (timelines/demographics-timeline ground-truth)]
-     (into [] (mapcat (partial messages/event->messages reference-date utc-offset facility providers demographics site-profile {}))
+         demographics (timelines/demographics-timeline ground-truth)
+         classes (timelines/class-timeline ground-truth)]
+     (into [] (mapcat (partial messages/event->messages reference-date utc-offset facility providers demographics site-profile {}
+                               {} nil nil classes))
            ground-truth))))
 
 (defn emit-wire
@@ -176,6 +178,7 @@
   ([ground-truth reference-date utc-offset facility providers site-profile offsets
     {:keys [chatter charges ladders siu]}]
    (let [demographics (timelines/demographics-timeline ground-truth)
+         classes (timelines/class-timeline ground-truth)
          offsets (or offsets {})
          chatter (or chatter [])
          charges (or charges {})
@@ -200,7 +203,7 @@
                          (messages/event->messages reference-date utc-offset facility providers demographics
                                           site-profile offsets charges
                                           (when (contains? final-result-indices i) {:stage :final})
-                                          siu ev)))))
+                                          siu classes ev)))))
                    (apply concat))
          restatements (map (fn [ins]
                              [(:at ins) (:basis ins) 1 (:ordinal ins)
