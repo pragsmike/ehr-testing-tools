@@ -992,3 +992,48 @@ such an event (`anemia`, `colorectal`, `dementia`, `fibromyalgia`,
 plus `chatter-charges` (its DFTs, ADR-0181's amendment of the same
 day), IDENTICAL on the other thirty; ground truth IDENTICAL on every
 root. Record: `.agents/session-records/2026-09-30-wire-fidelity-pv1-dft.md`.
+
+### Dated note, 2026-09-30 — PV1-3 on the order-less ORU kinds derives from the patient's bed at the event
+
+`:observation` and `:diagnostic-report` render ORU^R01 with PV1-3 read
+from the patient's `:location` as it stood IMMEDIATELY BEFORE the
+event: the most recent placement earlier in the log, and an empty field
+when there is none — the byte both builders rendered before, so
+outpatient and pre-admission events move nothing. Neither kind carries
+a `:location` of its own (the order-less shape), and the builders had
+been passing that absent field straight to PV1-3, so every observation
+or report taken in a bed rendered an empty assigned-patient-location.
+
+The fold is `timelines/location-timeline`, one pass over the log in
+`emit` and `emit-wire` beside `class-timeline`, mirroring `evolve` arm
+for arm over every patient participant: `:admission`, `:transfer`,
+`:cancel-transfer` and `:cancel-discharge` set the event's own
+`:location` (nil clears), a `:discharge` clears unless `:disposition
+:expired`, a `:cancel-admit` clears, a `:bed-swap` sets each participant
+from `:swap`, a `:merge` clears the `:merged` side. It is PROVEN equal
+to `replay`'s before-state at every event of every gated root and the
+`dense-7500` 750 cell, for every patient participant
+(`ehrt.sim.run-test/the-location-timeline-is-replays-location-at-every-event`),
+not asserted; `components/sim-engine` does not move.
+
+KEYED BY LOG INDEX, NOT `t`. The channel framed the lookup as "the most
+recent placement at or before `t`"; measured at the 750 cell, that
+reading disagrees with replay on 297 of the 1,019 observations/reports
+taken in a bed — 235 logged in the same second as, and before, the
+discharge that ends the stay, the rest before a same-second bed-swap,
+cancel-transfer, cancel-discharge or cancel-admit. The bed an
+observation was taken in is the one its patient held when it was
+logged, so the index is the only key that satisfies the replay
+equality.
+
+Measured at `b1facded` vs the fix, 750 cell: 1,019 of 40,291 messages
+change (779 observation, 240 diagnostic-report ORU^R01), every one PV1-3
+empty -> populated, and blanking exactly those fields reproduces the
+before-wire byte for byte. DFT^P03 still reads the closing event's own
+`:location`, and ORM/ORU/ADT are unchanged. `bin/regression-oracle
+... --declared-digest-change` DIFFERS on exactly the four roots
+carrying an observation or report taken in a bed (`injuries`, `sepsis`,
+`urinary-tract-infections-engine`,
+`urinary-tract-infections-history-engine`) and IDENTICAL on the other
+thirty-eight; ground truth IDENTICAL on every root. Record:
+`.agents/session-records/2026-09-30-wire-fidelity-pv1-3.md`.
