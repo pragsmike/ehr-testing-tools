@@ -927,7 +927,16 @@
   CORRECTIONS, and an occupancy a cancel says did not happen leaves no
   dirt behind it. Those two return their bed straight to `:ready`, in
   the run loop's own fold, with no event and no cycle -- named here so
-  the omission reads as a decision."
+  the omission reads as a decision.
+
+  `:merge` IS A THIRD NO-CYCLE CLASS, and unlike the two cancels it is
+  not a decision so much as an open item. ADR-0179's R-bed clears the
+  absorbed record's `:location` at the instant of the merge, so that
+  bed is vacated too -- but nothing calls this for it, and `:merge` is
+  not in `fold/bed-correction-event-types` either, so with a bed index
+  the bed never reaches `:ready` and is not re-allocated for the rest
+  of the run (ADR-0179's own consequences bullet, held open by its
+  2026-09-05 addendum pending the downstream A40/census reply)."
   [facility-rng world t location last-patient-id]
   (when-let [bed (and (:beds world) (:bed location))]
     (let [ward (:ward location)]
