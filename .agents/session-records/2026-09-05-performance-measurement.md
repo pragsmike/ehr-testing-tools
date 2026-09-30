@@ -200,3 +200,52 @@ remote tip matches HEAD, every commit message in range pure ASCII.
 **CI run 34008092622 concluded `success` at
 `3f786c08be80ba9af9053626a662b0051b6bbe93`.** No tag was paid — CI green
 at the tip is the close marker.
+
+## Correction 2026-09-30
+
+One attribution in this record is wrong, and this section corrects it; the
+sections above stand as written.
+
+**Section 2(a) attributes the 22,500-arrival refusal to the pool.** It says
+`:persons` held at 15,000 "broke the 22,500 cell" because the pool sat below the
+arrival count. It did not. That refusal was the same-instant encounter-opener
+race that `c282409f` fixed on 2026-09-10
+(`.agents/session-records/2026-09-10-same-instant-openers.md`), and the pool was
+not the cause.
+
+**The evidence is a bracket on the exact refused configuration.** The probe ran
+the first-cut cell `cell-x3-persons.edn` (x3 wards, `:persons {:count 15000}`),
+which `d69349bf` deleted. It was recovered byte for byte from `3985e828` (sha-256
+`c17d3a8c...`), and `config.edn` has not changed since that commit. It was then
+re-run at `--seed 20260824 --patients 22500 --churn --format ground-truth`,
+`-Xmx8g`, with `/usr/bin/time -v`:
+
+| tree | exit | result | receipt under `.agents/plans/2026-09-05-performance-measurement/raw/` |
+|---|---|---|---|
+| `913be926` (the fix's parent) | **2** | `:self-check-failed`, six violations on one patient id | `bracket-a22500-w3-persons-15000-913be926.{time,refusal.edn}` |
+| `c282409f` (the fix) | **0** | log sha-256 `c0e172bc...` | `bracket-a22500-w3-persons-15000-c282409f.{time,sha256}` |
+| `dac3d9c8` (today's tip) | **0** | log sha-256 `c0e172bc...`, byte-identical to the row above | `rerun-a22500-w3-persons-15000-xmx8g.{time,sha256}` |
+
+The refusal at `913be926` has this record's own signature: six violations, one
+patient (`PID-007317-...`): a schema-invalid `:discharge`,
+`admission-only-when-no-open-encounter`,
+`discharge-closes-an-open-encounter`,
+`every-encounter-is-opened-and-closed-or-still-open`, and
+`clinical-content-only-when-admitted` twice. The one-commit fix clears it, and
+nothing after that commit moves a byte of this cell.
+
+**The x1 cell the 2026-09-30 prompt named passes as well.**
+`cell-a22500-persons.edn` with its pool cut to 15,000 (a scratch copy, sha-256
+`62c16a29...`, NOT committed) exits 0 at `dac3d9c8` with log sha-256
+`db05a7b0...` (`rerun-a22500-persons-15000-xmx8g.{time,sha256}`). The prompt named
+this cell as the rerun, but this x1 cell was never refused. That is why the x3
+bracket above was run as well, and the x3 bracket is what carries the correction.
+
+**What survives.** The 2x rule is a FIDELITY rule and nothing more: a pool smaller
+than the arrival count collides arrivals onto already-registered people, which
+`config.edn`'s own comment says and which stays true. It is not a correctness
+precondition, and a run with too small a pool does not refuse because of it.
+`config.edn`'s comment claims fidelity only and is unchanged. Two sentences in
+this directory's `README.md` and `derive-cells.sh`'s header ("HOLDING `:persons`
+AT 15,000 BROKE THE RUN") repeat the wrong attribution. The README gains a pointer
+to this section, and the script's comment is left for an errata sweep.

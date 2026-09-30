@@ -76,6 +76,15 @@ puts the pool BELOW the arrival count, and the run refused after
 over an already-open encounter, and the three encounter-bracket
 invariants that follow from it.
 
+**Corrected 2026-09-30: the pool was not the cause.** A bracket on this
+exact refused cell shows the refusal was the same-instant opener race
+`c282409f` fixed. The cell refuses at `913be926` and passes at
+`c282409f` and at `dac3d9c8`, and the log is byte-identical at both of
+those. The receipts are under `raw/` (`bracket-*`, `rerun-*`), and the
+account is the 2026-09-05 session record's own `## Correction
+2026-09-30`. The 2x rule stands, but as a fidelity rule and not as a
+correctness precondition.
+
 Worth recording on its own account: **nothing was silent.** The run
 self-checked, emitted `{:status :error, :category :self-check-failed}`
 naming all six violations with the patient id and log index, and exited
