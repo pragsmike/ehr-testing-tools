@@ -130,48 +130,58 @@
         state))))
 
 (defn class-timeline
-  "{patient-id [[t class] ...]}, log order, one entry per OPENER -- the
-  patient class the encounter a patient is in says they are, for the
-  message kinds that have nothing else to read it off. `:observation`
+  "{patient-id [[log-index class] ...]}, log order, one entry per OPENER
+  -- the patient class the encounter a patient is in says they are, for
+  the message kinds that have nothing else to read it off. `:observation`
   and `:diagnostic-report` carry no order (so `order-patient-class`'s
   `:location` rule has nothing to read) and no class of their own.
 
-  `:admission` and a `:cancel-discharge` (which reinstates one) are
-  `:inpatient`, an `:outpatient-visit` is `:outpatient`, and a
+  Arm for arm with `ehrt.sim-engine.evolve`, folded into every patient
+  participant: `:admission` and a `:cancel-discharge` (which reinstates
+  one) are `:inpatient`, an `:outpatient-visit` is `:outpatient`, and a
   `:cancel-admit` CLEARS it -- an entry `class-at` reads as no class at
-  all, exactly as the engine's own fold `dissoc`s `:class` there. A close does not clear it: an observation
-  after an `:outpatient-visit-end` is still the visit's, the most recent
-  opener at or before it. Read ONLY through `class-at`.
+  all, exactly as the engine's own fold `dissoc`s `:class` there. A
+  close does not clear it: an observation after an
+  `:outpatient-visit-end` is still the visit's. Read ONLY through
+  `class-at`.
+
+  KEYED BY LOG INDEX, NOT `t` (errata, 2026-09-30), for
+  `location-timeline`'s reason: what it is proven equal to is `replay`'s
+  state BEFORE an event, and an opener logged at the same second as an
+  event but after it had not yet set the class that event was in.
 
   One pass, computed unconditionally beside `demographics-timeline`, and
   a function of the log alone -- the engine's `:class` is state, never
   an event field, so it is re-derived here rather than read."
   [ground-truth]
-  (reduce (fn [acc ev]
+  (reduce (fn [acc [i ev]]
             (let [opened (case (:event ev)
                            (:admission :cancel-discharge) :inpatient
                            :outpatient-visit :outpatient
                            :cancel-admit ::cleared
                            nil)]
               (if opened
-                (let [pid (:patient-id (first (:participants ev)))]
-                  (assoc acc pid (conj (get acc pid []) [(:t ev) opened])))
+                (reduce (fn [acc pid] (assoc acc pid (conj (get acc pid []) [i opened])))
+                        acc
+                        (keep :patient-id (:participants ev)))
                 acc)))
           {}
-          ground-truth))
+          (map-indexed vector ground-truth)))
 
 (defn class-at
-  "The patient's class AS IT STOOD AT `t`: the most recent opener at or
-  before it, and `:inpatient` when there is none -- no opener yet, a
-  cleared one, or no timeline at all (a nil `classes`, which is every
-  caller that does not compute one). `:inpatient` is the byte both
-  order-less ORU builders passed unconditionally before, so the
-  fallback moves nothing."
-  [classes patient-id t]
-  (let [latest (loop [entries (get classes patient-id) latest nil]
-                 (if-let [[et opened] (first entries)]
-                   (if (<= (long et) (long t)) (recur (rest entries) opened) latest)
-                   latest))]
+  "The patient's class AS IT STOOD IMMEDIATELY BEFORE the event at
+  `log-index`: the most recent opener strictly before it, and
+  `:inpatient` when there is none -- no opener yet, a cleared one, no
+  timeline at all (a nil `classes`, which is every caller that does not
+  compute one), or no index. `:inpatient` is the byte both order-less
+  ORU builders passed unconditionally before, so the fallback moves
+  nothing."
+  [classes patient-id log-index]
+  (let [latest (when (and classes log-index)
+                 (loop [entries (get classes patient-id) latest nil]
+                   (if-let [[ei opened] (first entries)]
+                     (if (< (long ei) (long log-index)) (recur (rest entries) opened) latest)
+                     latest)))]
     (if (#{:inpatient :outpatient} latest) latest :inpatient)))
 
 (defn location-timeline

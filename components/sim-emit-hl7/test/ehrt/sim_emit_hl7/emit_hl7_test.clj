@@ -631,13 +631,15 @@
       (is (= "^^LN" (message/get-field-first-value parsed "OBR" 4))))))
 
 ;; --- 2026-09-30: PV1-2 for the ORDER-LESS ORU kinds is the patient's
-;; class at `t`. `:observation` and `:diagnostic-report` carry no order
-;; to read a class off (`order-patient-class` reads an ORDER event's own
-;; `:location`), so they read the encounter's instead: the patient's most
-;; recent opener at or before `t` -- `:admission` I, `:outpatient-visit`
-;; O, a `:cancel-admit` clearing it -- and I when there is none, which is
-;; the byte both builders passed unconditionally before. The population
-;; half, over `seed-424242-clinic-decade` and the `dense-7500` cell, is
+;; class immediately before the event. `:observation` and
+;; `:diagnostic-report` carry no order to read a class off
+;; (`order-patient-class` reads an ORDER event's own `:location`), so they
+;; read the encounter's instead: the patient's most recent opener EARLIER
+;; IN THE LOG -- `:admission` I, `:outpatient-visit` O, a `:cancel-admit`
+;; clearing it -- and I when there is none, which is the byte both
+;; builders passed unconditionally before. By log position, not `t`
+;; (errata, the same day), as PV1-3's bed is. The population half, the
+;; fold proven equal to `replay` at every event of every gated root, is
 ;; `ehrt.sim.run-test`.
 
 (defn- pv1-2-of-r01s [pathway]
@@ -691,6 +693,20 @@
              (mapv #(message/get-field-first-value (parser/parse %) "PV1" 2) r01s))
           "none -> I; under the visit -> O; after its end, still the visit's O;
            under the admission -> I; the admission cancelled -> none -> I"))))
+
+(deftest the-class-an-order-less-oru-renders-is-keyed-by-log-position
+  (testing "an observation logged in the SAME second as an outpatient
+            visit but before it was not taken under that visit; one
+            logged after it was"
+    (let [subject {:patient-id "PID-000000-5a3e5" :role :subject}
+          ev (fn [m] (merge {:participants [subject] :active-mrn "MRN000001" :warm-up false} m))
+          obs (fn [t] (ev {:event :observation :t t :codes [a-concept] :value 1.0 :unit "Cel"}))
+          log [(obs 100)
+               (ev {:event :outpatient-visit :t 100 :encounter-id "ENC-1" :attending "1234567893"})
+               (obs 100)]
+          r01s (filter #(re-find #"\^R01" %) (emit/emit log ref-date utc-offset))]
+      (is (= ["I" "O"]
+             (mapv #(message/get-field-first-value (parser/parse %) "PV1" 2) r01s))))))
 
 ;; 2026-09-30, the sibling of the PV1-2 fix above: PV1-3 on the same two
 ;; order-less kinds is the patient's bed as it stood at the event -- the

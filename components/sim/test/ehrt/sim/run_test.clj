@@ -2008,6 +2008,43 @@
         (when (= :dense-7500-750 id)
           (is (pos? placed) "the dense cell compared no placed patient at all -- the proof went vacuous"))))))
 
+;; --- 2026-09-30 errata: PV1-2's class, proven equal to replay ------------
+;;
+;; `class-at` is `location-at`'s sibling and answers to the same rule: the
+;; class `replay`'s world held immediately BEFORE the event, by log
+;; position, a nil before-state reading as the `:inpatient` fallback.
+
+(defn- class-fold-disagreements
+  "[classed-pairs disagreements] of `class-at` against `replay`'s
+  world-before, over every patient participant of every event."
+  [ground-truth]
+  (let [classes (timelines/class-timeline ground-truth)]
+    (reduce (fn [[classed wrong] [i ev {:keys [world-before]}]]
+              (reduce (fn [[classed wrong] pid]
+                        (let [truth (:class (get world-before pid))
+                              derived (timelines/class-at classes pid i)]
+                          (cond
+                            (not= (or truth :inpatient) derived)
+                            [classed (conj wrong {:index i :event (:event ev) :patient-id pid
+                                                  :replay truth :derived derived})]
+                            (some? truth) [(update classed truth (fnil inc 0)) wrong]
+                            :else [classed wrong])))
+                      [classed wrong]
+                      (keep :patient-id (:participants ev))))
+            [{} []]
+            (map vector (range) ground-truth (fold/replay ground-truth)))))
+
+(deftest the-class-timeline-is-replays-class-at-every-event
+  (doseq [[id r] (concat (for [{:keys [id]} gated-runs] [id (corpus id)])
+                         [[:dense-7500-750 @dense-7500-cell]])]
+    (testing (str "corpus " id)
+      (let [[classed wrong] (class-fold-disagreements (:ground-truth (:payload r)))]
+        (is (empty? wrong)
+            (str id ": " (count wrong) " (event, participant) pairs where the derived class is not replay's, by event: "
+                 (pr-str (frequencies (map :event wrong))) ", e.g. " (pr-str (take 4 wrong))))
+        (when (= :dense-7500-750 id)
+          (is (pos? (get classed :inpatient 0)) "the dense cell compared no classed patient at all -- the proof went vacuous"))))))
+
 (deftest order-less-oru-pv1-3-is-the-patients-bed-at-the-event
   (testing "the dense 750 cell: an observation or report renders a
             populated PV1-3 exactly when replay's before-state has a bed,

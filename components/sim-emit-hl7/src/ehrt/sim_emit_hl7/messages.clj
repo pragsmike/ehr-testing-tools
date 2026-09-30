@@ -456,8 +456,9 @@
   OBR here at all -- this shape carries no ORC/OBR -- so OBR-7 is not
   owed and not rendered.
 
-  PV1-2 (2026-09-30) is the patient's class at `t`, `timelines/class-at`
-  over `classes` -- the most recent opener's, I when there is none.
+  PV1-2 (2026-09-30) is the patient's class immediately before this
+  event, `timelines/class-at` over `classes` -- the most recent opener
+  by log position (not `t`: errata, the same day), I when there is none.
   Before, it was `:inpatient` unconditionally, so every observation a
   module compiled into an ambulatory encounter reached the wire as an
   inpatient one. `diagnostic-report-message` reads it the same way; the
@@ -483,7 +484,8 @@
       parser/DEFAULT-DELIMITERS
       (segments/msh-segment site-profile type+trigger control-id transmit-ts)
       (segments/pid-segment active-mrn (timelines/demographics-at demographics (:patient-id (first participants)) t))
-      (segments/pv1-segment site-profile (timelines/class-at classes (:patient-id (first participants)) t)
+      (segments/pv1-segment site-profile (timelines/class-at classes (:patient-id (first participants))
+                                                             (segments/log-index-of ev))
                             facility-name
                             (timelines/location-at locations (:patient-id (first participants))
                                                    (segments/log-index-of ev))
@@ -522,7 +524,8 @@
       parser/DEFAULT-DELIMITERS
       (segments/msh-segment site-profile type+trigger control-id transmit-ts)
       (segments/pid-segment active-mrn (timelines/demographics-at demographics (:patient-id (first participants)) t))
-      (segments/pv1-segment site-profile (timelines/class-at classes (:patient-id (first participants)) t)
+      (segments/pv1-segment site-profile (timelines/class-at classes (:patient-id (first participants))
+                                                             (segments/log-index-of ev))
                             facility-name
                             (timelines/location-at locations (:patient-id (first participants))
                                                    (segments/log-index-of ev))
