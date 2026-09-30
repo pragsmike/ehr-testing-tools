@@ -192,6 +192,29 @@ memory and binds on its own further up the same curve.
 *Today:* `--format ground-truth` is the cheap path; a consumer who
 writes their own emitter is not paying the emit phase at all.
 
+## Fidelity evidence
+
+**Not every gap here is a fault class.** Everything above is about
+what the traffic does; this is about how you would know how closely it
+resembles a real hospital's — evidence for a realism claim rather than
+the claim itself.
+
+### Measuring how real the traffic looks
+
+Hold a generated corpus up against your own feed and get back where the
+two differ: event mix, arrival gaps, churn rates, which optional fields
+get populated — a ranked list of where the synthetic traffic is least
+like yours, rather than a verdict that it is realistic.
+
+*Design stance:* your real feed never leaves your side — only summary
+statistics cross, taken after both arms are put into one site's idiom.
+
+*Today:* nothing measures the resemblance. Operational realism rests on
+pedigree and on site-tunable rates you calibrate by hand against your
+own feed's statistics. [`related-work/synthetic-hospital.md`](related-work/synthetic-hospital.md)
+sketches how such a study might run, borrowing the protocol of a
+recent physician-validated benchmark.
+
 ## What is not on this menu
 
 Deliberately, and these are scope decisions rather than backlog:

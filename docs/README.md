@@ -145,6 +145,8 @@ Deciding whether to adopt this at all, no task yet.
 [`what-is-this.md`](what-is-this.md)'s Scope section names what this
 workspace explicitly does not do; the root [`README.md`](../README.md)'s
 maturity table is the actual per-capability contract with readers.
+[`related-work/README.md`](related-work/README.md) places it beside the
+projects it learned from, and names what it does not intend to become.
 
 ## Guide reader
 

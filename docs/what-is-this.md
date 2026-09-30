@@ -180,6 +180,10 @@ by the skeptic on their own machine, not a claim about past testing.
 - **A hosted, public validation service.** Local deployment is the
   target.
 
+For where this sits beside Synthea, Simulated Hospital and one recent
+neighbour, and what it does not intend to become, see
+[`related-work/README.md`](related-work/README.md).
+
 ## Relationship to `ehr-testing-guide`
 
 The two exist for different purposes: [`ehr-testing-guide`](https://github.com/pragsmike/ehr-testing-guide)

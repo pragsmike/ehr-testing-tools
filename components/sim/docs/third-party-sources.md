@@ -1,6 +1,6 @@
 # Third-party sources
 
-What this repo mines, from where, and what each source yields. Two tiers, per `docs/problem-statement.md`'s own Cross-Cutting Arguments (Provenance): implementation sources this repo's code and data are built from, and validation/calibration anchors that check the output rather than contribute to it. `.agents/memory/architecture.md` is the fuller mining record this page summarizes and cross-links; `notes/facts-register.md` carries the externally-verifiable claim underneath each row.
+What this repo mines, from where, and what each source yields. Two tiers, per `docs/problem-statement.md`'s own Cross-Cutting Arguments (Provenance): implementation sources this repo's code and data are built from, and validation/calibration anchors that check the output rather than contribute to it. `.agents/memory/architecture.md` is the fuller mining record this page summarizes and cross-links; `notes/facts-register.md` carries the externally-verifiable claim underneath each row. [`docs/related-work/README.md`](../../../docs/related-work/README.md) is the argument this record supports.
 
 ## Tier 1 — implementation sources
 
