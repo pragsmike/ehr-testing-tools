@@ -964,8 +964,10 @@ restructure.
 ### Dated note, 2026-09-30 — PV1-2 on the order-less ORU kinds derives from the encounter's class
 
 `:observation` and `:diagnostic-report` render ORU^R01 with PV1-2 read
-from the patient's class at the event's `t`: the most recent opener at
-or before it — `:admission` (and a `:cancel-discharge`, which
+from the patient's class as it stood IMMEDIATELY BEFORE the event (by
+log position — amended below; this note first said "at the event's
+`t`: the most recent opener at or before it"): the most recent opener
+earlier in the log — `:admission` (and a `:cancel-discharge`, which
 reinstates one) `I`, `:outpatient-visit` `O`, a `:cancel-admit`
 clearing it — and `I` when there is none, the byte both builders
 passed unconditionally before. A close does not clear it. The fold is
@@ -992,6 +994,37 @@ such an event (`anemia`, `colorectal`, `dementia`, `fibromyalgia`,
 plus `chatter-charges` (its DFTs, ADR-0181's amendment of the same
 day), IDENTICAL on the other thirty; ground truth IDENTICAL on every
 root. Record: `.agents/session-records/2026-09-30-wire-fidelity-pv1-dft.md`.
+
+**Amended 2026-09-30 (errata) — keyed by log position, not `t`.** The
+PV1-3 note below found that "most recent at or before `t`" and "equal
+to `replay`'s before-state" are different rules, and keyed
+`location-at` by log index; `class-at` is the same fold family and now
+answers to the same rule. `class-timeline` is `{pid [[log-index class]
+...]}`, folded into every patient participant, and `class-at` reads the
+most recent opener STRICTLY BEFORE the event's own index, with the `I`
+fallback unchanged. `t` is wrong because the log sequences events
+within a second: an opener logged in the same second as an event but
+after it had not yet set the class that event was in, and a `t`-keyed
+read lets an opener see its own class as its before-state. It is now
+PROVEN equal to `replay`'s before-state `:class` (nil reading as the
+fallback) at every event of every gated root and the `dense-7500` 750
+cell, for every patient participant
+(`ehrt.sim.run-test/the-class-timeline-is-replays-class-at-every-event`).
+RED at `233e1bcd` on every one of those roots — 33 pairs at
+`seed-202-ed-tuesday`, 64 at `seed-424242-clinic-decade`, 48 at
+`seed-5-clinic-decade`, 1 at `adhd-seed-45`, 717 at the 750 cell — and
+every divergence is an OPENER (`:outpatient-visit`, `:admission`)
+reading its own class; none is an `:observation` or
+`:diagnostic-report`, the only kinds that render through `class-at`.
+So no wire byte moves: an in-process count over every oracle root found
+0 order-less ORUs whose class differs between the two rules (39
+rendering roots, 3 with no `:hl7`), and at `233e1bcd` vs `ded0a311`
+`bin/ground-truth-bracket` and `bin/regression-oracle`, both with no
+flag, are IDENTICAL on every root. The re-key makes the lookup correct
+for a same-second observation-before-opener sequence the corpora do not
+yet contain (a hand-built one in `emit_hl7_test` renders `I` then `O`,
+`O O` before).
+Record: `.agents/session-records/2026-09-30-class-at-log-position.md`.
 
 ### Dated note, 2026-09-30 — PV1-3 on the order-less ORU kinds derives from the patient's bed at the event
 
