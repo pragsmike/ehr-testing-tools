@@ -29,6 +29,7 @@
             [ehrt.sim-engine.config :as config]
             [ehrt.sim-engine.fold :as fold]
             [ehrt.sim-engine.streams :as streams]
+            [ehrt.sim-emit-hl7.timelines :as timelines]
             [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim.run :as run]))
 
@@ -1962,6 +1963,83 @@
         (is (empty? wrong)
             (str id ": " (count wrong) " order-less ORUs render the wrong PV1-2, by class: "
                  (pr-str (frequencies (map (fn [[i code]] [(expected i) code]) wrong)))))))))
+
+;; --- 2026-09-30: PV1-3 on the ORDER-LESS ORU kinds -- the bed at the event --
+;;
+;; `timelines/location-timeline` re-derives the patient's `:location` from
+;; the log alone, arm for arm with `evolve`, and the two builders read it
+;; for PV1-3. It is PROVEN equal to the engine's own fold here rather than
+;; asserted: at every event of every root, for every patient participant,
+;; `location-at` answers exactly the `:location` `replay`'s world held
+;; immediately before that event. RED before this change because the fn
+;; did not exist, and PV1-3 was the event's own absent `:location`.
+
+(defn- pv1-3 [message]
+  (let [pv1 (first (filter #(str/starts-with? % "PV1|") (str/split message #"\r\n|\r|\n")))]
+    (nth (str/split pv1 #"\|" -1) 3 "")))
+
+(defn- location-fold-disagreements
+  "[agreements-with-a-bed disagreements] of `location-at` against
+  `replay`'s world-before, over every patient participant of every event."
+  [ground-truth]
+  (let [locations (timelines/location-timeline ground-truth)]
+    (reduce (fn [[placed wrong] [i ev {:keys [world-before]}]]
+              (reduce (fn [[placed wrong] pid]
+                        (let [truth (:location (get world-before pid))
+                              derived (timelines/location-at locations pid i)]
+                          (cond
+                            (not= truth derived) [placed (conj wrong {:index i :event (:event ev) :patient-id pid
+                                                                      :replay truth :derived derived})]
+                            (some? truth) [(inc placed) wrong]
+                            :else [placed wrong])))
+                      [placed wrong]
+                      (keep :patient-id (:participants ev))))
+            [0 []]
+            (map vector (range) ground-truth (fold/replay ground-truth)))))
+
+(deftest the-location-timeline-is-replays-location-at-every-event
+  (doseq [[id r] (concat (for [{:keys [id]} gated-runs] [id (corpus id)])
+                         [[:dense-7500-750 @dense-7500-cell]])]
+    (testing (str "corpus " id)
+      (let [[placed wrong] (location-fold-disagreements (:ground-truth (:payload r)))]
+        (is (empty? wrong)
+            (str id ": " (count wrong) " (event, participant) pairs where the derived bed is not replay's, e.g. "
+                 (pr-str (take 4 wrong))))
+        (when (= :dense-7500-750 id)
+          (is (pos? placed) "the dense cell compared no placed patient at all -- the proof went vacuous"))))))
+
+(deftest order-less-oru-pv1-3-is-the-patients-bed-at-the-event
+  (testing "the dense 750 cell: an observation or report renders a
+            populated PV1-3 exactly when replay's before-state has a bed,
+            and renders THAT bed"
+    (let [{:keys [ground-truth messages]} (:payload @dense-7500-cell)
+          befores (fold/replay ground-truth)
+          expected (into {}
+                         (keep (fn [[i ev {:keys [before]}]]
+                                 (when (#{:observation :diagnostic-report} (:event ev))
+                                   [i (:location before)])))
+                         (map vector (range) ground-truth befores))
+          rendered (into {}
+                         (keep (fn [m]
+                                 (when-let [[_ i] (re-find #"#(\d+)$" (first (msh-10s [m])))]
+                                   (let [i (parse-long i)]
+                                     (when (contains? expected i) [i (pv1-3 m)])))))
+                         messages)
+          placed (count (filter some? (vals expected)))
+          populated (count (remove str/blank? (vals rendered)))
+          wrong (remove (fn [[i field]]
+                          (let [loc (expected i)]
+                            (if loc
+                              (str/starts-with? field (str (:ward loc) "^^" (or (:bed loc) "") "^"))
+                              (= "" field))))
+                        rendered)]
+      (is (= (count expected) (count rendered)) "every observation/report event rendered exactly one ORU")
+      (is (<= 1019 placed) (str "the dense cell carries fewer observations/reports under a bed than measured: " placed))
+      (is (= placed populated)
+          (str populated " order-less ORUs render a populated PV1-3; " placed " were taken in a bed"))
+      (is (empty? wrong)
+          (str (count wrong) " order-less ORUs render a PV1-3 that is not the bed, e.g. "
+               (pr-str (take 4 (map (fn [[i f]] [i f (expected i)]) wrong))))))))
 
 ;; --- ADR-0183: `sim describe`, the verb ------------------------------------
 

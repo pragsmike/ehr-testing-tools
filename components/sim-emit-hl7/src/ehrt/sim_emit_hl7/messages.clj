@@ -462,9 +462,16 @@
   module compiled into an ambulatory encounter reached the wire as an
   inpatient one. `diagnostic-report-message` reads it the same way; the
   order-linked ORM/ORU keep `order-patient-class`, which has an order
-  event to read."
-  [reference-date utc-offset facility providers demographics site-profile offsets classes
-   {:keys [t active-mrn location attending participants] :as ev}]
+  event to read.
+
+  PV1-3 (2026-09-30) is the patient's bed immediately before this event,
+  `timelines/location-at` over `locations` -- the engine's own
+  `:location`, re-derived from the log and proven equal to `replay`'s.
+  Before, it was the event's own `:location`, which this kind never
+  carries, so every observation taken in a bed rendered an empty PV1-3.
+  `diagnostic-report-message` reads it the same way."
+  [reference-date utc-offset facility providers demographics site-profile offsets classes locations
+   {:keys [t active-mrn attending participants] :as ev}]
   (let [type+trigger (registry/message-type-registry :observation)
         control-id (segments/control-id-for ev)
         clinical-ts (hl7-time/hl7-timestamp reference-date t utc-offset)
@@ -477,7 +484,10 @@
       (segments/msh-segment site-profile type+trigger control-id transmit-ts)
       (segments/pid-segment active-mrn (timelines/demographics-at demographics (:patient-id (first participants)) t))
       (segments/pv1-segment site-profile (timelines/class-at classes (:patient-id (first participants)) t)
-                            facility-name location nil provider nil (:encounter-id ev))
+                            facility-name
+                            (timelines/location-at locations (:patient-id (first participants))
+                                                   (::segments/log-index ev))
+                            nil provider nil (:encounter-id ev))
       (segments/observation-obx-segment 1 clinical-ts ev)
       (er7/z-segments-for site-profile demographics ev)))))
 
@@ -498,8 +508,8 @@
   embedded child's own OBX-14 are CLINICAL time (this event's own `:t`,
   never shifted). `orm-message` is the one of that list that does NOT
   change -- author ruling Q3, \"Results only; ORM byte-frozen\"."
-  [reference-date utc-offset facility providers demographics site-profile offsets classes
-   {:keys [t active-mrn location attending codes observations participants] :as ev}]
+  [reference-date utc-offset facility providers demographics site-profile offsets classes locations
+   {:keys [t active-mrn attending codes observations participants] :as ev}]
   (let [type+trigger (registry/message-type-registry :diagnostic-report)
         control-id (segments/control-id-for ev)
         clinical-ts (hl7-time/hl7-timestamp reference-date t utc-offset)
@@ -513,7 +523,10 @@
       (segments/msh-segment site-profile type+trigger control-id transmit-ts)
       (segments/pid-segment active-mrn (timelines/demographics-at demographics (:patient-id (first participants)) t))
       (segments/pv1-segment site-profile (timelines/class-at classes (:patient-id (first participants)) t)
-                            facility-name location nil provider nil (:encounter-id ev))
+                            facility-name
+                            (timelines/location-at locations (:patient-id (first participants))
+                                                   (::segments/log-index ev))
+                            nil provider nil (:encounter-id ev))
       (segments/orc-segment control-id)
       (segments/obr-segment 1 (first codes) clinical-ts)
       (concat obx-segments (er7/z-segments-for site-profile demographics ev))))))
@@ -616,6 +629,10 @@
     ladder-status siu ev]
    (event->messages reference-date utc-offset facility providers demographics site-profile offsets
                     charges ladder-status siu nil ev))
+  ([reference-date utc-offset facility providers demographics site-profile offsets charges
+    ladder-status siu classes ev]
+   (event->messages reference-date utc-offset facility providers demographics site-profile offsets
+                    charges ladder-status siu classes nil ev))
   ;; ARC 4 SWEEP 3 (ADR-0175 design (b)): `ladder-status` is THIS
   ;; event's own terminal status -- `{:stage :final}` for a
   ;; `:result-available` whose order actually grew a rung, nil for every
@@ -643,8 +660,10 @@
   ;; 2026-09-30: `classes` is `timelines/class-timeline`'s output, read
   ;; by the two order-less ORU builders for PV1-2. Nil -- every arity
   ;; above -- is the byte those builders passed before, `:inpatient`.
+  ;; `locations` is `timelines/location-timeline`'s, read by the same two
+  ;; for PV1-3; nil is their prior byte too, an empty field.
   ([reference-date utc-offset facility providers demographics site-profile offsets charges
-    ladder-status siu classes {:keys [event] :as ev}]
+    ladder-status siu classes locations {:keys [event] :as ev}]
    (let [registered (cond
                       (not (registry/message-type-registry event)) []
                       (contains? registry/siu-event-kinds event)
@@ -659,8 +678,8 @@
                       (= :result-available event)
                       [(oru-message reference-date utc-offset facility providers demographics
                                     site-profile offsets ev ladder-status)]
-                      (= :observation event) [(observation-message reference-date utc-offset facility providers demographics site-profile offsets classes ev)]
-                      (= :diagnostic-report event) [(diagnostic-report-message reference-date utc-offset facility providers demographics site-profile offsets classes ev)]
+                      (= :observation event) [(observation-message reference-date utc-offset facility providers demographics site-profile offsets classes locations ev)]
+                      (= :diagnostic-report event) [(diagnostic-report-message reference-date utc-offset facility providers demographics site-profile offsets classes locations ev)]
                       :else [(single-subject-message reference-date utc-offset facility providers demographics site-profile offsets ev)])
          ;; ARC 4 SWEEP 2 (ADR-0175 design (c)): THE FIRST REAL USE of
          ;; the many-messages-per-event shape this function's own

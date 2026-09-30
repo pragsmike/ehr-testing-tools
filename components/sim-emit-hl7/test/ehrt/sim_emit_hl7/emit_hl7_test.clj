@@ -692,6 +692,41 @@
           "none -> I; under the visit -> O; after its end, still the visit's O;
            under the admission -> I; the admission cancelled -> none -> I"))))
 
+;; 2026-09-30, the sibling of the PV1-2 fix above: PV1-3 on the same two
+;; order-less kinds is the patient's bed as it stood at the event -- the
+;; location the engine's own fold held immediately BEFORE it, so a
+;; `:cancel-transfer` restores and a `:discharge` clears. The corpus-scale
+;; half -- the fold proven equal to `replay` at every event of every
+;; gated root -- is `ehrt.sim.run-test`.
+
+(deftest the-bed-an-order-less-oru-renders-follows-the-patients-location
+  (testing "one hand-built admission walking every placement the fold
+            reads: admitted, transferred, the transfer cancelled,
+            discharged. Each observation carries the bed it was taken in."
+    (let [subject {:patient-id "PID-000000-10ca7" :role :subject}
+          ev (fn [m] (merge {:participants [subject] :active-mrn "MRN000001" :warm-up false
+                             :encounter-id "ENC-1" :attending "1234567893"} m))
+          obs (fn [t] (ev {:event :observation :t t :codes [a-concept] :value 1.0 :unit "Cel"}))
+          renal {:ward "Renal" :bed "RENAL-01" :placement :licensed}
+          cardio {:ward "Cardiology" :bed "CARDIO-02" :placement :licensed}
+          log [(ev {:event :admission :t 100 :location renal :home-ward "Renal"
+                    :reason "AKI" :forced false})
+               (obs 200)
+               (ev {:event :transfer :t 300 :from renal :location cardio :home-ward "Cardiology"})
+               (obs 400)
+               (ev {:event :cancel-transfer :t 500 :location renal :home-ward "Renal"})
+               (obs 600)
+               (ev {:event :discharge :t 700 :disposition :home})
+               (obs 800)]
+          facility-name (name (:id sim-model/default-facility))
+          r01s (filter #(re-find #"\^R01" %) (emit/emit log ref-date utc-offset))]
+      (is (= [(str "Renal^^RENAL-01^" facility-name)
+              (str "Cardiology^^CARDIO-02^" facility-name)
+              (str "Renal^^RENAL-01^" facility-name)
+              ""]
+             (mapv #(message/get-field-first-value (parser/parse %) "PV1" 3) r01s))
+          "admitted bed; transferred bed; the cancel's restored bed; discharged -> empty"))))
+
 (deftest procedure-and-medication-events-render-no-message
   (let [pathway {:name "clinical" :steps [{:type :admission :location "Renal"}
                                           {:type :procedure :codes [a-concept]}

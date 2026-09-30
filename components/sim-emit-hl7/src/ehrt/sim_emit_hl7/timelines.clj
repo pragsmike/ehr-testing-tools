@@ -1,8 +1,8 @@
 (ns ehrt.sim-emit-hl7.timelines
   "State-at-instant views over the ground-truth log: the per-patient
   demographic timeline and its state-at-t lookup, the per-patient
-  active-MRN timeline and its own, the per-patient class timeline and
-  its own (2026-09-30, after the extraction below), and the
+  active-MRN timeline and its own, the per-patient class and location
+  timelines and their own (2026-09-30, after the extraction below), and the
   encounter-interval census the arc-4 planners read.
 
   Extracted VERBATIM from `emit_hl7.clj`, the THIRD cluster of that
@@ -173,6 +173,65 @@
                    (if (<= (long et) (long t)) (recur (rest entries) opened) latest)
                    latest))]
     (if (#{:inpatient :outpatient} latest) latest :inpatient)))
+
+(defn location-timeline
+  "{patient-id [[log-index location] ...]}, log order, one entry per
+  event that MOVED that patient's `:location` -- the bed the order-less
+  ORU kinds render in PV1-3, which carry no `:location` of their own.
+
+  Arm for arm with `ehrt.sim-engine.evolve`, folded into EVERY patient
+  participant as the engine folds it: `:admission`, `:transfer`, and the
+  two cancels that restore one (`:cancel-transfer`, `:cancel-discharge`)
+  set the event's own `:location` -- nil clears; a `:discharge` clears
+  unless `:disposition :expired`, whose body stays in the bed; a
+  `:cancel-admit` clears; a `:bed-swap` sets each participant from its
+  own `:swap` entry; a `:merge` clears the `:merged` side only. Every
+  other kind leaves the bed where it was, `:outpatient-visit` included.
+
+  KEYED BY LOG INDEX, NOT `t`, because the thing it is proven equal to
+  is `replay`'s state BEFORE an event, and a transfer logged at the
+  same second as an observation but after it did not move the bed that
+  observation was taken in. Read ONLY through `location-at`.
+
+  One pass, computed unconditionally beside `class-timeline`, and a
+  function of the log alone."
+  [ground-truth]
+  (reduce (fn [acc [i ev]]
+            (let [placed (fn [acc pid location]
+                           (assoc acc pid (conj (get acc pid []) [i location])))
+                  pids (keep :patient-id (:participants ev))]
+              (case (:event ev)
+                (:admission :transfer :cancel-transfer :cancel-discharge)
+                (reduce #(placed %1 %2 (:location ev)) acc pids)
+                :discharge
+                (if (= :expired (:disposition ev))
+                  acc
+                  (reduce #(placed %1 %2 nil) acc pids))
+                :cancel-admit
+                (reduce #(placed %1 %2 nil) acc pids)
+                :bed-swap
+                (reduce #(placed %1 %2 (get-in ev [:swap %2 :to])) acc pids)
+                :merge
+                (reduce (fn [acc {:keys [patient-id role]}]
+                          (if (and patient-id (= :merged role)) (placed acc patient-id nil) acc))
+                        acc (:participants ev))
+                acc)))
+          {}
+          (map-indexed vector ground-truth)))
+
+(defn location-at
+  "The patient's `:location` AS IT STOOD IMMEDIATELY BEFORE the event at
+  `log-index`: the most recent entry strictly before it, nil when there
+  is none -- no placement yet, a cleared one, or no timeline at all (a
+  nil `locations`, which is every caller that does not compute one). Nil
+  renders an empty PV1-3, the byte both order-less ORU builders rendered
+  before, so the fallback moves nothing."
+  [locations patient-id log-index]
+  (when (and locations log-index)
+    (loop [entries (get locations patient-id) latest nil]
+      (if-let [[ei location] (first entries)]
+        (if (< (long ei) (long log-index)) (recur (rest entries) location) latest)
+        latest))))
 
 (defn encounter-spans
   "{encounter-id {:t0 :t1 :opener :opener-index}} -- one entry per

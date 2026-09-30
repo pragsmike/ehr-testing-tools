@@ -110,9 +110,10 @@
    ;; reaches nothing outside it.
    (let [ground-truth (segments/stamp-log-index ground-truth)
          demographics (timelines/demographics-timeline ground-truth)
-         classes (timelines/class-timeline ground-truth)]
+         classes (timelines/class-timeline ground-truth)
+         locations (timelines/location-timeline ground-truth)]
      (into [] (mapcat (partial messages/event->messages reference-date utc-offset facility providers demographics site-profile {}
-                               {} nil nil classes))
+                               {} nil nil classes locations))
            ground-truth))))
 
 (defn emit-wire
@@ -179,6 +180,7 @@
     {:keys [chatter charges ladders siu]}]
    (let [demographics (timelines/demographics-timeline ground-truth)
          classes (timelines/class-timeline ground-truth)
+         locations (timelines/location-timeline ground-truth)
          offsets (or offsets {})
          chatter (or chatter [])
          charges (or charges {})
@@ -203,7 +205,7 @@
                          (messages/event->messages reference-date utc-offset facility providers demographics
                                           site-profile offsets charges
                                           (when (contains? final-result-indices i) {:stage :final})
-                                          siu classes ev)))))
+                                          siu classes locations ev)))))
                    (apply concat))
          restatements (map (fn [ins]
                              [(:at ins) (:basis ins) 1 (:ordinal ins)
