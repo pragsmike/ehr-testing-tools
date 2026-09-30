@@ -103,12 +103,14 @@ never arrives, a message cut off mid-segment, a connection dropped
 between the header and the trailer, a peer that resets after the
 acknowledgement was owed.
 
-*Design stance:* these are faults **of a live connection**, and this
-workspace does not currently open one — the MLLP frame codec is here and
-byte-exact, but nothing transmits over a socket, and that was a
-deliberate stop rather than an oversight. This entry therefore waits on
-a decision to do transport work at all, not merely on somebody writing
-it.[^transport]
+*Design stance:* these are faults **of a live connection**. Playback
+does open one: `ehrt play --sink mllp://HOST:PORT` sends each message
+over MLLP and reads its ACK back, failing on a negative, unrecognized
+or missing acknowledgement. That is delivery, not fault work — it sends
+every frame intact and checks the answer, and nothing here breaks the
+envelope on purpose. Fault injection over that connection was stopped
+deliberately, not overlooked, so this entry waits on a decision to do
+that work at all, not merely on somebody writing it.[^transport]
 
 ## Scale ergonomics
 
@@ -153,10 +155,18 @@ so: results landing after their subject moved, was discharged or was
 merged; merges absorbing a bed-holder; cancels reinstating a bed; peak
 ward census against capacity.
 
-*Today:* the EDN envelope carries a run summary, and `--format
-ground-truth` piped into a frequency count gives the per-kind census.
-The inventory half has no shipped path — run once, by hand, from a
-script over `replay`'s projection
+*Today:* `ehrt sim describe` reads an event log (or a `sim run`
+envelope) and reports the log side of the census: events and subjects
+per kind, the time span, and which churn and scheduling families were
+configured beside which actually occurred, with witnesses located by
+log index. It also covers three of the inventory's columns, as measures:
+results landing after their subject was transferred, discharged or
+merged. Still missing from the census: messages per type (describe
+reads the event log, not the wire), encounter counts, and a command
+that diffs two runs. Still missing from the inventory: merges absorbing
+a bed-holder, cancels reinstating a bed, and peak ward census against
+capacity. The inventory has been run only once, by hand, from a script
+over `replay`'s projection
 (`.agents/plans/2026-09-05-performance-measurement/`).
 
 ### Progress while a long run generates
@@ -228,4 +238,4 @@ state that fence normatively; nothing on this page erodes it.
 [^event-mutation]: Design record [ADR-0176](../notes/ADRs.md) — the operator catalog, the injection contract, the oracle loop, and nine choices left open for a ruling.
 [^foreign-corpus]: Named as out of scope by that same record, on the grounds that a log this workspace did not produce has no invariant catalog behind it.
 [^stream-layer]: Whether message loss and duplication belong with mutation or with transport realism is an explicitly open question in design record [ADR-0111](../notes/ADRs.md); the layer boundary above is the shape an answer would take, not the answer itself.
-[^transport]: Design record [ADR-0102](../notes/ADRs.md) records the decision to stop transport work, and it stands until it is revisited deliberately.
+[^transport]: Design record [ADR-0102](../notes/ADRs.md) records the decision to stop transport work. Design record [ADR-0175](../notes/ADRs.md) later ruled one exception in, the MLLP delivery sink `play` uses; the stop still stands for everything else here, fault injection included, until it is revisited deliberately.
