@@ -1377,12 +1377,14 @@
   :care-plan-end is deliberately NOT included, same reason
   :medication-end isn't -- a care plan legitimately continues (and
   ends) after discharge. ADR-0182: :immunization joins -- a vaccine is
-  administered at a visit, never with no encounter open."
+  administered at a visit, never with no encounter open. ADR-0184:
+  :allergy-onset joins -- an allergy is recorded at a visit; one that
+  predates the horizon is a `:pre-horizon-facts` entry, never an event."
   {::records true}
   ([ground-truth] (clinical-content-only-when-admitted ground-truth (engine/replay ground-truth)))
   ([ground-truth records]
    (for [{:keys [event before patient-id]} records
-         :when (and (#{:procedure :observation :medication-order :diagnostic-report :care-plan-start :immunization} (:event event))
+         :when (and (#{:procedure :observation :medication-order :diagnostic-report :care-plan-start :immunization :allergy-onset} (:event event))
                     (or (not= :admitted (:status before))
                         ;; ADR-0174's table, per-encounter: and the stamp
                         ;; names the OPEN encounter, so a condition

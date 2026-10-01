@@ -170,6 +170,10 @@
    ;; Its real v2 shape is VXU^V04 (an RXA segment this emitter does not
    ;; build), the follow-on ADR-0182 names rather than a message invented
    ;; in the same slice as the kind.
+   ;;
+   ;; ADR-0184 (contract 1.11.0): `:allergy-onset` likewise gets NO entry.
+   ;; Its v2 home is an AL1 segment on an ADT, or IAM^A05 -- neither
+   ;; built here -- the follow-on ADR-0184 names.
    })
 
 (def skeleton-message-types

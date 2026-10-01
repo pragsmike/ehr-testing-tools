@@ -120,7 +120,9 @@
                       :diagnostic-report :medication-order :medication-end
                       :care-plan-start :care-plan-end :step-rejected
                       ;; ADR-0182, schema 1.10.0
-                      :immunization}
+                      :immunization
+                      ;; ADR-0184, schema 1.11.0
+                      :allergy-onset}
           declared (into #{} (mapcat :ground-truth) (vals emittable/state-type->emittable))]
       (is (empty? (remove log-kinds declared))
           (str "not a ground-truth event kind: " (pr-str (sort (remove log-kinds declared))))))))

@@ -777,7 +777,7 @@ subprocess `:invocation`. A sim manifest looks like this:
 | `:stage` | `:simulated` | which pipeline stage produced it |
 | `:generator` | `{:name "ehrt.sim" :version "0.1.0-pre" :sha256 "1b486fa2…"}` | the engine, by content hash — the cross-version reproduction key |
 | `:seeds` | `{:primary 20260811}` | the seed. One key, not Synthea's two |
-| `:event-schema-version` | `"1.10.0"` | which version of the event contract this log satisfies |
+| `:event-schema-version` | `"1.11.0"` | which version of the event contract this log satisfies |
 | `:stream-scheme` | `"1.0"` | which RNG stream partition produced it |
 | `:engine-params` | the engine keys this run used | the flag-reachable half of the config |
 | `:invocation` | `{:verb "run" :opts {…}}` | **the whole config, engine and emission keys alike** |

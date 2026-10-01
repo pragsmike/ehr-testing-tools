@@ -188,7 +188,10 @@
    ;; this closure's own mandatory path, confirmed by direct grep;
    ;; :reactions is an empty list on that same state, and no closure
    ;; member this session vendors ever reads a reaction severity back --
-   ;; installed ≠ used, grows-by-evidence).
+   ;; installed ≠ used, grows-by-evidence). ADR-0184 (2026-09-30): the
+   ;; event reaches the log as `:allergy-onset`, and :allergy-type/
+   ;; :category/:reactions ride it when stated -- the reactions as Codes
+   ;; only, with no severity drawn.
    "AllergyOnset" :allergy-onset
    ;; GMF coverage Wave I (2026-08-04, ADR-0040 AR-5): Vaccine --
    ;; State.java's own Vaccine class (source-grounded): an unconditional
@@ -791,6 +794,14 @@
                   ;; ungated `(:series state)` clause crashed trying to `mapv`
                   ;; over Vaccine's int.
                   (:procedure-code state) (update :procedure-code normalize-code)
+                  ;; ADR-0184 (2026-09-30): AllergyOnset's own :reactions --
+                  ;; upstream's `ReactionProbabilities` shape, a `reaction`
+                  ;; Code plus its `possible_severities`. The Code normalizes
+                  ;; like every other Code here; the severities stay as
+                  ;; authored (declared, read by nothing yet -- severity is a
+                  ;; draw this project does not take, ADR-0184).
+                  (and (:reactions state) (= :allergy-onset kw-type))
+                  (update :reactions #(mapv (fn [r] (update r :reaction normalize-code)) %))
                   (and (:series state) (= :imaging-study kw-type)) (update :series #(mapv normalize-imaging-series %))
                   ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-3): SupplyList's
                   ;; own :supplies -- each component's :code normalized, :quantity
@@ -1332,8 +1343,19 @@
    ;; GMF coverage Wave I (2026-08-04, ADR-0040 AR-5): AllergyOnset --
    ;; the SAME shape :condition-onset already declares (`gmf-type->
    ;; keyword`'s own dated note has the full simplification rationale).
+   ;; ADR-0184 (2026-09-30): :allergy-type/:category/:reactions are
+   ;; declared now that they reach the log -- each optional, since a
+   ;; module may state none of them. Strings as authored (upstream's own
+   ;; `String` fields, the Observation :category precedent). A reaction's
+   ;; `:possible-severities` is declared and read by nothing.
    [:allergy-onset (with-transitions [:type [:= :allergy-onset]] [:codes [:vector sim-model/Concept]]
-                     [:target-encounter {:optional true} :keyword])]
+                     [:target-encounter {:optional true} :keyword]
+                     [:allergy-type {:optional true} :string]
+                     [:category {:optional true} :string]
+                     [:reactions {:optional true}
+                      [:vector [:map [:reaction sim-model/Concept]
+                                [:possible-severities {:optional true}
+                                 [:vector [:map [:level :string] [:value number?]]]]]]])]
    ;; GMF coverage Wave I (2026-08-04, ADR-0040 AR-5): Vaccine -- :series
    ;; is upstream's own primitive `int` field, optional here (the
    ;; interpreter's own :vaccine case supplies the same zero-default a

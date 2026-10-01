@@ -46,6 +46,12 @@
     trajectory event carries one (absent otherwise, ADR-0178), plus
     `:citation`. Not a registration-time fact kind: a pre-horizon
     Vaccine is dropped, the `:procedure` precedent.
+  - `:allergy-onset` -- ADR-0184: compiles to a standalone `:allergy-onset`
+    step (`allergy-onset->step`), `:codes` verbatim, `:allergy-type`/
+    `:category`/`:reactions` only when the trajectory event carries them
+    (absent otherwise, ADR-0178), plus `:citation`. Unlike a Vaccine it
+    IS a registration-time fact kind: a pre-horizon AllergyOnset is
+    standing history, the `:condition-onset` class.
   - `:condition-onset`/`:condition-end` -- compile to an ANNOTATION on
     the most recently compiled Encounter-mapped step (`:conditions`, a
     vector pathway.clj's Citation/ConditionAnnotation schemas define),
@@ -305,6 +311,15 @@
   (cond-> {:type :immunization :codes (:codes event) :citation (citation event)}
     (contains? event :series) (assoc :series (:series event))))
 
+(defn- allergy-onset->step
+  "ADR-0184: each optional field rides the step only when the AllergyOnset
+  state stated it -- the interpreter emits no key otherwise, and neither
+  does this."
+  [event]
+  (merge {:type :allergy-onset :codes (:codes event)}
+         (select-keys event [:allergy-type :category :reactions])
+         {:citation (citation event)}))
+
 (defn- medication-end->step
   [trajectory event]
   (let [order-event (referenced-event trajectory event)]
@@ -389,9 +404,14 @@
   active medication already is, the same 'ongoing therapeutic content'
   class :medication-order/:medication-end already establish (never the
   ephemeral-clinical-event class :observation/:procedure/:encounter
-  sit in)."
+  sit in). ADR-0184: `:allergy-onset` joins -- an allergy recorded
+  before registration is standing history the patient arrives with,
+  the `:condition-onset` class, where a pre-horizon `:vaccine` is an
+  ephemeral event and stays dropped (ADR-0182). The fact carries the
+  substance `:codes` only, the uniform shape every entry here has;
+  `:allergy-type`/`:category`/`:reactions` ride the in-horizon kind."
   #{:condition-onset :condition-end :medication-order :medication-end
-    :care-plan-start :care-plan-end})
+    :care-plan-start :care-plan-end :allergy-onset})
 
 (defn- annotate-condition
   "Finds the most recently COMPILED encounter-mapped step whose citation
@@ -633,6 +653,10 @@
 
           (= :vaccine event-type)
           (recur more (emit-with-delay steps last-t event (vaccine->step event))
+                 registration-facts (:t event) encounter-closed? straddle-open? suppressed-straddle-spans)
+
+          (= :allergy-onset event-type)
+          (recur more (emit-with-delay steps last-t event (allergy-onset->step event))
                  registration-facts (:t event) encounter-closed? straddle-open? suppressed-straddle-spans)
 
           (= :medication-end event-type)

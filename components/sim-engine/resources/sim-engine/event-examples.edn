@@ -20,6 +20,24 @@
   :t 0,
   :location {:ward "ED", :bed "ED-H01", :placement :surge},
   :forced false},
+ :allergy-onset
+ {:category "food",
+  :participants [{:patient-id "PID-000001-01564f61", :role :subject}],
+  :active-mrn "MRN000002",
+  :allergy-type "allergy",
+  :warm-up false,
+  :citation {:module "schema-fixture-mod", :state :the-allergy},
+  :event :allergy-onset,
+  :t 12182400,
+  :codes
+  [{:system :snomed,
+    :code "762952008",
+    :display "Peanut (substance)"}],
+  :reactions
+  [{:codes
+    [{:system :snomed,
+      :code "49727002",
+      :display "Cough (finding)"}]}]},
  :appointment
  {:event :appointment,
   :t 0,

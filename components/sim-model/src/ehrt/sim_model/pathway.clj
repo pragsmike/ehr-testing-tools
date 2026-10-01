@@ -246,6 +246,18 @@
                    [:codes [:vector Concept]]
                    [:series {:optional true} :int]
                    [:citation {:optional true} Citation]]]
+   ;; ADR-0184 (2026-09-30): the AllergyOnset state's compile target, and
+   ;; an author-facing step like :immunization. :codes is the substance;
+   ;; :allergy-type/:category/:reactions ride only when stated -- ABSENT
+   ;; otherwise, never nil (ADR-0178). A reaction is its Codes and nothing
+   ;; else: severity is upstream's draw, not taken here (ADR-0184).
+   [:allergy-onset [:map
+                    [:type [:= :allergy-onset]]
+                    [:codes [:vector Concept]]
+                    [:allergy-type {:optional true} :string]
+                    [:category {:optional true} :string]
+                    [:reactions {:optional true} [:vector [:map {:closed true} [:codes [:vector Concept]]]]]
+                    [:citation {:optional true} Citation]]]
    ;; GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R2(b), G1): a
    ;; paired span mirroring :medication-order/:medication-end verbatim,
    ;; grounded directly against Synthea's own State.java

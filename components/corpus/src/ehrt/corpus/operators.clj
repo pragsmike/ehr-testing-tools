@@ -906,8 +906,10 @@
   hand-picked, so a sixth clinical kind joining it joins this operator
   with it. That is ADR-0166's error ledger applied here too: the whole
   reason the referential family above is a cross product. The sixth
-  arrived with ADR-0182: `:immunization`."
-  #{:procedure :observation :medication-order :diagnostic-report :care-plan-start :immunization})
+  arrived with ADR-0182: `:immunization`; the seventh with ADR-0184:
+  `:allergy-onset`."
+  #{:procedure :observation :medication-order :diagnostic-report :care-plan-start :immunization
+    :allergy-onset})
 
 (def ^:private orphan-patient-id
   "A patient id no run can mint. Fixed rather than drawn, for the same

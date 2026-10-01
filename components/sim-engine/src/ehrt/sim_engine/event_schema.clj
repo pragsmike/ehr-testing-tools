@@ -401,8 +401,40 @@
   no-message pattern `:outpatient-visit-end` already follows.
 
   MADE UNDER THE WAIVER, disclosed: no deprecation release was run, and
+  none is owed in any case, since nothing was removed.
+
+  1.11.0 (2026-09-30, ADR-0184, downstream's first-priority domain fact
+  of 2026-09-18) is the ALLERGY: ONE new kind, `:allergy-onset` --
+  `:active-mrn`, `:codes` (the substance), and `:allergy-type`,
+  `:category` and `:reactions` each OPTIONAL and present only when the
+  source states them (absent, never nil, ADR-0178), `:citation`
+  optional. A reaction is `{:codes [...]}` and nothing else: upstream
+  draws a severity per reaction, and a `none` draw drops the reaction;
+  that draw is not taken, so `:reactions` lists what the source names
+  for the substance, not what manifested. AND ONE WIDENED ENUM: a
+  pre-horizon AllergyOnset becomes a `:registered` event's
+  `:pre-horizon-facts` entry, so `PreHorizonFact`'s `:event` gains
+  `:allergy-onset` -- carrying the substance `:codes` only.
+
+  A BUMP IS OWED THIS TIME. `classify-change` against the frozen 1.10.0
+  baseline, before the re-freeze, returns
+
+    {:additive? false,
+     :breaking [\":registered: key changed: :pre-horizon-facts (value schema changed)\"]}
+
+  The new kind alone is additive; the enum widening is not, by the
+  function's own deliberately conservative rule -- and the rule is right
+  here: a consumer that dispatches exhaustively on a fact's `:event`
+  meets a value it has never seen. A 1.10.0-ERA LOG VALIDATES UNCHANGED
+  AGAINST 1.11.0: nothing existing moved. No vendored module carries an
+  AllergyOnset state, so no existing corpus byte moves.
+
+  THE KIND REACHES NO WIRE in 1.11.0: no HL7 registry entry (AL1/IAM
+  are the follow-on) and no FHIR AllergyIntolerance resource.
+
+  MADE UNDER THE WAIVER, disclosed: no deprecation release was run, and
   none is owed in any case, since nothing was removed."
-  "1.10.0")
+  "1.11.0")
 
 ;; --- shared leaf schemas --------------------------------------------------
 ;;
@@ -473,10 +505,13 @@
   rather than replayed as operational events
   (`ehrt.patient-simulator.compile-trajectory`'s own
   `pre-horizon-fact-types`). Each fact carries its OWN `:event` key,
-  drawn from a DIFFERENT vocabulary than the log's, and four of its
-  six values (`:medication-order`, `:medication-end`,
-  `:care-plan-start`, `:care-plan-end`) are ALSO top-level log event
-  kinds with entirely different key sets.
+  drawn from a DIFFERENT vocabulary than the log's, and five of its
+  seven values (`:medication-order`, `:medication-end`,
+  `:care-plan-start`, `:care-plan-end`, and since 1.11.0
+  `:allergy-onset`) are ALSO top-level log event kinds with entirely
+  different key sets. A pre-horizon `:allergy-onset` fact carries the
+  substance `:codes` only -- never the kind's `:allergy-type`,
+  `:category` or `:reactions`.
 
   A consumer that walks the EDN tree looking for `:event`, rather than
   iterating only the top-level vector, will therefore find these and
@@ -492,7 +527,9 @@
   [:map {:closed true}
    [:event [:enum :condition-onset :condition-end
             :medication-order :medication-end
-            :care-plan-start :care-plan-end]]
+            :care-plan-start :care-plan-end
+            ;; 1.11.0 (ADR-0184): an allergy the patient arrives with.
+            :allergy-onset]]
    [:codes [:maybe [:vector sim-model/Concept]]]
    [:citation sim-model/Citation]
    [:references [:maybe :int]]])
@@ -975,6 +1012,23 @@
            ;; author stated a series -- ABSENT otherwise, never a
            ;; defaulted 0 and never nil (ADR-0178).
            [:series {:optional true} :int]
+           [:citation {:optional true} sim-model/Citation])]
+
+    [:allergy-onset
+     (kind :allergy-onset
+           {:doc "An allergy or intolerance is recorded during an open encounter: the coded substance, and the source's own type, category and listed reactions when it states them. A reaction carries its code and no severity. One recorded before the horizon is a `:registered` event's `:pre-horizon-facts` entry instead. Deliberately renders no HL7 message and no FHIR resource yet."
+            :transition "No state change; the log itself is the record."}
+           [:active-mrn :string]
+           [:codes [:vector sim-model/Concept]]
+           ;; 1.11.0 (ADR-0184): each present only when the module or the
+           ;; author stated it -- ABSENT otherwise, never nil (ADR-0178).
+           [:allergy-type {:optional true} :string]
+           [:category {:optional true} :string]
+           ;; The reactions the source LISTS for the substance. Upstream
+           ;; draws a severity per reaction and drops any that draws
+           ;; `none`; that draw is not taken, so this is not a claim about
+           ;; which reactions manifested (ADR-0184).
+           [:reactions {:optional true} [:vector [:map {:closed true} [:codes [:vector sim-model/Concept]]]]]
            [:citation {:optional true} sim-model/Citation])]
 
     [:observation

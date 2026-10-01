@@ -41,8 +41,9 @@
     ;; scheduling's four -- `:appointment`, `:reschedule`,
     ;; `:appointment-cancel`, `:no-show` -- joined the closed vocabulary,
     ;; on top of 1.6.0's own `:bed-status-change`.
-    ;; 29 as of 1.10.0 (ADR-0182): `:immunization`.
-    (is (= 29 (count kinds)))
+    ;; 29 as of 1.10.0 (ADR-0182): `:immunization`; 30 as of 1.11.0
+    ;; (ADR-0184): `:allergy-onset`.
+    (is (= 30 (count kinds)))
     (doseq [k kinds]
       (is (str/includes? block (str "#### `" k "`"))
           (str "no section rendered for " k))
@@ -57,10 +58,12 @@
     (let [block (doc/render (schema) (examples))]
       (is (str/includes? block "Read the top-level vector only"))
       (is (str/includes? block "Do not walk the tree looking for `:event`"))
-      (doseq [colliding [:medication-order :medication-end :care-plan-start :care-plan-end]]
+      ;; :allergy-onset since 1.11.0 (ADR-0184): a nested fact name AND a
+      ;; top-level kind, so the collision set is five.
+      (doseq [colliding [:medication-order :medication-end :care-plan-start :care-plan-end :allergy-onset]]
         (is (str/includes? block (str "`" colliding "`"))
             (str "the warning does not name the colliding kind " colliding)))
-      (is (str/includes? block "4 of them")
+      (is (str/includes? block "5 of them")
           "the count is derived; if it changes, the sentence must too"))))
 
 (deftest the-warning-leads-the-section

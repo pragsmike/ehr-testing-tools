@@ -1707,6 +1707,19 @@
                      (citation-fields step))]
      :advance 0}))
 
+;; ADR-0184 (schema 1.11.0): the AllergyOnset fact, :immunization's shape --
+;; no draw (`_streams`), no state change, citation when compiled. Each of
+;; :allergy-type/:category/:reactions rides only when the step states it
+;; (`select-keys` of an absent key is `{}`): absent, never nil.
+(defmethod decide :allergy-onset decide-allergy-onset
+  [_streams t world patient-id {:keys [codes] :as step}]
+  (let [patient (get-in world [:patients patient-id])]
+    {:events [(merge {:event :allergy-onset :t t :active-mrn (:active-mrn patient) :codes codes}
+                     (select-keys step [:allergy-type :category :reactions])
+                     {:participants [{:patient-id patient-id :role :subject}]}
+                     (citation-fields step))]
+     :advance 0}))
+
 (defn person-entry
   "What `world`'s `:person-index` holds for one person -- the patient a
   returning person resolves to, and what has been minted for them so far

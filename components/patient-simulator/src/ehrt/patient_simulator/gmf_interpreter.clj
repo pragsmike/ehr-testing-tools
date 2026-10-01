@@ -2037,7 +2037,20 @@
       ;; simplification rationale: :target-encounter/:assign-to-attribute/
       ;; :reactions are declared, dead past the loader, the SAME
       ;; treatment several other v1 fields already establish).
-      :allergy-onset (emit-and-advance module-id ctx rng state :allergy-onset {:codes (:codes state)} tables)
+      ;; ADR-0184 (2026-09-30): :allergy-type/:category/:reactions now
+      ;; ride the event, each ONLY when the state states it (ADR-0178).
+      ;; A reaction is its Code alone, `{:codes [reaction]}`: upstream
+      ;; draws a severity per reaction (`generateSeverity`, whose `none`
+      ;; level drops the reaction), and this step takes NO draw -- so it
+      ;; records the reactions the source lists, never which manifested.
+      ;; An empty list is not stated (upstream's own `isEmpty` guard).
+      :allergy-onset (emit-and-advance module-id ctx rng state :allergy-onset
+                                       (cond-> {:codes (:codes state)}
+                                         (contains? state :allergy-type) (assoc :allergy-type (:allergy-type state))
+                                         (contains? state :category) (assoc :category (:category state))
+                                         (seq (:reactions state)) (assoc :reactions (mapv (fn [r] {:codes [(:reaction r)]})
+                                                                                          (:reactions state))))
+                                       tables)
       ;; GMF coverage Wave I (2026-08-04, ADR-0040 AR-5): Vaccine -- an
       ;; unconditional leaf write, State.java's own Vaccine.process
       ;; verbatim (no target-encounter/diagnose distinction exists

@@ -431,6 +431,10 @@
 ;; field, since nothing renders one yet (FHIR Immunization is a follow-on).
 (defmethod evolve :immunization evolve-immunization [patient _event] patient)
 
+;; ADR-0184: :allergy-onset likewise -- no PatientState field, since nothing
+;; renders one yet (AL1/IAM and FHIR AllergyIntolerance are follow-ons).
+(defmethod evolve :allergy-onset evolve-allergy-onset [patient _event] patient)
+
 ;; --- M6 Task 1: :observation/:medication-order/:medication-end now land
 ;; in the clinical-content accumulator (`ehrt.sim-engine.state`'s own
 ;; header comment above `PatientState`) -- EmitState's Observation/
