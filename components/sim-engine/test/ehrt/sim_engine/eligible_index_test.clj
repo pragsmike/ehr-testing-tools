@@ -18,7 +18,10 @@
     `streams/uniform-choice` resolves POSITIONALLY -- `(nth candidates
     (.nextInt rng (count candidates)))` -- so a structure answering the
     same SET in a different order picks a different patient to merge and
-    moves every byte after it.
+    moves every byte after it. SINCE ADR-0185 (2026-09-30) THE ORDER IS
+    `:patient-id` ORDER, chosen by the views themselves: the definition
+    below is the from-scratch scan SORTED (`by-patient-id`), and no hash
+    or insertion order of any map reaches the answer.
 
   * BOTH VIEWS, one repointed at site 5 and one at site 6. `decide
     :merge` reads the merge view, `decide :bed-swap` the swap view, and
@@ -31,27 +34,24 @@
     the assertion that passes on a carrier which is wrong for 500,000
     events and right for the last one (ADR-0180's law, point 2).
 
-  * THE CARRIER'S CLASS, on its own, at a world of FEWER THAN NINE
-    ELIGIBLE PATIENTS (R-empty-carrier, 2026-09-07).
-    `PersistentArrayMap` -- what `{}` reads as -- iterates in INSERTION
-    order below nine entries, where `:patients` has been a
-    `PersistentHashMap` since t 0. A carrier grown from `{}` would
-    therefore answer eligibility order against a parent answering hash
-    order, and it would do so on the FIRST merge of every run.
-    `the-carrier-is-a-hash-map-from-empty` below asserts the class and
-    then demonstrates the divergence a `{}` seed actually produces,
-    rather than trusting the seed to stay right.
+  * THE CARRIER'S CLASS NO LONGER REACHES THE VIEW (ADR-0185).
+    Until 2026-09-30 a carrier grown from `{}` -- a `PersistentArrayMap`,
+    INSERTION order below nine entries -- would have answered a different
+    order from the hash-map parent (R-empty-carrier, 2026-09-07).
+    `the-carriers-iteration-order-no-longer-reaches-the-view` keeps that
+    divergence visible at the CARRIER and asserts the VIEW is the same
+    sorted vector over either seed.
 
-  * THE COLLISION HOLE, DOCUMENTED AND NOT ASSERTED AWAY (R-hash-order).
+  * THE COLLISION HOLE, CLOSED (ADR-0185, superseding R-hash-order).
     Two keys whose full 32-bit `hasheq` collides land in a
-    `HashCollisionNode`, whose array is ordered by INSERTION -- so at
-    such a node a sub-map filled in eligibility order can differ from a
-    parent filled in registration order.
-    `at-a-hasheq-collision-the-two-orders-diverge` builds the addendum's
-    own measured pair and pins what each side answers. Every committed
-    cell of the measured decade is collision-free, so the bracket, the
-    oracle and both timed cells are BLIND to this; the test is where it
-    is visible at all.
+    `HashCollisionNode`, whose array is ordered by INSERTION, so before
+    the sort a sub-map filled in eligibility order could answer
+    differently from a parent filled in registration order.
+    `at-a-hasheq-collision-the-views-are-order-independent` builds
+    ADR-0180's addendum's measured pair and asserts the views answer
+    `:patient-id` order whatever the carrier's own order is, and
+    `permuting-insertion-order-leaves-both-views-equal` asserts it over
+    every insertion order of a small population.
 
   * THE R-ALREADY-MERGED IMPLICATION, over generated logs.
     `decide :merge` carried a `some` over the ENTIRE `:ground-truth`
@@ -148,6 +148,11 @@
                (some #(and (= :merged (:role %)) (= merged-id (:patient-id %)))
                      (:participants ev))))
         ground-truth))
+
+;; ADR-0185: the definition is the scan SORTED by `:patient-id`. The sort
+;; is applied HERE, beside the verbatim moves rather than inside them, so
+;; the pre-ADR-0180 scans stay character for character what they were.
+(defn- by-patient-id [ids] (vec (sort ids)))
 
 ;; --- the corpus -----------------------------------------------------------
 
@@ -271,8 +276,8 @@
   (let [patients (:patients world)]
     (vec (for [pid (probe-ids world)
                [view naive shipped]
-               [[:merge (naive-merge-eligible patients pid) (fold/merge-eligible world pid)]
-                [:bed-swap (naive-swap-eligible patients pid) (fold/swap-eligible world pid)]]
+               [[:merge (by-patient-id (naive-merge-eligible patients pid)) (fold/merge-eligible world pid)]
+                [:bed-swap (by-patient-id (naive-swap-eligible patients pid)) (fold/swap-eligible world pid)]]
                :when (not= naive shipped)]
            [view pid naive shipped]))))
 
@@ -337,21 +342,16 @@
 
 ;; --- the carrier's own class ---------------------------------------------
 
-(deftest the-carrier-is-a-hash-map-from-empty
-  (testing "R-empty-carrier, 2026-09-07: the sub-map is seeded from
-            `PersistentHashMap/EMPTY` and never from `{}`, because below
-            nine entries a `PersistentArrayMap` iterates in INSERTION
-            order while `:patients` has been a hash map since t 0. The
-            class is asserted directly, and then the divergence a `{}`
-            seed actually produces is demonstrated -- a seed is not the
-            kind of thing to take on trust."
+(deftest the-carriers-iteration-order-no-longer-reaches-the-view
+  (testing "R-empty-carrier (2026-09-07) made the seed a hash map because
+            below nine entries a `PersistentArrayMap` iterates in
+            INSERTION order and the view used to answer the carrier's own
+            order. ADR-0185 sorts the view, so the two carriers still
+            iterate differently and the VIEW no longer cares."
     (let [ids (mapv #(streams/patient-id-for 20260907 %) (range 5))
           patients (into clojure.lang.PersistentHashMap/EMPTY
                          (map (fn [pid] [pid (state/initial-patient pid pid)]))
                          ids)
-          ;; the events that make each of the five a member, in the
-          ;; order `ids` is written -- which is NOT the parent's own
-          ;; hash order, and that is the point.
           evs (mapv (fn [pid] {:event :admission :t 0 :active-mrn pid :home-ward "Renal"
                                :location {:ward "Renal" :bed pid}
                                :participants [{:patient-id pid :role :subject}]})
@@ -362,70 +362,73 @@
                                evs
                                #{:patient-state :eligible-index})))
           hashed (fold-with fold/empty-eligible-index)
-          arrayed (fold-with {})
-          folded (:patients hashed)]
-      (is (= 5 (count ids)) "five members, four short of the array-map boundary")
-      (is (instance? clojure.lang.PersistentHashMap (:eligible-index hashed))
-          "the shipped seed is a hash map even at five entries")
-      (is (instance? clojure.lang.PersistentArrayMap (:eligible-index arrayed))
-          "-- where `{}` at the same size is an array-map, which is the hazard")
-      (is (= (naive-merge-eligible folded "no-such-patient")
-             (fold/merge-eligible hashed "no-such-patient"))
-          "the hash-map carrier answers the parent's own filtered order")
-      (is (= ids (vec (keys (:eligible-index arrayed))))
-          "the array-map carrier answers INSERTION order instead -- the order the
-           events arrived in, which is eligibility order and not hash order")
-      (is (not= ids (naive-merge-eligible folded "no-such-patient"))
-          "and those two orders really are different for this set, which is what
-           makes the assertion above a divergence rather than a coincidence")
-      (is (not= (naive-merge-eligible folded "no-such-patient")
-                (fold/merge-eligible arrayed "no-such-patient"))
-          "so a `{}` seed would move the draw on the FIRST merge of a run"))))
+          arrayed (fold-with {})]
+      (is (instance? clojure.lang.PersistentHashMap (:eligible-index hashed)))
+      (is (instance? clojure.lang.PersistentArrayMap (:eligible-index arrayed)))
+      (is (not= (vec (keys (:eligible-index hashed))) (vec (keys (:eligible-index arrayed))))
+          "the two carriers really do iterate in different orders for this set")
+      (is (= (vec (sort ids))
+             (fold/merge-eligible hashed "no-such-patient")
+             (fold/merge-eligible arrayed "no-such-patient"))
+          "and both views answer `:patient-id` order regardless")
+      (is (= (vec (sort ids))
+             (fold/swap-eligible hashed "no-such-patient")
+             (fold/swap-eligible arrayed "no-such-patient"))))))
 
-(deftest at-a-hasheq-collision-the-two-orders-diverge
-  (testing "R-hash-order's own HOLE, documented rather than asserted
-            away. Two keys whose full 32-bit `hasheq` collides land in a
-            `HashCollisionNode`, whose array is ordered by INSERTION --
-            so a carrier filled in eligibility order can disagree with a
-            parent filled in registration order, and only there. The
-            pair below is ADR-0180's addendum's own measured one, at
-            arrival ordinals 32,071 and 38,357 of the shipped seed;
-            every committed cell of the measured decade is collision-
-            free, so the bracket, the oracle and both timed cells cannot
-            see this and THIS TEST IS WHERE IT IS VISIBLE AT ALL.
-            Sorting the candidates would close it and is a declared
-            oracle change with its own roadmap row, not a site session's
-            judgment call."
-    (let [early "PID-032071-30c64e95"
-          late "PID-038357-4bf55dc9"
-          ;; the PARENT in registration order: early, then late.
-          patients (-> clojure.lang.PersistentHashMap/EMPTY
-                       (assoc early (state/initial-patient early early))
-                       (assoc late (state/initial-patient late late)))
-          ;; the CARRIER in eligibility order: late becomes a member first.
-          ev (fn [pid] {:event :admission :t 0 :active-mrn pid :home-ward "Renal"
-                        :location {:ward "Renal" :bed pid}
-                        :participants [{:patient-id pid :role :subject}]})
-          w (:world (fold/apply-events
-                     {:world {:patients patients
-                              :eligible-index fold/empty-eligible-index}}
-                     [(ev late) (ev early)]
-                     #{:patient-state :eligible-index}))
-          folded (:patients w)]
-      (is (= (hash early) (hash late))
+(def ^:private colliding-early "PID-032071-30c64e95")
+(def ^:private colliding-late "PID-038357-4bf55dc9")
+
+(defn- admission-of [pid]
+  {:event :admission :t 0 :active-mrn pid :home-ward "Renal"
+   :location {:ward "Renal" :bed pid}
+   :participants [{:patient-id pid :role :subject}]})
+
+(defn- world-from
+  "A world whose `:patients` was filled in `registration` order and
+  whose eligible index was filled by admitting `admission` order."
+  [registration admission]
+  (:world (fold/apply-events
+           {:world {:patients (reduce (fn [m pid] (assoc m pid (state/initial-patient pid pid)))
+                                      clojure.lang.PersistentHashMap/EMPTY
+                                      registration)
+                    :eligible-index fold/empty-eligible-index}}
+           (mapv admission-of admission)
+           #{:patient-state :eligible-index})))
+
+(deftest at-a-hasheq-collision-the-views-are-order-independent
+  (testing "ADR-0180's addendum's measured colliding pair (arrival
+            ordinals 32,071 and 38,357 of the shipped seed). Before
+            ADR-0185 the carrier answered its collision node's INSERTION
+            order and the definition answered the parent's -- two
+            different functions at that node. The sort makes them one."
+    (let [w (world-from [colliding-early colliding-late] [colliding-late colliding-early])]
+      (is (= (hash colliding-early) (hash colliding-late))
           "the construction: these two ids really do share a 32-bit `hasheq`")
-      (is (not= early late) "-- and are not the same id")
-      (is (= [early late] (naive-merge-eligible folded "no-such-patient"))
-          "the parent answers registration order, because that is the order its
-           collision node was filled in")
-      (is (= [late early] (fold/merge-eligible w "no-such-patient"))
-          "and the carrier answers eligibility order, because that is the order ITS
-           collision node was filled in -- DOCUMENTED, not asserted equal")
-      (is (not= (naive-merge-eligible folded "no-such-patient")
-                (fold/merge-eligible w "no-such-patient"))
-          "so at a collision the index and the definition are two different
-           functions, and the only reason the shipped corpora do not notice is
-           that none of them contains a colliding pair"))))
+      (is (not= colliding-early colliding-late) "-- and are not the same id")
+      (is (= [colliding-late colliding-early] (vec (keys (:eligible-index w))))
+          "the CARRIER still answers its collision node's insertion order")
+      (is (= [colliding-early colliding-late]
+             (by-patient-id (naive-merge-eligible (:patients w) "no-such-patient"))
+             (fold/merge-eligible w "no-such-patient")
+             (fold/swap-eligible w "no-such-patient"))
+          "and both VIEWS answer `:patient-id` order, equal to the definition"))))
+
+(deftest permuting-insertion-order-leaves-both-views-equal
+  (testing "ADR-0185: no insertion order of `:patients` or of the index
+            reaches either view. Twelve minted ids plus the colliding
+            pair, registered and admitted forwards, backwards and
+            shuffled, every combination."
+    (let [ids (into (mapv #(streams/patient-id-for 20260930 %) (range 12))
+                    [colliding-early colliding-late])
+          seeded-shuffle (fn [seed] (let [l (java.util.ArrayList. ^java.util.Collection ids)]
+                                         (java.util.Collections/shuffle l (java.util.Random. seed))
+                                         (vec l)))
+          orders [ids (vec (reverse ids)) (seeded-shuffle 1) (seeded-shuffle 2)]
+          views (for [reg orders adm orders
+                      :let [w (world-from reg adm)]]
+                  [(fold/merge-eligible w (first ids)) (fold/swap-eligible w (first ids))])]
+      (is (= 1 (count (set views))) "every combination answers the same pair of views")
+      (is (= (vec (sort (rest ids))) (ffirst views)) "and that answer is `:patient-id` order"))))
 
 ;; --- the disjunct that was deleted rather than indexed --------------------
 

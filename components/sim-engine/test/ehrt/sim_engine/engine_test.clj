@@ -492,6 +492,44 @@
     (testing "and the catalog agrees"
       (is (= :ok (:status (check/check-all ground-truth (:facility superseded-cancel-config))))))))
 
+;; --- ADR-0185: a reinstated stay is closed after a delay -------------------
+;;
+;; `roadmap.md#cancel-discharge-reopens-an-encounter-that-never-closes`: a
+;; legal `:cancel-discharge` reinstates the stay its `:discharge` ended, and
+;; until ADR-0185 nothing ever closed it again -- 224 of 224 in downstream's
+;; 28k corpus. The catalog cannot see it (`every-encounter-is-opened-and-
+;; closed-or-still-open` reads "or still open"), so the law is stated here.
+
+(def ^:private reinstated-stay-config
+  {:seed 20260930
+   :patients 1
+   :facility (:facility superseded-cancel-config)
+   :providers (:providers superseded-cancel-config)
+   :pathways [{:pathway {:name "reinstated-stay"
+                         :steps [{:type :admission :location "Renal"}
+                                 {:type :delay :from 60 :to 60}
+                                 {:type :discharge}
+                                 {:type :cancel-discharge}]}
+               :weight 1}]})
+
+(deftest a-reinstated-stay-is-discharged-again-after-a-delay
+  (let [{:keys [ground-truth]} (run/run reinstated-stay-config)
+        subject (streams/patient-id-for (:seed reinstated-stay-config) 0)
+        of-subject (filter #(some (fn [p] (= subject (:patient-id p))) (:participants %)) ground-truth)
+        discharges (filterv #(= :discharge (:event %)) of-subject)
+        cancel (first (filter #(= :cancel-discharge (:event %)) of-subject))
+        final (get (:world-after (last (fold/replay ground-truth))) subject)]
+    (is (some? cancel) "the authored cancel-discharge is legal and lands")
+    (is (= 2 (count discharges))
+        "the reinstated stay owes a SECOND :discharge -- the authored one, and its closer")
+    (is (< (:t cancel) (:t (second discharges)))
+        "after a positive delay, not in the same second as the cancel")
+    (is (= (:location (first discharges)) (:location (second discharges)))
+        "the closer discharges from the bed the cancel restored")
+    (is (= :discharged (:status final)))
+    (is (nil? (:location final)) "and the bed is released")
+    (is (= :ok (:status (check/check-all ground-truth (:facility reinstated-stay-config)))))))
+
 (def ^:private one-bed-one-surge-facility
   "ADR-0153: the smallest facility that can hold, at one instant, a
   Renal-surge occupant, a boarder waiting on Renal, AND a free Renal

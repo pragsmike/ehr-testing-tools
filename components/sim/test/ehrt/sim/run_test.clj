@@ -2207,3 +2207,29 @@
                (:category (run/describe-command [] {:manifest (.getPath tmp) :config (.getPath tmp)}))))
         (is (= :manifest-not-found (:category (run/describe-command [] {:manifest "/no/such/manifest.edn"})))))
       (finally (.delete tmp)))))
+
+;; --- ADR-0185: the ground-truth rebaseline, at the run level ---------------
+
+(deftest no-reinstated-stay-outlives-its-corpus
+  (testing "ADR-0185 rule 1, read through `describe`'s own measure: a
+            `:cancel-discharge` whose subject is never discharged again.
+            Before ADR-0185 every legal cancel-discharge was one --
+            seed-202-ed-tuesday carried 1, the dense 750 cell more."
+    (doseq [[label r] [["seed-202-ed-tuesday" (corpus :seed-202-ed-tuesday)]
+                       ["dense-7500 @750" @dense-7500-cell]]]
+      (let [log (get-in r [:payload :ground-truth])
+            report (:payload (run/describe-command log {}))
+            cancels (count (filter #(= :cancel-discharge (:event %)) log))]
+        (is (pos? cancels)
+            (str label ": the corpus carries a legal :cancel-discharge -- otherwise a 0 below proves nothing"))
+        (is (= 0 (:observed (describe-row report :reinstated-stay-without-closer)))
+            (str label ": every reinstated stay is discharged again"))))))
+
+(deftest the-dense-750-cell-is-byte-identical-across-two-runs
+  (testing "ADR-0185 relaxed byte identity with PRIOR corpora, never
+            determinism itself: the same arguments give the same bytes."
+    (let [again (run/run-command {:seed 20260824 :patients 750 :churn true
+                                  :config "demos/scenarios/dense-7500/config.edn"})]
+      (is (result/ok? again))
+      (is (= (result/sha256-string (pr-str (get-in @dense-7500-cell [:payload :ground-truth])))
+             (result/sha256-string (pr-str (get-in again [:payload :ground-truth]))))))))
