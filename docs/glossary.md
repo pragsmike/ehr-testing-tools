@@ -484,8 +484,8 @@ script space can write truth. See
 **Schema version.** `:event-schema-version`, recorded in every `sim
 run`'s own `manifest.edn`: which version of the **Event log** contract
 produced that log. Additive change — a new event kind, or a new
-*optional* key on an existing kind — does not bump it; anything else
-does, and a key or kind slated for removal is marked deprecated for one
+*optional* key on an existing kind — does not OWE a bump (every new
+kind so far has taken a minor one anyway); anything else does, and a key or kind slated for removal is marked deprecated for one
 minor release first. So a log always carries the version of the contract
 it was produced under, and a consumer can tell a contract *change* from
 a contract *break* ([`formats.md`](formats.md#the-event-log)).

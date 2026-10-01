@@ -34,8 +34,10 @@
   versioned. `schema-version` below is stamped into every `sim run`
   manifest as `:event-schema-version`, so a log carries the contract
   version it was produced under. Additive change (a new kind, a new
-  OPTIONAL key) is non-breaking and does not bump. Any non-additive
-  change does, and `ehrt.sim-engine.event-schema-test` enforces exactly
+  OPTIONAL key) is non-breaking and does not OWE a bump -- though every
+  new kind so far has taken a minor one (1.7.0, 1.10.0, 1.11.0), since
+  the version is a consumer's only handle on which kinds a log can
+  contain. Any non-additive change does owe one, and `ehrt.sim-engine.event-schema-test` enforces exactly
   that against the committed EDN export -- see `classify-change` for
   the mechanical definition, which is what makes the promise testable
   rather than aspirational.
