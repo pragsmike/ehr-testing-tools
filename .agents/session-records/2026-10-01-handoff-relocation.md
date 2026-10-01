@@ -107,4 +107,16 @@ ride in (c).
 
 ## Close
 
-Pushed with the CI close commit; shas, `bin/post-push-verify` and the CI run are recorded there.
+Pushed `a97059bb..2ed6b048` as three commits: `c8ba9d5f` (the skill,
+and the two renames, disclosed), `3c6584f4` (the directory,
+self-references, registers, the two ruled extra files), `2ed6b048`
+(this record, the prompt archive, the 10-01 errata, the three gate
+fix-ups and the compaction, docsgen). `bin/post-push-verify a97059bb
+2ed6b048`: remote tip matches; every commit message ASCII; CI not yet
+indexed at that moment (disclosed by the script). **CI run
+36886145194 completed `success`** at
+`2ed6b048e41f678ab0f9e5fbcaca1737d5b964e4`, attempt 1 -- the close
+marker. No local `make test` (docs-only, AGENTS.md 22). No tag paid.
+Background processes this session started: two `make docsgen`, four
+docs-tooling brick runs and two monitors, all exited before this
+commit; none left running.
