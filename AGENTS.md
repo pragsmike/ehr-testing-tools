@@ -278,10 +278,7 @@ library in its own right.
   longer exist by the time `probe` was deleted, the same
   hand-listing failure mode ADR-0158 caught in the generated-surface
   bullet above.
-- [`.agents/handoffs/`](.agents/handoffs/README.md) — session
-  handoffs written by the `handoff` skill: exactly one live
-  `handoff-YYYY-MM-DD.md`, every superseded one in `archive/` (author
-  ruling 2026-10-01).
+- [`.agents/handoffs/`](.agents/handoffs/README.md) — one live handoff, the rest in `archive/`.
 - `.agents/prompts/` — session prompts, archived by the session they
   drove, indexed (charter R-A). New home going forward;
   `notes/prompts/*.md` stays the historical archive for prompts

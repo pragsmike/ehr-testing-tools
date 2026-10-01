@@ -34,8 +34,7 @@ Four parts, in this order, unchanged from sim's convention:
 
 It does not outrank `notes/adr/` (why a decision was made — the sole
 session narrative, `rulings.md#R-session-narrative-hierarchy`) or
-`.agents/plans/` (what is next). Session handoffs live in
-[`../handoffs/`](../handoffs/README.md) (author ruling 2026-10-01), not
-here. The 2026-07-29..2026-08-01 gap, and the annotations
-that used to ride the old per-file rows, are verbatim and dated in
+`.agents/plans/` (what is next). Handoffs live in [`../handoffs/`](../handoffs/README.md)
+(author ruling 2026-10-01). The 2026-07-29..2026-08-01 gap, and the
+annotations that used to ride the old per-file rows, are verbatim and dated in
 [`../plans/state-history-2026-08.md`](../plans/state-history-2026-08.md).
