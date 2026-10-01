@@ -2141,7 +2141,7 @@
   (let [env (rare-merge-envelope)
         r (run/describe-command env {:format "text"})]
     (is (= (:payload (run/describe-command env {})) (:payload r)))
-    (is (str/includes? (:bare-text (meta r)) "describe 1.1.0"))))
+    (is (str/includes? (:bare-text (meta r)) "describe 1.2.0"))))
 
 ;; --- ADR-0183 slice 2: the manifest records the assignment and the config --
 

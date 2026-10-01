@@ -52,8 +52,12 @@
   1.1.0 (ADR-0183 slice 2): the `:bare-log+manifest` identity source,
   and pathway/module rows observed from the manifest's `:assignments`
   when it carries one. A report over input without that record is
-  1.0.0's, byte for byte, but for this string."
-  "1.1.0")
+  1.0.0's, byte for byte, but for this string.
+
+  1.2.0 (ADR-0184, 2026-09-30): one ADDITIVE row, the opt-in
+  `:allergy-onset` family beside `:immunization`'s, for event schema
+  1.11.0's new kind. Every 1.1.0 row reads exactly as before."
+  "1.2.0")
 
 (def default-witnesses 3)
 
@@ -127,7 +131,7 @@
   "The kinds `order-only-when-admitted` and
   `clinical-content-only-when-admitted` scope to an open stay."
   #{:order-placed :procedure :observation :medication-order :diagnostic-report
-    :care-plan-start :immunization})
+    :care-plan-start :immunization :allergy-onset})
 
 (defn- predicate-verdicts
   "For one record: `[[predicate holds? related] ...]` for every predicate

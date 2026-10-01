@@ -8,7 +8,7 @@
    :registered {:events 12, :subjects 12}},
   :events 52,
   :subjects 12},
- :describe-version "1.1.0",
+ :describe-version "1.2.0",
  :families
  [{:cites "churn step :cancel-admit (decide :cancel-admit)",
    :configured :unknown,
@@ -134,6 +134,14 @@
      :patient-id "PID-000006-b5724e46",
      :related {:series 1},
      :t 16020}]}
+  {:cites
+   "clinical-content-only-when-admitted (the :allergy-onset kind)",
+   :configured :unknown,
+   :configured-reason "the input names no configuration",
+   :family :allergy-onset,
+   :group :opt-in,
+   :observed 0,
+   :witnesses []}
   {:cites
    "result-references-existing-order-and-follows-it-in-time (ADR-0179 R-inv): the cited order names a subject merged into the result's",
    :configured :emergent,

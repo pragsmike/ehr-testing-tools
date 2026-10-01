@@ -1391,11 +1391,12 @@ manifest.edn`, and is then described as the envelope would be.
 **It is versioned separately.** `:describe-version` is the report's own
 semver, independent of the event schema's version and the manifest's.
 A new key or a new row is a minor bump. A key removed, or a value
-whose meaning changes, is a major bump. This page documents `1.1.0`.
+whose meaning changes, is a major bump. This page documents `1.2.0`.
 `1.1.0` added the `:bare-log+manifest` source and the rows a manifest's
 assignment record makes observable (below). Over input without that
 record, a `1.1.0` report is the `1.0.0` report with only the version
-string changed.
+string changed. `1.2.0` added one `:opt-in` row, `:allergy-onset`, for
+event schema 1.11.0's new kind; its witnesses show `:category`.
 
 **Equal inputs give equal bytes.** Every map is sorted by key and every
 list has a fixed order, so running `describe` twice over the same log
@@ -1403,7 +1404,7 @@ prints byte-identical output. You can checksum a report.
 
 | Key | What it holds |
 |---|---|
-| `:describe-version` | `"1.1.0"` |
+| `:describe-version` | `"1.2.0"` |
 | `:identity` | which log this is. Always present: `:source` (`:envelope`, `:bare-log+manifest` or `:bare-log`), `:events`, `:log-sha256`, and `:configured-from` (`:manifest-invocation`, `:caller-config` or `:none`). With a manifest (an envelope's, or `--manifest`), also: `:seed`, `:config`, `:event-schema-version`, `:generator` and `:churn-flag`, copied from the manifest as written. With `--config`, also: the file's `:config {:path :sha256}` |
 | `:counts` | `:events`, `:subjects` (distinct patient participants), and `:by-kind`, which maps each kind to `{:events n :subjects n}` |
 | `:temporal` | `:min-t` and `:max-t`. When the manifest gives a reference date, also `:min-iso` and `:max-iso`, anchored the way the HL7 emitter anchors timestamps |

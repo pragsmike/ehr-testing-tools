@@ -86,6 +86,18 @@
           (seq (:modules opts)) :unknown
           :else :no)))
 
+(defn- allergy-onset-configured
+  "`:immunization-configured`'s reading for ADR-0184's kind: `:yes` when an
+  authored step records one; `:unknown` when modules are configured -- a
+  module may carry an AllergyOnset state, and this report does not open
+  module files -- and `:no` when neither can produce one."
+  [configuration]
+  (let [opts (:opts configuration)]
+    (cond (nil? configuration) :unknown
+          (some #(= :allergy-onset (:type %)) (authored-steps opts)) :yes
+          (seq (:modules opts)) :unknown
+          :else :no)))
+
 (defn- kind? [k] (fn [_ctx {:keys [event]}] (= k (:event event))))
 
 (def ^:private emergent (constantly :emergent))
@@ -197,6 +209,11 @@
     :configured-by immunization-configured
     :observed-by (kind? :immunization)
     :witness-fields [:series]}
+   {:group :opt-in :family :allergy-onset
+    :cites "clinical-content-only-when-admitted (the :allergy-onset kind)"
+    :configured-by allergy-onset-configured
+    :observed-by (kind? :allergy-onset)
+    :witness-fields [:category]}
 
    ;; --- measures: situations no key turns on, counted as the tree's
    ;; hand census counted them ----------------------------------------

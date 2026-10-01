@@ -48,7 +48,7 @@
   (let [a (describe/describe @immunization-log)
         b (describe/describe (:ground-truth (run/run immunization-producer-config)))]
     (is (= (pr-str a) (pr-str b)) "a fresh run of the same root, described, gives the same bytes")
-    (is (= describe/describe-version (:describe-version a) "1.1.0"))))
+    (is (= describe/describe-version (:describe-version a) "1.2.0"))))
 
 ;; --- step 1 (b): the golden --------------------------------------------------
 
@@ -99,7 +99,27 @@
     (testing "the churn flag a caller's config does not record stays :unknown"
       (is (= :unknown (:configured (row r :merge)))))
     (testing "an authored :immunization step is enough to say it was configured"
-      (is (= :yes (:configured (row r :immunization)))))))
+      (is (= :yes (:configured (row r :immunization)))))
+    (testing "ADR-0184's row beside it: no authored :allergy-onset step and no
+              modules in these opts, so nothing can produce one -- :no, and
+              the log agrees"
+      (is (= [:no 0] ((juxt :configured :observed) (row r :allergy-onset)))))))
+
+(deftest an-authored-allergy-onset-step-is-configured-and-observed
+  (let [peanut {:system :snomed :code "762952008" :display "Peanut (substance)"}
+        opts {:seed 3 :patients 2
+              :pathways [{:pathway {:name "allergy-visit"
+                                    :steps [{:type :outpatient-visit}
+                                            {:type :allergy-onset :codes [peanut] :category "food"}
+                                            {:type :outpatient-visit-end}]}
+                          :weight 1}]}
+        log (:ground-truth (run/run opts))
+        r (describe/describe log {:configuration {:source :caller-config :opts opts :churn-profile :unknown}})
+        a (row r :allergy-onset)]
+    (is (= [:yes 2] ((juxt :configured :observed) a)))
+    (is (= {:category "food"} (:related (first (:witnesses a)))) "the witness field is :category")
+    (testing "the predicate's :fails is the invariant's own count, as for every row"
+      (is (empty? (check/clinical-content-only-when-admitted log))))))
 
 (deftest a-cited-module-the-configuration-does-not-list-is-unknown-not-no
   (testing "an authored step's :citation, or a listed module's submodule, both cite a name :modules never lists"
