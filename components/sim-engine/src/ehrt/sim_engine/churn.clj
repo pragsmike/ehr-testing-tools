@@ -92,6 +92,21 @@
   {:cancel-admit 0.01 :cancel-transfer 0.02 :cancel-discharge 0.01
    :transfer-in-error 0.02 :bed-swap 0.03 :merge 0.01})
 
+(def reinstated-stay-delay-minutes
+  "ADR-0185: how long a stay a `:cancel-discharge` reinstates lasts
+  before it is discharged again -- `[from to]` in MINUTES, the `:delay`
+  step's own authoring unit, drawn uniformly by `decide :delay` on the
+  subject's `:patient` stream. A cancelled discharge is one the ward
+  calls back the same day (the patient was not ready, the ride or the
+  bed downstream fell through), so the reinstated stay is HOURS, not a
+  second admission's length: four hours at the least, a day at the most.
+  Until ADR-0185 nothing closed such a stay at all and it outlived the
+  run, so any finite range here holds a bed for less time than the
+  engine did before. One fixed pair for every reinstated stay, by the
+  author's 2026-09-30 ruling -- not per ward, not per pathway, and not
+  derived from the stay it extends."
+  [240 1440])
+
 (def ^:private step-type-order
   "Fixed roll order at every gap -- see the namespace docstring's RNG-
   consumption note. Order itself is arbitrary; FIXEDNESS is the law."

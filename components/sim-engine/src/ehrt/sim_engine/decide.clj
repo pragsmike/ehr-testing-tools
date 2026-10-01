@@ -103,6 +103,7 @@
   were false before this move and are equally false after it."
   (:require [ehrt.sim-model.interface :as sim-model]
             [ehrt.patient-simulator.interface :as patient-simulator]
+            [ehrt.sim-engine.churn :as churn]
             [ehrt.sim-engine.encounters :as encounters]
             [ehrt.sim-engine.fold :as fold]
             [ehrt.sim-engine.log-index :as log-index]
@@ -1437,10 +1438,10 @@
   ;;
   ;; THE ORDER IS THE OBLIGATION, not the set, exactly as at site 5:
   ;; `streams/uniform-choice` resolves positionally, so the view owes
-  ;; vector identity down to the position of every element. That
-  ;; argument, its hash-collision hole and the law that detects it live
-  ;; in `fold/merge-eligible`, `fold/swap-eligible` and that test
-  ;; namespace.
+  ;; vector identity down to the position of every element -- since
+  ;; ADR-0185, `:patient-id` order, which the view sorts into. That
+  ;; contract and the law that holds it live in `fold/merge-eligible`,
+  ;; `fold/swap-eligible` and that test namespace.
   ;;
   ;; NOTHING ELSE IN THE METHOD MOVED (`rulings.md#R-move-not-improve`):
   ;; the same one positional draw, the same caller-side exclusion of the
@@ -1487,10 +1488,10 @@
   ;; `fold/merge-eligible`, the merge view of the `:eligible-index`
   ;; sub-map `fold/apply-events` maintains. THE ORDER IS THE OBLIGATION,
   ;; not the set: `streams/uniform-choice` resolves positionally, so the
-  ;; index owes vector identity down to the position of every element.
-  ;; That argument, its hash-collision hole and the law that detects it
-  ;; live in `fold/merge-eligible` and
-  ;; `ehrt.sim-engine.eligible-index-test`.
+  ;; index owes vector identity down to the position of every element
+  ;; -- since ADR-0185, `:patient-id` order, which the view sorts into.
+  ;; That contract and the law that holds it live in
+  ;; `fold/merge-eligible` and `ehrt.sim-engine.eligible-index-test`.
   ;;
   ;; `already-merged?` was a `some` over the ENTIRE `:ground-truth` per
   ;; merge step, and it is DELETED rather than indexed (R-already-
@@ -1857,8 +1858,23 @@
           (log-index/bed-reoccupied-by-someone-else? world patient-id location)
           (rejected-outcome :illegal-cancel-discharge-bed-reoccupied patient-id t step {:location location})
 
+          ;; ADR-0185: A REINSTATED STAY IS CLOSED. Until 2026-09-30 nothing
+          ;; ever discharged it again -- 224 of 224 in downstream's 28k
+          ;; corpus outlived the run, and the catalog's "or still open"
+          ;; made that green. The closer is the SAME `:discharge` through
+          ;; the existing decide, which reads the location this cancel
+          ;; restores, after a `:delay` through the existing decide, which
+          ;; draws on the subject's `:patient` stream -- `:order`'s
+          ;; `:schedule-followup` is the precedent for a decide owing more
+          ;; work, and `:prepend-steps` is the shape for work owed by the
+          ;; SAME patient. No new kind, and `churn/inject` and `strip` are
+          ;; untouched: the closer is runtime work, never pathway IR. Only
+          ;; THIS arm owes it -- a rejected cancel reinstated nothing.
           :else
           {:events [{:event :cancel-discharge :t t :active-mrn (:active-mrn patient)
                      :cancels-event-id idx :home-ward home-ward :location location :attending attending
                      :participants [{:patient-id patient-id :role :subject}]}]
-           :advance 0})))))
+           :advance 0
+           :prepend-steps (let [[from to] churn/reinstated-stay-delay-minutes]
+                            [{:type :delay :from from :to to}
+                             {:type :discharge}])})))))

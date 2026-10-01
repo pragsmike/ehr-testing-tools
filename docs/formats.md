@@ -651,14 +651,14 @@ A discharge is retracted and the patient reinstated (HL7v2 A13).
 
 ```clojure
 {:home-ward "Renal",
- :cancels-event-id 11,
+ :cancels-event-id 13,
  :participants [{:patient-id "PID-000000-e0bbdb7b", :role :subject}],
  :active-mrn "MRN000001",
  :attending "0096803644",
  :warm-up false,
  :event :cancel-discharge,
  :t 0,
- :location {:ward "Renal", :bed "RENAL-01", :placement :licensed}}
+ :location {:ward "Renal", :bed "RENAL-H01", :placement :surge}}
 ```
 
 #### `:cancel-transfer`

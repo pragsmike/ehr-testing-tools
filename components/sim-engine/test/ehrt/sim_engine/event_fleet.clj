@@ -161,12 +161,18 @@
                  :facility crowded-facility
                  :pathways [{:patient-ordinal 0
                              :pathway {:name "cancels"
+                                       ;; ADR-0185: the swap and the merge come
+                                       ;; BEFORE the discharge. A legal
+                                       ;; cancel-discharge now owes a closing
+                                       ;; discharge ahead of any step after it,
+                                       ;; so a swap authored after the cancel
+                                       ;; would swap a discharged patient.
                                        :steps [{:type :admission :location "Renal"}
                                                {:type :transfer-in-error :location "ED"}
-                                               {:type :discharge}
-                                               {:type :cancel-discharge}
                                                {:type :bed-swap :with p1}
-                                               {:type :merge :with p1}]}}
+                                               {:type :merge :with p1}
+                                               {:type :discharge}
+                                               {:type :cancel-discharge}]}}
                             {:patient-ordinal 1
                              :pathway {:name "peer" :steps [{:type :admission :location "Renal"}]}}
                             {:patient-ordinal 2

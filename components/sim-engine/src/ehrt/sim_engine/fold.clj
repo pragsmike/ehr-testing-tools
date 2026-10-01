@@ -442,7 +442,13 @@
 
   So the carrier is this object, both where `update-eligible` opens one
   and where `run`'s `init-world` seeds one, and the two name the SAME
-  var rather than each writing a literal that looks right."
+  var rather than each writing a literal that looks right.
+
+  NO LONGER LOAD-BEARING FOR ORDER, 2026-09-30 (ADR-0185): both views
+  now SORT on `:patient-id`, so the carrier's iteration order -- array,
+  hash or collision node -- never reaches a draw. The var stays as the
+  one name for the seed; `eligible-index-test` asserts a `{}` seed
+  answers the same views."
   clojure.lang.PersistentHashMap/EMPTY)
 
 (defn eligible-entry
@@ -465,7 +471,7 @@
   `:merged` arm `dissoc`es `:location` so a merged patient fails the
   bed-swap predicate twice over. The containment is what lets one
   carrier answer both, and one carrier is not an economy -- it means the
-  hash-order argument in `merge-eligible` below is made ONCE, for one
+  order contract in `merge-eligible` below is made ONCE, for one
   structure, rather than twice for two that could drift apart.
 
   A nil patient is NOT a member: participants without a `:patient-id`
@@ -531,35 +537,20 @@
   RESOLUTION, so a structure answering the same SET in a different order
   would rebind merges and move every byte after them.
 
-  THE ORDER ARGUMENT, and it is the whole of why an index is legal here
-  (ADR-0180's R-hash-order, addendum 2026-09-07). `PersistentHashMap`'s
-  seq is a depth-first walk of a trie indexed by 5-bit slices of the
-  key's `hasheq`, and every node type iterates its slots in ascending
-  slot order -- so the relative order of two non-colliding keys is fixed
-  by their hash bits alone, independent of which other keys are present
-  and of the order they were inserted. A sub-map of `:patients`
-  therefore iterates its keys in the same relative order `:patients`
-  does, and `(keys sub-map)` equals `(filter member? (keys :patients))`,
-  which is the from-scratch scan's answer.
-
-  THE HOLE, named rather than discovered later: keys whose FULL 32-bit
-  `hasheq` collides land in a `HashCollisionNode`, whose array is
-  ordered by INSERTION -- so at such a node a sub-map filled in
-  eligibility order can differ from a parent filled in registration
-  order. Patient-ids are one per arrival, and the addendum measures the
-  first colliding pair of the shipped seed at 45,000 arrivals: every
-  committed cell of the measured decade is collision-free, so both
-  bracketed cells and all 38 oracle roots are BLIND to it. The detection
-  is `ehrt.sim-engine.eligible-index-test`, which keeps the from-scratch
-  definition verbatim and asserts equality at every replay entry, and
-  which pins what the two sides actually answer at a hand-built
-  collision rather than asserting they agree there.
-
-  Sorting the candidates would close both holes and is NOT licensed
-  here: it moves every churn-bearing golden root, so it is a declared
-  oracle change with its own roadmap row
-  (`roadmap.md#determinism-hash-order-dependence`), never a site
-  session's judgment call.
+  THE ORDER IS `:patient-id` ORDER, AND THIS FUNCTION CHOOSES IT
+  (ADR-0185, 2026-09-30). Until then the vector came out in the
+  carrier's own iteration order, which an argument about
+  `PersistentHashMap`'s trie walk (ADR-0180's R-hash-order addendum,
+  2026-09-07) proved equal to `:patients`' own hash order everywhere
+  except at a full 32-bit `hasheq` collision -- a `HashCollisionNode`
+  iterates in INSERTION order -- and which tied every churn-bearing
+  corpus to a hash order Clojure owns. Sorting here retires both: no
+  map's iteration order, hash or insertion, reaches the draw, and the
+  carrier's class stops mattering to the answer. The cost is one sort
+  per merge or bed-swap step over the eligible set, and ADR-0185 ruled
+  the simplicity worth the declared rebaseline it cost.
+  `ehrt.sim-engine.eligible-index-test` holds the view equal to the
+  from-scratch scan SORTED, and permutes insertion order to prove it.
 
   THE EXCLUSION STAYS A CALLER-SIDE REMOVE over the index's answer
   rather than a second index, the shape `first-boarder` uses and for the
@@ -575,7 +566,7 @@
     (when (nil? index)
       (throw (ex-info "no :eligible-index on this world -- ADR-0180 site 5 reads the index and never rebuilds the scan"
                       {:excluded-id excluded-id :view :merge})))
-    (into [] (comp (map key) (remove #(= excluded-id %))) index)))
+    (vec (sort (into [] (comp (map key) (remove #(= excluded-id %))) index)))))
 
 (defn swap-eligible
   "THE INDEX'S ANSWER to `decide :bed-swap`'s candidate question: every
@@ -584,11 +575,9 @@
   to the entries whose value is `true`.
 
   EVERY SENTENCE OF `merge-eligible`'s contract holds here unchanged:
-  vector identity including order, the same positional
-  `streams/uniform-choice` draw, the same hash-order argument and the
-  same collision hole, the same caller-side exclusion, the same throw on
-  a missing index. Filtering by value cannot disturb the order argument,
-  which is a statement about the key set alone.
+  vector identity including order, `:patient-id` order chosen by the
+  sort (ADR-0185), the same positional `streams/uniform-choice` draw,
+  the same caller-side exclusion, the same throw on a missing index.
 
   `decide :bed-swap` READS THIS, and has since ADR-0180 site 6
   (2026-09-07). Site 5 built the view and
@@ -603,7 +592,7 @@
     (when (nil? index)
       (throw (ex-info "no :eligible-index on this world -- ADR-0180 site 5 reads the index and never rebuilds the scan"
                       {:excluded-id excluded-id :view :bed-swap})))
-    (into [] (comp (filter val) (map key) (remove #(= excluded-id %))) index)))
+    (vec (sort (into [] (comp (filter val) (map key) (remove #(= excluded-id %))) index)))))
 
 (def reinstatable-event-types
   "The event classes a cancel decide reinstates state FROM, and therefore
@@ -711,9 +700,9 @@
 
   IT IS THE FIRST OF THE FIVE WHOSE ANSWER'S ORDER IS LOAD-BEARING.
   `streams/uniform-choice` resolves positionally, so `merge-eligible`
-  owes VECTOR identity and not set identity -- which is why that
-  function's docstring carries a hash-order argument the other four
-  needed no equivalent of."
+  owes VECTOR identity and not set identity -- which since ADR-0185 the
+  two views discharge by SORTING on `:patient-id`, so the carrier's own
+  iteration order no longer reaches it."
   #{:encounter-stamp :warm-up-mark :log-ordinal :reinstate-index
     :citation-index :registration-index :patient-bootstrap
     :patient-state :bed-index :boarder-index :board :cancel-index
@@ -1138,9 +1127,9 @@
 
   THE ELIGIBLE INDEX'S SEED IS THE ONE THAT ALSO HAS A CLASS. `{}` is a
   `PersistentArrayMap` below nine entries and iterates in insertion
-  order, where `merge-eligible`'s answer owes the hash order `:patients`
-  has had since t 0 -- so that seed is `empty-eligible-index` and not a
-  literal, at `init-world` and here (R-empty-carrier).
+  order, which until ADR-0185 sorted the views would have reached
+  `merge-eligible`'s answer -- so that seed is `empty-eligible-index`
+  and not a literal, at `init-world` and here (R-empty-carrier).
 
   THE SENTENCE ABOVE READ 'the two world-carried indexes' WHILE LISTING
   THREE until this edit -- a count left behind by site 3's own addition.

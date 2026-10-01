@@ -1356,14 +1356,10 @@
                     ;; that would reject every merge in the run.
                     ;;
                     ;; IT IS THE ONE SEED HERE WITH A CLASS RATHER THAN
-                    ;; A LITERAL. `{}` reads as a `PersistentArrayMap`
-                    ;; and iterates in INSERTION order below nine
-                    ;; entries, where `:patients` directly above is a
-                    ;; `PersistentHashMap` from t 0 and
-                    ;; `merge-eligible`'s answer owes that order --
-                    ;; ADR-0180's R-empty-carrier, and the reason this
-                    ;; names `fold/empty-eligible-index` rather than
-                    ;; writing a literal that looks right. Empty is
+                    ;; A LITERAL -- ADR-0180's R-empty-carrier, whose
+                    ;; order argument ADR-0185 retired by sorting both
+                    ;; views on `:patient-id`; the var stays the one
+                    ;; name for the seed. Empty is
                     ;; still what these patients' index actually IS:
                     ;; every one of them is `state/initial-patient`,
                     ;; whose `:status :new` is never merge-eligible.

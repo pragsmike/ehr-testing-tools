@@ -653,6 +653,19 @@
   (edn/read-string (pr-str gt))))` -- value AND bytes both survive, so
   the committed baseline is a faithful pin for BOTH gates below.
 
+  RE-PINNED 2026-09-30, ONE of four, by ADR-0185 -- the declared
+  ground-truth rebaseline (`roadmap.md#cancel-discharge-reopens-an-
+  encounter-that-never-closes` and `#determinism-hash-order-dependence`).
+  Only seed-202-ed-tuesday moved: its first difference is event 136 of
+  1,213, a churn `:bed-swap` whose peer is now drawn from the candidates
+  in `:patient-id` order (PID-000024 where hash order gave PID-000023),
+  and its one legal `:cancel-discharge` now owes a closing `:discharge`
+  -- 1,213 -> 1,214 events. The two clinic-decade corpora and the adhd
+  run reach no `:cancel-discharge` and no swap or merge whose drawn
+  position holds a different id once sorted, so their pins and baselines
+  are untouched, exactly as predicted from the base corpora before the
+  change.
+
   RE-PINNED AGAIN 2026-08-27, all four, by ADR-0174 section 2(b)'s
   TURN-ON commit -- arc 3b sweep 3, the ONE declared sweep THAT sweep is
   allowed, and the reason scheduling landed dark in a prior commit
@@ -751,7 +764,7 @@
   1,058, adhd 12 -> 66. The growth is the fold: `:demographic-update`,
   `:coverage-change`, hook-created encounters and unidentified
   arrivals, none of which existed in any corpus before this commit."
-  {:seed-202-ed-tuesday       "34e69570be6a86de4367ca489a66b97aabb25a8dfb32941644cf73e9d077accd"
+  {:seed-202-ed-tuesday       "5276fa02860f9a123e2a86d8dc94856126365bdc08b60d6f9adb2fa2ecf94ac5"
    :seed-424242-clinic-decade "2d5a4274fb5ebbab8fdb22eacf36b4ee37b55a7df4e37190071cd4a9408d64d0"
    :seed-5-clinic-decade      "8acde4736af97be3a5d842e44f37d50a546988799401efd09417bf1e45269e4c"
    :adhd-seed-45              "c5491b4b640587380392449e870b457aaa96ece4ba42f9743a6cf0add92970bf"})
@@ -1940,10 +1953,11 @@
   ;; observations under an outpatient visit and 8 order-less ORUs under
   ;; an admission (6 observations, 2 reports), seed 5 carries 14 and 0,
   ;; the dense cell 1 and 1,019 -- so the clinic corpora are what make
-  ;; the O half bite and the dense cell is the I control.
+  ;; the O half bite and the dense cell is the I control. The dense
+  ;; cell's I floor re-measured 1,018 under ADR-0185's rebaseline.
   (doseq [[id r min-o min-i] [[:seed-424242-clinic-decade (corpus :seed-424242-clinic-decade) 13 8]
                               [:seed-5-clinic-decade (corpus :seed-5-clinic-decade) 14 0]
-                              [:dense-7500-750 @dense-7500-cell 1 1019]]]
+                              [:dense-7500-750 @dense-7500-cell 1 1018]]]
     (testing (str "corpus " id)
       (let [{:keys [ground-truth messages]} (:payload r)
             expected (expected-classes ground-truth)
@@ -2071,7 +2085,8 @@
                               (= "" field))))
                         rendered)]
       (is (= (count expected) (count rendered)) "every observation/report event rendered exactly one ORU")
-      (is (<= 1019 placed) (str "the dense cell carries fewer observations/reports under a bed than measured: " placed))
+      ;; 1,019 measured; 1,018 after ADR-0185's rebaseline.
+      (is (<= 1018 placed) (str "the dense cell carries fewer observations/reports under a bed than measured: " placed))
       (is (= placed populated)
           (str populated " order-less ORUs render a populated PV1-3; " placed " were taken in a bed"))
       (is (empty? wrong)
