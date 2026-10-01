@@ -141,6 +141,16 @@ and the adhd run are byte-identical.
 | `config.edn` 750 | 33,306 -> 33,296 | 40,291 -> 35,926 |
 | `config-28024.edn` 28,024 (ground truth) | 668,496 -> 671,589 | — |
 
+**Also moved, found by the suite and `make integration` rather than
+predicted** (the prediction covered oracle roots and gated corpora):
+`projects/conformance`'s full-capability judge.v2 baseline, 212 -> 215
+messages, every verdict still `:pass`; the `ed-tuesday` scenario,
+1,269 -> 1,267 events, 1,554 -> 1,426 messages, 620 -> 491 hourly
+batches, re-witnessed across its README, the root README, manual
+chapters 01, 04 and 05 and the use-case catalog; and one knife-edge
+test witness (`cancel-index-test`), re-pointed to a seed that reaches
+every shape again.
+
 **The message drop is chatter, not traffic.** A stay that never closed
 kept emitting periodic ADT^A08 to the end of the run: A08 at the
 all-keys 7,500 cell went 52,091 -> 5,520, and every other trigger moved

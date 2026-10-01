@@ -10,7 +10,11 @@
 > having fixed the shape and named no range; and the event fleet's
 > `churn-run` had to move its authored `:bed-swap`/`:merge` ahead of
 > the discharge, since a step authored after a legal cancel now runs
-> after the closer.
+> after the closer. Beyond the prompt's scope, and found by the suite and
+> `make integration`: the conformance full-capability baseline, a
+> vacuous cancel-index witness, and the whole ed-tuesday narrative
+> (README, root README, manual chapters 01/04/05, use-case catalog),
+> each moved by this change and each re-witnessed in its own commit.
 
 Repo `ehr-testing-tools`, WSL clone `/home/mg/src/ehr-testing-tools`,
 `main` at `c19b1024` (plus the prior session's uncommitted close note,
