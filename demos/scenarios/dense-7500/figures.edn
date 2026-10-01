@@ -48,49 +48,76 @@
 
 ;; BEGIN asserted -- rewritten by bin/demo-exerciser-dense-7500 on every run
  :asserted
- {:config-edn-7500 {:events 167197 :messages 222819 :msg-per-event 1.3327}
-  :config-edn-750 {:events 33306}}
+ {:config-edn-7500 {:events 167715 :messages 176971 :msg-per-event 1.0552}
+  :config-edn-750 {:events 33296}}
 ;; END asserted
 
  :quoted
- {:config-edn-7500 {:wall-s 106.25 :peak-rss-mb 1927}
-  :config-nobed-7500 {:events 125642 :messages 165466 :msg-per-event 1.3170
-                      :wall-s 93.34 :peak-rss-mb 1984}
-  :config-bare-7500 {:events 100868 :messages 65457 :msg-per-event 0.6489
-                     :wall-s 42.36 :peak-rss-mb 1135}
-  :config-edn-750 {:messages 40291 :msg-per-event 1.2097
-                   :wall-s 48.20 :peak-rss-mb 1183}
-  :config-28024-28024 {:events 668496 :subjects 32080 :bytes 263570096
-                       :wall-s 383.10 :peak-rss-mb 3599}}
+ {:config-edn-7500 {:wall-s 126.10 :peak-rss-mb 1852}
+  :config-nobed-7500 {:events 125700 :messages 134886 :msg-per-event 1.0731
+                      :wall-s 106.04 :peak-rss-mb 1681}
+  :config-bare-7500 {:events 101120 :messages 65643 :msg-per-event 0.6492
+                     :wall-s 51.63 :peak-rss-mb 1074}
+  :config-edn-750 {:messages 35926 :msg-per-event 1.0790
+                   :wall-s 57.74 :peak-rss-mb 1063}
+  :config-28024-28024 {:events 671589 :subjects 32080 :bytes 264570024
+                       :wall-s 386.61 :peak-rss-mb 3769}}
 
  :cell-provenance
  {:config-28024-28024
-  {:sha "dac3d9c8"
+  {:sha "fecbe43b"
    :date "2026-09-30"
    :machine "WSL2, 6c/12t i7-10750H, 15 GiB, OpenJDK 21.0.7, -Xmx8g explicit (clojure -J-Xmx8g -M:ehrt, the alias bin/ehrt execs)"
    :command "sim run --seed 20260824 --patients 28024 --churn --config demos/scenarios/dense-7500/config-28024.edn --format ground-truth"
-   :method "one run here, /usr/bin/time -v around the whole process, JVM startup included; independently reproduced byte-for-byte downstream on another host and JDK build. :bytes is the stdout event vector's own length; :events and :subjects are `ehrt sim describe`'s over that vector."
-   :events-sha256 "589600c5a8051ff2cad2fd4a82eddc67b52fe7d1cd338ebdaa477298549cc335"
-   ;; The downstream run used its own re-serialization of config.edn
-   ;; with :persons {:count 56048} (sha-256 prefix 7f7070, file not in
-   ;; this tree). It is VALUE-equal to config-28024.edn, not
-   ;; byte-equal, and the byte-identical event log is the evidence.
-   :downstream-config-sha256-prefix "7f7070"}}
+   :method "one run here, /usr/bin/time -v around the whole process, JVM startup included. :bytes is the stdout event vector's own length; :events and :subjects are `ehrt sim describe`'s over that vector."
+   :events-sha256 "ee59219eb81eb07fb18aa854781ace63e6b210909417762627675e8c96dd29a4"
+   ;; THE PRE-REBASELINE LOG, kept as history. ADR-0185 (2026-09-30)
+   ;; moved every churn-bearing corpus: reinstated stays now close after
+   ;; a delay, and churn's candidate choice is in patient-id order. The
+   ;; log below is what this cell wrote before that, at dac3d9c8, and it
+   ;; was independently reproduced byte for byte downstream on another
+   ;; host and JDK build, from that run's own re-serialization of
+   ;; config.edn with :persons {:count 56048} (sha-256 prefix 7f7070,
+   ;; not in this tree) -- VALUE-equal to config-28024.edn, not
+   ;; byte-equal. It is a valid pre-rebaseline artifact; it is not what
+   ;; the command above writes today.
+   :pre-rebaseline {:sha "dac3d9c8" :date "2026-09-30"
+                    :events 668496 :bytes 263570096 :wall-s 383.10 :peak-rss-mb 3599
+                    :events-sha256 "589600c5a8051ff2cad2fd4a82eddc67b52fe7d1cd338ebdaa477298549cc335"
+                    :downstream-config-sha256-prefix "7f7070"}}}
 
  :provenance
- {:sha "2ba3490c"
-  :date "2026-09-07"
+ {:sha "fecbe43b"
+  :date "2026-09-30"
   :machine "WSL2, 6c/12t i7-10750H, 15 GiB, OpenJDK 21.0.7, JVM defaults as shipped -- MaxHeapSize 3.88 GB, bin/ehrt sets no JVM options"
-  :method "one warm-up run, then two timed runs per cell, one JVM per run, a fresh spool target per run, /usr/bin/time -v around each; every wall is the mean of the two timed runs, and peak RSS is that process's own maximum resident set size in MiB, meaned the same way. The two timed runs of every cell wrote a BYTE-IDENTICAL events.edn and spooled the same number of messages -- byte identity rather than count identity, which is the stronger claim and the cheaper one."
+  :method "one warm-up run, then two timed runs per cell, one JVM per run, a fresh spool target per run, /usr/bin/time -v around each; every wall is the mean of the two timed runs, and peak RSS is that process's own maximum resident set size in MiB, meaned the same way. The two timed runs of every cell wrote a BYTE-IDENTICAL events.edn and spooled the same number of messages. Windows-side LoadPercentage sampled before every run; one timed run that started at 26 was discarded and re-run at 0 (kept as -CONTAMINATED in the session's scratch)."
 
-  ;; The counts above last moved under ADR-0179 (merge transfer). The
-  ;; walls last moved under ADR-0180's seven-site programme, which
+  ;; The counts above last moved under ADR-0185 (the ground-truth
+  ;; rebaseline): the closer adds a discharge to every reinstated stay,
+  ;; and the messages fall far more than the events do because a stay
+  ;; that never closed had been accruing periodic ADT^A08 chatter for
+  ;; the rest of the run -- A08 at config.edn 7,500 went 52,091 ->
+  ;; 5,520. The walls rose 14-22% in every cell, config-bare.edn's
+  ;; included, whose counts barely moved -- so that rise is not
+  ;; attributed to the rebaseline.
+  ;;
+  ;; Before that, the counts moved under ADR-0179 (merge transfer). The
+  ;; walls moved under ADR-0180's seven-site programme, which
   ;; shortened this configuration's generate phase 2.5x to 3.4x and
   ;; moved no count at all: config.edn at 7,500 wrote an events.edn
   ;; whose sha-256 is 096959857076f22901fa92a9fd71cca0edbc469b109118b6a469fcf0b49dc2b2,
   ;; the digest .agents/plans/2026-09-05-7-event-divergence.md recorded
   ;; for this cell before any of those sites landed.
-  :prior {:sha "4ddf62c2" :date "2026-09-06"
+  :prior {:sha "2ba3490c" :date "2026-09-07"
+          :counts {:config-edn-7500 {:events 167197 :messages 222819}
+                   :config-nobed-7500 {:events 125642 :messages 165466}
+                   :config-bare-7500 {:events 100868 :messages 65457}
+                   :config-edn-750 {:events 33306 :messages 40291}}
+          :walls {:config-edn-7500 106.25 :config-nobed-7500 93.34
+                  :config-bare-7500 42.36 :config-edn-750 48.20}
+          :peak-rss-mb {:config-edn-7500 1927 :config-nobed-7500 1984
+                        :config-bare-7500 1135 :config-edn-750 1183}}
+  :prior-2 {:sha "4ddf62c2" :date "2026-09-06"
           :walls {:config-edn-7500 278.64 :config-nobed-7500 231.14
                   :config-bare-7500 142.12 :config-edn-750 54.37}
           :peak-rss-mb {:config-edn-7500 2415 :config-nobed-7500 2178

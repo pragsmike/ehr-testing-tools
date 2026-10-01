@@ -177,7 +177,7 @@ table.
 
 ## What to look for
 
-Witnessed 2026-09-07 at `2ba3490c`, seed 20260824, `--churn`, on the
+Witnessed 2026-09-30 at `fecbe43b`, seed 20260824, `--churn`, on the
 traffic-scale programme's own reference machine (WSL2, 6c/12t
 i7-10750H, 15 GiB, OpenJDK 21.0.7, JVM defaults as shipped --
 `MaxHeapSize` 3.88 GB, `bin/ehrt` sets no JVM options). One warm-up
@@ -201,7 +201,21 @@ both existed, these cells sat at a measurement taken one commit before
 ADR-0180's site 1 and survived all seven of its sites without one of
 them going red.
 
-**The counts last moved under ADR-0179**, which releases the bed
+**The counts last moved under ADR-0185**, the ground-truth rebaseline:
+a legal `:cancel-discharge` now owes a closing `:discharge` after a 4-
+to 24-hour delay, and churn picks its merge and bed-swap peers in
+`:patient-id` order rather than hash order. Events moved little --
+**+518** at the all-keys cell, **+58** at `config-nobed.edn`, **+252**
+at `config-bare.edn`, **-10** at 750 -- and messages moved a lot where
+chatter runs: **-45,848**, **-30,580**, **+186** and **-4,365**. The
+difference is the periodic ADT^A08 a stay that never closed kept
+emitting to the end of the run (A08 at the all-keys cell: 52,091 ->
+5,520). The walls rose 14-22% in every cell, the bare one included,
+whose counts barely moved, so that rise is not attributed to the
+rebaseline. The figures before it are `figures.edn`'s
+`:provenance :prior`.
+
+**Before that, the counts moved under ADR-0179**, which releases the bed
 an absorbed record was holding at the instant of a merge and carries a
 pending result across to the survivor. Every one of the four moved, and
 not all in the same direction -- the all-keys cell by **+7** events,
@@ -234,24 +248,28 @@ default heap, not as a footprint.
 
 | cell | arrivals | events | messages | msg/event | process wall | peak RSS |
 |---|---|---|---|---|---|---|
-| `config.edn` | 7,500 | **167,197** | **222,819** | **1.3327** | 106.25 s | 1,927 MB |
-| `config-nobed.edn` | 7,500 | **125,642** | **165,466** | **1.3170** | 93.34 s | 1,984 MB |
-| `config-bare.edn` | 7,500 | **100,868** | **65,457** | **0.6489** | 42.36 s | 1,135 MB |
-| `config.edn` | 750 | **33,306** | **40,291** | **1.2097** | 48.20 s | 1,183 MB |
+| `config.edn` | 7,500 | **167,715** | **176,971** | **1.0552** | 126.10 s | 1,852 MB |
+| `config-nobed.edn` | 7,500 | **125,700** | **134,886** | **1.0731** | 106.04 s | 1,681 MB |
+| `config-bare.edn` | 7,500 | **101,120** | **65,643** | **0.6492** | 51.63 s | 1,074 MB |
+| `config.edn` | 750 | **33,296** | **35,926** | **1.0790** | 57.74 s | 1,063 MB |
 
 **The ground-truth-only cell** is a different measurement, in its own
 table because it has no message column to fill: `config-28024.edn`,
-measured 2026-09-30 at `dac3d9c8` on the same machine, ONE run of the
+measured 2026-09-30 at `fecbe43b` on the same machine, ONE run of the
 `sim run --format ground-truth` command under "The ground-truth-only
 path" above, `-Xmx8g` explicit, `/usr/bin/time -v` around the whole
-process. Its log is 263,570,096 bytes with sha-256
-`589600c5a8051ff2...549cc335`, and that log has been reproduced byte
-for byte on another host and JDK build. Events and subjects are
-`ehrt sim describe`'s own counts over it.
+process. Its log is 264,570,024 bytes with sha-256
+`ee59219eb81eb07f...8c96dd29a4`. Events and subjects are
+`ehrt sim describe`'s own counts over it. **The log this cell wrote
+before the ground-truth rebaseline** (ADR-0185) -- 263,570,096 bytes,
+sha-256 `589600c5a8051ff2...549cc335`, at `dac3d9c8` -- was reproduced
+byte for byte on another host and JDK build; it remains a valid,
+self-check-clean pre-rebaseline artifact, and `figures.edn` keeps its
+figures under `:pre-rebaseline`.
 
 | cell | arrivals | events | subjects | bytes | process wall | peak RSS |
 |---|---|---|---|---|---|---|
-| `config-28024.edn` | 28,024 | **668,496** | **32,080** | **263,570,096** | 383.10 s | 3,599 MB |
+| `config-28024.edn` | 28,024 | **671,589** | **32,080** | **264,570,024** | 386.61 s | 3,769 MB |
 
 Its wall is NOT comparable with the table above -- a `sim run` that
 emits nothing, against a `corpus generate` that also renders, checks
@@ -273,18 +291,24 @@ window and drops 16% of it outright. **The opt-in that looks like pure
 added volume is also a throttle**, and the bare cell is the one running
 without it.
 
-**The bed cycle is worth a quarter of this corpus.** 167,197 events
-against 125,642 is **41,555 events, 24.9% of the whole log**, and
-57,353 messages with them -- every one of it bed housekeeping, on a
+**The bed cycle is worth a quarter of this corpus.** 167,715 events
+against 125,700 is **42,015 events, 25.1% of the whole log**, and
+42,085 messages with them -- every one of it bed housekeeping, on a
 scenario that actually boards people, against `clinic-decade`'s 300
-where nobody is boarded. The cycle is slightly MESSAGE-RICHER than the
-log it rides on -- 1.3327 with it against 1.3170 without, so its own
-41,555 events carry **1.3802 messages each** -- which is what a
-housekeeping event lowered into its own ADT message looks like.
+where nobody is boarded. Its own 42,015 events carry **1.0017 messages
+each** -- one ADT message per housekeeping event, which is what a
+status change lowered into its own message looks like. (Before the
+ground-truth rebaseline the cycle read as message-RICHER than the log
+it rides on; that was the periodic chatter of reinstated stays that
+never closed, which ran longer on the bed-cycle run.)
 
-**Messages per event is still climbing at 10^5.** 1.2097 at 750
-arrivals to 1.3327 at 7,500. Read the pair as a direction and not as a
-decade: `:persons {:count 15000}` does not shrink with `--patients`, so
+**Messages per event no longer climbs at 10^5.** 1.0790 at 750
+arrivals to 1.0552 at 7,500. Until the ground-truth rebaseline it rose
+(1.2097 to 1.3327): a reinstated stay never closed, so its periodic
+ADT^A08 chatter ran to the end of the run, and the longer run carried
+more of it -- at 7,500 arrivals A08 fell from 52,091 messages to 5,520
+when those stays began to close. Read the pair as a direction and not
+as a decade: `:persons {:count 15000}` does not shrink with `--patients`, so
 the 750 cell carries the SAME 15,000-person demographic timeline as the
 7,500 cell with a tenth of the clinical traffic on top of it. **The two
 cells are not one scenario an order of magnitude apart**, and no

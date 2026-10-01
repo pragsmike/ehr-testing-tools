@@ -449,18 +449,17 @@ the 46 invariants in that catalog and about nothing else.
 
 **Known-open behaviours the catalog permits by construction.**
 
-- **A cancel-discharge re-opens an encounter that never closes.** A
+- **A reinstated stay is closed by the engine, not by the catalog.** A
   legal `:cancel-discharge` re-opens the encounter its own `:discharge`
-  closed — deliberately; a reinstated stay is one encounter — and
-  nothing ever re-queues a closer for it. At a 10^5-event run, **55 of
-  55 cancel-discharges re-open and 54 have no closer of any kind** for
-  the remaining ~144,000 events. The catalog permits this in as many
-  words: `every-encounter-is-opened-and-closed-or-still-open` reads *"or
-  still open"*, so a stay that never ends is green, and the patient
-  keeps `:class :inpatient` holding the bed the reinstatement gave back,
-  which `admitted-occupies-one-slot` requires. **It is invisible to
-  every gate in the catalog today.** Tracked at
-  `.agents/plans/roadmap.md#cancel-discharge-reopens-an-encounter-that-never-closes`.
+  closed — deliberately; a reinstated stay is one encounter. Since the
+  ground-truth rebaseline[^adr-0185] the engine closes it: the cancel owes a second `:discharge`
+  after a 4-to-24-hour delay, from the bed it restored. Before that,
+  nothing did — at a 10^5-event run 54 of 55 such stays outlived the
+  run. The catalog still permits a stay that never ends:
+  `every-encounter-is-opened-and-closed-or-still-open` reads *"or still
+  open"*, so a corpus generated before the rebaseline, or by another
+  producer, is green with one. `ehrt sim describe` counts them as
+  `reinstated-stay-without-closer`.
 - **A churn merge may consume an unresolved placeholder.** An ordinary
   `:merge` carrying no `:cause` can name an open-window placeholder as
   its `:merged` participant, destroying a resolution that was seeded and
@@ -583,7 +582,7 @@ explicit patient ordinals, and the highest is **7,496**. At its
  :configured :yes,
  :configured-detail {:assigned-ordinals 134, :ordinal-range [48 7496],
                      :patients 7500, :weighted false},
- :observed 174, :subjects 88, ...}
+ :observed 178, :subjects 90, ...}
 ```
 
 At `--patients 28000` the same config gives the same `:ordinal-range`
@@ -675,25 +674,30 @@ paragraphs below still report, is in
 
 **10^5 events is comfortable, and the decade above it is entered: the
 largest completed run of this configuration is now 28,024 arrivals and
-668,496 events — a committed sibling, quoted in the fourth row below.
+671,589 events — a committed sibling, quoted in the fourth row below.
 10^6 events have not been run at all.**
 
 | Cell | events | messages | msg/event | process wall |
 |---|---|---|---|---|
-| all nine opt-in keys | 167,197 | 222,819 | **1.3327** | 106.25 s |
-| the same, less `:bed-cycle` | 125,642 | 165,466 | **1.3170** | 93.34 s |
-| no opt-in key at all | 100,868 | 65,457 | **0.6489** | 42.36 s |
-| all nine opt-in keys, 28,024 arrivals, ground truth only | 668,496 | — | — | 383.10 s |
+| all nine opt-in keys | 167,715 | 176,971 | **1.0552** | 126.10 s |
+| the same, less `:bed-cycle` | 125,700 | 134,886 | **1.0731** | 106.04 s |
+| no opt-in key at all | 101,120 | 65,643 | **0.6492** | 51.63 s |
+| all nine opt-in keys, 28,024 arrivals, ground truth only | 671,589 | — | — | 386.61 s |
 
 **The first three rows are one generation of one committed configuration**,
-re-measured 2026-09-07 at `2ba3490c`. Two different things have moved
-them, and the difference is worth keeping straight: their COUNTS last
-moved under the merge-transfer ruling[^adr-0179], while their WALLS
-moved again afterwards, and by much more, under the index-and-fold
-programme[^adr-0180] — which shortened this configuration's generate
-phase between 2.5× and 3.4× and left every event and message count
-above exactly where it was. The scenario README names both movements
-and links their derivations. They are
+re-measured 2026-09-30 at `fecbe43b`. Their COUNTS last moved under
+the ground-truth rebaseline[^adr-0185]: reinstated stays now close, so
+the periodic ADT^A08 chatter a never-closing stay emitted to the end of
+the run is gone — the all-keys cell's messages fell from 222,819 to
+176,971 while its events rose by 518 — and churn's merge and bed-swap
+peers are drawn in patient-id order. Before that the counts moved under
+the merge-transfer ruling[^adr-0179], and the walls under the
+index-and-fold programme[^adr-0180], which shortened this
+configuration's generate phase between 2.5× and 3.4×. The walls rose
+14–22% at this re-measurement in every cell, the bare one included,
+whose counts barely moved, so that rise is not attributed to the
+rebaseline. The scenario README names every movement and links their
+derivations. They are
 [`demos/scenarios/dense-7500/`](../demos/scenarios/dense-7500/README.md)'s
 `config.edn`, `config-nobed.edn` and `config-bare.edn` at `--seed
 20260824 --patients 7500 --churn`, and you can re-run any of them.
@@ -710,14 +714,16 @@ deliberate.** It is
 [`config-28024.edn`](../demos/scenarios/dense-7500/config-28024.edn) —
 `config.edn` with its one `:persons :count` line set by that file's own
 rule to twice the arrivals — at `--seed 20260824 --patients 28024
---churn --format ground-truth`, measured 2026-09-30 at `dac3d9c8`: ONE
+--churn --format ground-truth`, measured 2026-09-30 at `fecbe43b`: ONE
 run, `sim run` rather than `corpus generate`, with the heap set
 explicitly (`-Xmx8g`) rather than left at the default. `--format
 ground-truth` emits no message, so there is no message count to quote,
 and the wall is not comparable with the three above it. The run wrote a
-263,570,096-byte event log whose sha-256 begins `589600c5`, and that
-log has been independently reproduced byte for byte on another host and
-JDK build. **Its module cohort is a 7,500-arrival run's** — see
+264,570,024-byte event log whose sha-256 begins `ee59219e`. Before the
+ground-truth rebaseline the same command wrote 263,570,096 bytes
+beginning `589600c5`, a log independently reproduced byte for byte on
+another host and JDK build; that log remains a valid pre-rebaseline
+artifact, and regenerating gives the new bytes. **Its module cohort is a 7,500-arrival run's** — see
 [Describing a corpus](#describing-a-corpus) — so read it as the
 all-keys configuration's population, facility and churn at nearly four
 times the arrivals, not as the same mix scaled up.
@@ -902,3 +908,5 @@ different faults rather than three ways of saying the same thing.
 [^adr-0179]: Design record [ADR-0179](../notes/ADRs.md).
 
 [^adr-0180]: Design record [ADR-0180](../notes/ADRs.md).
+
+[^adr-0185]: Design record [ADR-0185](../notes/ADRs.md).

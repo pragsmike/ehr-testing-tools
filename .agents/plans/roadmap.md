@@ -16,50 +16,6 @@ record it names. The six-line row cap and the `## Done` rotation both went
 with them.
 
 ## Next (backlog, no session scheduled)
-- OPEN **[determinism-hash-order-dependence]** PRIORITY 1 -- churn's two
-  candidate draws resolve POSITIONALLY (`streams/uniform-choice`) over a
-  vector whose order IS `(:patients world)`'s `PersistentHashMap`
-  iteration order, so every churn-bearing corpus in this tree depends on
-  a hash order Clojure owns and this repo does not: reproducible on a
-  fixed Clojure/JDK, NOT provably stable across a `hasheq` or
-  `PersistentHashMap` change, which would move every one of them. It also
-  sits against AGENTS.md's own inherited rule (`sim/ADR-0002`, "no
-  hash-order dependence"). Measured, with its collision hole, by
-  ADR-0180's 2026-09-06 addendum (R-hash-order), which rules that sites 5
-  and 6 PRESERVE that order rather than replace it. BOTH landed 2026-09-07
-  doing exactly that -- one sub-map, two views, one order argument -- and
-  the law namespace now BUILDS the colliding pair by hand and pins what
-  each side answers, so the hole has a test where every corpus is blind
-  to it; AGENTS.md's inherited determinism sentence stopped claiming "no
-  hash-order dependence" at site 5 and names this row instead. Retire only as a DECLARED
-  oracle change -- sorting `eligible` moves every churn-bearing golden
-  root -- never as a site session's judgment call.
-- OPEN **[cancel-discharge-reopens-an-encounter-that-never-closes]** PRIORITY 4 --
-  MEASURED 2026-08-29 while tracing `roadmap.md#ts-3-outpatient-opens-over-an-encounter`,
-  and it is a population fact rather than one patient's: a legal
-  `:cancel-discharge` re-opens the encounter its own `:discharge` closed
-  (`evolve`'s `reopen-encounter`, deliberate -- a reinstated stay is ONE
-  encounter), and NOTHING EVER RE-QUEUES A CLOSER FOR IT. At v2 10^5, 55 of
-  55 cancel-discharges re-open and 54 have no closer of any kind for the
-  remaining ~144,000 events; the 55th is TS-3's patient, whose only "closer"
-  is the illegitimate second encounter's own `:outpatient-visit-end`.
-  seed-202-ed-tuesday (`PID-000071-e552a7cc`, t=98100) and demo-ed-tuesday
-  (`PID-000039-77bfc3a1`, t=128100) each carry one, same shape. It is
-  STRUCTURAL, not accidental: `churn/applicable?` gates `:cancel-discharge`
-  on `:has-uncancelled-discharge?`, which the static oracle sets only after
-  the pathway's own `:discharge` -- the last authored step of both dense
-  pathways and of ed-tuesday's -- so the insertion can only land in the end
-  gap, with nothing behind it. THE CATALOG PERMITS IT BY CONSTRUCTION:
-  `every-encounter-is-opened-and-closed-or-still-open` reads "or still
-  open", so a stay that never ends is green, and the 54 stay `:class
-  :inpatient` holding the bed the reinstatement gave back, which
-  `admitted-occupies-one-slot` requires. So this row is INVISIBLE to every
-  gate today and produced no red anywhere -- it is a fidelity question (does
-  this repository want reinstated stays that outlive the run?), not a
-  correctness one, and it is NOT a candidate fix for TS-3: see that row's
-  option (B), rejected there for reasons that apply here too. Any fix is
-  draw-affecting and owes its own declared sweep. Record:
-  `.agents/session-records/2026-08-29-ts-3-compiled-opener.md`.
 - OPEN **[corpus-player-slices]** PRIORITY 5 -- the corpus-player slices chartered
   by ADR-0014. RE-DERIVED 2026-08-29 against the live tree, and the row is now
   TWO items where it was once a list: everything else in it has shipped.
@@ -261,6 +217,8 @@ One line a row. `CLOSED` here means "no longer a roadmap row", not "the work
 was done" -- each line says which. The section is named `## Done` because that
 is where `ehrt.docs-tooling.roadmap-lint-test` requires a `CLOSED` row to live.
 
+- CLOSED 2026-09-30 ADR-0185 **[cancel-discharge-reopens-an-encounter-that-never-closes]** -- DONE. A legal `:cancel-discharge` owes `:prepend-steps [:delay 240-1440 min, :discharge]` through the existing decides, so every reinstated stay closes; `reinstated-stay-without-closer` reads 0 on seed-202 and the dense 750 cell. No new kind. Record: `2026-09-30-ground-truth-rebaseline.md`.
+- CLOSED 2026-09-30 ADR-0185 **[determinism-hash-order-dependence]** -- DONE. `fold/merge-eligible` and `fold/swap-eligible` sort their candidates by `:patient-id` before `uniform-choice`, so no hash or insertion order reaches a draw and ADR-0180's collision hole is closed rather than detected; AGENTS.md says "no hash-order dependence" again. Record: `2026-09-30-ground-truth-rebaseline.md`.
 - CLOSED 2026-09-30 39e51282 **[dft-control-id-collision]** -- DONE. DFT^P03's MSH-10 is `mrn-P03-t#<log index>` through the shared ADR-0181 suffix, old id a strict prefix; the ADR-0181 gate now also holds every rendered MSH-10 to one of two shapes. Same session: order-less ORU PV1-2 reads the encounter's class. Ground truth unmoved. Record: `2026-09-30-wire-fidelity-pv1-dft.md`.
 - CLOSED 2026-09-23 32344ca9 **[oru-control-id-collision]** -- DONE. The `mrn-trigger-t` key was non-injective in five classes (43 groups at dense-7500 @750); ADR-0181 candidate 3 gives every arm a `#<0-based log index>` suffix, so the old id is a strict PREFIX of the new and MSH-10 is injective by construction. Ground truth unmoved. Record: `2026-09-23-msh-10-log-index.md`. Residual: `#dft-control-id-collision`.
 

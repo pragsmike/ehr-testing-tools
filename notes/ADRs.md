@@ -247,3 +247,4 @@ append-only, never-reassigned rule stands.
 - **ADR-0182** — `:immunization` joins the log: the Vaccine fact becomes a ground-truth kind — [`0182-immunization-joins-the-log.md`](adr/0182-immunization-joins-the-log.md) — Accepted 2026-09-29
 - **ADR-0183** — `sim describe`: what a corpus proves, beside what its configuration made possible — [`0183-sim-describe.md`](adr/0183-sim-describe.md) — Accepted 2026-09-29
 - **ADR-0184** — `:allergy-onset` joins the log and the registration facts: the AllergyOnset fact becomes ground truth — [`0184-allergy-onset-joins-the-log.md`](adr/0184-allergy-onset-joins-the-log.md) — Accepted 2026-09-30
+- **ADR-0185** — the ground-truth rebaseline: reinstated stays close, churn candidates in patient-id order — [`0185-ground-truth-rebaseline.md`](adr/0185-ground-truth-rebaseline.md) — Accepted 2026-09-30

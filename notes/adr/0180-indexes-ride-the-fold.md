@@ -571,6 +571,17 @@ and moves every draw after it, which is site 4's failure mode exactly.
 
 #### R-hash-order — the argument, its hole, and the hole MEASURED
 
+> **Superseded 2026-09-30 by ADR-0185.** The deferred oracle change
+> below was taken: `fold/merge-eligible` and `fold/swap-eligible` now
+> SORT their candidates by `:patient-id` before `streams/uniform-choice`
+> resolves them, so neither `:patients`' hash order nor the carrier's
+> insertion order at a collision node reaches a draw, and the hole this
+> section measures is closed rather than detected.
+> `ehrt.sim-engine.eligible-index-test` now holds the views equal to the
+> from-scratch scan SORTED and permutes insertion order to prove it.
+> The section stands as the record of why the order was preserved until
+> then; its argument no longer describes the tree.
+
 Ruled verbatim: *"sites 5 and 6 stay output-identical: `eligible`'s
 ORDER is the hash-map iteration order of `:patients` and is preserved,
 not replaced. The addendum states the argument AND its hole, and names

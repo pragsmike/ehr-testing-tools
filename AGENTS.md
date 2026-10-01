@@ -354,10 +354,9 @@ library in its own right.
   differ): result-not-throw (every capability function returns
   `{:status :ok|:rejected|:error ...}`; exceptions are for programmer error only);
   determinism is law (all randomness in `components/sim` flows from the single seeded
-  RNG in `engine/run`, no wall-clock; hash-order dependence confined to the churn
-  draws in `decide :merge` and `decide :bed-swap`, rowed
-  `[determinism-hash-order-dependence]`) (`sim/ADR-0002`); co-landing (a new engine
-  step type ships with its invariants in the same change); test-first, properties for
+  RNG in `engine/run`, no wall-clock, no hash-order dependence) (`sim/ADR-0002`);
+  co-landing (a new engine step type ships with its invariants in the same change);
+  test-first, properties for
   law-bearing constructs (`sim/ADR-0004`); the CLI-surface rule (demos and verification
   run through `bases/cli`, never through component internals directly).
 
