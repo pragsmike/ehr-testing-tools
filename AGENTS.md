@@ -278,6 +278,10 @@ library in its own right.
   longer exist by the time `probe` was deleted, the same
   hand-listing failure mode ADR-0158 caught in the generated-surface
   bullet above.
+- [`.agents/handoffs/`](.agents/handoffs/README.md) — session
+  handoffs written by the `handoff` skill: exactly one live
+  `handoff-YYYY-MM-DD.md`, every superseded one in `archive/` (author
+  ruling 2026-10-01).
 - `.agents/prompts/` — session prompts, archived by the session they
   drove, indexed (charter R-A). New home going forward;
   `notes/prompts/*.md` stays the historical archive for prompts
@@ -295,8 +299,8 @@ library in its own right.
 - **Live, current, edit freely:** `notes/adr/` (the architecture
   decisions themselves); `notes/facts-register.md` (externally
   verifiable facts, `AUTHORS-GUIDE.md` §4); `.agents/memory/`,
-  `.agents/plans/`, `.agents/session-records/`, `.agents/prompts/`
-  (above); `.agents/skills/`.
+  `.agents/plans/`, `.agents/session-records/`, `.agents/prompts/`,
+  `.agents/handoffs/` (above); `.agents/skills/`.
 - **Frozen provenance, read-only, never edited for new paths or
   namespaces:** `notes/sim/` and `notes/tools/` (each parent's own
   ADRs, facts-register, and `.agents/` tree as they stood at the

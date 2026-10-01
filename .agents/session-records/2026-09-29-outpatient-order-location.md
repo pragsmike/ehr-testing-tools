@@ -8,8 +8,9 @@ with this record, so no red tip ever reached CI.
 `bin/preflight` ran **late, before the record rather than first** —
 disclosed, not excused. Its findings at that point were this session's
 own unpushed commits and one untracked file that predates the session
-and is not this session's (`notes/tools/agents/handoffs/handoff-2026-
-09-29.md`, left untouched and unstaged). Otherwise green: repo root
+and is not this session's (`handoff-2026-09-29.md`, then untracked in
+the frozen tools tree, left untouched and unstaged; now
+`.agents/handoffs/archive/handoff-2026-09-29.md`, relocated 2026-10-01). Otherwise green: repo root
 `/home/mg/src/ehr-testing-tools`, `core.fileMode` true,
 `core.ignorecase` unset, HEAD not tagged `stable-*`.
 

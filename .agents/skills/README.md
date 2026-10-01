@@ -8,6 +8,9 @@ own `SKILL.md` for the full trigger conditions and workflow.
   checkpointed commit/push ceremony: WSL-only git, staging hygiene,
   commit-message-via-file, gitleaks, post-push verification, and the
   COMMIT/AUTHOR-ACTION model.
+- **[`handoff/`](handoff/SKILL.md)** — writes a session handoff for a
+  successor agent to `.agents/handoffs/`, one live, the previous one
+  moved to `.agents/handoffs/archive/`.
 - **[`scenarios/`](scenarios/SKILL.md)** — divergent scenario generation
   (the fan operation) over a situation, using the bundled roster.
 - **[`session-prompt/`](session-prompt/SKILL.md)** — the design
@@ -19,14 +22,16 @@ own `SKILL.md` for the full trigger conditions and workflow.
   diagnoses/fixes Git worktree noise from mixed Windows/WSL checkouts
   (CRLF churn, stray editor artifacts).
 
-Five skills, and that is the whole list. Twelve others —
+Six skills, and that is the whole list. Eleven others —
 `capture-session`, `committee`, `errata-sweep`, `extraction-stage`,
-`find-skills`, `handoff`, `manual-review`, `probe`, `repo-adaptation`,
+`find-skills`, `manual-review`, `probe`, `repo-adaptation`,
 `repo-review`, `review`, `shared-skill-layout` — were deleted by the
 de-scaffold ruling of 2026-08-25 and its 2026-08-25 "Delete probe"
 successor. They are recoverable from git history; nothing here
 maintains them. Adding a skill back is an author ruling, not a
-session's.
+session's. `handoff` was the twelfth: restored from `e189418c^` by
+author ruling of 2026-10-01, its queue-provenance paragraph adapted to
+the de-scaffold's record-not-row findings.
 
 ## The `.claude/skills/` mirror
 
