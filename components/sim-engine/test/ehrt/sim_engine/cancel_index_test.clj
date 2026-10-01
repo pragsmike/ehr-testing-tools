@@ -248,7 +248,14 @@
             counted over one PINNED case per bed-cycle setting."
     (doseq [bed-cycle [false true]]
       (let [profile (into {} (map (fn [[k _]] [k 0.4])) churn/default-churn-profile)
-            log (log-of {:seed 20260906 :patients 16
+            ;; RE-POINTED 20260906 -> 20260907 by ADR-0185's rebaseline,
+            ;; a FINDING and not a convenience: the reshuffle left seed
+            ;; 20260906's bed-cycle half with four cancels and no patient
+            ;; holding two events of one class, so `repeats` went vacuous.
+            ;; Seeds 20260907..20260946 swept with every assertion below;
+            ;; 20260907 is the first to reach all seven shapes in both
+            ;; settings (repeats 12 and 2).
+            log (log-of {:seed 20260907 :patients 16
                          :churn-profile profile :bed-cycle bed-cycle})
             pids (probe-ids log)
             trace (worlds log)
