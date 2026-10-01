@@ -351,10 +351,24 @@
  {:asset "docs/manual/assets/straddle-timeline.svg"
   :source "demos/scenarios/ed-tuesday/README.md"
   :trigger "regenerate by hand if the cited section's own witnessed values change"
-  :reviewed-at "06ce007"
+  :reviewed-at "1981e7f"
   :verdict :fresh
   :note
-  "RE-WITNESSED 2026-08-29 (the consumer-contract session's own P2
+  "RE-WITNESSED 2026-09-30 (the ground-truth rebaseline, ADR-0185). The
+   trigger fired a TWELFTH time and NOT ONE VALUE THIS DRAWING CARRIES
+   MOVED, though the source moved a great deal: the log first differs at
+   event 123 (08:00 on the shift day), and everything this asset draws
+   sits in the first three hours. RE-WITNESSED VALUE BY VALUE against
+   that session's own regenerated latency wire, not inferred:
+   batch-000 holds 10 messages, batch-001 15, batch-002 18; MRN000002's
+   A28 and A01 are in batch-000 (A01 at 20260811003739+0000), her A03
+   and DFT in batch-002 (20260811021037+0000), and batch-001 holds none
+   of hers. The source's own diff is the batch COUNT (620 -> 491), the
+   last two batch names, the totals, the latency cast and the census
+   lines -- none of which this drawing depicts. Its comment block's
+   `615 -> 620` sentence is dated history and stays.
+
+   Prior review, RE-WITNESSED 2026-08-29 (the consumer-contract session's own P2
    narrative refresh, `roadmap.md#post-partition-narrative-refresh`).
    The trigger fired an ELEVENTH time and NOT ONE VALUE THIS DRAWING
    CARRIES MOVED.
