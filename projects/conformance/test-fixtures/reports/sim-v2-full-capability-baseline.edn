@@ -1,6 +1,35 @@
 ;; Regenerated (ADR-0013's baseline-delta discipline): judge.v2's report
 ;; over `--seed 42 --patients 60 --churn --emit hl7 --config
 ;; projects/conformance/test-fixtures/sim-configs/full-capability.edn`,
+;; recaptured 2026-09-30 for notes/adr/0185-ground-truth-rebaseline.md.
+;;
+;; Reason: ADR-0185, the declared ground-truth rebaseline. A legal
+;; :cancel-discharge now owes a closing :discharge after a delay, and
+;; churn draws its merge and bed-swap peers in :patient-id order rather
+;; than hash order. Both move this 60-patient churn corpus.
+;;
+;; Reviewed delta (this session's own report):
+;;   :files-added   three -- msg-212, msg-213, msg-214 (212 -> 215)
+;;   :files-removed []
+;;   :changed-verdicts []
+;;   :codes-appeared []  :codes-disappeared []
+;;   :totals {:pass 215 :rejected 0 :indeterminate 0 :no-verdict 0}
+;;           (was {:pass 212 ...}) -- the verdict PICTURE is unchanged:
+;;           every message still passes at judge.v2's base-structural
+;;           tier with zero findings of any kind.
+;;   By trigger now: ADT^A01 40, A02 7, A03 43, A04 14, A11 9, A12 7,
+;;   A13 3, A17 6, A40 6, ORM^O01 40, ORU^R01 40. ADT^A03 is the 40
+;;   authored discharges plus one closer per legal cancel-discharge (3
+;;   A13s); the churn kinds' counts are re-drawn, not added.
+;;
+;; The body below is exactly `(clojure.pprint/pprint report)` with no
+;; hand-touch. Regenerate deliberately, never hand-edit.
+;;
+;; --- Prior header (2026-09-05, ADR-0179), superseded above but left
+;; standing per this repo's own supersede-in-place convention ----------
+;; Regenerated (ADR-0013's baseline-delta discipline): judge.v2's report
+;; over `--seed 42 --patients 60 --churn --emit hl7 --config
+;; projects/conformance/test-fixtures/sim-configs/full-capability.edn`,
 ;; recaptured 2026-09-05 for notes/adr/0179-merge-transfer-semantics.md.
 ;;
 ;; Reason: ADR-0179 R-bed. `evolve :merge`'s `:merged` arm now clears
@@ -111,7 +140,7 @@
   :churn true,
   :config
   "projects/conformance/test-fixtures/sim-configs/full-capability.edn"},
- :totals {:pass 212, :rejected 0, :indeterminate 0, :no-verdict 0},
+ :totals {:pass 215, :rejected 0, :indeterminate 0, :no-verdict 0},
  :by-code {},
  :files
  [{:path "target/sim-full-capability-gate/corpus/msg-000.hl7",
@@ -959,6 +988,18 @@
    :finding-count 0,
    :findings []}
   {:path "target/sim-full-capability-gate/corpus/msg-211.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-full-capability-gate/corpus/msg-212.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-full-capability-gate/corpus/msg-213.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-full-capability-gate/corpus/msg-214.hl7",
    :verdict :pass,
    :finding-count 0,
    :findings []}]}
