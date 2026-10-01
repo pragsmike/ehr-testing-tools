@@ -48,7 +48,7 @@ own reference date happens to be.
 ## The witnessed batch listing
 
 Witnessed this session (same seed-20260811 run Chapter 4 generated:
-1,554 messages across 620 occupied hourly buckets, `2026-08-11T00:00Z`
+1,426 messages across 491 occupied hourly buckets, `2026-08-11T00:00Z`
 through `2046-08-01T15:00Z`), re-derived by fresh regeneration from
 `demos/scenarios/ed-tuesday/config-latency.edn` — byte-identical to
 `ed-tuesday`'s own README:
@@ -65,18 +65,18 @@ through `2046-08-01T15:00Z`), re-derived by fresh regeneration from
     :start-ms 1786410000000, :end-ms 1786413600000, :verified true}
    {:file "batch-002.hl7", :count 18,
     :start-ms 1786413600000, :end-ms 1786417200000, :verified true}
-   ;; ... batch-003.hl7 through batch-617.hl7, one per occupied hour ...
-   {:file "batch-618.hl7", :count 2,
+   ;; ... batch-003.hl7 through batch-488.hl7, one per occupied hour ...
+   {:file "batch-489.hl7", :count 2,
     :start-ms 2400498000000, :end-ms 2400501600000, :verified true}
-   {:file "batch-619.hl7", :count 1,
+   {:file "batch-490.hl7", :count 1,
     :start-ms 2416748400000, :end-ms 2416752000000, :verified true}],
   :span {:earliest-ms 1786406400000, :latest-ms 2416752000000}}}
 ```
 
-**Every one of the 620 written files self-verified.**
+**Every one of the 491 written files self-verified.**
 `write-and-verify-batch!` decodes what it just wrote straight back and
 checks BTS-1 against the real message count before ever reporting
-success — `:verified true` on all 620 is that check, exercised, not
+success — `:verified true` on all 491 is that check, exercised, not
 merely claimed. That word matters for what comes next: "verified"
 here means transport-level verified, and transport-level is exactly
 the level this chapter is about to show you isn't the whole story.
@@ -90,10 +90,10 @@ represented, only skipped), not a bug — worth knowing before you write
 a receiver that assumes every interval in a span gets its own file.
 
 That is the *small* gap. The large ones are the reason twenty years of
-stream partition into 620 files rather than 175,000: past the ED shift,
+stream partition into 491 files rather than 175,000: past the ED shift,
 this corpus is a population living its life, and a batch holding one
 birth or one residence-move restatement can sit years from the batch
-before it. `batch-618` is in January 2046 and `batch-619` in August.
+before it. `batch-489` is in January 2046 and `batch-490` in August.
 
 ## The wrapper itself
 
@@ -198,7 +198,7 @@ The lesson isn't "remember to pass `--baseline`" or any other flag —
 it's a question a receiver has to ask itself, one this workspace can't
 ask on its behalf: **do I have all of this encounter?** Transport-level
 completeness — every `BTS-1` count checks out, exactly as this run's
-own 620-for-620 self-verification shows — says nothing about
+own 491-for-491 self-verification shows — says nothing about
 clinical-level completeness — whether an encounter's own full record
 set has actually arrived yet. Her own case is exactly the input a
 receiver's own "do I have all of this?" decision needs to be tested
@@ -236,7 +236,7 @@ receiver has to be ready for it regardless.
 | strip | source |
 |---|---|
 | `bin/ehrt corpus batch out/scenarios/ed-tuesday-latency --interval 60 ...` | `demos/scenarios/ed-tuesday/README.md`, "Batched delivery" |
-| The 620-batch listing (`:status :ok, :payload {...}`) | `demos/scenarios/ed-tuesday/README.md`, "Batched delivery"; re-derived byte-identical by fresh regeneration this session |
+| The 491-batch listing (`:status :ok, :payload {...}`) | `demos/scenarios/ed-tuesday/README.md`, "Batched delivery"; re-derived by fresh regeneration 2026-09-30, after the ground-truth rebaseline took it from 620 batches (see the dated note below) |
 | `head -c 100`/`tail -c 45` of `batch-000.hl7` | `demos/scenarios/ed-tuesday/README.md`, "Batched delivery" > "The wrapper itself" |
 | Hernandez's full A01 MSH segment | witnessed this session, fresh regeneration; the README's own truncated `head -c 100` excerpt now opens on a different message (an ADT^A28 registration), so this segment is quoted in full rather than extended from it |
 | Hernandez's A03 MSH segment (`batch-002.hl7`) | witnessed this session, fresh regeneration; matches the MSH-7 value (`2026-08-11T02:10:37Z`) the README's own "A straddling encounter" section states in prose |
@@ -270,7 +270,18 @@ messages across 34 occupied hourly buckets" and closed on
 neither of which was true of any run at this commit. The corpus is
 1,554 messages across 620 buckets, and it has been since the SIU
 opt-in of 2026-08-28; the wrapper's own `BTS-1` went 9 to 10 the same
-day. THE SHAPE OF THE ERROR IS WORTH NAMING because it is the one this
+day.
+
+**RE-WITNESSED 2026-09-30, for the ground-truth rebaseline.** 1,554
+messages across 620 buckets became 1,426 across 491. A reinstated stay
+that nothing ever closed had been re-stated by a periodic ADT^A08
+every few days for twenty years -- 134 messages, nearly every one of
+them alone in its hour of the population tail -- and the rebaseline
+closes that stay a few hours after its cancel, taking the hours with
+the messages. Hernandez's straddle, the three batch windows around
+her, the wrapper transcript and the `batch-032`/`batch-033` interior
+gap all predate the rebaseline's first difference (08:00 on the shift
+day) and came back byte-identical. THE SHAPE OF THE ERROR IS WORTH NAMING because it is the one this
 chapter is least able to catch on its own: the batch listing, the
 self-verification count and the `BTS` count are three separate
 statements of the same fact, written at three different sittings, and

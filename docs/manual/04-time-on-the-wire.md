@@ -104,11 +104,11 @@ differs. Witnessed directly, not merely asserted:
 ```
 $ diff out/scenarios/ed-tuesday-base/events.edn out/scenarios/ed-tuesday-latency/events.edn
 $ sha256sum out/scenarios/ed-tuesday-base/events.edn out/scenarios/ed-tuesday-latency/events.edn
-fe13a7ba59939e548be8d98589b005ff7c14e33ef8e82d4d54d47ad388bbb8d8  out/scenarios/ed-tuesday-base/events.edn
-fe13a7ba59939e548be8d98589b005ff7c14e33ef8e82d4d54d47ad388bbb8d8  out/scenarios/ed-tuesday-latency/events.edn
+c8be0ef2eaef8b706f06f955a947ab840bf44c80219252209c3cfe1b2b82c57a  out/scenarios/ed-tuesday-base/events.edn
+c8be0ef2eaef8b706f06f955a947ab840bf44c80219252209c3cfe1b2b82c57a  out/scenarios/ed-tuesday-latency/events.edn
 ```
 
-`diff` prints nothing; the digests match. The same 1,269 ground-truth
+`diff` prints nothing; the digests match. The same 1,267 ground-truth
 events, either way — only `msg-NNNN.hl7`'s own MSH-7 values, and the
 file order `emit-wire` sorts them into (by transmit time, never log
 order), differ between the two out-dirs. This is the general case of
@@ -130,30 +130,29 @@ bin/ehrt play out/scenarios/ed-tuesday-latency --board 60 --rate 10000000
 
 ## What one message's own two clocks look like
 
-Gonzalez, Olivia (MRN000095), bed `ED-H13`: admitted, EVN-2 clinical
-time `2026-08-11T23:11:00Z`; discharged 31 minutes later, `23:42:00Z` —
+Johnson, Michael (MRN000005), bed `ED-H16`: admitted, EVN-2 clinical
+time `2026-08-14T01:12:00Z`; discharged 39 minutes later, `01:51:00Z` —
 ordinary, unremarkable, log-order-correct clinical history, per the demo
-README's own narration. On the wire, her messages' own sampled transmit
-delays don't preserve that order: the transfer's delay is 48m29s, the
-discharge's 39m08s, and the admission's 1h14m22s, so they transmit
-transfer-first (MSH-7 `23:59:29Z`), discharge-second
-(`2026-08-12T00:21:08Z`) and admission-*last* (`00:25:22Z`) — reordered
-on the wire, never in ground truth. This is the figure below: one
-message (her own admission, A01) with its EVN-2 (clinical) and MSH-7
-(transmit) fields both shown, an hour and a quarter apart.
+README's own narration. On the wire, his messages' own sampled transmit
+delays don't preserve that order: the admission's delay is 1h09m07s and
+the discharge's 15m27s, so the discharge transmits first (MSH-7
+`02:06:27Z`) and the admission *last* (`02:21:07Z`) — reordered on the
+wire, never in ground truth. The figure below shows the same shape on
+another patient: one message, an admission (A01), with its EVN-2
+(clinical) and MSH-7 (transmit) fields both shown, an hour apart.
 
 <img src="assets/two-clocks.svg" alt="One HL7v2 message carrying two clocks: EVN-2 clinical time and MSH-7 transmit time, offset by a sampled latency delay" width="640" />
 
 A board that folds strictly in arrival order has no way to know the
-admission it just received is already stale — it puts Gonzalez right
-back on the board, in a bed she vacated an hour and a half of clinical
-time earlier. Chapter 1 already showed you that exact board
+admission it just received is already stale — it puts Johnson on the
+board, `inpatient` in a bed he had already left before either message
+was sent. Chapter 1 already showed you that exact board
 snapshot; this chapter's own job was the mechanism producing it, not
 the symptom itself. `ed-tuesday`'s own README states plainly what
 this workspace does and doesn't do about it: "a receiver that buffered
 incoming messages briefly and reconciled by clinical time (EVN-2, when
 present) rather than folding strictly in arrival order would not have
-produced her own phantom re-admission" — a receiver's own design
+produced Johnson's own phantom re-admission" — a receiver's own design
 question, not this workspace's to answer. Supplying the case is the
 job; Chapter 5 supplies a second, complementary one.
 
@@ -221,14 +220,18 @@ byte-frozen."
 |---|---|
 | `bin/ehrt play out/scenarios/ed-tuesday-latency --board 60 --rate 10000000` | `demos/scenarios/ed-tuesday/README.md`, "The second clock" |
 | `bin/ehrt corpus generate sim ...` (base + latency, two commands) | `demos/scenarios/ed-tuesday/README.md`, "The second clock" |
-| `diff`/`sha256sum` ground-truth-invariance transcript | `demos/scenarios/ed-tuesday/README.md`, "The second clock"; re-witnessed 2026-08-29 against this chapter's own two commands. The digest has MOVED twice, `b4e776f7…` → `d00bf49c…` → `fe13a7ba…`, and the property it witnesses has not: `diff` is still silent and the two out-dirs still agree. The first move was the event contract's 1.0.0 → 1.1.0 rename of a result entry's `:units` to `:unit`[^adr-0150-mv]; the second is the four arc-3 opt-in keys `config.edn` took between 2026-08-26 and 2026-08-27, which is also why the event count on this page went 383 → 1,269 — the run models a twenty-year population now, not one shift |
-| Gonzalez EVN-2/MSH-7 values (`23:11:00Z`, `23:42:00Z`, `23:59:29Z`, `00:21:08Z`, `00:25:22Z`) | `demos/scenarios/ed-tuesday/README.md`, "What the board actually shows"; re-witnessed 2026-08-29 by fresh regeneration. This chapter named `Walker, William (MRN000013)` until then, a cast the demo README replaced on 2026-08-28 |
+| `diff`/`sha256sum` ground-truth-invariance transcript | `demos/scenarios/ed-tuesday/README.md`, "The second clock"; re-witnessed 2026-08-29 against this chapter's own two commands. The digest has MOVED twice, `b4e776f7…` → `d00bf49c…` → `fe13a7ba…`, and the property it witnesses has not: `diff` is still silent and the two out-dirs still agree. It moved a third time on 2026-09-30, `fe13a7ba…` → `c8be0ef2…`, under the ground-truth rebaseline[^adr-0185-mv], which also took the event count 1,269 → 1,267. The first move was the event contract's 1.0.0 → 1.1.0 rename of a result entry's `:units` to `:unit`[^adr-0150-mv]; the second is the four arc-3 opt-in keys `config.edn` took between 2026-08-26 and 2026-08-27, which is also why the event count on this page went 383 → 1,269 — the run models a twenty-year population now, not one shift |
+| Johnson EVN-2/MSH-7 values (`01:12:00Z`, `01:51:00Z`, `02:06:27Z`, `02:21:07Z`) | `demos/scenarios/ed-tuesday/README.md`, "What the board actually shows"; re-witnessed 2026-09-30 by fresh regeneration, when the ground-truth rebaseline[^adr-0185-mv] put this patient's messages back out of order and moved Gonzalez, Olivia (MRN000095)'s discharge back to last, so the board now clears her. This chapter named Gonzalez from 2026-08-29, and `Walker, William (MRN000013)` before that |
 | Gonzalez ORU pair (`msg-0072.hl7` / `msg-0084.hl7`, MSH-7 `04:52:00Z` vs `05:35:13Z`, OBR-7/OBX-14 `04:52:00Z` both) | this chapter's own two `corpus generate sim` commands above, re-run 2026-08-29 at seed 20260811 with `out/` cleared first[^result-clock]. Named `Rodriguez, Jacob (MRN000005)` at `msg-020`/`msg-023` until then — a pair witnessed 2026-08-16, before the stream partition, and superseded by it |
 
 [^result-clock]: `notes/adr/0142-result-clinical-time.md` — the field
     audit, the author rulings behind OBR-7's value and OBX-14's
     positional pad, and the declared oracle change the two fields
     caused (14 of 35 roots moved, exactly as predicted).
+
+[^adr-0185-mv]: `notes/adr/0185-ground-truth-rebaseline.md` — reinstated
+    stays close after a delay, churn's peers are drawn in patient-id
+    order, and every churn-bearing corpus moved once, by declaration.
 
 [^adr-0150-mv]: `notes/adr/0150-event-log-shape-defects.md` — census
     row S-6, the contract's first non-additive change, and why the

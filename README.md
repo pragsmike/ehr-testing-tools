@@ -47,19 +47,18 @@ bin/ehrt play out/scenarios/ed-tuesday --board 60 --rate 3600
 ```
 
 Beds cycle rather than flip: a vacated room renders `(dirty)`, then
-`(cleaning)`, and is not handed out again until it is ready — 15
-`(dirty)` and 29 `(cleaning)` lines across the run's 579 snapshots.
+`(cleaning)`, and is not handed out again until it is ready — 12
+`(dirty)` and 31 `(cleaning)` lines across the run's 450 snapshots.
 The census is real — inpatients climb to a peak of 12 concurrent and
 spill out of Emergency into Cardiology and Renal — and the counter
 line under each snapshot moves with it, `discharged` climbing to 88.
 No `Doe, Unknown` ever holds a bed at this seed, but `merged` does
-tick 0 → 1: one of the run's unidentified arrivals is joined to the
-record that person already had. And the board has two phases — its
+tick 0 → 1: churn merges two of the run's records into one. And the board has two phases — its
 last snapshot is dated 2046, not 2026, because the scripted shift is
 the opening stretch and a twenty-year population tail follows it.
 [`demos/scenarios/ed-tuesday/README.md`](demos/scenarios/ed-tuesday/README.md)
 is where every one of those figures is witnessed, alongside the
-1,269 ground-truth events and 1,554 HL7 v2 messages this run produces.
+1,267 ground-truth events and 1,426 HL7 v2 messages this run produces.
 
 **And the longitudinal version.** Point the same engine at a decade
 instead of a shift and you get
@@ -208,7 +207,7 @@ that same generate command already wrote beside its messages:
 
 `bin/ehrt sim run --seed 20260811 --patients 100 --reference-date 2026-08-11 --churn --config demos/scenarios/ed-tuesday/config.edn --format ground-truth`
 
-Seven of its 1,269 events, all one patient's, keys elided with `...`:
+Seven of its 1,267 events, all one patient's, keys elided with `...`:
 
 ```clojure
 {:home-ward "Emergency", ..., :active-mrn "MRN000001", ..., :reason "Minor laceration",
@@ -233,7 +232,7 @@ Seven of its 1,269 events, all one patient's, keys elided with `...`:
 {:event :bed-status-change, :t 3480, :bed "ED-H08", :ward "Emergency",
  :from :cleaning, :to :ready, ...}
 
-;; ... 686 events ...
+;; ... 684 events ...
 
 {:participants [{:patient-id "PID-000000-1522c269", :role :subject}], :active-mrn "MRN000001",
  ..., :reason "Follow-up", :encounter-id "ENC-000000-01-2300e027",

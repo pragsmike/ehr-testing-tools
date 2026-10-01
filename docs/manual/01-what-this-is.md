@@ -39,42 +39,37 @@ Real transport delays messages — differently, per message type, per
 event. [`ed-tuesday`](../../demos/scenarios/ed-tuesday/README.md)'s
 "The second clock" section plays the exact same ground truth onto two
 wires: one instant, one latency-realistic. On the latency wire, patient
-Gonzalez, Olivia (MRN000095)'s own three messages arrive in an order
-none of them was written in — the transfer first, the discharge second,
-and the admission *last* — because a shorter sampled delay on a later
-event outruns a longer one on an earlier event. The board, folding
-messages strictly in the order they arrive, shows this:
+Johnson, Michael (MRN000005)'s own two messages arrive in the reverse
+of the order they were written in — the discharge first, and the
+admission *last* — because a shorter sampled delay on a later event
+outruns a longer one on an earlier event. The board, folding messages
+strictly in the order they arrive, shows this once the admission lands:
 
 ```
--- board snapshot: 2026-08-12T00:01:02Z --
-
-Cardiology:
-  CARDIOLOGY-02  Smith, Michelle  MRN MRN000027  inpatient  attending: 5761303028
+-- board snapshot: 2026-08-14T06:43:23Z --
 
 Emergency:
-  ED-H10  Miller, Robert  MRN MRN000096  ?
-  ED-H14  Gonzalez, Olivia  MRN MRN000095  ?  attending: 5761303028
-  ED-H16  Johnson, Matthew  MRN MRN000092  inpatient  attending: 5761303028
-  ED-H13  (cleaning)
+  ED-H01  Martin, William  MRN MRN000018  inpatient  attending: 5761303028
+  ED-H03  Williams, John  MRN MRN000036  inpatient  attending: 5761303028
+  ED-H04  Martinez, John  MRN MRN000009  inpatient  attending: 5761303028
+  ED-H10  Miller, Robert  MRN MRN000096  inpatient  attending: 5761303028
+  ED-H11  Taylor, Jennifer  MRN MRN000035  inpatient  attending: 5761303028
+  ED-H16  Johnson, Michael  MRN MRN000005  inpatient  attending: 5761303028
 
 Renal:
-  RENAL-01  Brown, Richard  MRN MRN000082  inpatient  attending: 5761303028
-  RENAL-02  Garcia, Lisa  MRN MRN000081  inpatient  attending: 5761303028
-  RENAL-03  Nguyen, James  MRN MRN000020  inpatient  attending: 5761303028
+  RENAL-04  Wilson, Jessica  MRN MRN000024  inpatient  attending: 5761303028
 
-inpatients: 5  active outpatients: 0  discharged: 52  merged: 0
+inpatients: 5  active outpatients: 0  discharged: 64  merged: 1
 ```
 
-Read the `ED-H14` line. Gonzalez is on the board with a `?` where her
-patient class should be, and in the wrong bed: that is the transfer
-arriving *alone*, and a transfer carries a location but no admission,
-so the board knows where she is and nothing about what kind of patient
-she is. `ED-H13`, the bed she is actually in, reads `(cleaning)` in the
-same snapshot — the bed cycle's own view of her stay has already moved
-on. Her discharge lands next; then her admission arrives four minutes
-after that and puts her right back on the board, `inpatient` in a bed
-she vacated an hour and a half of clinical time earlier. She is one of
-5 (of 111 admitted patients, that seed) whose own admission message
+Read the `ED-H16` line. Johnson was admitted at `01:12` and discharged
+at `01:51` that morning, and the board's own previous snapshot showed
+his bed `(cleaning)` — the bed cycle's view of his stay had already
+moved on. Then his discharge arrived for a patient the board had never
+seen, and his admission fifteen minutes after it put him on the board,
+`inpatient` in a bed he had already left — where he stays, twenty
+years of stream time later, at the run's last snapshot. He is one of
+6 (of 111 admitted patients, that seed) whose own admission message
 trails its own later event on the wire. Nobody drafting sample messages
 by hand writes this on purpose — producing it for real takes an actual
 second, independently-seeded transmit-delay clock sampling per message
@@ -99,12 +94,12 @@ section runs the batcher hourly over that same latency wire:
     :start-ms 1786410000000, :end-ms 1786413600000, :verified true}
    {:file "batch-002.hl7", :count 18,
     :start-ms 1786413600000, :end-ms 1786417200000, :verified true}
-   ;; ... batch-003.hl7 through batch-619.hl7, one per occupied hour ...
+   ;; ... batch-003.hl7 through batch-490.hl7, one per occupied hour ...
    ],
   :span {:earliest-ms 1786406400000, :latest-ms 2416752000000}}}
 ```
 
-(Excerpted for the three batches that matter here — the full 620-batch
+(Excerpted for the three batches that matter here — the full 491-batch
 listing is in the source, linked above.) Patient Hernandez, Sandra
 (MRN000002, bed ED-H09) is admitted in
 `batch-000.hl7` and discharged in `batch-002.hl7` — two clock-hours

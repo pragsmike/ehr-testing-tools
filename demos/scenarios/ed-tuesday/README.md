@@ -57,28 +57,44 @@ bin/ehrt play out/scenarios/ed-tuesday/events.edn --rate 10000000
 
 ## What to look for
 
-Witnessed 2026-08-28 (seed 20260811, 100 patients, `--config` as
-above, `--churn` on): **1,269 ground-truth events, 1,554 HL7 v2
-messages, 579 board snapshots** over a 630,342,955,000 ms stream span.
+Witnessed 2026-09-30 (seed 20260811, 100 patients, `--config` as
+above, `--churn` on): **1,267 ground-truth events, 1,426 HL7 v2
+messages, 450 board snapshots** over a 630,342,955,000 ms stream span.
+
+**RE-WITNESSED 2026-09-30 for the ground-truth rebaseline (ADR-0185),
+and every figure below that moved was moved by it.** A legal
+`:cancel-discharge` now owes a closing `:discharge` after a 4- to
+24-hour delay, and churn picks its bed-swap and merge peers in
+patient-id order rather than hash order. This log first differs at
+event 123 (08:00 on the shift day, a bed-swap peer), so everything
+earlier -- the 01:12 snapshot, the straddling encounter, the first
+three batches -- is unchanged and was re-checked rather than assumed.
+The one reinstated stay in this run used to stay open for twenty
+years; it now closes, and with it go the periodic ADT^A08
+re-statements it had been emitting all that time (135 -> 4), which is
+most of why the message count fell by 128 while the events fell by 2.
 
 **THE EVENT COUNT DID NOT MOVE AND THE MESSAGE COUNT NEARLY DOUBLED,
 and that is the whole of what arc 4 is.** `config.edn` opted this
 scenario into RE-STATEMENT CHATTER and DFT^P03 CHARGES on 2026-08-28
 (arc 4 sweep 2, ADR-0175 designs (a) and (c)), and neither reaches the
-engine: both are EMISSION config, so 1,269 is the same 1,269 this
-scenario produced the day before. What changed is how much of it the
+engine: both are EMISSION config, so that day's 1,269 events were the
+same 1,269 this scenario produced the day before. What changed is how much of it the
 WIRE carries. A demographic change and a coverage change used to reach
 a consumer only inside the PID or IN1 of some LATER message; each now
-gets a message of its own -- **288 ADT^A31** person-scoped updates and
-**135 ADT^A08** visit-scoped ones (the split is derived from whether
+gets a message of its own -- **293 ADT^A31** person-scoped updates and
+**4 ADT^A08** visit-scoped ones (the split is derived from whether
 the change fell inside an open encounter, never configured). Every
 registration now sends an **ADT^A28** (116 of them), and every
-encounter close sends a **DFT^P03** carrying its own charge lines (126
-of them, 167 FT1 lines between them). The A08 half comes almost
-entirely from the periodic re-statement of open encounters rather than
-from the event-driven half -- demographic churn happens between visits,
-not during them -- which is why `config.edn` carries a
-`:rate-per-patient-day` at all.
+encounter close sends a **DFT^P03** carrying its own charge lines (127
+of them, 168 FT1 lines between them). The A08 half is the periodic
+re-statement of open encounters rather than the event-driven half --
+demographic churn happens between visits, not during them -- which is
+why `config.edn` carries a `:rate-per-patient-day` at all. It was 135
+until 2026-09-30: 134 of them were one reinstated stay that never
+closed (MRN000040), re-stated every few days for twenty years. ADR-0185
+closes that stay, and the four that remain are re-statements of
+ordinary open encounters.
 
 **PATIENTS BOOK NOW, AND SOME DO NOT COME.** `config.edn` opted this
 scenario into SCHEDULING on 2026-08-27 (arc 3b sweep 3, ADR-0174
@@ -86,11 +102,11 @@ section 2(b) and ruling C), and that is where these figures moved from
 the previous witness's 1,151/739/128. Arrivals split scheduled-vs-
 walk-in; a booking can be moved, cancelled or no-showed; and a
 discharge can book a return visit. This run holds **44 appointments, 5
-rescheduled, 3 cancelled and 5 no-showed**, with **35 encounter openers
+rescheduled, 3 cancelled and 5 no-showed**, with **36 encounter openers
 naming the appointment they were kept against**.
 
-**TWENTY-ONE OF THOSE ARE SECOND ENCOUNTERS THAT WERE SCHEDULED** --
-the 21 `:outpatient-visit` / `:outpatient-visit-end` pairs above, each
+**TWENTY-TWO OF THOSE ARE SECOND ENCOUNTERS THAT WERE SCHEDULED** --
+the 22 `:outpatient-visit` / `:outpatient-visit-end` pairs above, each
 booked at its own patient's discharge and each carrying its
 appointment's id. No corpus in this repository could hold a second
 encounter at all before arc 3b sweep 1 lifted the encounter horizon,
@@ -112,11 +128,13 @@ into the BED-STATUS CYCLE on 2026-08-27 (arc 3b sweep 2, ADR-0174
 section 2(c) and ruling C). A vacated bed is no longer free the
 instant its occupant leaves: it goes `:dirty`, then `:cleaning`, then
 `:ready`, and the allocation ladder will not hand out a bed that is not
-ready. **421 of this run's messages are ADT^A20 bed-status updates** --
-one per transition, over 141 turnovers -- and they were the reason the
+ready. **418 of this run's messages are ADT^A20 bed-status updates** --
+one per transition, over 140 turnovers -- and they were the reason the
 message count nearly doubled while the clinical traffic barely moved.
-(They are no longer the largest single family: chatter's 288 A31s and
-135 A08s together outnumber them since 2026-08-28.)
+(They are the largest single family again: chatter's 288 A31s and 135
+A08s together outnumbered them from 2026-08-28 until ADR-0185 closed
+the stay that most of those A08s were re-stating; 293 A31s and 4 A08s
+do not.)
 
 **Every bed-ready transfer used to fire in the same second as the
 discharge that vacated the bed. None does now.** The relief of a
@@ -131,13 +149,13 @@ A1), and that is where these figures moved from the previous witness's
 got exactly ONE encounter, ever -- `check.clj`'s own
 `admission-only-when-new` was that horizon written as an invariant, and
 a returning person's arrival simply queued nothing. This run now
-carries **147 encounter openers across 111 patients: 30 patients with
-more than one, 36 encounters the pre-sweep engine threw away, and a
+carries **148 encounter openers across 111 patients: 31 patients with
+more than one, 37 encounters the pre-sweep engine threw away, and a
 maximum of THREE on a single patient** -- figures that were unchanged
 by the bed cycle, which moves WHEN a bed changes hands and not who is
 admitted, and that MORE THAN DOUBLED with the scheduling opt-in of
 2026-08-27 (from 127/116/14/15). Scheduling is where the second
-encounters now mostly come from: 21 of those 36 are follow-up visits
+encounters now mostly come from: 22 of those 37 are follow-up visits
 booked at a discharge, which is a different producer from a returning
 person walking in again. Same patient, same patient-id,
 same MRN each time -- which is the whole point, because an MPI under
@@ -145,7 +163,7 @@ test has to see the same MRN twice.
 
 **And every message now carries a visit number.** PV1-19 was EMPTY on
 every message this project had ever produced; it now renders the
-encounter's own `ENC-` id (ADR-0174 ruling C1). 679 of this run's 681
+encounter's own `ENC-` id (ADR-0174 ruling C1). 549 of this run's 551
 PV1 segments carry one. The TWO that do not are both `ORU^R01` results
 arriving after their patient's discharge -- the pending-labs-at-discharge
 case, which belongs to no open encounter and correctly says so.
@@ -160,8 +178,10 @@ cycle reshuffled this run.)
 Note that the A20 bed-status messages carry NO PV1 at all -- an
 `ADT^A20` is `[MSH EVN NPU]`, no PID and no PV1, because a bed that
 nobody is in has no patient to name, and an ADT^A31 or ADT^A28 carries
-none either -- a person-scoped update names no visit. That is why 1,554
-messages carry only 681 PV1 segments between them.
+none either -- a person-scoped update names no visit. That is why 1,426
+messages carry only 551 PV1 segments between them. (1,554 and 681 until
+ADR-0185: the 130-PV1 drop is the A08 re-statements of the reinstated
+stay that never closed, each of which carried one.)
 
 *Dated note, 2026-08-28 (arc 4 sweep 3, ADR-0175 design (b)): the
 STATUS LADDER added 50 messages that DO carry a PV1 -- an ORM^O01 or
@@ -200,7 +220,9 @@ sparse tail after it is the population.
 occupied beds -- it is the `01:12:00Z` snapshot quoted below, so the
 figure and the transcript can be checked against each other on this
 page; the census climbs through the shift to a peak of 12 concurrent
-inpatients, then drains to 1 by the run's own last snapshot.
+inpatients, then drains to 0 by the run's own last snapshot (1 until
+ADR-0185: the last inpatient on the board was the reinstated stay that
+never closed).
 The peak moved 11 -> 15 with the horizon lift, for the obvious reason
 (a returning patient occupies a bed the second time too), and 15 -> 12
 with the bed cycle, for a less obvious one: the reshuffle moves which
@@ -213,21 +235,23 @@ contradicted the transcript printed further down this same file.)
 took the bed cycle, an empty bed was INVISIBLE on the whiteboard --
 a room being turned over looked exactly like a room standing free.
 The A20 stream fixed that: a `(dirty)` or `(cleaning)` line appears
-under its ward for as long as housekeeping has it, and 44 such lines
-render across this run's snapshots (15 `(dirty)`, 29 `(cleaning)`).
-(RE-WITNESSED 2026-08-29, from 43 and 28.)
+under its ward for as long as housekeeping has it, and 43 such lines
+render across this run's snapshots (12 `(dirty)`, 31 `(cleaning)`).
+(RE-WITNESSED 2026-09-30, from 44 -- 15 and 29; 2026-08-29, from 43
+and 28.)
 
 ```
--- board snapshot: 2026-08-11T09:00:00Z --
+-- board snapshot: 2026-08-11T09:06:00Z --
+
+Cardiology:
+  CARDIOLOGY-02  Gonzalez, Emily  MRN MRN000015  inpatient  attending: 5761303028
 
 Emergency:
-  ED-H01  Lee, Sophia  MRN MRN000029  inpatient  attending: 5761303028
+  ED-H02  Smith, Michelle  MRN MRN000027  inpatient  attending: 5761303028
   ED-H04  Thomas, Jessica  MRN MRN000028  inpatient  attending: 5761303028
+  ED-H09  Lee, Sophia  MRN MRN000029  inpatient  attending: 5761303028
   ED-H11  Patel, James  MRN MRN000030  inpatient  attending: 5761303028
-  ED-H12  Smith, Michelle  MRN MRN000027  inpatient  attending: 5761303028
-  ED-H13  Gonzalez, Emily  MRN MRN000015  inpatient  attending: 5761303028
-  ED-H02  (cleaning)
-  ED-H07  (dirty)
+  ED-H07  (cleaning)
   ED-H10  (dirty)
 
 Renal:
@@ -235,6 +259,12 @@ Renal:
 
 inpatients: 6  active outpatients: 0  discharged: 17  merged: 0
 ```
+
+(This snapshot was `09:00:00Z` until 2026-09-30. ADR-0185 re-drew the
+08:00 bed-swap's peer: Smith (MRN000027) now swaps with Wilson
+(MRN000024) rather than with Gonzalez (MRN000015), so Gonzalez keeps
+`CARDIOLOGY-02`, Smith takes `ED-H02`, and the snapshot instant moved
+with the traffic.)
 
 A `:ready` bed is still not listed. An available bed is the normal
 case, and listing every one of them would bury the two states a charge
@@ -254,11 +284,18 @@ inpatients: 3  active outpatients: 0  discharged: 1  merged: 0
 ```
 -- board snapshot: 2046-08-01T15:15:55Z --
 
-Emergency:
-  ED-H11  Lee, Jennifer-1  MRN MRN000040  inpatient  attending: 5761303028
-
-inpatients: 1  active outpatients: 21  discharged: 88  merged: 1
+inpatients: 0  active outpatients: 22  discharged: 88  merged: 1
 ```
+
+(Until 2026-09-30 this last snapshot still held `ED-H11  Lee,
+Jennifer-1  MRN MRN000040  inpatient` -- a stay a churn
+`:cancel-discharge` had reinstated in 2026, which nothing ever closed,
+and which a reader could fairly have taken for a twenty-year
+admission. ADR-0185 closes it 17.3 hours after the cancel -- and the
+follow-up visit her ORIGINAL discharge had booked, which could never
+open while that stay stayed open, now happens. That one visit is the
+`active outpatients` figure moving 21 -> 22, and the 22nd
+`:outpatient-visit` pair above.)
 
 Note the DATE on that second snapshot: 2046, not 2026. That is the
 population tail, not the shift. (It reached 2045 before 2026-08-28: the
@@ -267,12 +304,13 @@ end of the twenty-year demographic horizon, so the STREAM now runs
 nearly a year longer than the messages that used to end it.)
 
 **Discharges accrue and churn fires.** `discharged` climbs from 1 to
-88 across the run; `merged` climbs from 0 to 1. That merge is now an
-IDENTIFICATION merge rather than an `InjectChurn` one -- a John Doe
-record joined to the patient the same person already had -- and churn's
-own bed-merge lottery contributed none at this seed. Stated rather than
-smoothed over: the claim this supports is that merges happen here at
-all, and they do, but the family that produces them has changed.
+88 across the run; `merged` climbs from 0 to 1. That merge is an
+`InjectChurn` one -- its event carries no `:cause`. (CORRECTED
+2026-09-30: this paragraph said it was an IDENTIFICATION merge, a John
+Doe record joined to the person's prior patient, and that churn
+contributed none. The log disagreed before ADR-0185 and agrees with
+this sentence after it: neither run carries a `:cause
+:identification` merge. Measured, not re-reasoned.)
 
 **The person stream's own clinical traffic**, counted: **15
 unidentified ED arrivals**, every one of them later filled in place
@@ -320,9 +358,9 @@ at a genuinely short (day/week/month-scale) horizon is expected to
 show sparse-to-zero live content; this run's own zero is that expected
 outcome, not a config defect.
 
-Full closing summary: `{:unparseable-count 0, :snapshot-count 579,
-:skip-count 0, :rate 1.0E7, :idle-cap-ms 5000, :wallclock-ms 65607,
-:stream-span-ms 630342955000, :clamped-count 0, :emitted 1554,
+Full closing summary: `{:unparseable-count 0, :snapshot-count 450,
+:skip-count 0, :rate 1.0E7, :idle-cap-ms 5000, :wallclock-ms 64892,
+:stream-span-ms 630342955000, :clamped-count 0, :emitted 1426,
 :unfolded-count 0, :sink "ticker"}`.
 
 (RE-WITNESSED 2026-08-28, and the previous value was STALE rather than
@@ -388,12 +426,12 @@ not merely asserted:
 ```
 $ diff out/scenarios/ed-tuesday-base/events.edn out/scenarios/ed-tuesday-latency/events.edn
 $ sha256sum out/scenarios/ed-tuesday-base/events.edn out/scenarios/ed-tuesday-latency/events.edn
-fe13a7ba59939e548be8d98589b005ff7c14e33ef8e82d4d54d47ad388bbb8d8  out/scenarios/ed-tuesday-base/events.edn
-fe13a7ba59939e548be8d98589b005ff7c14e33ef8e82d4d54d47ad388bbb8d8  out/scenarios/ed-tuesday-latency/events.edn
+c8be0ef2eaef8b706f06f955a947ab840bf44c80219252209c3cfe1b2b82c57a  out/scenarios/ed-tuesday-base/events.edn
+c8be0ef2eaef8b706f06f955a947ab840bf44c80219252209c3cfe1b2b82c57a  out/scenarios/ed-tuesday-latency/events.edn
 ```
 
 `diff` reports no differences; the digests match exactly -- the same
-1,269 ground-truth events either way. THIS IS WHY `config-latency.edn`
+1,267 ground-truth events either way. THIS IS WHY `config-latency.edn`
 CARRIES `:scheduling` TOO, value for value: the split's own two draws
 per arrival ordinal are `:world`, so a different `:scheduled-fraction`
 in one file would reshuffle its arrivals away from the other's and
@@ -421,75 +459,77 @@ two directories generated from the same seed.
 bin/ehrt play out/scenarios/ed-tuesday-latency --board 60 --rate 10000000
 ```
 
-**What the board actually shows.** Patient MRN000095 (Gonzalez,
-Olivia), bed `ED-H13`: admitted (EVN-2 clinical time
-`2026-08-11T23:11:00Z`), discharged 31 minutes later (`23:42:00Z`) --
+**What the board actually shows.** Patient MRN000005 (Johnson,
+Michael), bed `ED-H16`: admitted (EVN-2 clinical time
+`2026-08-14T01:12:00Z`), discharged 39 minutes later (`01:51:00Z`) --
 ordinary, unremarkable, log-order-correct clinical history. On the
-*latency* wire her three messages transmit in an order none of them
-was written in: the TRANSFER (A02) first at MSH-7 `23:59:29Z`, the
-DISCHARGE (A03) second at `2026-08-12T00:21:08Z`, and the ADMISSION
-(A01) last at `00:25:22Z` -- reordered on the wire, never in ground
-truth. The board, folding messages in the order it receives them:
+*latency* wire his two messages transmit in the reverse of the order
+they were written in: the DISCHARGE (A03) first at MSH-7 `02:06:27Z`,
+and the ADMISSION (A01) last at `02:21:07Z` -- reordered on the wire,
+never in ground truth. The board, folding messages in the order it
+receives them:
 
 ```
--- board snapshot: 2026-08-12T00:01:02Z --
-
-Cardiology:
-  CARDIOLOGY-02  Smith, Michelle  MRN MRN000027  inpatient  attending: 5761303028
+-- board snapshot: 2026-08-14T02:06:00Z --
 
 Emergency:
-  ED-H10  Miller, Robert  MRN MRN000096  ?
-  ED-H14  Gonzalez, Olivia  MRN MRN000095  ?  attending: 5761303028
-  ED-H16  Johnson, Matthew  MRN MRN000092  inpatient  attending: 5761303028
-  ED-H13  (cleaning)
-
-Renal:
-  RENAL-01  Brown, Richard  MRN MRN000082  inpatient  attending: 5761303028
-  RENAL-02  Garcia, Lisa  MRN MRN000081  inpatient  attending: 5761303028
-  RENAL-03  Nguyen, James  MRN MRN000020  inpatient  attending: 5761303028
-
-inpatients: 5  active outpatients: 0  discharged: 52  merged: 0
--- board snapshot: 2026-08-12T01:16:00Z --
-
-Cardiology:
-  CARDIOLOGY-02  Smith, Michelle  MRN MRN000027  inpatient  attending: 5761303028
-
-Emergency:
-  ED-H09  Hernandez, William  MRN MRN000097  inpatient  attending: 5761303028
+  ED-H03  Williams, John  MRN MRN000036  inpatient  attending: 5761303028
+  ED-H04  Martinez, John  MRN MRN000009  inpatient  attending: 5761303028
+  ED-H10  Miller, Robert  MRN MRN000096  inpatient  attending: 5761303028
   ED-H11  Taylor, Jennifer  MRN MRN000035  inpatient  attending: 5761303028
-  ED-H13  Gonzalez, Olivia  MRN MRN000095  inpatient  attending: 5761303028
-  ED-H16  Johnson, Matthew  MRN MRN000092  inpatient  attending: 5761303028
+  ED-H16  (cleaning)
 
 Renal:
-  RENAL-01  Brown, Richard  MRN MRN000082  inpatient  attending: 5761303028
-  RENAL-02  Garcia, Lisa  MRN MRN000081  inpatient  attending: 5761303028
+  RENAL-04  Wilson, Jessica  MRN MRN000024  inpatient  attending: 5761303028
 
-inpatients: 6  active outpatients: 0  discharged: 54  merged: 0
+inpatients: 3  active outpatients: 0  discharged: 65  merged: 1
+-- board snapshot: 2026-08-14T06:43:23Z --
+
+Emergency:
+  ED-H01  Martin, William  MRN MRN000018  inpatient  attending: 5761303028
+  ED-H03  Williams, John  MRN MRN000036  inpatient  attending: 5761303028
+  ED-H04  Martinez, John  MRN MRN000009  inpatient  attending: 5761303028
+  ED-H10  Miller, Robert  MRN MRN000096  inpatient  attending: 5761303028
+  ED-H11  Taylor, Jennifer  MRN MRN000035  inpatient  attending: 5761303028
+  ED-H16  Johnson, Michael  MRN MRN000005  inpatient  attending: 5761303028
+
+Renal:
+  RENAL-04  Wilson, Jessica  MRN MRN000024  inpatient  attending: 5761303028
+
+inpatients: 5  active outpatients: 0  discharged: 64  merged: 1
 ```
 
-Read the FIRST snapshot's `ED-H14` line: Gonzalez is on the board with
-a `?` where her patient class should be, and in the wrong bed. That is
-the A02 transfer arriving alone -- `fold-message` bootstraps an entry
-from whatever message it first sees, and a transfer carries a location
-but no admission, so the board knows where she is and nothing about
-what kind of patient she is. `ED-H13`, the bed she is actually in, is
-`(cleaning)` in the same snapshot: the bed cycle's own view of her
-stay has already moved on.
-
-Then the DISCHARGE arrives at `00:21:08Z` and folds her to
-`:discharged` -- and the ADMISSION arrives four minutes later, at
-`00:25:22Z`, where `fold-message`'s own `:admission` case applies
-UNCONDITIONALLY (ADR-0109's Step 5 finding, live here rather than
-probed). The second snapshot is the result: she is `inpatient` in
-`ED-H13`, a bed she vacated an hour and a half of clinical time
-earlier, and the `discharged` tally has gone 52 -> 54 -> 53 across
-three snapshots as the board un-discharges her. Her phantom entry never
-clears -- her own later A31 restatements say nothing about the visit --
-and she is still on that board at the run's own last snapshot, in
-**2046**, twenty years of stream time later. The *same* patient in the
-base (no-latency) run above appears exactly once, admitted and never
-seen again once discharged -- the entire disorder is the wire's doing,
+Read the FIRST snapshot's `ED-H16` line: his bed is `(cleaning)`. The
+bed cycle's own view of his stay has already moved on -- the bed went
+`:dirty` at his discharge and housekeeping has it -- while not one of
+his own messages has reached the board yet. Then the DISCHARGE arrives
+at `02:06:27Z`, for a patient the board has never seen, and the
+ADMISSION fifteen minutes later, at `02:21:07Z`, where
+`fold-message`'s own `:admission` case applies UNCONDITIONALLY
+(ADR-0109's Step 5 finding, live here rather than probed). The second
+snapshot is the result: he is `inpatient` in `ED-H16`, a bed he had
+left at `01:51:00Z`, before either message was sent, and the
+`discharged` tally has fallen 65 -> 64. His phantom entry never clears
+-- his own later A31 restatements say nothing about the visit -- and he
+is still on that board at the run's own last snapshot, in **2046**,
+twenty years of stream time later, as `Johnson, Michael-1` once a
+demographic update has renamed him. The *same* patient in the base
+(no-latency) run above appears in exactly one snapshot, admitted, and
+never again once discharged -- the entire disorder is the wire's doing,
 not the ground truth's.
+
+**RE-WITNESSED 2026-09-30, a new cast for the ground-truth rebaseline
+(ADR-0185).** Until this re-witness the walkthrough above named
+MRN000095 (Gonzalez, Olivia), whose
+three messages arrived transfer-first, discharge-second,
+admission-last. The rebaseline re-drew the bed-swap peers this run's
+churn picks, which shifts every later attending and bed draw and
+therefore every later transmit delay: Gonzalez's admission now
+arrives between her transfer and her discharge, and the discharge
+clears her. MRN000005 is the patient a 2026-08-28 correction below
+removed from this paragraph because his messages had come back into
+order; on this wire they are out of order again, and in the simplest
+shape the mechanism has.
 
 **RE-WITNESSED 2026-08-28**, and this one is a CORRECTION rather than a
 reshuffle. The paragraph above named MRN000005 (Johnson, Michael) with
@@ -511,10 +551,14 @@ MRN000095 in `ED-H13`, and the shape is RICHER than either previous
 witness: three messages, arriving transfer-first, discharge-second,
 admission-last.
 
-This is one of **5 (of 111 admitted patients, seed 20260811)** whose
+This is one of **6 (of 111 admitted patients, seed 20260811)** whose
 own admission message arrives after its own transfer or discharge
 message on this wire -- occasional and visible, not universal
 (`config-latency.edn`'s own header has the tuning rationale).
+
+**RE-WITNESSED 2026-09-30: 5 of 111 became 6 of 111** under ADR-0185's
+reshuffle of later draws, the same denominator because no admission was
+added or lost.
 
 **RE-WITNESSED 2026-08-27: 3 of 110 became 5 of 112**, and the reason
 is the bed cycle, not the wire. Its opt-in reshuffles which patients
@@ -536,11 +580,11 @@ and so is the claim; what changed is that the denominator contains
 patients the mechanism cannot reach, and saying "5 of 112" without
 saying which 112 would understate it.
 
-Closing summary: `{:unparseable-count 0, :snapshot-count 620,
-:skip-count 0, :rate 1.0E7, :idle-cap-ms 5000, :wallclock-ms 65389,
-:stream-span-ms 630342955000, :clamped-count 0, :emitted 1554,
-:unfolded-count 0, :sink "ticker"}` -- the same 1,554 messages as the
-base run, FORTY-ONE more snapshots than it (620 against 579), and a
+Closing summary: `{:unparseable-count 0, :snapshot-count 491,
+:skip-count 0, :rate 1.0E7, :idle-cap-ms 5000, :wallclock-ms 65620,
+:stream-span-ms 630342955000, :clamped-count 0, :emitted 1426,
+:unfolded-count 0, :sink "ticker"}` -- the same 1,426 messages as the
+base run, FORTY-ONE more snapshots than it (491 against 450), and a
 stream span identical to it to the millisecond. The span figure used to
 differ between the two runs, in one direction or the other across four
 witnesses; it no longer does, and the reason is arc 4 rather than a
@@ -583,9 +627,21 @@ bin/ehrt corpus batch out/scenarios/ed-tuesday-latency --interval 60 \
   --out-dir out/scenarios/ed-tuesday-latency-batches
 ```
 
-Witnessed 2026-08-28 (same seed-20260811 run as above, 1,554 messages
-across 620 occupied hourly buckets, `2026-08-11T00:00Z` through
-`2046-08-01T15:00Z`). The bucket count moved 186 -> 615 with the
+Witnessed 2026-09-30 (same seed-20260811 run as above, 1,426 messages
+across 491 occupied hourly buckets, `2026-08-11T00:00Z` through
+`2046-08-01T15:00Z`).
+
+*Dated note, 2026-09-30 (ADR-0185, the ground-truth rebaseline): the
+bucket count moved 620 -> 491 while the messages moved 1,554 -> 1,426,
+and the two drops are nearly the same size for one reason. 134 of the
+run's 135 ADT^A08 re-statements belonged to one reinstated stay that
+never closed (MRN000040), re-stated every few days for twenty years --
+so almost every one of them sat alone in an hour of the population
+tail, and removing it removed the hour. The first three batches, the
+wrapper transcript and the straddling encounter below predate the
+rebaseline's first difference and are unchanged.*
+
+The bucket count moved 186 -> 615 with the
 CHATTER and CHARGES opt-ins, and this is the largest single move it has
 taken. The mechanism is the bed cycle's rather than scheduling's --
 this really is more traffic, 782 messages to 1,447 -- but with a twist
@@ -637,28 +693,28 @@ displaces an arrival's whole encounter by days.
     :start-ms 1786410000000, :end-ms 1786413600000, :verified true}
    {:file "batch-002.hl7", :count 18,
     :start-ms 1786413600000, :end-ms 1786417200000, :verified true}
-   ;; ... batch-003.hl7 through batch-618.hl7 ...
-   {:file "batch-618.hl7", :count 2,
+   ;; ... batch-003.hl7 through batch-488.hl7 ...
+   {:file "batch-489.hl7", :count 2,
     :start-ms 2400498000000, :end-ms 2400501600000, :verified true}
-   {:file "batch-619.hl7", :count 1,
+   {:file "batch-490.hl7", :count 1,
     :start-ms 2416748400000, :end-ms 2416752000000, :verified true}],
   :span {:earliest-ms 1786406400000, :latest-ms 2416752000000}}}
 ```
 
 **Epoch-aligned, and the interior gaps are enormous.** The first thirty
-or so batches are the ED shift itself, packed hour after hour with 4 to
-41 messages each. Everything after them is the population tail, and
+or so batches are the ED shift itself, packed hour after hour with 8 to
+42 messages each. Everything after them is the population tail, and
 they are almost all `:count 1` or `:count 2` -- one birth, one injury,
 one unidentified arrival, one residence move restated as an A31, in an
 hour that carried nothing else, years apart from the batch before it.
-`batch-604` onward sit in 2045 and 2046. The empty hours between are
+`batch-476` onward sit in 2045 and 2046. The empty hours between are
 simply ABSENT, never written as empty files (ADR-0111's own named v1
 deferral: an interior empty batch is not represented, only skipped),
-which is why twenty years partition into 620 files rather than 175,000.
-Every one of the 620 written files self-verified:
+which is why twenty years partition into 491 files rather than 175,000.
+Every one of the 491 written files self-verified:
 `write-and-verify-batch!` (`bases/cli`) decodes what it just wrote
 straight back and checks `BTS-1` against the real message count before
-ever reporting success -- `:verified true` on all 620 is that check,
+ever reporting success -- `:verified true` on all 491 is that check,
 exercised, not merely claimed.
 
 **The wrapper itself**, `batch-000.hl7`, head and tail:
@@ -725,7 +781,7 @@ finished.
 **The lesson** (the author's own charter, ADR-0107/ADR-0109, quoted
 above, restated for batching specifically): transport-level
 completeness -- every `BTS-1` count checks out, exactly as this run's
-own 620-for-620 self-verification shows -- says nothing about
+own 491-for-491 self-verification shows -- says nothing about
 clinical-level completeness -- whether an encounter's own full record
 set has actually arrived yet. A downstream receiver deciding "do I
 have all of this encounter?" gets exactly the case it needs to test
