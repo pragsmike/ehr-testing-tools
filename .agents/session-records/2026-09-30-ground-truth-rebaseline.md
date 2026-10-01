@@ -280,3 +280,16 @@ holds), the six use-case scripts and `readme-what-you-get`. The first
 run, at `8912fa47`, failed on the ed-tuesday exerciser (Findings);
 every other step passed when run individually.
 
+
+## Close
+
+Pushed `c19b1024..095ec253` (nine commits, the red `7c6e2368` with its
+green successors). `bin/post-push-verify c19b1024 095ec253`: remote tip
+matches; every commit message ASCII; CI in progress at that moment
+(disclosed by the script). `gh run view 36825798567`: **completed
+success** at `095ec2531d662885612ac105ed9e1c68c24e3612` -- the close
+marker. Every background process this session started had exited by
+its own completion notification before the push; the base worktree was
+removed (`git worktree list` shows only the main tree). The one other
+`make test` JVM alive on the host belongs to another session, as
+disclosed above. No tag paid.
