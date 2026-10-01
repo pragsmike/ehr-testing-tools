@@ -193,3 +193,15 @@ substitute preceded the push.
    comment, outside this slice.
 
 CI green on the pushed tip is this session's close marker.
+
+## Close
+
+Pushed `6641c017..c19b1024` (seven commits, the red `d373bcab` with its
+green successors). `bin/post-push-verify 6641c017 c19b1024`: remote tip
+matches; every commit message ASCII; CI not yet indexed at that moment
+(disclosed by the script). `gh run view 36800737180`: **completed
+success** at `c19b10247d26369932dbcf134423e0321853d23a` — the close
+marker. Every background process this session started was enumerated
+and had exited before the push (seven, each by its own completion
+notification); no oracle worktree remained (`git worktree list`). No
+tag paid.
