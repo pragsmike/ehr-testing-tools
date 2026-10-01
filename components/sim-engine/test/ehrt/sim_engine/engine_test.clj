@@ -1489,6 +1489,69 @@
           (str "the self-check's own instrument, over the whole catalog: "
                (pr-str (:violations (:payload checked))))))))
 
+;; ADR-0184 step 3: the PRODUCER, ADR-0182's shape. One run, both routes to
+;; the kind, plus the pre-horizon route -- a hand-authored module cohort on
+;; explicit ordinals (Bee venom at birth, then one wellness visit with a
+;; Peanut onset stating all three optional fields and a Grass pollen onset
+;; stating none) and a weighted authored Renal stay carrying an
+;; `:allergy-onset` step that states `:category` only. The SAME config as
+;; the oracle's `allergy` root (`ehrt.oracle.digest/allergy-pair`), kept in
+;; step by hand, since sim-engine cannot depend on oracle.
+
+(def ^:private allergy-fixture-module
+  (:payload (patient-simulator/load-module "allergy-fixture"
+                                           (slurp (io/resource "ehrt/sim/fixtures/allergy-fixture.json")))))
+
+(def ^:private allergy-cohort (range 4))
+
+(def ^:private latex {:system :snomed :code "111088007" :display "Latex (substance)"})
+
+(def ^:private allergy-producer-config
+  {:seed 20260930 :patients 12 :arrival-gap 90
+   :pathways (into (mapv (fn [i] {:patient-ordinal i :pathway {:name "module-only" :steps []}})
+                         allergy-cohort)
+                   [{:pathway {:name "renal-stay-allergy"
+                               :steps [{:type :admission :location "Renal"}
+                                       {:type :allergy-onset :codes [latex] :category "environment"}
+                                       {:type :delay :from 60 :to 60}
+                                       {:type :discharge}]}
+                     :weight 1}])
+   :modules [(patient-simulator/singleton-closure allergy-fixture-module)]
+   :module-assignment (mapv (fn [i] {:patient-ordinal i :module-id "allergy-fixture"})
+                            allergy-cohort)
+   :module-horizon-days 3650})
+
+(deftest all-three-allergy-routes-reach-the-log-and-self-check-clean
+  (let [{:keys [ground-truth] :as r} (run/run allergy-producer-config)
+        onsets (filterv #(= :allergy-onset (:event %)) ground-truth)
+        compiled (filterv :citation onsets)
+        authored (filterv (complement :citation) onsets)
+        stated (fn [e] (filterv #(contains? e %) [:allergy-type :category :reactions]))]
+    (is (= 16 (count onsets))
+        "4 module patients x 2 in-horizon AllergyOnset states + 8 authored stays x 1 step")
+    (testing "the compiled route: every optional field on Peanut, none on Grass pollen"
+      (is (= {[:peanut-allergy [:allergy-type :category :reactions]] 4
+              [:grass-pollen-allergy []] 4}
+             (frequencies (map (juxt (comp :state :citation) stated) compiled))))
+      (is (every? #(= 2 (count (:reactions %))) (filter :reactions compiled))))
+    (testing "the authored route: :category alone"
+      (is (= 8 (count authored)))
+      (is (every? #(= [:category] (stated %)) authored)))
+    (is (= 4 (count (filter :reactions onsets))) ":reactions on exactly the Peanut onsets")
+    (is (= 12 (count (filter :category onsets))) ":category on Peanut and on every authored step")
+    (testing "the pre-horizon route: Bee venom rides :registered, never the log"
+      (is (= [[:allergy-onset "288328004"] [:allergy-onset "288328004"]
+              [:allergy-onset "288328004"] [:allergy-onset "288328004"]]
+             (into [] (comp (filter #(= :registered (:event %)))
+                            (mapcat :pre-horizon-facts)
+                            (map (juxt :event (comp :code first :codes))))
+                   ground-truth)))
+      (is (not-any? #(= "288328004" (:code (first (:codes %)))) onsets)))
+    (let [checked (check/check-all ground-truth (:facility r))]
+      (is (result/ok? checked)
+          (str "the self-check's own instrument, over the whole catalog: "
+               (pr-str (:violations (:payload checked))))))))
+
 ;; ADR-0183 slice 2: the ASSIGNMENT RECORD. `run` hands out what each
 ;; arrival ordinal was assigned -- captured where `prelude` already
 ;; resolved it, so no draw is added (`bin/ground-truth-bracket` is that

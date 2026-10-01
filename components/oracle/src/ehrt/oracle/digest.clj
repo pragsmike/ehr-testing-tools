@@ -42,15 +42,15 @@
   component-code versions, and hashing itself happens in the calling
   shell (`sha256sum`), not in-process.
 
-  CURRENT STATE, 2026-09-29 (ADR-0182, the `immunization` root; before
-  it, 2026-08-28, arc 4 sweep 3, ADR-0175 design (b)'s own
+  CURRENT STATE, 2026-09-30 (ADR-0184, the `allergy` root; before it,
+  2026-09-29, ADR-0182, the `immunization` root; before that, 2026-08-28, arc 4 sweep 3, ADR-0175 design (b)'s own
   step 0; before it, arc 4 sweep 2, designs (a) and
   (c)'s turn-on commit; before that, arc 3b sweep 3, ADR-0174 section
   2(b); before that, arc 3b sweep 2, ADR-0174 section 2(c);
   before that, arc 3b sweep 1, ADR-0174 ruling A1; before
   that, arc 3a part 4, ADR-0173 ruling D1's commit 2; previously
   2026-08-19, ADR-0156, review-4 register row L1-5).
-  `roots` holds 42 roots in two families:
+  `roots` holds 43 roots in two families:
 
     3 INTERPRETER-LAYER batches -- appendicitis/sore-throat/
       ear-infections. 100 well-mixed seeds x both sexes = 200 walks per
@@ -60,7 +60,7 @@
       well-distributed for their own first draw, confirmed repeatedly
       across GMF coverage waves.
 
-   39 ENGINE-LAYER pairs -- engine/run plus emit-hl7/emit, ground truth
+   40 ENGINE-LAYER pairs -- engine/run plus emit-hl7/emit, ground truth
       AND emitted HL7 both captured, at the run-config each root's own
       vendored/engine test already established as producing real
       content. The 33rd, `demographic-fold`, is the first root to turn
@@ -103,6 +103,11 @@
       through a hand-authored fixture module plus an authored step, since
       no vendored module carries a Vaccine state. One event kind (29 of
       29), zero message types -- the kind reaches no wire.
+      The 40th, `allergy` (ADR-0184), is the same shape for
+      `:allergy-onset`, the kind contract 1.11.0 added, and the only root
+      whose `:registered` events carry an `:allergy-onset`
+      `:pre-horizon-facts` entry. One event kind (30 of 30), zero message
+      types.
 
   This paragraph replaced an opening that read `Six roots, matching this
   session's own J1 ruling verbatim` -- true when written and never
@@ -111,7 +116,7 @@
   false; a cold reader simply got a third of the population and no
   signal that it was a third. The count is gated now
   (`ehrt.docs-tooling.oracle-coverage-test`), and the COVERAGE block
-  beside `roots` states what these 42 can and cannot witness.
+  beside `roots` states what these 43 can and cannot witness.
 
   Dated note (2026-08-03, ADR-0033 AR-4b): three more roots join at the
   ENGINE layer -- ear-infections-engine/urinary-tract-infections-engine/
@@ -1101,6 +1106,59 @@
                                            cohort)
                   :module-horizon-days 3650})))
 
+(defn- allergy-pair
+  "ADR-0184's own root (2026-09-30), and THE ONLY ROOT CARRYING
+  `:allergy-onset`, in the log or in a `:pre-horizon-facts` entry. FIRST
+  BASELINE, not a regression check: no vendored module carries an
+  AllergyOnset state, and contract 1.10.0 had no such kind.
+
+  ALL THREE ROUTES, ONE RUN -- `immunization-pair`'s shape. Ordinals 0-3
+  walk `allergy-fixture.json` (patient-simulator's test fixtures,
+  hand-authored, no NOTICE obligation): Bee venom AT BIRTH, so always
+  before the horizon and a registration fact; then one wellness visit
+  with Peanut stating `allergy_type`, `category` and two reactions, and
+  Grass pollen stating none. Every other ordinal takes an authored Renal
+  stay whose `:allergy-onset` step states `:category` only. So the log
+  carries each optional field both present and ABSENT (ADR-0178) -- a
+  root carrying only the full case could not tell \"when stated\" from
+  \"always\" -- and the pre-horizon route besides.
+
+  THROUGH `engine-pair`, the `death-fixture` precedent (a fixture module
+  reaches `run-command` only by name from `sim/modules/`).
+  `ehrt.sim-engine.engine-test/all-three-allergy-routes-reach-the-log-
+  and-self-check-clean` runs the same config through `check-all`, since
+  this path does not self-check.
+
+  Measured at the config below, and as predicted: 52 events -- 12
+  `:registered` (4 carrying one Bee venom `:pre-horizon-facts` entry
+  each), 8 `:admission`/`:discharge`, 4 `:outpatient-visit`/
+  `:outpatient-visit-end`, 16 `:allergy-onset` (8 compiled, 8 authored;
+  `:reactions` on the 4 Peanut, `:category` on 12). The kind reaches no
+  wire, by ADR-0184's own decision.
+
+  THE COVERAGE IT ADDS: one EVENT KIND, `:allergy-onset`, so
+  `witnessed-event-kinds` returns to total at 30 of 30. ZERO message
+  types. NO `:transfer`."
+  []
+  (let [module (:payload (patient-simulator/load-module
+                          "allergy-fixture"
+                          (slurp (io/resource "ehrt/sim/fixtures/allergy-fixture.json"))))
+        latex {:system :snomed :code "111088007" :display "Latex (substance)"}
+        cohort (range 4)]
+    (engine-pair {:seed 20260930 :patients 12 :arrival-gap 90
+                  :pathways (into (mapv (fn [i] {:patient-ordinal i :pathway {:name "module-only" :steps []}})
+                                        cohort)
+                                  [{:pathway {:name "renal-stay-allergy"
+                                              :steps [{:type :admission :location "Renal"}
+                                                      {:type :allergy-onset :codes [latex] :category "environment"}
+                                                      {:type :delay :from 60 :to 60}
+                                                      {:type :discharge}]}
+                                    :weight 1}])
+                  :modules [(patient-simulator/singleton-closure module)]
+                  :module-assignment (mapv (fn [i] {:patient-ordinal i :module-id "allergy-fixture"})
+                                           cohort)
+                  :module-horizon-days 3650})))
+
 (defn- injuries-pair
   "Injuries arc close (2026-08-11, ADR-0107): FIRST BASELINE, not a
   regression check -- this closure never completed a round trip before
@@ -1223,15 +1281,16 @@
 ;;     on one root, never what it reported.
 ;;
 ;; THE STRUCTURAL CAUSE, re-derived rather than inferred from the
-;; instrumentation: 36 of the 42 roots pass `:pathway {:name
+;; instrumentation: 36 of the 43 roots pass `:pathway {:name
 ;; "module-only" :steps []}` -- `encounter-horizon`, `bed-cycle`,
 ;; `scheduling`, `chatter-charges` and (2026-08-28) `order-pathway` are
-;; five of the six exceptions and pass
+;; five of the seven exceptions and pass
 ;; real admit/delay/discharge pathways -- `order-pathway`'s being the
 ;; only one that also carries an `:order` step,
 ;; which is why the churn family and the allocation ladder reach them --
-;; the sixth, (2026-09-29) `immunization`, authors a Renal stay too but
-;; turns nothing on and runs a 90-minute gap, so neither reaches it --
+;; the sixth, (2026-09-29) `immunization`, and the seventh, (2026-09-30)
+;; `allergy`, author a Renal stay too but turn nothing on and run a
+;; 90-minute gap, so neither reaches them --
 ;; and 8 of 19 components plus `bases/cli` are off the
 ;; oracle classpath entirely (`bin/regression-oracle`'s own deps block).
 ;; THREE components joined that classpath on 2026-08-26 -- person-
@@ -1278,12 +1337,17 @@
 ;; ADT^A20 unavoidably so, since it is the only root that can emit one.
 ;;
 ;; The two sets below are the committed claim, asserted against a FRESH
-;; 42-root digest by `ehrt.integration.oracle-coverage-test` and checked
+;; 43-root digest by `ehrt.integration.oracle-coverage-test` and checked
 ;; for shape, population, membership and location on every push by
 ;; `ehrt.docs-tooling.oracle-coverage-test`.
 
 (def ^:private witnessed-event-kinds
-  "ALL 29 of the 29 closed event kinds any root can produce.
+  "ALL 30 of the 30 closed event kinds any root can produce.
+
+  WIDENED 2026-09-30, 29 of 30 -> 30 of 30, by `allergy` (ADR-0184) --
+  the `immunization` sequence exactly: contract 1.11.0 added
+  `:allergy-onset` one commit earlier, and the FIRST BASELINE root that
+  closes the claim lands here, since no vendored module reaches the kind.
 
   WIDENED 2026-09-29, 28 of 29 -> 29 of 29, by `immunization` (ADR-0182).
   THE DENOMINATOR GREW FIRST, one commit earlier: contract 1.10.0 added
@@ -1348,14 +1412,14 @@
     :cancel-discharge :cancel-transfer :care-plan-end
     :care-plan-start :coverage-change
     :demographic-update :diagnostic-report
-    :discharge :immunization :medication-end :medication-order :merge :no-show
+    :allergy-onset :discharge :immunization :medication-end :medication-order :merge :no-show
     :observation :order-placed
     :outpatient-visit :outpatient-visit-end :procedure :registered
     :reschedule :result-available :step-rejected
     :transfer})
 
 (def ^:private witnessed-message-types
-  "Every MSH-9 the 39 engine-layer roots emit. ADT^A02 is death-fixture's
+  "Every MSH-9 the 40 engine-layer roots emit. ADT^A02 is death-fixture's
   alone, once. ADT^A34 is emitted by no root at all.
 
   WIDENED AGAIN 2026-08-28 by `scheduling`, arc 4 sweep 4's own turn-on
@@ -1463,7 +1527,8 @@
    "veteran-substance-abuse-treatment"  veteran-substance-abuse-treatment-pair
    "injuries"                           injuries-pair
    "demographic-fold"                   demographic-fold-pair
-   "immunization"                       immunization-pair})
+   "immunization"                       immunization-pair
+   "allergy"                            allergy-pair})
 
 (defn -main
   "Writes one <root>.edn per root into out-dir (pr-str of the batch or

@@ -1,0 +1,96 @@
+{
+  "name": "Allergy Fixture",
+  "remarks": [
+    "Hand-authored GMF fixture for ADR-0184 (the :allergy-onset kind): this",
+    "project's own authored data, not copied out of any real Synthea module,",
+    "so it carries no NOTICE/provenance obligation the way a vendored module",
+    "would. No vendored module carries an AllergyOnset state; this fixture is",
+    "the compiled producer the oracle's `allergy` root and",
+    "ehrt.sim-engine.engine-test run. Three AllergyOnset states: Bee venom AT",
+    "BIRTH, always before the horizon, so it rides `:registered`'s",
+    "`:pre-horizon-facts`; then, inside one wellness visit, Peanut stating",
+    "allergy_type, category and two reactions (upstream's own",
+    "reaction/possible_severities shape -- the severities are read by",
+    "nothing), and Grass pollen stating none of the three. The walk reaches",
+    "its registration year by the immunization fixture's 365-day loop, not a",
+    "Date Guard (a failing Date guard blocks the walk for good). The SNOMED",
+    "substance and reaction codes, with their displays, are the ones",
+    "upstream's allergies/*_incidence.json modules use (pin 7e08387c)."
+  ],
+  "states": {
+    "Initial": {
+      "type": "Initial",
+      "direct_transition": "Bee_Venom_Allergy"
+    },
+
+    "Bee_Venom_Allergy": {
+      "type": "AllergyOnset",
+      "allergy_type": "allergy",
+      "category": "environment",
+      "codes": [
+        {"system": "SNOMED-CT", "code": "288328004", "display": "Bee venom (substance)"}
+      ],
+      "direct_transition": "Registration_Year_Check"
+    },
+
+    "Registration_Year_Check": {
+      "type": "Simple",
+      "conditional_transition": [
+        {"condition": {"condition_type": "Date", "operator": ">=", "year": 2025}, "transition": "Wellness_Visit"},
+        {"transition": "Wait_A_Year"}
+      ]
+    },
+
+    "Wait_A_Year": {
+      "type": "Delay",
+      "exact": {"quantity": 365, "unit": "days"},
+      "direct_transition": "Registration_Year_Check"
+    },
+
+    "Wellness_Visit": {
+      "type": "Encounter",
+      "encounter_class": "wellness",
+      "codes": [
+        {"system": "SNOMED-CT", "code": "185345009", "display": "Encounter for symptom"}
+      ],
+      "direct_transition": "Peanut_Allergy"
+    },
+
+    "Peanut_Allergy": {
+      "type": "AllergyOnset",
+      "allergy_type": "allergy",
+      "category": "food",
+      "codes": [
+        {"system": "SNOMED-CT", "code": "762952008", "display": "Peanut (substance)"}
+      ],
+      "reactions": [
+        {
+          "reaction": {"system": "SNOMED-CT", "code": "49727002", "display": "Cough (finding)"},
+          "possible_severities": [{"level": "mild", "value": 0.21}, {"level": "none", "value": 0.79}]
+        },
+        {
+          "reaction": {"system": "SNOMED-CT", "code": "402387002", "display": "Allergic angioedema (disorder)"},
+          "possible_severities": [{"level": "moderate", "value": 0.58}, {"level": "none", "value": 0.42}]
+        }
+      ],
+      "direct_transition": "Grass_Pollen_Allergy"
+    },
+
+    "Grass_Pollen_Allergy": {
+      "type": "AllergyOnset",
+      "codes": [
+        {"system": "SNOMED-CT", "code": "256277009", "display": "Grass pollen (substance)"}
+      ],
+      "direct_transition": "End_Visit"
+    },
+
+    "End_Visit": {
+      "type": "EncounterEnd",
+      "direct_transition": "Done"
+    },
+
+    "Done": {
+      "type": "Terminal"
+    }
+  }
+}
