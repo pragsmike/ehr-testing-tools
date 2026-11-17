@@ -249,17 +249,25 @@ have different sources, different timing and different messages, and a
 consumer who asks for "dispense events" usually means exactly one of
 them. **Which one you join against is the fact worth telling us.**
 
-No design is chosen: which of the three, on what clock, and whether any
-of it reaches a wire format are all undecided.
+The first two now share one event kind, told apart by a stated
+`:setting`; the third has none. What is still undecided: any rule that
+would produce a fill from an order without your writing it, how often a
+long-running prescription refills, and whether any of it reaches a wire
+format.
 
 *Today:* a `:medication-order` is a prescription fact and nothing more —
 the patient, the medication's codes, and a citation to the module state
 that wrote it. A `:medication-end` closes it, naming its order by that
-citation. No event kind for a fill, a dispense or a medication
-administration exists. Neither kind renders to any HL7 v2 message: no
-pharmacy order, dispense or administration message (RDE, RDS, RAS) is
-emitted. The FHIR emitter renders each order as a `MedicationRequest`
-carrying its codes, status and authored time, and no
+citation. A `:medication-dispense` (event schema 1.12.0) names the order
+it fills and states its `:setting`, `:inpatient` or `:community`; it
+repeats no codes and carries no fill number. **A pathway step you author
+is the only thing that produces one**: no rule derives a fill from an
+order, no shipped scenario authors the step, and no vendored module can,
+so no shipped corpus contains a dispense. No event kind for a medication
+administration exists. None of the three kinds renders to any HL7 v2
+message: no pharmacy order, dispense or administration message (RDE,
+RDS, RAS) is emitted. The FHIR emitter renders each order as a
+`MedicationRequest` carrying its codes, status and authored time, and no
 `MedicationDispense` or `MedicationAdministration`. The detail the
 shipped modules author on an order — dosage, duration, refills,
 as-needed and instructions, and the flags marking an order chronic or

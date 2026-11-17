@@ -486,14 +486,19 @@ insensitive to whether the residence-move rate is 0.11 or 0.13 and very
 sensitive to whether moves happen at all. Do not read a rate off this
 stream and use it as an epidemiological figure.
 
-**A medication order is a prescription fact, and the log holds nothing
-downstream of it.** A `:medication-order` says a medication was
-prescribed, and a `:medication-end` closes it; no event records a fill,
-a dispense or an administration for it, and no pharmacy message goes on
-the HL7 v2 wire for either kind. Do not read the absence of a fill as an
-order that went unfilled: the log does not model filling at all.
+**A medication order is a prescription fact, and nothing fills it
+unless a pathway says so.** A `:medication-order` says a medication was
+prescribed, and a `:medication-end` closes it. Since event schema 1.12.0
+a `:medication-dispense` can name the order it fills, in one of two
+stated settings — but only a pathway step you author produces one. No
+rule derives a fill from an order, no shipped scenario authors the step,
+and no vendored module can, so every corpus this workspace ships still
+holds orders with no dispense at all. Do not read that absence as an
+order that went unfilled: nothing was asked to fill it. No event records
+a medication administration, and no pharmacy message goes on the HL7 v2
+wire for any of the three kinds.
 [`future-features.md`](future-features.md#medication-dispensing-and-administration)
-has what a dispense would have to mean first.
+has what is still missing.
 
 **Two gated limitation registers say what each simulator deliberately
 does not model**, each row carrying its own reason and its own enforcing

@@ -330,8 +330,8 @@ log always carries the version of the contract that produced it.
 - **Additive change does not OWE a bump.** A new event kind, or a new
   *optional* key on an existing kind, is non-breaking: nothing you already
   read has moved. Every new kind so far has taken a minor bump anyway
-  (1.7.0, 1.10.0), because the version is your only handle on which kinds a
-  log can contain. 1.11.0's was owed outright: besides `:allergy-onset` it
+  (1.7.0, 1.10.0, 1.12.0), because the version is your only handle on which
+  kinds a log can contain. 1.11.0's was owed outright: besides `:allergy-onset` it
   widened the nested `:pre-horizon-facts` `:event` enum, which
   `classify-change` counts as a changed value schema.
 - **Anything else bumps it** — a key removed, an optional key made
