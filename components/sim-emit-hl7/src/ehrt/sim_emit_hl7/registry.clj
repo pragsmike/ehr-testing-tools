@@ -174,6 +174,12 @@
    ;; ADR-0184 (contract 1.11.0): `:allergy-onset` likewise gets NO entry.
    ;; Its v2 home is an AL1 segment on an ADT, or IAM^A05 -- neither
    ;; built here -- the follow-on ADR-0184 names.
+   ;;
+   ;; ADR-0186 (contract 1.12.0): `:medication-dispense` likewise gets NO
+   ;; entry. Its v2 home is the pharmacy family (RDE^O11 for the encoded
+   ;; order, RDS^O13 for the dispense), none of it built here, and
+   ;; `:medication-order` itself still renders nothing -- the follow-on
+   ;; ADR-0186 names.
    })
 
 (def skeleton-message-types

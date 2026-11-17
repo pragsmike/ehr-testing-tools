@@ -237,6 +237,19 @@
                      ;; invalidate by inserting steps around it).
                      [:order-citation {:optional true} Citation]
                      [:citation {:optional true} Citation]]]
+   ;; ADR-0186 (2026-11-17): a dispense of an order, an author-facing step
+   ;; like :immunization. :setting is STATED, never inferred from whether
+   ;; an encounter happens to be open -- an inpatient pharmacy dispense to
+   ;; the unit and a community fill are different facts with different
+   ;; sources, and the pathway author is the one who knows which this is.
+   ;; :order-citation names the order filled, :medication-end's own
+   ;; mechanism, and is REQUIRED here: a dispense of nothing is not a
+   ;; step. No :codes -- the order carries them.
+   [:medication-dispense [:map
+                          [:type [:= :medication-dispense]]
+                          [:setting [:enum :inpatient :community]]
+                          [:order-citation Citation]
+                          [:citation {:optional true} Citation]]]
    ;; ADR-0182 (2026-09-29): the Vaccine state's compile target, and an
    ;; author-facing step like :order -- a scenario may write one directly.
    ;; :series is carried only when the module (or author) states it:

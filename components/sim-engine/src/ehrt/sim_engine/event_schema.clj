@@ -435,8 +435,38 @@
   are the follow-on) and no FHIR AllergyIntolerance resource.
 
   MADE UNDER THE WAIVER, disclosed: no deprecation release was run, and
+  none is owed in any case, since nothing was removed.
+
+  1.12.0 (2026-11-17, ADR-0186, downstream request of the same date) is
+  the DISPENSE: ONE new kind, `:medication-dispense` -- `:active-mrn`,
+  `:setting` (`:inpatient` or `:community`, required, stated by the
+  step), `:order-event-id` and `:order-citation` naming the order it
+  fills, `:citation` optional. `:order-event-id` is typed and resolved
+  as `:medication-end`'s is, nil allowance included; `:order-citation`
+  is NOT nilable here. The order's `:codes` are not repeated and there
+  is no fill number.
+
+  AUTHORED ONLY. A pathway step produces it; no rule derives a dispense
+  from an order, no config key turns one on, and no vendored module
+  carries one. No shipped config authors the step, so no existing
+  corpus byte moves.
+
+  NO BUMP IS OWED, AND THIS ONE IS TAKEN -- 1.10.0's situation and
+  1.10.0's reason. `classify-change` against the frozen 1.11.0 baseline,
+  before the re-freeze, returns
+
+    {:additive? true, :breaking []}
+
+  The bump is taken because a 1.12.0 log may carry a kind a 1.11.0-era
+  consumer dispatching on `:event` has never seen. A 1.11.0-ERA LOG
+  VALIDATES UNCHANGED AGAINST 1.12.0: nothing existing moved.
+
+  THE KIND REACHES NO WIRE in 1.12.0: no HL7 registry entry (RDE/RDS
+  are the follow-on) and no FHIR MedicationDispense resource.
+
+  MADE UNDER THE WAIVER, disclosed: no deprecation release was run, and
   none is owed in any case, since nothing was removed."
-  "1.11.0")
+  "1.12.0")
 
 ;; --- shared leaf schemas --------------------------------------------------
 ;;
@@ -1079,6 +1109,23 @@
            ;; records that both observed events had it nil.
            [:order-event-id [:maybe :int]]
            [:order-citation [:maybe sim-model/Citation]]
+           [:citation {:optional true} sim-model/Citation])]
+
+    [:medication-dispense
+     (kind :medication-dispense
+           {:doc "A medication order is dispensed, resolved to its order by CITATION rather than by log position. `:setting` says which dispense this is: `:inpatient`, a pharmacy dispense to the unit during an open encounter, or `:community`, a fill of a prescription outside any encounter. The order's codes are not repeated and no fill number is carried. Deliberately renders no HL7 message and no FHIR resource yet."
+            :transition "No state change; the log itself is the record."}
+           [:active-mrn :string]
+           ;; 1.12.0 (ADR-0186): STATED by the step, never inferred from
+           ;; whether an encounter is open.
+           [:setting [:enum :inpatient :community]]
+           ;; Typed and resolved exactly as `:medication-end`'s is, nil
+           ;; allowance included: the order may be a `:pre-horizon-facts`
+           ;; entry on `:registered` rather than a log event. No shipped
+           ;; producer writes a nil here in 1.12.0.
+           [:order-event-id [:maybe :int]]
+           ;; NOT nilable, unlike the end's: the step requires it.
+           [:order-citation sim-model/Citation]
            [:citation {:optional true} sim-model/Citation])]
 
     [:care-plan-start

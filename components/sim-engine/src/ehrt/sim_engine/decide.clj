@@ -1774,6 +1774,25 @@
                      (citation-fields step))]
      :advance 0}))
 
+;; ADR-0186 (schema 1.12.0): a dispense of an order. `:order-event-id` is
+;; resolved EXACTLY as :medication-end's is, directly above -- the same
+;; query, the same patient predicate, the same nil when the order is not
+;; a log event -- so a dispense of an order from before the horizon will
+;; need no new shape. No draw (`_streams`). The order's `:codes` are not
+;; copied: the reference is the link, and a copy could disagree with it.
+(defmethod decide :medication-dispense decide-medication-dispense
+  [_streams t world patient-id {:keys [setting order-citation] :as step}]
+  (let [{:keys [ground-truth patients]} world
+        patient (get patients patient-id)
+        order-event-id (log-index/last-cited-index world ground-truth :medication-order
+                                                   patient-id order-citation)]
+    {:events [(merge {:event :medication-dispense :t t :active-mrn (:active-mrn patient)
+                      :setting setting
+                      :order-event-id order-event-id :order-citation order-citation
+                      :participants [{:patient-id patient-id :role :subject}]}
+                     (citation-fields step))]
+     :advance 0}))
+
 ;; GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R2(b)): the SAME
 ;; decide/evolve shape :medication-order/:medication-end establish,
 ;; two defmethod-pairs up.

@@ -108,9 +108,14 @@
       ;; 11 -> 12 (ADR-0184, schema 1.11.0): `:allergy-onset` joins the
       ;; same way -- AL1 (on an ADT) or IAM^A05 is the follow-on ADR-0184
       ;; names. Recorded in the same three places.
+      ;;
+      ;; 12 -> 13 (ADR-0186, schema 1.12.0): `:medication-dispense` joins
+      ;; the same way -- the pharmacy family (RDE^O11/RDS^O13) is the
+      ;; follow-on ADR-0186 names. Recorded in the same three places.
       (is (= #{:registered :step-rejected :outpatient-visit-end :procedure
                :medication-order :medication-end :care-plan-start :care-plan-end
-               :demographic-update :coverage-change :immunization :allergy-onset}
+               :demographic-update :coverage-change :immunization :allergy-onset
+               :medication-dispense}
              silent)
           (str "the set of contract kinds this emitter renders no message for "
                "changed to " (sort silent) " -- that is a real change in what "

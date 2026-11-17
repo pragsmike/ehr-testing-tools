@@ -18,7 +18,7 @@ mkdir -p out/ground-truth-oracle
 
 # The whole loop, in one line and nothing on disk: generate a world
 # and hand it straight to the reference judge. Pass `sim check` the
-# SAME --config the run used -- four of the 46 invariants need config
+# SAME --config the run used -- four of the 47 invariants need config
 # the log itself does not carry, and without the flag they are checked
 # against the shipped defaults instead of against your facility.
 bin/ehrt sim run --seed 42 --patients 8 --churn --config demos/scenarios/ed-tuesday/config.edn --format ground-truth | bin/ehrt sim check --config demos/scenarios/ed-tuesday/config.edn

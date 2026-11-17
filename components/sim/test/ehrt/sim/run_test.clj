@@ -996,10 +996,26 @@
                      "; the byte gate above carries the diagnostic."))))))))
 
 (def ^:private arc0-invariant-catalog
-  "The 46 invariant names `check-all` reports, in reporting order --
+  "The 47 invariant names `check-all` reports, in reporting order --
   pinned so the findings assertion below is a full-value `=` rather than
   a check of one key. Catalog drift is itself a change in what \"identical
   findings\" means, so it belongs inside the gate, not outside it.
+
+  RE-PINNED AGAIN 2026-11-17, 46 -> 47, by ADR-0186 (per R-catalog-pin
+  the new name is an ADDITION with this dated citation -- nothing
+  renamed, nothing removed), and disclosed on the same terms as every
+  re-pin below. WHICH INVARIANT MOVED: none of the FINDINGS. `:status`
+  is `:ok` on all four corpora and `:events` is unchanged, and the row
+  that joined,
+  `medication-dispense-references-existing-order-and-follows-it-in-time`,
+  is VACUOUS on a log with no `:medication-dispense` in it, which every
+  corpus this pin covers is: the kind is authored only, and no shipped
+  config authors it. It sits directly after the medication-end law,
+  whose order resolution it reads the same way, which is where
+  `catalog` itself puts it. THE SAME COMMIT also gave
+  `clinical-content-only-when-admitted` an `:inpatient`
+  `:medication-dispense` clause -- a change to what that FINDING means,
+  moving no finding here for the same reason.
 
   RE-PINNED AGAIN 2026-09-05, 45 -> 46, by ADR-0178 (R-gate; per
   R-catalog-pin the new name is an ADDITION with this dated citation --
@@ -1112,6 +1128,7 @@
     registered-persona-is-schema-valid
     outpatient-patients-occupy-no-bed clinical-content-only-when-admitted
     medication-end-references-existing-order-and-follows-it-in-time
+    medication-dispense-references-existing-order-and-follows-it-in-time
     care-plan-end-references-existing-start-and-follows-it-in-time
     expired-patient-retains-location
     non-admitted-patients-hold-no-bed

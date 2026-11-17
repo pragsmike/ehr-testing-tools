@@ -201,6 +201,15 @@
   :participants [{:patient-id "PID-000001-01564f61", :role :subject}],
   :citation {:module "schema-fixture-mod", :state :the-vaccine},
   :warm-up false},
+ :medication-dispense
+ {:event :medication-dispense,
+  :t 0,
+  :active-mrn "MRN000001",
+  :setting :inpatient,
+  :order-event-id 2,
+  :order-citation {:module "expires", :state :the-order},
+  :participants [{:patient-id "PID-000000-983aa92f", :role :subject}],
+  :warm-up false},
  :medication-end
  {:event :medication-end,
   :t 13046400,

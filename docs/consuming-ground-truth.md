@@ -360,7 +360,7 @@ bin/ehrt sim run --seed 42 --patients 20 --churn --format ground-truth \
 invariants need config the log itself does not carry, and without the
 flag they are checked against the shipped defaults — see below.
 
-`sim check` runs **46 invariants** over the log and reports each one it
+`sim check` runs **47 invariants** over the log and reports each one it
 ran, by name, in `:payload :invariants-checked`. Exit 0 with `:status
 :ok` means every one held; exit 1 with `:status :rejected` and
 `:category :invariant-violation` carries a `:violations` vector naming
@@ -399,7 +399,7 @@ config-needing siblings:
 Two things about that list that a reader will otherwise get wrong.
 
 **Without `--config`, `sim check` reads the DEFAULT facility, warm-up
-window and order profiles.** **Four** of the 46 invariants need config
+window and order profiles.** **Four** of the 47 invariants need config
 the log does not carry — `occupancy-within-capacity` and
 `surge-only-when-earlier-rungs-exhausted` need the facility,
 `warm-up-mark-matches-window` needs the warm-up window, and
@@ -445,7 +445,7 @@ them for you. Count the kinds in your own log;
 
 **This section is the other half of the one above and is meant to be
 read with the same weight.** A green `sim check` is a statement about
-the 46 invariants in that catalog and about nothing else.
+the 47 invariants in that catalog and about nothing else.
 
 **Known-open behaviours the catalog permits by construction.**
 
@@ -792,7 +792,7 @@ subprocess `:invocation`. A sim manifest looks like this:
 | `:stage` | `:simulated` | which pipeline stage produced it |
 | `:generator` | `{:name "ehrt.sim" :version "0.1.0-pre" :sha256 "1b486fa2…"}` | the engine, by content hash — the cross-version reproduction key |
 | `:seeds` | `{:primary 20260811}` | the seed. One key, not Synthea's two |
-| `:event-schema-version` | `"1.11.0"` | which version of the event contract this log satisfies |
+| `:event-schema-version` | `"1.12.0"` | which version of the event contract this log satisfies |
 | `:stream-scheme` | `"1.0"` | which RNG stream partition produced it |
 | `:engine-params` | the engine keys this run used | the flag-reachable half of the config |
 | `:invocation` | `{:verb "run" :opts {…}}` | **the whole config, engine and emission keys alike** |

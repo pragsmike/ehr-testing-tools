@@ -435,6 +435,12 @@
 ;; renders one yet (AL1/IAM and FHIR AllergyIntolerance are follow-ons).
 (defmethod evolve :allergy-onset evolve-allergy-onset [patient _event] patient)
 
+;; ADR-0186: :medication-dispense likewise -- no PatientState field, since
+;; nothing renders one yet (RDE/RDS and FHIR MedicationDispense are
+;; follow-ons). The order's own :medication-orders entry is untouched: a
+;; fill neither opens nor closes it.
+(defmethod evolve :medication-dispense evolve-medication-dispense [patient _event] patient)
+
 ;; --- M6 Task 1: :observation/:medication-order/:medication-end now land
 ;; in the clinical-content accumulator (`ehrt.sim-engine.state`'s own
 ;; header comment above `PatientState`) -- EmitState's Observation/

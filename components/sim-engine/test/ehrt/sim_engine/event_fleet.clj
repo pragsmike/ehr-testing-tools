@@ -1,6 +1,6 @@
 (ns ehrt.sim-engine.event-fleet
   "The deterministic fixture fleet: eight small engine runs whose union
-  produces EXACTLY the 30 kinds `ehrt.sim-engine.event-schema` declares.
+  produces EXACTLY the 31 kinds `ehrt.sim-engine.event-schema` declares.
 
   Lives on the test path, and is shared by two consumers that must not
   be allowed to disagree:
@@ -187,13 +187,25 @@
 (defn death-run
   "The `:disposition :expired` discharge -- 1 event in the census's own
   4,997, and 0 in anything the docs teach, so it gets its own fixture
-  rather than being left to chance."
+  rather than being left to chance.
+
+  ADR-0186: it also carries the fleet's one `:medication-dispense`, an
+  authored order and its `:inpatient` dispense inside the stay. HERE
+  because this run is last among the pathway runs to supply any first
+  example, so two more events in it move no other kind's example and no
+  log index another example cites."
   []
   (run/run {:seed 14 :patients 1 :arrival-gap 0
                :facility crowded-facility
                :pathways [{:patient-ordinal 0
                            :pathway {:name "expires"
                                      :steps [{:type :admission :location "Renal"}
+                                             {:type :medication-order
+                                              :codes [{:system :rxnorm :code "834102"
+                                                       :display "Penicillin V Potassium 500 MG Oral Tablet"}]
+                                              :citation {:module "expires" :state :the-order}}
+                                             {:type :medication-dispense :setting :inpatient
+                                              :order-citation {:module "expires" :state :the-order}}
                                              {:type :discharge :disposition :expired
                                               :codes [{:system :snomed :code "410429000"
                                                        :display "Cardiac arrest"}]}]}}]}))

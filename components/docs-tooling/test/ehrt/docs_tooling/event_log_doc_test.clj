@@ -42,8 +42,9 @@
     ;; `:appointment-cancel`, `:no-show` -- joined the closed vocabulary,
     ;; on top of 1.6.0's own `:bed-status-change`.
     ;; 29 as of 1.10.0 (ADR-0182): `:immunization`; 30 as of 1.11.0
-    ;; (ADR-0184): `:allergy-onset`.
-    (is (= 30 (count kinds)))
+    ;; (ADR-0184): `:allergy-onset`; 31 as of 1.12.0 (ADR-0186):
+    ;; `:medication-dispense`.
+    (is (= 31 (count kinds)))
     (doseq [k kinds]
       (is (str/includes? block (str "#### `" k "`"))
           (str "no section rendered for " k))

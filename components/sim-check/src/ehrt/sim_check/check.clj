@@ -1379,12 +1379,17 @@
   ends) after discharge. ADR-0182: :immunization joins -- a vaccine is
   administered at a visit, never with no encounter open. ADR-0184:
   :allergy-onset joins -- an allergy is recorded at a visit; one that
-  predates the horizon is a `:pre-horizon-facts` entry, never an event."
+  predates the horizon is a `:pre-horizon-facts` entry, never an event.
+  ADR-0186: a :medication-dispense joins BY ITS SETTING -- an
+  `:inpatient` dispense goes to the unit of an open encounter, so it is
+  in the class; a `:community` fill happens after the visit that
+  prescribed it, so it is not, for :medication-end's own reason."
   {::records true}
   ([ground-truth] (clinical-content-only-when-admitted ground-truth (engine/replay ground-truth)))
   ([ground-truth records]
    (for [{:keys [event before patient-id]} records
-         :when (and (#{:procedure :observation :medication-order :diagnostic-report :care-plan-start :immunization :allergy-onset} (:event event))
+         :when (and (or (#{:procedure :observation :medication-order :diagnostic-report :care-plan-start :immunization :allergy-onset} (:event event))
+                        (and (= :medication-dispense (:event event)) (= :inpatient (:setting event))))
                     (or (not= :admitted (:status before))
                         ;; ADR-0174's table, per-encounter: and the stamp
                         ;; names the OPEN encounter, so a condition
@@ -1445,6 +1450,47 @@
                          (not (some #(= patient-id (:patient-id %)) (:participants target)))
                          (> (:t target) (:t event))))]
       {:invariant :medication-end-references-existing-order-and-follows-it-in-time :patient-id patient-id :at (:t event)})))
+
+(defn medication-dispense-references-existing-order-and-follows-it-in-time
+  "ADR-0186. Every :medication-dispense event's :order-event-id is a real
+  :medication-order event in this same log, for the SAME patient -- the
+  participant test the end's law directly above applies, read the same
+  way -- at or before the dispense's own :t, AND the dispense is at or
+  before that order's end when the log ends it. Equality is legal at
+  both edges: an order may be filled the instant it is written, and
+  ended the instant it is last filled. An order several ends cite is
+  closed at the EARLIEST of them.
+
+  OR, when no such ground-truth event exists, the SAME patient's own
+  :registered event carries a matching :medication-order entry in its
+  :pre-horizon-facts -- the end's own straddle allowance, on the same
+  ground: the fact is definitionally prior to every event of that
+  patient. In that branch the end is not looked for, since an end of a
+  pre-horizon order carries no index to find it by; no producer writes
+  a dispense of a pre-horizon order today."
+  [ground-truth]
+  (let [indexed (vec ground-truth)
+        pre-horizon-citations (pre-horizon-medication-order-citations-by-patient ground-truth)
+        end-t-by-order (reduce (fn [m event]
+                                 (if-let [order-idx (and (= :medication-end (:event event)) (:order-event-id event))]
+                                   (update m order-idx (fnil min Long/MAX_VALUE) (:t event))
+                                   m))
+                               {} indexed)]
+    (for [event indexed
+          :when (= :medication-dispense (:event event))
+          :let [target-idx (:order-event-id event)
+                target (get indexed target-idx)
+                patient-id (:patient-id (first (:participants event)))
+                pre-horizon-referent? (and (nil? target)
+                                            (contains? (get pre-horizon-citations patient-id)
+                                                       (:order-citation event)))]
+          :when (and (not pre-horizon-referent?)
+                     (or (nil? target)
+                         (not= :medication-order (:event target))
+                         (not (some #(= patient-id (:patient-id %)) (:participants target)))
+                         (> (:t target) (:t event))
+                         (some-> (get end-t-by-order target-idx) (< (:t event)))))]
+      {:invariant :medication-dispense-references-existing-order-and-follows-it-in-time :patient-id patient-id :at (:t event)})))
 
 (defn- pre-horizon-care-plan-start-citations-by-patient
   "patient-id -> the set of :citation values riding that patient's own
@@ -2128,6 +2174,9 @@
    #'outpatient-patients-occupy-no-bed
    #'clinical-content-only-when-admitted
    #'medication-end-references-existing-order-and-follows-it-in-time
+   ;; ADR-0186: beside the end's law, whose order resolution and
+   ;; pre-horizon allowance it reads the same way.
+   #'medication-dispense-references-existing-order-and-follows-it-in-time
    ;; ADR-0166: the twin span. Added beside its mirror, not appended at
    ;; the end, because a reader comparing the two should find them
    ;; adjacent -- the reason the catalog is documented as being in

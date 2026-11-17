@@ -163,10 +163,11 @@
       ;; `:appointment-cancel`, `:no-show` -- on top of 1.6.0's own
       ;; `:bed-status-change`.
       ;; 29 since 1.10.0 (ADR-0182): `:immunization`; 30 since 1.11.0
-      ;; (ADR-0184): `:allergy-onset`.
-      (is (= 30 (count closed))
+      ;; (ADR-0184): `:allergy-onset`; 31 since 1.12.0 (ADR-0186):
+      ;; `:medication-dispense`.
+      (is (= 31 (count closed))
           (str "sanity on this test's own population source: the committed export must still "
-               "hold the 30-kind closed vocabulary. Found " (count closed) "."))
+               "hold the 31-kind closed vocabulary. Found " (count closed) "."))
       (is (every? closed kinds)
           (str "a committed kind outside the closed vocabulary is a typo or a stale claim. "
                "Offenders: " (pr-str (remove closed kinds)))))
