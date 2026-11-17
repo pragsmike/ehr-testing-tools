@@ -486,6 +486,15 @@ insensitive to whether the residence-move rate is 0.11 or 0.13 and very
 sensitive to whether moves happen at all. Do not read a rate off this
 stream and use it as an epidemiological figure.
 
+**A medication order is a prescription fact, and the log holds nothing
+downstream of it.** A `:medication-order` says a medication was
+prescribed, and a `:medication-end` closes it; no event records a fill,
+a dispense or an administration for it, and no pharmacy message goes on
+the HL7 v2 wire for either kind. Do not read the absence of a fill as an
+order that went unfilled: the log does not model filling at all.
+[`future-features.md`](future-features.md#medication-dispensing-and-administration)
+has what a dispense would have to mean first.
+
 **Two gated limitation registers say what each simulator deliberately
 does not model**, each row carrying its own reason and its own enforcing
 test:

@@ -225,6 +225,48 @@ own feed's statistics. [`related-work/synthetic-hospital.md`](related-work/synth
 sketches how such a study might run, borrowing the protocol of a
 recent physician-validated benchmark.
 
+## Clinical depth
+
+**Not every gap here is a fault class.** Everything above is about how
+the traffic is disturbed, sized or measured; this is about what the
+simulated world itself contains — a clinical fact a real hospital
+produces and this log stops short of.
+
+### Medication dispensing and administration
+
+Fills and administrations that each name the order they belong to, so a
+medication order stops being the last thing the log says about a
+medication: you could join a dispense to its prescription, count doses
+given against doses ordered, and test what your system does with an
+order nobody ever filled.
+
+**"Dispense" is three different things, and the log would have to choose
+among them.** An inpatient pharmacy dispense sends a drug to the unit. A
+community fill happens at a retail pharmacy, against a prescription
+written at discharge or in clinic, and a hospital feed may never see it
+at all. An administration is a nurse giving a dose to a patient. They
+have different sources, different timing and different messages, and a
+consumer who asks for "dispense events" usually means exactly one of
+them. **Which one you join against is the fact worth telling us.**
+
+No design is chosen: which of the three, on what clock, and whether any
+of it reaches a wire format are all undecided.
+
+*Today:* a `:medication-order` is a prescription fact and nothing more —
+the patient, the medication's codes, and a citation to the module state
+that wrote it. A `:medication-end` closes it, naming its order by that
+citation. No event kind for a fill, a dispense or a medication
+administration exists. Neither kind renders to any HL7 v2 message: no
+pharmacy order, dispense or administration message (RDE, RDS, RAS) is
+emitted. The FHIR emitter renders each order as a `MedicationRequest`
+carrying its codes, status and authored time, and no
+`MedicationDispense` or `MedicationAdministration`. The detail the
+shipped modules author on an order — dosage, duration, refills,
+as-needed and instructions, and the flags marking an order chronic or
+an administration — is not carried into the log.
+[`consuming-ground-truth.md`](consuming-ground-truth.md#what-is-not-warranted)
+says the same where a consumer of the log will read it.
+
 ## What is not on this menu
 
 Deliberately, and these are scope decisions rather than backlog:
