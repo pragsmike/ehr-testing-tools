@@ -48,7 +48,7 @@
   (let [a (describe/describe @immunization-log)
         b (describe/describe (:ground-truth (run/run immunization-producer-config)))]
     (is (= (pr-str a) (pr-str b)) "a fresh run of the same root, described, gives the same bytes")
-    (is (= describe/describe-version (:describe-version a) "1.2.0"))))
+    (is (= describe/describe-version (:describe-version a) "1.3.0"))))
 
 ;; --- step 1 (b): the golden --------------------------------------------------
 
@@ -103,7 +103,33 @@
     (testing "ADR-0184's row beside it: no authored :allergy-onset step and no
               modules in these opts, so nothing can produce one -- :no, and
               the log agrees"
-      (is (= [:no 0] ((juxt :configured :observed) (row r :allergy-onset)))))))
+      (is (= [:no 0] ((juxt :configured :observed) (row r :allergy-onset)))))
+    (testing "ADR-0186's two rows: no authored :medication-dispense step, so :no"
+      (is (= [:no 0] ((juxt :configured :observed) (row r :medication-dispense-inpatient))))
+      (is (= [:no 0] ((juxt :configured :observed) (row r :medication-dispense-community)))))))
+
+(deftest an-authored-dispense-is-configured-and-observed-under-its-own-setting
+  (let [amoxicillin {:system :rxnorm :code "562251"
+                     :display "Amoxicillin 250 MG / Clavulanate 125 MG Oral Tablet"}
+        order {:module "fill" :state :prescription}
+        opts {:seed 3 :patients 2
+              :pathways [{:pathway {:name "fill"
+                                    :steps [{:type :outpatient-visit}
+                                            {:type :medication-order :codes [amoxicillin] :citation order}
+                                            {:type :outpatient-visit-end}
+                                            {:type :delay :from 60 :to 60}
+                                            {:type :medication-dispense :setting :community :order-citation order}]}
+                          :weight 1}]}
+        log (:ground-truth (run/run opts))
+        r (describe/describe log {:configuration {:source :caller-config :opts opts :churn-profile :unknown}})
+        community (row r :medication-dispense-community)]
+    (is (= [:yes 2] ((juxt :configured :observed) community)))
+    (is (= [:no 0] ((juxt :configured :observed) (row r :medication-dispense-inpatient)))
+        "the other setting is neither authored nor observed: the rows do not add")
+    (is (= :medication-order (:event (nth log (:order-event-id (:related (first (:witnesses community)))))))
+        "the witness field is :order-event-id, and it names an order")
+    (is (empty? (check/medication-dispense-references-existing-order-and-follows-it-in-time log)))
+    (is (empty? (check/clinical-content-only-when-admitted log)))))
 
 (deftest an-authored-allergy-onset-step-is-configured-and-observed
   (let [peanut {:system :snomed :code "762952008" :display "Peanut (substance)"}

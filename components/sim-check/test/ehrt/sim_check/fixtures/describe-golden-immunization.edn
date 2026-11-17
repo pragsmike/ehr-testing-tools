@@ -8,7 +8,7 @@
    :registered {:events 12, :subjects 12}},
   :events 52,
   :subjects 12},
- :describe-version "1.2.0",
+ :describe-version "1.3.0",
  :families
  [{:cites "churn step :cancel-admit (decide :cancel-admit)",
    :configured :unknown,
@@ -139,6 +139,22 @@
    :configured :unknown,
    :configured-reason "the input names no configuration",
    :family :allergy-onset,
+   :group :opt-in,
+   :observed 0,
+   :witnesses []}
+  {:cites
+   "clinical-content-only-when-admitted (a :medication-dispense whose :setting is :inpatient)",
+   :configured :unknown,
+   :configured-reason "the input names no configuration",
+   :family :medication-dispense-inpatient,
+   :group :opt-in,
+   :observed 0,
+   :witnesses []}
+  {:cites
+   "medication-dispense-references-existing-order-and-follows-it-in-time (a :medication-dispense whose :setting is :community)",
+   :configured :unknown,
+   :configured-reason "the input names no configuration",
+   :family :medication-dispense-community,
    :group :opt-in,
    :observed 0,
    :witnesses []}

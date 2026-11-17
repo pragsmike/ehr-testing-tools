@@ -98,7 +98,22 @@
           (seq (:modules opts)) :unknown
           :else :no)))
 
+(defn- medication-dispense-configured
+  "ADR-0186's kind is AUTHORED ONLY -- no module state and no config key
+  produces one -- so this reading is two-valued where the two above are
+  three-valued: `:yes` when an authored step dispenses in `setting`,
+  `:no` otherwise, modules or not."
+  [setting]
+  (fn [configuration]
+    (cond (nil? configuration) :unknown
+          (some #(and (= :medication-dispense (:type %)) (= setting (:setting %)))
+                (authored-steps (:opts configuration))) :yes
+          :else :no)))
+
 (defn- kind? [k] (fn [_ctx {:keys [event]}] (= k (:event event))))
+
+(defn- dispense-in? [setting]
+  (fn [_ctx {:keys [event]}] (and (= :medication-dispense (:event event)) (= setting (:setting event)))))
 
 (def ^:private emergent (constantly :emergent))
 
@@ -214,6 +229,20 @@
     :configured-by allergy-onset-configured
     :observed-by (kind? :allergy-onset)
     :witness-fields [:category]}
+   ;; ADR-0186: ONE kind, TWO rows, so the report counts by `:setting`
+   ;; with the mechanism it already has -- a row's `:observed-by` is any
+   ;; predicate. The two settings are different facts under different
+   ;; laws, and a single row would add them together.
+   {:group :opt-in :family :medication-dispense-inpatient
+    :cites "clinical-content-only-when-admitted (a :medication-dispense whose :setting is :inpatient)"
+    :configured-by (medication-dispense-configured :inpatient)
+    :observed-by (dispense-in? :inpatient)
+    :witness-fields [:order-event-id]}
+   {:group :opt-in :family :medication-dispense-community
+    :cites "medication-dispense-references-existing-order-and-follows-it-in-time (a :medication-dispense whose :setting is :community)"
+    :configured-by (medication-dispense-configured :community)
+    :observed-by (dispense-in? :community)
+    :witness-fields [:order-event-id]}
 
    ;; --- measures: situations no key turns on, counted as the tree's
    ;; hand census counted them ----------------------------------------

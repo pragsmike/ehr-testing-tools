@@ -56,8 +56,15 @@
 
   1.2.0 (ADR-0184, 2026-09-30): one ADDITIVE row, the opt-in
   `:allergy-onset` family beside `:immunization`'s, for event schema
-  1.11.0's new kind. Every 1.1.0 row reads exactly as before."
-  "1.2.0")
+  1.11.0's new kind. Every 1.1.0 row reads exactly as before.
+
+  1.3.0 (ADR-0186, 2026-11-17): two ADDITIVE rows,
+  `:medication-dispense-inpatient` and `:medication-dispense-community`,
+  for event schema 1.12.0's new kind -- one row per `:setting`, so the
+  report counts each. An `:inpatient` dispense also joins the
+  `:during-encounter` predicate, as it joins the invariant that
+  predicate cites. Every 1.2.0 row reads exactly as before."
+  "1.3.0")
 
 (def default-witnesses 3)
 
@@ -154,7 +161,9 @@
         [[:order-before-result before? rel]
          [:result-belongs-to-order belongs? rel]])
 
-      (during-encounter-kinds kind)
+      (or (during-encounter-kinds kind)
+          ;; ADR-0186: by its setting, as the invariant reads it.
+          (and (= :medication-dispense kind) (= :inpatient (:setting event))))
       [[:during-encounter
         (and (= :admitted (:status before))
              (not (check/carried-encounter-is-not-the-open-one? event before patient-id)))
