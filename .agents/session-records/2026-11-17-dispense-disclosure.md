@@ -90,3 +90,33 @@ Every listed expectation held. Three things the prompt did not say:
 
 ## Close
 
+Pushed `64b71c08..68d972d2` as one commit (both docs, this record, the
+prompt archive, docsgen's three generated files). Before it: the
+docs-tooling brick tests green (exit 0); the leak grep over the staged
+diff found nothing identifying the downstream consumer; gitleaks clean.
+`bin/post-push-verify 64b71c08 68d972d2`: remote tip matches; the
+commit message is ASCII; CI not yet indexed at that moment (disclosed
+by the script). No local `make test` (docs-only, AGENTS.md 22). No tag
+paid.
+
+**CI run 44062772634 completed `failure`** at
+`68d972d296038c648dcc30621e9cc85869e2448a`, attempt 1. **This session
+has no close marker.** The failing step is `poly test :all
+skip:integration`: `ClassNotFoundException:
+hl7.v2.validation.ValidationContextBuilder` loading
+`ehrt.judge.pairing-conviction-test` in project `conformance`, after
+six "Download corrupted: Checksum validation failed, expected
+'<!DOCTYPE'" lines for the three `gov.nist` 1.7.3 jars. Cause, probed
+from this host at 10:16Z: `hit-nexus.nist.gov/repository/releases/...`
+answers `302` to a `www.nist.gov` web page, so the jars arrive as HTML.
+Not this diff: no file under `components/`, `projects/` or `.github/`
+changed. The nightly Integration run 43909539260 (2026-11-16 16:37Z)
+was still green, so the repository changed after it. `verify-nist-lock`
+and the generated-doc freshness step were SKIPPED behind the failure,
+so CI has not checked docsgen freshness at this tip. The fix (a mirror
+CI can reach, or another source for the three coordinates) is an author
+decision and was not attempted. The commit recording this paragraph
+will fail CI the same way until then.
+
+Background processes this session started: one `gh run watch`, exited
+with the run; none left running.
