@@ -1,19 +1,28 @@
 {:paths ["src" "resources"]
 
  ;; NIST v2-validation engine (profile-tier HL7 v2 judge). These
- ;; coordinates resolve from NIST's own Nexus, NOT Maven Central --
- ;; add to the ROOT deps.edn (:mvn/repos is only honored at the root):
+ ;; coordinates do NOT resolve from Maven Central. They resolve from
+ ;; CDC's public lib-hl7v2-nist-validator repository, its Maven-layout
+ ;; lib/ tree pinned by commit -- add to the ROOT deps.edn (:mvn/repos
+ ;; is only honored at the root):
  ;;
- ;;   :mvn/repos {"nist-hit" {:url "https://hit-nexus.nist.gov/repository/releases/"}}
+ ;;   :mvn/repos {"nist-hit" {:url "https://raw.githubusercontent.com/CDCgov/lib-hl7v2-nist-validator/eeac90c5f88dca3018992005232acdf3da644d88/lib/"}}
+ ;;
+ ;; Until 2026-11-17 that URL was NIST's own Nexus,
+ ;; https://hit-nexus.nist.gov/repository/releases/. On that date the
+ ;; host was observed answering 302 to a web page, Maven received HTML
+ ;; for the jars, and the author ruled CDC's repository an accepted
+ ;; channel for these six coordinates, superseding for them the
+ ;; NIST-channel clause of the amendment cited below
+ ;; (.agents/session-records/2026-11-17-nist-channel-cdc-pin.md). The
+ ;; pin is a commit, so the URL cannot change under a build; the
+ ;; content authority is still the lock's sha256, not the host.
  ;;
  ;; Determinism note (artifacts.lock.edn discipline; ADR-0053, AR-F4-4):
- ;; jar sha256s are recorded in the root artifacts.lock.edn. hit-nexus
- ;; has no stated availability SLA and just changed operators (NIST ->
- ;; Prometheus Computing, Aug 2026 transition) -- but vendoring these
- ;; jars into an IN-REPO file:// mirror is FORECLOSED (ADR-0005's
+ ;; jar sha256s are recorded in the root artifacts.lock.edn. Vendoring
+ ;; these jars into an IN-REPO file:// mirror is FORECLOSED (ADR-0005's
  ;; 2026-07-24 amendment, notes/tools/ADRs.md): these coordinates are
- ;; license-unstated at the coordinate level, use-permitted only as a
- ;; user-initiated fetch from NIST's own official channel -- this repo
+ ;; license-unstated at the coordinate level -- this repo
  ;; redistributes none of them. The safe end-state instead is a
  ;; USER-SIDE mirror, outside this repo: `bin/mirror-nist` / `make
  ;; mirror-nist` builds ~/.ehrt/nist-mirror/ from the invoking user's
@@ -25,7 +34,8 @@
  ;; gov.cdc:lib-hl7v2-nist-validator vendors these same six jars into an
  ;; IN-REPO file:// mirror -- a legitimate design for a build CDC itself
  ;; controls and redistributes; not available to this repo under the
- ;; amendment above.)
+ ;; amendment above. It is that tree the URL above reads, over the
+ ;; network; no jar of it enters this repo.)
  ;;
  ;; Transitive deps beyond these three (scala-library 2.13.10, typesafe
  ;; config 1.4.2, commons-lang3, xom 1.3.7, scala-xml_2.13 1.3.0,

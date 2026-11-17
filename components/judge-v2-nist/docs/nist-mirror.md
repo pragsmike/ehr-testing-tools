@@ -4,13 +4,33 @@
 (`gov.nist/hl7-v2-parser`, `gov.nist/hl7-v2-profile`,
 `gov.nist/hl7-v2-validation`, `gov.nist/xml-util`,
 `gov.nist.hit/hl7-v2-schemas`, `com.github.hl7-tools/validation-report`)
-from `hit-nexus.nist.gov` — a live network Nexus, not a version-controlled
-artifact (`artifacts.lock.edn`, `notes/tools/ADRs.md` ADR-0005's
-2026-07-24 amendment). That host has no stated availability SLA and just
-changed operators (NIST → Prometheus Computing, Aug 2026 transition) —
-a real offline-determinism risk: a build that resolves cleanly today
-could fail to resolve at all if the host moves, renames a path, or goes
-dark.
+over the network, through the `"nist-hit"` entry each `deps.edn` carries
+in `:mvn/repos`. **Since 2026-11-17 that entry points at CDC's public
+`CDCgov/lib-hl7v2-nist-validator` repository** — its Maven-layout `lib/`
+tree, read from `raw.githubusercontent.com` at commit
+`eeac90c5f88dca3018992005232acdf3da644d88`. The URL is pinned by commit,
+so it cannot change under a build, and the host is not the authority on
+content: `artifacts.lock.edn` records each jar's sha256 and
+`bin/verify-nist-lock` checks it.
+
+**What was observed on 2026-11-17.** Until that date the entry was
+NIST's own Nexus, `hit-nexus.nist.gov/repository/releases/`. That day
+the host answered `302` to a `www.nist.gov` web page for every path
+probed, Maven received HTML where it asked for a jar, and the per-push lane
+failed (CI run 44062772634). NIST's legacy-website page says the Health
+IT Program is ending and lists Nexus as "Transition to Prometheus"; it
+names no new host. This is the risk this document was written against —
+a live network host with no stated availability SLA — arriving.
+
+**What was checked before the switch.** All six jars at the pinned
+commit match their `artifacts.lock.edn` sha256, all six poms are
+byte-identical to the ones NIST's Nexus had served, and a resolution
+into an empty Maven repository produced the same dependency tree as
+before. The evidence is in
+[`2026-11-17-nist-channel-cdc-pin.md`](../../../.agents/session-records/2026-11-17-nist-channel-cdc-pin.md).
+The tree publishes no `.sha1` files, so Maven prints "Checksum
+validation failed, no checksums available" for each of the twelve
+files and proceeds; the lock's sha256 is the check that binds.
 
 ## Why not vendor the jars into this repo?
 
@@ -20,14 +40,25 @@ jars into `lib/` and pointing a `file://` repo at them. This repo
 cannot follow that pattern: ADR-0005's 2026-07-24 amendment
 (`notes/tools/ADRs.md`) holds these six coordinates
 `:use-permitted--unstated--confirmation-pending` — their formal license
-is unconfirmed, so use is permitted only as a **user-initiated fetch
-from NIST's own official channel**, never as bytes this repo vendors or
-ships. Checking the jars into git would be exactly the redistribution
-the amendment forecloses. (`notes/adr/0053-alignment-fixes-4.md` records
+is unconfirmed, so this repo does not vendor or ship their bytes.
+Checking the jars into git would be exactly the redistribution the
+amendment forecloses. (`notes/adr/0053-alignment-fixes-4.md` records
 this ruling in full, including the earlier design note —
 `components/corpus/docs/research/judge-v2-nist-spike-notes.md` item 4 —
 that once prescribed the CDC pattern before the amendment's own
 implications were fully drawn out.)
+
+**This repo still vendors nothing.** Reading CDC's tree over the network
+is not vendoring it: no jar enters this repository, and every fetch
+still happens on the user's machine at the user's initiative. What
+changed is which host that fetch reaches. The amendment permitted use
+only as a user-initiated fetch **from NIST's own official channel**;
+the author's ruling of 2026-11-17 supersedes that clause for these six
+coordinates and names CDC's public repository an accepted channel. The
+ruling is quoted verbatim in
+[this session's record](../../../.agents/session-records/2026-11-17-nist-channel-cdc-pin.md);
+the amendment's other clause — nothing redistributed by this repo —
+stands unchanged.
 
 ## The fix: a mirror the USER builds, outside this repo
 

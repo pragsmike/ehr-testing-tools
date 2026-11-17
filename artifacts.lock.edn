@@ -49,6 +49,16 @@
   ;; checklist item 4 and notes/ADRs.md's dated note for the two-channel
   ;; story in full; the file://-mirror end-state ADR-0012 named as a
   ;; future risk is still open, unaffected by this ruling.
+  ;;
+  ;; 2026-11-17: these six now RESOLVE from CDC's public
+  ;; lib-hl7v2-nist-validator repository, pinned by commit in each
+  ;; deps.edn's :mvn/repos (author ruling of that date;
+  ;; .agents/session-records/2026-11-17-nist-channel-cdc-pin.md).
+  ;; hit-nexus.nist.gov was observed that day answering 302 to a web
+  ;; page. Each row's :source is left as written: it records where the
+  ;; jar was ACQUIRED on its :acquired date, and bin/verify-nist-lock
+  ;; and bin/mirror-nist enumerate these rows by it. The :sha256 is
+  ;; unchanged and is the content authority whatever host serves it.
   {:kind :engine
    :name "nist-hl7-v2-parser"
    :version "1.7.3"

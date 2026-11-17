@@ -38,8 +38,11 @@
 #
 # The three artifacts primed below serve the suite only: the ten
 # exercisers are sim-only, and gov.nist coordinates already resolve
-# from hit-nexus for project:integration (projects/integration/deps.edn
-# :mvn/repos), so the job gains no new network by running them.
+# for project:integration through its own :mvn/repos
+# (projects/integration/deps.edn) -- since 2026-11-17 from CDC's public
+# lib-hl7v2-nist-validator repository, pinned by commit, with
+# artifacts.lock.edn's sha256 as the content authority -- so the job
+# gains no new network by running them.
 
 name: Integration
 

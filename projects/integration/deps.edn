@@ -1,9 +1,19 @@
 {;; NIST v2-validation engine (judge-v2-nist, ADR-0012): its three
- ;; gov.nist coordinates resolve from NIST's own Nexus, not Maven
- ;; Central. Root deps.edn's own :mvn/repos isn't inherited here --
- ;; `poly test :all` resolves each project's own deps.edn
- ;; independently, so this repeats the same entry.
- :mvn/repos {"nist-hit" {:url "https://hit-nexus.nist.gov/repository/releases/"}}
+ ;; gov.nist coordinates (six with their transitive NIST-origin jars)
+ ;; resolve from CDC's public lib-hl7v2-nist-validator repository, its
+ ;; Maven-layout lib/ tree PINNED BY COMMIT in the URL below, not from
+ ;; Maven Central. Author ruling 2026-11-17, after hit-nexus.nist.gov
+ ;; was observed that day answering 302 to a web page
+ ;; (.agents/session-records/2026-11-17-nist-channel-cdc-pin.md). The
+ ;; content authority is artifacts.lock.edn's sha256 per jar
+ ;; (bin/verify-nist-lock), never the host. The key stays "nist-hit":
+ ;; jars already in a local repository stay valid under that id, and
+ ;; the user-mirror recipe keys on it
+ ;; (components/judge-v2-nist/docs/nist-mirror.md).
+ ;; Root deps.edn's own :mvn/repos isn't inherited here -- `poly test
+ ;; :all` resolves each project's own deps.edn independently, so this
+ ;; repeats the same entry.
+ :mvn/repos {"nist-hit" {:url "https://raw.githubusercontent.com/CDCgov/lib-hl7v2-nist-validator/eeac90c5f88dca3018992005232acdf3da644d88/lib/"}}
 
  :deps {;; poly/sim: not because this project's own tests reference
         ;; ehrt.sim.* directly (they don't -- ADR-0004's own R19
