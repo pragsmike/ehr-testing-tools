@@ -42,7 +42,8 @@
   component-code versions, and hashing itself happens in the calling
   shell (`sha256sum`), not in-process.
 
-  CURRENT STATE, 2026-09-30 (ADR-0184, the `allergy` root; before it,
+  CURRENT STATE, 2026-11-17 (ADR-0186, the `dispense` root; before it,
+  2026-09-30, ADR-0184, the `allergy` root; before it,
   2026-09-29, ADR-0182, the `immunization` root; before that, 2026-08-28, arc 4 sweep 3, ADR-0175 design (b)'s own
   step 0; before it, arc 4 sweep 2, designs (a) and
   (c)'s turn-on commit; before that, arc 3b sweep 3, ADR-0174 section
@@ -50,7 +51,7 @@
   before that, arc 3b sweep 1, ADR-0174 ruling A1; before
   that, arc 3a part 4, ADR-0173 ruling D1's commit 2; previously
   2026-08-19, ADR-0156, review-4 register row L1-5).
-  `roots` holds 43 roots in two families:
+  `roots` holds 44 roots in two families:
 
     3 INTERPRETER-LAYER batches -- appendicitis/sore-throat/
       ear-infections. 100 well-mixed seeds x both sexes = 200 walks per
@@ -60,7 +61,7 @@
       well-distributed for their own first draw, confirmed repeatedly
       across GMF coverage waves.
 
-   40 ENGINE-LAYER pairs -- engine/run plus emit-hl7/emit, ground truth
+   41 ENGINE-LAYER pairs -- engine/run plus emit-hl7/emit, ground truth
       AND emitted HL7 both captured, at the run-config each root's own
       vendored/engine test already established as producing real
       content. The 33rd, `demographic-fold`, is the first root to turn
@@ -108,6 +109,10 @@
       whose `:registered` events carry an `:allergy-onset`
       `:pre-horizon-facts` entry. One event kind (30 of 30), zero message
       types.
+      The 41st, `dispense` (ADR-0186), is the only root carrying
+      `:medication-dispense`, the kind contract 1.12.0 added, in both of
+      its settings, and the first root with NO module at all: every event
+      in it is authored. One event kind (31 of 31), zero message types.
 
   This paragraph replaced an opening that read `Six roots, matching this
   session's own J1 ruling verbatim` -- true when written and never
@@ -116,7 +121,7 @@
   false; a cold reader simply got a third of the population and no
   signal that it was a third. The count is gated now
   (`ehrt.docs-tooling.oracle-coverage-test`), and the COVERAGE block
-  beside `roots` states what these 43 can and cannot witness.
+  beside `roots` states what these 44 can and cannot witness.
 
   Dated note (2026-08-03, ADR-0033 AR-4b): three more roots join at the
   ENGINE layer -- ear-infections-engine/urinary-tract-infections-engine/
@@ -1159,6 +1164,64 @@
                                            cohort)
                   :module-horizon-days 3650})))
 
+(defn- dispense-pair
+  "ADR-0186's own root (2026-11-17), and THE ONLY ROOT CARRYING
+  `:medication-dispense`. FIRST BASELINE, not a regression check:
+  contract 1.11.0 had no such kind, and the kind is authored only -- no
+  rule derives a dispense from an order, so no vendored module and no
+  shipped config can reach it.
+
+  BOTH SETTINGS, ONE RUN, AND NO MODULE. Even ordinals take an authored
+  Renal stay: order, an `:inpatient` dispense 30 minutes later, the
+  order's end an hour after that, discharge. Odd ordinals take an
+  authored outpatient visit whose order is filled `:community` two hours
+  AFTER the visit closes, and is never ended. So the log carries a
+  dispense inside an open encounter and one outside any, a dispensed
+  order that ends and one that stays open -- a root carrying only the
+  inpatient case could not tell the admitted-only law's setting clause
+  from \"always\". Explicit ordinals rather than weights, so the split
+  is the config's and not a draw's.
+
+  THROUGH `engine-pair`.
+  `ehrt.sim-engine.engine-test/both-dispense-settings-reach-the-log-and-
+  self-check-clean` runs the same config through `check-all`, since this
+  path does not self-check.
+
+  Measured at the config below: 66 events -- 12 `:registered`, 6
+  `:admission`/`:discharge`, 6 `:outpatient-visit`/
+  `:outpatient-visit-end`, 12 `:medication-order`, 6 `:medication-end`,
+  12 `:medication-dispense` (6 `:inpatient`, 6 `:community`), every
+  `:order-event-id` a real order of the same patient. The kind reaches
+  no wire, by ADR-0186's own decision.
+
+  THE COVERAGE IT ADDS: one EVENT KIND, `:medication-dispense`, so
+  `witnessed-event-kinds` returns to total at 31 of 31. ZERO message
+  types. NO `:transfer`."
+  []
+  (let [penicillin {:system :rxnorm :code "834102" :display "Penicillin V Potassium 500 MG Oral Tablet"}
+        amoxicillin {:system :rxnorm :code "562251"
+                     :display "Amoxicillin 250 MG / Clavulanate 125 MG Oral Tablet"}
+        stay-order {:module "dispense-stay" :state :antibiotic-order}
+        visit-order {:module "dispense-visit" :state :prescription}
+        stay {:name "dispense-stay"
+              :steps [{:type :admission :location "Renal"}
+                      {:type :medication-order :codes [penicillin] :citation stay-order}
+                      {:type :delay :from 30 :to 30}
+                      {:type :medication-dispense :setting :inpatient :order-citation stay-order}
+                      {:type :delay :from 60 :to 60}
+                      {:type :medication-end :order-citation stay-order}
+                      {:type :discharge}]}
+        visit {:name "dispense-visit"
+               :steps [{:type :outpatient-visit}
+                       {:type :medication-order :codes [amoxicillin] :citation visit-order}
+                       {:type :delay :from 20 :to 20}
+                       {:type :outpatient-visit-end}
+                       {:type :delay :from 120 :to 120}
+                       {:type :medication-dispense :setting :community :order-citation visit-order}]}]
+    (engine-pair {:seed 20261117 :patients 12 :arrival-gap 90
+                  :pathways (mapv (fn [i] {:patient-ordinal i :pathway (if (even? i) stay visit)})
+                                  (range 12))})))
+
 (defn- injuries-pair
   "Injuries arc close (2026-08-11, ADR-0107): FIRST BASELINE, not a
   regression check -- this closure never completed a round trip before
@@ -1281,16 +1344,17 @@
 ;;     on one root, never what it reported.
 ;;
 ;; THE STRUCTURAL CAUSE, re-derived rather than inferred from the
-;; instrumentation: 36 of the 43 roots pass `:pathway {:name
+;; instrumentation: 36 of the 44 roots pass `:pathway {:name
 ;; "module-only" :steps []}` -- `encounter-horizon`, `bed-cycle`,
 ;; `scheduling`, `chatter-charges` and (2026-08-28) `order-pathway` are
-;; five of the seven exceptions and pass
+;; five of the eight exceptions and pass
 ;; real admit/delay/discharge pathways -- `order-pathway`'s being the
 ;; only one that also carries an `:order` step,
 ;; which is why the churn family and the allocation ladder reach them --
 ;; the sixth, (2026-09-29) `immunization`, and the seventh, (2026-09-30)
 ;; `allergy`, author a Renal stay too but turn nothing on and run a
-;; 90-minute gap, so neither reaches them --
+;; 90-minute gap, so neither reaches them; the eighth, (2026-11-17)
+;; `dispense`, authors every pathway by ordinal, on the same terms --
 ;; and 8 of 19 components plus `bases/cli` are off the
 ;; oracle classpath entirely (`bin/regression-oracle`'s own deps block).
 ;; THREE components joined that classpath on 2026-08-26 -- person-
@@ -1337,12 +1401,17 @@
 ;; ADT^A20 unavoidably so, since it is the only root that can emit one.
 ;;
 ;; The two sets below are the committed claim, asserted against a FRESH
-;; 43-root digest by `ehrt.integration.oracle-coverage-test` and checked
+;; 44-root digest by `ehrt.integration.oracle-coverage-test` and checked
 ;; for shape, population, membership and location on every push by
 ;; `ehrt.docs-tooling.oracle-coverage-test`.
 
 (def ^:private witnessed-event-kinds
-  "ALL 30 of the 30 closed event kinds any root can produce.
+  "ALL 31 of the 31 closed event kinds any root can produce.
+
+  WIDENED 2026-11-17, 30 of 31 -> 31 of 31, by `dispense` (ADR-0186) --
+  the `allergy` sequence exactly: contract 1.12.0 added
+  `:medication-dispense` one commit earlier, and the FIRST BASELINE root
+  that closes the claim lands here, since the kind is authored only.
 
   WIDENED 2026-09-30, 29 of 30 -> 30 of 30, by `allergy` (ADR-0184) --
   the `immunization` sequence exactly: contract 1.11.0 added
@@ -1412,14 +1481,15 @@
     :cancel-discharge :cancel-transfer :care-plan-end
     :care-plan-start :coverage-change
     :demographic-update :diagnostic-report
-    :allergy-onset :discharge :immunization :medication-end :medication-order :merge :no-show
+    :allergy-onset :discharge :immunization :medication-dispense
+    :medication-end :medication-order :merge :no-show
     :observation :order-placed
     :outpatient-visit :outpatient-visit-end :procedure :registered
     :reschedule :result-available :step-rejected
     :transfer})
 
 (def ^:private witnessed-message-types
-  "Every MSH-9 the 40 engine-layer roots emit. ADT^A02 is death-fixture's
+  "Every MSH-9 the 41 engine-layer roots emit. ADT^A02 is death-fixture's
   alone, once. ADT^A34 is emitted by no root at all.
 
   WIDENED AGAIN 2026-08-28 by `scheduling`, arc 4 sweep 4's own turn-on
@@ -1528,7 +1598,8 @@
    "injuries"                           injuries-pair
    "demographic-fold"                   demographic-fold-pair
    "immunization"                       immunization-pair
-   "allergy"                            allergy-pair})
+   "allergy"                            allergy-pair
+   "dispense"                           dispense-pair})
 
 (defn -main
   "Writes one <root>.edn per root into out-dir (pr-str of the batch or

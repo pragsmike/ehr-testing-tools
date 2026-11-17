@@ -3146,3 +3146,60 @@
     (is (contains? (first events) :order-event-id) "nil is carried, not dropped")
     (is (= (.nextLong (Random. 1)) (.nextLong rng))
         "the stream is where a fresh one starts: the step drew nothing")))
+
+;; ADR-0186 step 3: the PRODUCER. One run, both settings, no module -- an
+;; authored Renal stay (order, :inpatient dispense, end) on the even
+;; ordinals and an authored outpatient visit whose order is filled
+;; :community after the visit closes on the odd ones. The SAME config as
+;; the oracle's `dispense` root (`ehrt.oracle.digest/dispense-pair`), kept
+;; in step by hand, since sim-engine cannot depend on oracle.
+
+(def ^:private dispense-producer-config
+  (let [penicillin {:system :rxnorm :code "834102" :display "Penicillin V Potassium 500 MG Oral Tablet"}
+        amoxicillin {:system :rxnorm :code "562251"
+                     :display "Amoxicillin 250 MG / Clavulanate 125 MG Oral Tablet"}
+        stay-order {:module "dispense-stay" :state :antibiotic-order}
+        visit-order {:module "dispense-visit" :state :prescription}
+        stay {:name "dispense-stay"
+              :steps [{:type :admission :location "Renal"}
+                      {:type :medication-order :codes [penicillin] :citation stay-order}
+                      {:type :delay :from 30 :to 30}
+                      {:type :medication-dispense :setting :inpatient :order-citation stay-order}
+                      {:type :delay :from 60 :to 60}
+                      {:type :medication-end :order-citation stay-order}
+                      {:type :discharge}]}
+        visit {:name "dispense-visit"
+               :steps [{:type :outpatient-visit}
+                       {:type :medication-order :codes [amoxicillin] :citation visit-order}
+                       {:type :delay :from 20 :to 20}
+                       {:type :outpatient-visit-end}
+                       {:type :delay :from 120 :to 120}
+                       {:type :medication-dispense :setting :community :order-citation visit-order}]}]
+    {:seed 20261117 :patients 12 :arrival-gap 90
+     :pathways (mapv (fn [i] {:patient-ordinal i :pathway (if (even? i) stay visit)}) (range 12))}))
+
+(deftest both-dispense-settings-reach-the-log-and-self-check-clean
+  (let [{:keys [ground-truth] :as r} (run/run dispense-producer-config)
+        dispenses (filterv #(= :medication-dispense (:event %)) ground-truth)
+        subject-of (fn [e] (:patient-id (first (:participants e))))]
+    (is (= 66 (count ground-truth)))
+    (is (= {:inpatient 6 :community 6} (frequencies (map :setting dispenses)))
+        "6 authored stays and 6 authored visits, one dispense each")
+    (is (= {:registered 12 :admission 6 :discharge 6 :outpatient-visit 6 :outpatient-visit-end 6
+            :medication-order 12 :medication-end 6 :medication-dispense 12}
+           (frequencies (map :event ground-truth))))
+    (testing "every dispense names a real order of its own patient, by log index"
+      (doseq [d dispenses
+              :let [order (nth ground-truth (:order-event-id d))]]
+        (is (= :medication-order (:event order)))
+        (is (= (subject-of d) (subject-of order)))
+        (is (= (:order-citation d) (:citation order)))))
+    (testing "a community fill lands after its visit closed"
+      (doseq [d (filter #(= :community (:setting %)) dispenses)
+              :let [closer (first (filter #(and (= :outpatient-visit-end (:event %)) (= (subject-of d) (subject-of %)))
+                                          ground-truth))]]
+        (is (< (:t closer) (:t d)))))
+    (let [checked (check/check-all ground-truth (:facility r))]
+      (is (result/ok? checked)
+          (str "the self-check's own instrument, over the whole catalog: "
+               (pr-str (:violations (:payload checked))))))))
