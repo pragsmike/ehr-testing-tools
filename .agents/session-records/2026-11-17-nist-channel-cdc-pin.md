@@ -135,3 +135,16 @@ Not done, for the author:
 
 ## Close
 
+Pushed `6e38bc25..e5cd16f8` as one commit. Before it: `make test` exit
+0 (0 failures, 0 errors, log kept with its exit code); gitleaks clean;
+`git diff --cached` showed exactly four `:url` values changed.
+`bin/post-push-verify 6e38bc25 e5cd16f8`: remote tip matches; the
+commit message is ASCII; CI not yet indexed at that moment (disclosed
+by the script). **CI run 44108231313 completed `success`** at
+`e5cd16f8c81d261cdaec31d0d1e7d4ba65ee7683`, attempt 1 -- the close
+marker. Its `poly test :all skip:integration`, `verify-nist-lock` (six
+matched, on a runner with no Maven cache) and generated-doc freshness
+steps all ran and passed; its log carries the twelve "no checksums
+available" lines step 4 predicted. No tag paid. Background processes
+this session started: one `make test` and one `gh run watch`, both
+exited; none left running.

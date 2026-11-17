@@ -120,3 +120,10 @@ will fail CI the same way until then.
 
 Background processes this session started: one `gh run watch`, exited
 with the run; none left running.
+
+Added 2026-11-17, later the same day: CI run 44108231313 completed
+`success` at `e5cd16f8` (the NIST-channel fix,
+`2026-11-17-nist-channel-cdc-pin.md`) and is the first green run to
+check this session's docsgen freshness. That record also corrects the
+inference above from the green nightly: the Integration lane restores
+`~/.m2` from a cache, so run 43909539260 does not date the change.
