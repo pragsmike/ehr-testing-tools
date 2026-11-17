@@ -3,7 +3,7 @@
 
 # Session prompts — index
 
-Generated index of [`.agents/prompts`](.) — 270 files. The convention, what a record contains, and where this sits relative to every other register are in [`README.md`](README.md); annotations that used to ride these rows are in [`../plans/state-history-2026-08.md`](../plans/state-history-2026-08.md), dated.
+Generated index of [`.agents/prompts`](.) — 271 files. The convention, what a record contains, and where this sits relative to every other register are in [`README.md`](README.md); annotations that used to ride these rows are in [`../plans/state-history-2026-08.md`](../plans/state-history-2026-08.md), dated.
 
   * 2026-08-01-agent-ux-capture.md
   * 2026-08-01-migration-session-1.md
@@ -273,5 +273,6 @@ Generated index of [`.agents/prompts`](.) — 270 files. The convention, what a 
   * 2026-09-30-wire-fidelity-pv1-dft.md
   * 2026-10-01-handoff-relocation.md
   * 2026-10-01-handoff.md
+  * 2026-11-17-dispense-census.md
   * 2026-11-17-dispense-disclosure.md
   * 2026-11-17-nist-channel-cdc-pin.md
