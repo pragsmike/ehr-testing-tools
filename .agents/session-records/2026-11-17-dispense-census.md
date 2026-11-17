@@ -332,3 +332,14 @@ Run from the workspace root as `clojure -M:dev census.clj NAME LOG.edn
 
 ## Close
 
+Pushed `24e19cfd..31386758` as one commit (this record, the prompt
+archive, docsgen's three generated files). Before it: the docs-tooling
+brick tests green (exit 0); the leak grep over the staged diff found
+nothing identifying the downstream consumer; gitleaks clean.
+`bin/post-push-verify 24e19cfd 31386758`: remote tip matches; the
+commit message is ASCII; CI not yet indexed at that moment (disclosed
+by the script). **CI run 44170576873 completed `success`** at
+`313867586b4484292123843e6c3da4b0f04b9a57`, attempt 1 -- the close
+marker. No local `make test` (docs-only, AGENTS.md 22). No tag paid.
+Background processes this session started: one `gh run watch`,
+exited with the run; none left running.
