@@ -180,3 +180,25 @@
                                                 :reactions [{:codes [a-reaction] :severity :mild}]}]}))
       "a reaction carries no severity in this slice")
   (is (not (pathway/valid? {:name "t" :steps [{:type :allergy-onset :category "food"}]}))))
+
+;; --- ADR-0186: :medication-dispense, an author-facing step. :setting says
+;; which dispense this is -- an inpatient pharmacy dispense to the unit, or
+;; a community fill -- and is STATED, never inferred. :order-citation names
+;; the order it fills, the way :medication-end names the order it closes.
+
+(deftest medication-dispense-step-is-valid-ir-in-both-settings
+  (is (pathway/valid? {:name "t" :steps [{:type :medication-dispense :setting :inpatient
+                                           :order-citation a-citation}]}))
+  (is (pathway/valid? {:name "t" :steps [{:type :medication-dispense :setting :community
+                                           :order-citation a-citation
+                                           :citation {:module "sinusitis" :state :fill}}]})
+      ":citation is optional"))
+
+(deftest medication-dispense-step-refuses-a-missing-setting-a-missing-order-citation-and-an-unknown-setting
+  (is (not (pathway/valid? {:name "t" :steps [{:type :medication-dispense :order-citation a-citation}]}))
+      ":setting is required")
+  (is (not (pathway/valid? {:name "t" :steps [{:type :medication-dispense :setting :inpatient}]}))
+      ":order-citation is required")
+  (is (not (pathway/valid? {:name "t" :steps [{:type :medication-dispense :setting :retail
+                                                :order-citation a-citation}]}))
+      "the setting vocabulary is closed"))

@@ -1690,3 +1690,72 @@
 (deftest naive-and-fast-non-admitted-bed-hold-agree-on-a-reinstatement-log
   (is (= (vec (naive-non-admitted-patients-hold-no-bed reinstated-hold-log))
          (vec (check/non-admitted-patients-hold-no-bed reinstated-hold-log)))))
+
+;; --- ADR-0186: :medication-dispense. Two laws. The referential one is its
+;; own row; the admitted-only one is the existing clinical-content row,
+;; which an :inpatient dispense joins and a :community fill does not.
+
+(defn- dispense-log
+  "Admission, an order at t=5 (log index 1), then `more`."
+  [& more]
+  (into [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+          :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
+         {:event :medication-order :t 5 :codes [a-concept] :citation a-citation :participants (subject "P1")}]
+        more))
+
+(defn- a-dispense [t patient-id]
+  {:event :medication-dispense :t t :setting :inpatient :order-event-id 1 :order-citation a-citation
+   :participants (subject patient-id)})
+
+(deftest medication-dispense-law-holds-between-its-order-and-that-orders-end
+  (is (empty? (check/medication-dispense-references-existing-order-and-follows-it-in-time
+               (dispense-log (a-dispense 5 "P1")
+                             (a-dispense 10 "P1")
+                             {:event :medication-end :t 10 :order-event-id 1 :order-citation a-citation
+                              :participants (subject "P1")})))
+      "at the order's own instant and at its end's own instant are both legal")
+  (is (empty? (check/medication-dispense-references-existing-order-and-follows-it-in-time
+               (dispense-log (a-dispense 900 "P1"))))
+      "an order nothing has ended may still be filled"))
+
+(deftest medication-dispense-law-detects-another-patients-order
+  (is (= [:medication-dispense-references-existing-order-and-follows-it-in-time]
+         (mapv :invariant (check/medication-dispense-references-existing-order-and-follows-it-in-time
+                           (dispense-log (a-dispense 10 "P2")))))))
+
+(deftest medication-dispense-law-detects-a-dispense-preceding-its-order
+  (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+              :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
+             (assoc (a-dispense 3 "P1") :order-event-id 2)
+             {:event :medication-order :t 5 :codes [a-concept] :citation a-citation :participants (subject "P1")}]]
+    (is (= [:medication-dispense-references-existing-order-and-follows-it-in-time]
+           (mapv :invariant (check/medication-dispense-references-existing-order-and-follows-it-in-time log))))))
+
+(deftest medication-dispense-law-detects-a-dispense-after-its-orders-end
+  (is (= [:medication-dispense-references-existing-order-and-follows-it-in-time]
+         (mapv :invariant (check/medication-dispense-references-existing-order-and-follows-it-in-time
+                           (dispense-log {:event :medication-end :t 10 :order-event-id 1 :order-citation a-citation
+                                          :participants (subject "P1")}
+                                         (a-dispense 11 "P1")))))))
+
+(deftest medication-dispense-law-detects-a-phantom-order-and-allows-the-pre-horizon-straddle
+  (is (seq (check/medication-dispense-references-existing-order-and-follows-it-in-time
+            [(assoc (a-dispense 0 "P1") :order-event-id 99)])))
+  (is (seq (check/medication-dispense-references-existing-order-and-follows-it-in-time
+            [(assoc (a-dispense 0 "P1") :order-event-id nil)]))
+      "nil with no pre-horizon order to stand behind it")
+  (is (empty? (check/medication-dispense-references-existing-order-and-follows-it-in-time
+               [{:event :registered :t 0 :participants (subject "P1")
+                 :pre-horizon-facts [{:event :medication-order :citation a-citation}]}
+                (assoc (a-dispense 10 "P1") :order-event-id nil)]))
+      "the order is a registration fact: the end's own allowance, read the same way"))
+
+(deftest clinical-content-only-when-admitted-reads-a-dispense-by-its-setting
+  (let [after-visit (fn [setting]
+                      [{:event :outpatient-visit :t 0 :participants (subject "P1")}
+                       {:event :medication-order :t 1 :codes [a-concept] :citation a-citation :participants (subject "P1")}
+                       {:event :outpatient-visit-end :t 5 :participants (subject "P1")}
+                       (assoc (a-dispense 6 "P1") :setting setting :order-event-id 1)])]
+    (is (= [:clinical-content-only-when-admitted]
+           (mapv :invariant (check/clinical-content-only-when-admitted (after-visit :inpatient)))))
+    (is (empty? (check/clinical-content-only-when-admitted (after-visit :community))))))

@@ -3082,3 +3082,67 @@
               lone decide call still has"
       (is (string? streams/stream-scheme))
       (is (= 1 (count (set (vals (streams/one-stream (Random. 1))))))))))
+
+;; --- schema 1.12.0 (ADR-0186): :medication-dispense, authored by a pathway.
+;; One kind, two settings. It names its order by citation and carries that
+;; order's log index, resolved the way :medication-end's is. No draw, no
+;; state change. An :inpatient dispense is clinical content of an open
+;; encounter; a :community fill happens after the visit that prescribed it.
+
+(def ^:private inpatient-dispense-pathway
+  {:name "inpatient-dispense"
+   :steps [{:type :admission :location "Renal"}
+           {:type :medication-order :codes [a-concept] :citation a-citation}
+           {:type :delay :from 30 :to 30}
+           {:type :medication-dispense :setting :inpatient :order-citation a-citation}
+           {:type :delay :from 30 :to 30}
+           {:type :medication-end :order-citation a-citation}
+           {:type :discharge}]})
+
+(deftest an-authored-inpatient-dispense-names-its-order-by-log-index-and-self-checks-clean
+  (let [{:keys [ground-truth] :as r} (run/run {:seed 11 :patients 1
+                                               :pathways [{:pathway inpatient-dispense-pathway :weight 1}]})
+        kinds (mapv :event ground-truth)
+        order-idx (first (keep-indexed (fn [i e] (when (= :medication-order (:event e)) i)) ground-truth))
+        dispenses (filterv #(= :medication-dispense (:event %)) ground-truth)]
+    (is (= [:registered :admission :medication-order :medication-dispense :medication-end :discharge] kinds)
+        "exactly one :medication-dispense, between its order and that order's end")
+    (is (= [{:setting :inpatient :order-event-id order-idx :order-citation a-citation}]
+           (mapv #(select-keys % [:setting :order-event-id :order-citation]) dispenses)))
+    (is (not-any? #(contains? (first dispenses) %) [:codes :fill-number])
+        "the order's codes are not copied, and there is no fill number")
+    (let [checked (check/check-all ground-truth (:facility r))]
+      (is (result/ok? checked)
+          (str "the self-check's own instrument, over the whole catalog: "
+               (pr-str (:violations (:payload checked))))))))
+
+(deftest a-community-dispense-is-legal-after-its-visit-closed-and-an-inpatient-one-is-not
+  (let [visit (fn [setting]
+                {:name "fill" :steps [{:type :outpatient-visit}
+                                      {:type :medication-order :codes [a-concept] :citation a-citation}
+                                      {:type :delay :from 20 :to 20}
+                                      {:type :outpatient-visit-end}
+                                      {:type :delay :from 120 :to 120}
+                                      {:type :medication-dispense :setting setting :order-citation a-citation}]})
+        run-one (fn [setting] (run/run {:seed 11 :patients 1 :pathways [{:pathway (visit setting) :weight 1}]}))
+        violations (fn [r] (mapv :invariant (:violations (:payload (check/check-all (:ground-truth r) (:facility r))))))
+        community (run-one :community)
+        inpatient (run-one :inpatient)]
+    (is (= [:registered :outpatient-visit :medication-order :outpatient-visit-end :medication-dispense]
+           (mapv :event (:ground-truth community))))
+    (is (result/ok? (check/check-all (:ground-truth community) (:facility community)))
+        (str "a community fill needs no open encounter: " (pr-str (violations community))))
+    (is (= [:clinical-content-only-when-admitted] (violations inpatient))
+        "an inpatient dispense with no open encounter is the admitted-only law's to convict")))
+
+(deftest a-medication-dispense-takes-no-draw
+  (let [world0 (world-of {"P1" (state/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        rng (Random. 1)
+        {:keys [events]} (decide/decide (streams/one-stream rng) 10 world1 "P1"
+                                        {:type :medication-dispense :setting :inpatient :order-citation a-citation})]
+    (is (= :medication-dispense (:event (first events))))
+    (is (nil? (:order-event-id (first events))) "no order in this world: nil, as :medication-end's is")
+    (is (contains? (first events) :order-event-id) "nil is carried, not dropped")
+    (is (= (.nextLong (Random. 1)) (.nextLong rng))
+        "the stream is where a fresh one starts: the step drew nothing")))
