@@ -301,5 +301,16 @@ Nothing was touched in the tree while the second run was going.
 
 ## Close
 
-Pushed as `2aaefd6a..<this commit>`. CI green at the pushed tip is the
-close marker; its run id is appended here in the follow-up commit.
+Pushed as `2aaefd6a..80ba0c60`, eight commits: `b0d6096f` (red tests),
+`abe7cb27` (the key), `6fed4a0c` (the erasure law), `b0fd6851` (the
+oracle root), `4e62cca7` (describe), `f4b9bfeb` (docs), `f09cd029`
+(ADR-0187), `80ba0c60` (this record and the prompt archive).
+`bin/post-push-verify 2aaefd6a 80ba0c60`: remote tip matches, no
+leaks, every commit message ASCII.
+
+CI run 44310571204 at `80ba0c60`: **success, on its second attempt.**
+The first attempt failed in the `poly check` step before any test ran:
+Maven Central answered the runner's request for
+`org.clojure:clojure:pom:1.12.6` with HTTP 429, Too Many Requests. No
+`deps.edn` is in this range. The failed job was rerun unchanged
+(`gh run rerun --failed`) and concluded `success`.
