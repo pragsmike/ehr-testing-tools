@@ -931,9 +931,14 @@
                  ;; manifest should say so on its own face rather than
                  ;; leaving a reader to infer it from an `:appointment`
                  ;; they happen to notice.
+                 ;; ADR-0187: `:dispense` joins for the same reason once
+                 ;; more -- a corpus whose outpatient orders are each
+                 ;; filled is a different artifact from one whose orders
+                 ;; are only written, and the manifest should say so on
+                 ;; its own face.
                  engine-params (-> (select-keys opts [:patients :arrival-gap :warm-up-seconds
                                                       :persons :persona-config :encounters
-                                                      :bed-cycle :scheduling])
+                                                      :bed-cycle :scheduling :dispense])
                                     (assoc :reference-date reference-date :utc-offset utc-offset))
                  engine-opts (cond-> (merge (select-keys opts engine/config-keys)
                                             {:seed seed :churn-profile effective-churn-profile})

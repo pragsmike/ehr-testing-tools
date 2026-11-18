@@ -85,7 +85,9 @@
    :encounters ::encounters-sentinel
    ;; ARC 3B SWEEP 2 (ADR-0174 section 2(c)): `:bed-cycle`, same shape
    ;; and same reason -- a bare opt-in flag forwarded untranslated.
-   :bed-cycle ::bed-cycle-sentinel})
+   :bed-cycle ::bed-cycle-sentinel
+   ;; ADR-0187: `:dispense`, the same bare opt-in flag.
+   :dispense ::dispense-sentinel})
 
 (deftest run-command-forwards-every-engine-config-key
   (testing "the FULL ehrt.sim-engine.config/config-keys set reaches
@@ -105,6 +107,13 @@
               "the :churn-profile sentinel must survive run-command's own default-merge")
           (is (= (get sentinel-opts k) (get @captured k))
               (str k " was not forwarded from run-command to engine/run")))))))
+
+;; ADR-0187: the `:dispense` opt-in reaches the manifest the way
+;; `:encounters` does, and is absent from a run that did not ask for it.
+(deftest the-manifest-stamps-dispense-iff-present-test
+  (let [params (fn [opts] (:engine-params (:manifest (:payload (run/run-command opts)))))]
+    (is (true? (:dispense (params {:seed 1 :patients 2 :dispense true}))))
+    (is (not (contains? (params {:seed 1 :patients 2}) :dispense)))))
 
 ;; --- M5b: :modules (names) -> closure-shaped entries ----------------------
 ;; ADR-0033 AR-2: engine-facing :modules entries are now ALWAYS closure-

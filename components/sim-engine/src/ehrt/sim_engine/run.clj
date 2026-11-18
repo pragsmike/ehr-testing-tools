@@ -1214,7 +1214,7 @@
   decision, not because it's a second source of truth."
   [{:keys [seed patients pathway pathways arrival-gap warm-up-seconds facility providers churn-profile order-profiles
            persona-config modules module-assignment module-horizon-days history persons encounters
-           bed-cycle scheduling]
+           bed-cycle scheduling dispense]
     :or {patients 1
          pathway sim-model/sample-admission-discharge
          arrival-gap 60
@@ -1467,6 +1467,14 @@
                     ;; queued. Same tolerance as every index above: on
                     ;; the KEY, never on a missing bed entry.
                     :beds (when bed-cycle (sim-model/initial-beds facility))
+                    ;; ADR-0187: the `:dispense` opt-in, carried so
+                    ;; `decide :outpatient-visit-end` can read it -- its
+                    ;; only reader.
+                    ;;
+                    ;; NIL UNLESS THE RUN OPTED IN, which is
+                    ;; indistinguishable from absent to that reader and
+                    ;; is what a hand-built world already looks like.
+                    :dispense (when dispense true)
                     ;; ARC 3B SWEEP 3 (ADR-0174 section 2(b)): the six
                     ;; sub-keys, verbatim, plus the minting index that
                     ;; carries `appointment-id-for`'s two arguments.

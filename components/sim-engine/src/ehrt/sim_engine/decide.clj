@@ -1638,14 +1638,61 @@
                      (appointment-ref-field step))]
      :advance 0}))
 
+(defn- derived-community-fills
+  "ADR-0187, the `:dispense` key: one `:medication-dispense` STEP,
+  `:setting :community`, for each medication order the visit now closing
+  wrote and left open, in the orders' own order. Nil without the key and
+  nil with nothing to fill, so the caller attaches nothing.
+
+  WHICH ORDERS. The patient's own `:medication-orders` records, which
+  `evolve :medication-order` appends in log order. An order is this
+  visit's when it carries the open encounter's `:encounter-id`, where
+  the run mints one (`:encounters`); otherwise when it was written at or
+  after the instant the open encounter record says it opened -- without
+  `:encounters` a patient has one encounter in the whole run, so the
+  instant is enough. Only an `:active` one: the dispense law bounds a
+  fill by its order's end, so an order the visit itself ended is not one
+  the visit left to fill.
+
+  STEPS, NOT EVENTS, and that is the ruling's own condition (2026-11-18:
+  \"as long as the time is after the encounter\"). `fold/apply-events`
+  stamps a whole batch off the world as it stood BEFORE the batch, so an
+  event returned beside the closer would carry the `:encounter-id` of
+  the visit that closer closes. A step is decided later, against a world
+  in which the close has been folded.
+
+  The step is the one a pathway authors (ADR-0186), so the event is
+  `decide :medication-dispense`'s and its `:order-event-id` is resolved
+  there, by citation, as an authored fill's is. It states no
+  `:citation`: no module state and no pathway step is its source. No
+  draw."
+  [world patient]
+  (when (:dispense world)
+    (when-let [encounter (:encounter patient)]
+      (let [written-here? (if-let [id (:encounter-id encounter)]
+                            #(= id (:encounter-id %))
+                            #(<= (:admitted-at encounter) (:ordered-t %)))]
+        (seq (for [order (:medication-orders patient)
+                   :when (and (= :active (:status order)) (written-here? order))]
+               {:type :medication-dispense :setting :community
+                :order-citation (:citation order)}))))))
+
 (defmethod decide :outpatient-visit-end decide-outpatient-visit-end
   [_streams t world patient-id step]
-  (let [patient (get-in world [:patients patient-id])]
-    {:events [(merge {:event :outpatient-visit-end :t t :active-mrn (:active-mrn patient)
-                      :attending (:attending patient)
-                      :participants [{:patient-id patient-id :role :subject}]}
-                     (citation-fields step))]
-     :advance 0}))
+  (let [patient (get-in world [:patients patient-id])
+        fills (derived-community-fills world patient)]
+    ;; ADR-0187: with fills owed, ONE queue entry at this same instant,
+    ;; the shape `decide :order` uses for its result. The run loop gives
+    ;; it a `[t seq-no]` ahead of this patient's own remaining steps, so
+    ;; the fills follow the close and precede whatever the patient does
+    ;; next. Without the `:dispense` key `fills` is nil and this map is
+    ;; the one it always was.
+    (cond-> {:events [(merge {:event :outpatient-visit-end :t t :active-mrn (:active-mrn patient)
+                              :attending (:attending patient)
+                              :participants [{:patient-id patient-id :role :subject}]}
+                             (citation-fields step))]
+             :advance 0}
+      fills (assoc :schedule-followup {:t t :patient-id patient-id :steps (vec fills)}))))
 
 ;; --- M5b: CompileTrajectory's new ground-truth event types (docs/gmf-
 ;; interpreter.md section 1's table) -- each is a real, glass-box-cited
