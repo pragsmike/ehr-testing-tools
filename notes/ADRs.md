@@ -249,3 +249,4 @@ append-only, never-reassigned rule stands.
 - **ADR-0184** — `:allergy-onset` joins the log and the registration facts: the AllergyOnset fact becomes ground truth — [`0184-allergy-onset-joins-the-log.md`](adr/0184-allergy-onset-joins-the-log.md) — Accepted 2026-09-30
 - **ADR-0185** — the ground-truth rebaseline: reinstated stays close, churn candidates in patient-id order — [`0185-ground-truth-rebaseline.md`](adr/0185-ground-truth-rebaseline.md) — Accepted 2026-09-30
 - **ADR-0186** — `:medication-dispense` joins the log as an authored step: one kind, two settings — [`0186-medication-dispense-joins-the-log.md`](adr/0186-medication-dispense-joins-the-log.md) — Accepted 2026-11-17
+- **ADR-0187** — the `:dispense` key: one community fill derived for each order an outpatient visit wrote — [`0187-the-dispense-key-derives-community-fills.md`](adr/0187-the-dispense-key-derives-community-fills.md) — Accepted 2026-11-18
