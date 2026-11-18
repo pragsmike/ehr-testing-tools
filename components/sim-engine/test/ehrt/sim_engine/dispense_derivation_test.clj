@@ -12,14 +12,17 @@
   close has been folded."
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
+            [clojure.walk :as walk]
             [ehrt.kernel.interface :as result]
             [ehrt.patient-simulator.interface :as patient-simulator]
             [ehrt.sim-check.check :as check]
             [ehrt.sim-engine.config :as config]
             [ehrt.sim-engine.decide :as decide]
+            [ehrt.sim-engine.event-schema :as event-schema]
             [ehrt.sim-engine.run :as run]
             [ehrt.sim-engine.state :as state]
-            [ehrt.sim-engine.streams :as streams])
+            [ehrt.sim-engine.streams :as streams]
+            [malli.core :as m])
   (:import [java.util Random]))
 
 ;; --- the runs ---------------------------------------------------------
@@ -197,3 +200,102 @@
       (let [bare (assoc-in world [:patients "P1" :medication-orders] [])
             decided (decide/decide (streams/one-stream (Random. 1)) 130 (assoc bare :dispense true) "P1" closing)]
         (is (= #{:events :advance} (set (keys decided))))))))
+
+;; --- step 3: THE ERASURE LAW, the key's contract ------------------------
+;;
+;; The key adds events and draws nothing. So a run with it is the keyless
+;; run with dispenses inserted: delete every `:medication-dispense`,
+;; renumber each log-index-bearing field past the deletions, and what is
+;; left is the keyless log, EVENT FOR EVENT -- the whole log compared for
+;; equality, not its counts.
+;;
+;; None of these runs authors a dispense, so deleting the kind deletes
+;; exactly what the key derived.
+
+(defn- schema-reference-fields
+  "Every `*-event-id` field the LIVE event schema declares as an int or a
+  nilable int -- a log index -- walked out of `event-schema/Event`. The
+  same walk, on the same schema, as
+  `ehrt.corpus.event-mutate-test/schema-reference-fields`, which is the
+  tree's own enumeration (and a private test fn in a brick this one
+  cannot require). A reference field added to the schema is renumbered
+  here without this test being touched."
+  []
+  (let [acc (atom #{})]
+    (walk/postwalk
+     (fn [form]
+       (when (and (vector? form) (<= 2 (count form) 3) (keyword? (first form)))
+         (let [k (first form) t (last form)]
+           (when (and (re-find #"-event-id$" (name k))
+                      (contains? #{:int [:maybe :int]} t))
+             (swap! acc conj k))))
+       form)
+     (m/form event-schema/Event))
+    @acc))
+
+(defn- erase-dispenses
+  "The log with every `:medication-dispense` deleted and every reference
+  field renumbered to the index its target has once they are gone."
+  [ground-truth]
+  (let [log (vec ground-truth)
+        fields (schema-reference-fields)
+        ;; old index -> new index, for the events that survive.
+        new-index (loop [i 0 kept 0 acc (transient {})]
+                    (if (= i (count log))
+                      (persistent! acc)
+                      (if (= :medication-dispense (:event (nth log i)))
+                        (recur (inc i) kept acc)
+                        (recur (inc i) (inc kept) (assoc! acc i kept)))))
+        renumber (fn [event]
+                   (walk/postwalk
+                    (fn [form]
+                      (if (and (map-entry? form) (contains? fields (key form)) (int? (val form)))
+                        (clojure.lang.MapEntry. (key form) (get new-index (val form) ::dangling))
+                        form))
+                    event))]
+    (into [] (comp (remove #(= :medication-dispense (:event %))) (map renumber)) log)))
+
+(def ^:private churned-visits-config
+  "Authored outpatient visits under churn and every opt-in the engine
+  has, so the erased log holds reference fields other than a
+  dispense's (`:cancels-event-id`) and events at the fills' own
+  instants."
+  {:seed 20261118 :patients 40 :arrival-gap 45 :encounters true :bed-cycle true
+   :churn-profile {:cancel-admit 0.2 :cancel-transfer 0.2 :cancel-discharge 0.2
+                   :transfer-in-error 0.1 :bed-swap 0.1 :merge 0.1}
+   :pathways [{:weight 1 :pathway (get-in two-order-visit-config [:pathways 0 :pathway])}
+              {:weight 1
+               :pathway {:name "stay"
+                         :steps [{:type :admission :location "Renal"}
+                                 {:type :medication-order :codes [a-concept] :citation order-a}
+                                 {:type :delay :from 30 :to 90}
+                                 {:type :transfer :location "Cardiology"}
+                                 {:type :delay :from 30 :to 90}
+                                 {:type :discharge}]}}]})
+
+(deftest erasing-the-derived-dispenses-leaves-the-keyless-run-event-for-event
+  (testing "the walk finds the schema's reference fields at all"
+    (is (contains? (schema-reference-fields) :order-event-id))
+    (is (contains? (schema-reference-fields) :cancels-event-id)))
+  (doseq [[label cfg expected-fills]
+          [["the oracle's osteoporosis root" osteoporosis-config 156]
+           ["the oracle's sinusitis root" sinusitis-config 7]
+           ["osteoporosis, with :encounters" (assoc osteoporosis-config :encounters true) 156]
+           ["two authored orders per visit" two-order-visit-config 6]
+           ["authored visits and stays under churn" churned-visits-config nil]]]
+    (testing label
+      (let [keyless (:ground-truth (run/run cfg))
+            keyed (:ground-truth (run/run (assoc cfg :dispense true)))
+            fills (count (filter #(= :medication-dispense (:event %)) keyed))
+            erased (erase-dispenses keyed)]
+        (is (pos? fills) "the key derived something, so the erasure is not of nothing")
+        (when expected-fills (is (= expected-fills fills)))
+        (is (= (+ (count keyless) fills) (count keyed)))
+        (is (not-any? #(some #{::dangling} (tree-seq coll? seq %)) erased)
+            "no surviving event referenced a deleted one")
+        (is (= (count keyless) (count erased)))
+        (when-let [[i a b] (first (keep-indexed (fn [i [a b]] (when (not= a b) [i a b]))
+                                                 (map vector keyless erased)))]
+          (is false (str "first differing event, index " i ":\n keyless " (pr-str a)
+                         "\n erased  " (pr-str b))))
+        (is (= keyless erased) "the whole log, event for event")))))
