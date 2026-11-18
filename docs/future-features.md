@@ -250,20 +250,27 @@ consumer who asks for "dispense events" usually means exactly one of
 them. **Which one you join against is the fact worth telling us.**
 
 The first two now share one event kind, told apart by a stated
-`:setting`; the third has none. What is still undecided: any rule that
-would produce a fill from an order without your writing it, how often a
-long-running prescription refills, and whether any of it reaches a wire
-format.
+`:setting`; the third has none. What is still undecided: how often a
+long-running prescription refills and for how long, whether a
+prescription written at an emergency-department discharge is filled,
+any rule that would produce an inpatient dispense without your writing
+it, and whether any of it reaches a wire format.
 
 *Today:* a `:medication-order` is a prescription fact and nothing more —
 the patient, the medication's codes, and a citation to the module state
 that wrote it. A `:medication-end` closes it, naming its order by that
 citation. A `:medication-dispense` (event schema 1.12.0) names the order
 it fills and states its `:setting`, `:inpatient` or `:community`; it
-repeats no codes and carries no fill number. **A pathway step you author
-is the only thing that produces one**: no rule derives a fill from an
-order, no shipped scenario authors the step, and no vendored module can,
-so no shipped corpus contains a dispense. No event kind for a medication
+repeats no codes and carries no fill number. **Two things produce one.**
+A pathway step you author does, in either setting. The `:dispense`
+engine key does for `:community` only: each order an outpatient visit
+wrote and left open gets one fill, after the visit closes and at the
+instant it closes. That is one fill per order — a prescription meant to
+run for years is filled once — and orders written during an admission,
+which here includes every emergency-department visit, get none. The key
+draws nothing, so the same seed with and without it is the same
+hospital plus the fills. No shipped scenario sets the key or authors
+the step, so no shipped corpus contains a dispense. No event kind for a medication
 administration exists. None of the three kinds renders to any HL7 v2
 message: no pharmacy order, dispense or administration message (RDE,
 RDS, RAS) is emitted. The FHIR emitter renders each order as a

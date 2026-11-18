@@ -110,6 +110,19 @@ once rather than per key.
    it describes two different hospitals. Emission keys are pure
    functions of a log that already exists; turning one on cannot move a
    single ground-truth byte.
+
+   **One engine key is the exception: `:dispense` adds events and draws
+   nothing.** The same seed with and without it describes the *same*
+   hospital. The two logs differ by the `:medication-dispense` events
+   themselves and by every log index after the first of them — each
+   later event sits further down the log, so each `:order-event-id`,
+   `:cancels-event-id` and other log-index field that points past a
+   dispense is larger by the number of dispenses before its target.
+   Delete the dispenses, renumber, and the log without the key is what
+   is left, event for event; that is gated over five runs by
+   `ehrt.sim-engine.dispense-derivation-test`. Rendered HL7 v2 follows
+   the log: no message is added or removed, and the messages differ
+   only in MSH-10, whose suffix is the event's log index.
 3. **`{}` means "on" for exactly one key.** `:siu {}` renders all four
    scheduling kinds, because that key has nothing to configure but
    *which* kinds. `:chatter {}`, `:ladders {}` and `:charges` with an
@@ -142,11 +155,12 @@ noted. Each of these reaches the simulation itself.
 | **`:encounters`** | — | **the encounter horizon.** Truthy lifts the one-encounter-per-patient wall and mints an `:encounter-id` at every opener, so a returning person opens a *second* encounter on the same patient and the same MRN — which is what an MPI under test needs to see |
 | **`:bed-cycle`** | — | **the bed-status cycle.** Truthy makes a vacated bed go `:dirty` → `:cleaning` → `:ready` at each ward's own pace, gates allocation on `:ready`, and produces `:bed-status-change` |
 | **`:scheduling`** | — | **appointments.** Splits arrivals scheduled-vs-walk-in and books follow-ups at discharge; produces `:appointment`, `:reschedule`, `:appointment-cancel`, `:no-show` |
+| `:dispense` | — | derived community fills. Truthy gives each medication order an outpatient visit wrote, and left open, one `:medication-dispense` with `:setting :community`, after the visit's closing event and at that event's instant. Orders written during an admission get none. Draws nothing: rule 2's exception |
 
 The four bold rows are the ones that make the stream rich, and the
 three below `:persons` did not exist in any corpus this repository
 produced before 2026-08-26. The canonical list is
-`ehrt.sim-engine.config/config-keys` — nineteen keys, one per row above
+`ehrt.sim-engine.config/config-keys` — twenty keys, one per row above
 except that `:pathway` and `:pathways` share a row and
 `:module-initial-attributes` is not a member — and it carries a per-key
 comment for each. Every member of it reaches the engine whether it
@@ -487,16 +501,23 @@ sensitive to whether moves happen at all. Do not read a rate off this
 stream and use it as an epidemiological figure.
 
 **A medication order is a prescription fact, and nothing fills it
-unless a pathway says so.** A `:medication-order` says a medication was
+unless you ask.** A `:medication-order` says a medication was
 prescribed, and a `:medication-end` closes it. Since event schema 1.12.0
 a `:medication-dispense` can name the order it fills, in one of two
-stated settings — but only a pathway step you author produces one. No
-rule derives a fill from an order, no shipped scenario authors the step,
-and no vendored module can, so every corpus this workspace ships still
-holds orders with no dispense at all. Do not read that absence as an
-order that went unfilled: nothing was asked to fill it. No event records
-a medication administration, and no pharmacy message goes on the HL7 v2
-wire for any of the three kinds.
+stated settings, and there are two ways to get one. A pathway step you
+author produces one in either setting. The `:dispense` engine key
+produces one `:community` fill for each order an outpatient visit wrote
+and left open, placed after that visit closes; it fills each such order
+exactly once, however long the prescription runs, and it fills nothing
+written during an admission — an emergency-department visit is an
+admission here, so a prescription written at an ED discharge gets none.
+The key does not look for an authored fill of the same order: a pathway
+that authors one and runs with the key gets two. No shipped scenario
+sets the key or authors the step, so every corpus this workspace ships
+still holds orders with no dispense at all. Do not read that absence as
+an order that went unfilled: nothing was asked to fill it. No event
+records a medication administration, and no pharmacy message goes on
+the HL7 v2 wire for any of the three kinds.
 [`future-features.md`](future-features.md#medication-dispensing-and-administration)
 has what is still missing.
 

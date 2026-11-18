@@ -450,6 +450,9 @@
   from an order, no config key turns one on, and no vendored module
   carries one. No shipped config authors the step, so no existing
   corpus byte moves.
+  (ADDENDUM 2026-11-18, ADR-0187: that paragraph is 1.12.0's landing.
+  The `:dispense` engine key now derives `:community` dispenses, with
+  this same shape and under this same version -- no schema change.)
 
   NO BUMP IS OWED, AND THIS ONE IS TAKEN -- 1.10.0's situation and
   1.10.0's reason. `classify-change` against the frozen 1.11.0 baseline,

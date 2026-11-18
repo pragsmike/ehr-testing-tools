@@ -1176,6 +1176,10 @@
   contract 1.11.0 had no such kind, and the kind is authored only -- no
   rule derives a dispense from an order, so no vendored module and no
   shipped config can reach it.
+  (ADDENDUM 2026-11-18, ADR-0187: true of this root's landing. The
+  `:dispense` engine key now derives community fills, and
+  `osteoporosis-dispense` is the root that runs with it. This root still
+  authors every dispense it holds and runs without the key.)
 
   BOTH SETTINGS, ONE RUN, AND NO MODULE. Even ordinals take an authored
   Renal stay: order, an `:inpatient` dispense 30 minutes later, the
