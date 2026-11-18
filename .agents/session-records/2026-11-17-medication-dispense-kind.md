@@ -197,3 +197,14 @@ CI green on the pushed tip is this session's close marker.
 
 ## Close
 
+Pushed `dc58500f..3f92de1b` (seven commits, the red `fd37f4f2` with its
+green successors). `bin/post-push-verify dc58500f 3f92de1b`: remote tip
+matches; every commit message ASCII; CI not yet indexed at that moment
+(disclosed by the script). **CI run 44205175355 completed `success`**
+at `3f92de1bfcd684dd3bbc3662c6ea4d7741bdb80d`, attempt 1 -- the close
+marker. Every background process this session started was enumerated
+and had exited before this commit (two brick runs, the two instruments
+in one job, one `make test`, one `gh run watch`, each by its own
+completion notification; the one stray `make test` named above was
+stopped by PID); no oracle worktree remained (`git worktree list`). No
+tag paid.
