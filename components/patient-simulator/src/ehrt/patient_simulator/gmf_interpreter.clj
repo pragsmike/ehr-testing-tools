@@ -1227,13 +1227,59 @@
   and of the given `event-type` sits -- the shape ConditionEnd/
   MedicationEnd's own reference to its opening event uses (docs/gmf-
   interpreter.md section 1: 'the same 'references an existing prior
-  event' shape :cancel-*/:result-available already establish')."
+  event' shape :cancel-*/:result-available already establish').
+
+  THE FIRST such event. Since ADR-0188 (2026-11-18) no END calls this:
+  the three ends by state name go through `index-of-open-citation`,
+  below. Its one remaining caller is `death-cause-codes`, which reads
+  the named ConditionOnset's `:codes` -- a property of the STATE, the
+  same whichever firing of it is read -- so first is as right as any."
   [trajectory module-id event-type target-state]
   (when target-state
     (some (fn [[i event]]
             (when (and (= module-id (:module event)) (= event-type (:event event)) (= target-state (:state event)))
               i))
           (map-indexed vector trajectory))))
+
+(defn- index-of-open-citation
+  "ADR-0188. Which opening an END that names its opening BY STATE
+  references: the LATEST `opening-type` event citing `{:module :state
+  target-state}` that no `end-type` event already in `trajectory`
+  references. One rule for the three paired spans -- MedicationEnd,
+  ConditionEnd, CarePlanEnd.
+
+  `index-of-citation` (above) answered this until 2026-11-18, and its
+  answer is the FIRST opening of the state. A state that fires once
+  cannot tell the two apart. One that fires again can: every later end
+  then named the first opening, already ended, and the opening it was
+  really closing stayed open for the rest of the walk -- so
+  `active-onset-condition-holds?`, which asks whether any end references
+  the MOST RECENT opening, kept answering true, and a module routing on
+  that answer (`sinusitis.json`'s `End_Antibiotic`) kept ending a
+  medication it had not prescribed.
+
+  `ended` is every index ANY end of this type references, whichever
+  state it named and however it named it: an opening ended through a
+  `:referenced-by-attribute` end is as ended as one ended by state.
+
+  NOTHING OPEN KEEPS WHAT IT HAD. When every opening of the state is
+  already ended the answer is the first opening, `index-of-citation`'s
+  own answer, and when the state never fired it is nil. Both were
+  measured at 164fae67 and both are asserted
+  (`ehrt.patient-simulator.end-reference-test`). An end with nothing to
+  end is a module's own doing, and what it should reference instead was
+  not ruled."
+  [trajectory module-id opening-type end-type target-state]
+  (when target-state
+    (let [ended (into #{} (comp (filter #(= end-type (:event %))) (keep :references)) trajectory)
+          openings (keep-indexed (fn [i event]
+                                   (when (and (= module-id (:module event))
+                                              (= opening-type (:event event))
+                                              (= target-state (:state event)))
+                                     i))
+                                 trajectory)]
+      (or (last (remove ended openings))
+          (first openings)))))
 
 (defn- open-encounter-index
   "EncounterEnd fix (2026-08-08, ADR-0082): the trajectory index of the
@@ -1846,8 +1892,9 @@
           (update outcome :attributes assoc (keyword (root-id ctx module-id) (gmf/slug attr)) event-idx)
           outcome))
       :condition-end (emit-and-advance module-id ctx rng state :condition-end
-                                        {:references (index-of-citation (:trajectory ctx) module-id
-                                                                         :condition-onset (:condition-onset state))}
+                                        {:references (index-of-open-citation (:trajectory ctx) module-id
+                                                                              :condition-onset :condition-end
+                                                                              (:condition-onset state))}
                                         tables)
       ;; EncounterEnd fix (2026-08-08, ADR-0082, R1/R2/R3, ADR-0081's own
       ;; rulings executed); auto-close fix (2026-08-11, ADR-0107, option
@@ -1925,8 +1972,9 @@
       :medication-end
       (let [references (if-let [attr (:referenced-by-attribute state)]
                           (get (:attributes ctx) (keyword (root-id ctx module-id) (gmf/slug attr)))
-                          (index-of-citation (:trajectory ctx) module-id
-                                              :medication-order (:medication-order state)))]
+                          (index-of-open-citation (:trajectory ctx) module-id
+                                                   :medication-order :medication-end
+                                                   (:medication-order state)))]
         (emit-and-advance module-id ctx rng state :medication-end {:references references} tables))
       ;; GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R2(b)): the
       ;; SAME shape :medication-order/:medication-end establish, two
@@ -1941,8 +1989,9 @@
                          tables)
       :care-plan-end
       (emit-and-advance module-id ctx rng state :care-plan-end
-                         {:references (index-of-citation (:trajectory ctx) module-id
-                                                          :care-plan-start (:careplan state))}
+                         {:references (index-of-open-citation (:trajectory ctx) module-id
+                                                               :care-plan-start :care-plan-end
+                                                               (:careplan state))}
                          tables)
       ;; GMF coverage Wave B (D1-D4): CallSubmodule's own handling is
       ;; `call-submodule-step`, above -- it needs `modules`/`tables`
