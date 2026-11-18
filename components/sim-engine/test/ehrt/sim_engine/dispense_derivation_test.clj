@@ -1,0 +1,199 @@
+(ns ehrt.sim-engine.dispense-derivation-test
+  "ADR-0187: the `:dispense` engine key. With it, every medication order
+  an outpatient visit wrote and left open gets ONE `:community`
+  `:medication-dispense`, after the visit's own closing event. Without
+  it, nothing here happens at all.
+
+  The fill is not in the closer's own batch. `fold/apply-events` stamps
+  a batch off the world as it stood BEFORE the batch, so an event beside
+  the closer would carry the id of the visit that closer closes. It
+  rides a queue entry at the closer's own instant instead, the way an
+  order's result rides one (`decide :order`), and is decided once the
+  close has been folded."
+  (:require [clojure.java.io :as io]
+            [clojure.test :refer [deftest is testing]]
+            [ehrt.kernel.interface :as result]
+            [ehrt.patient-simulator.interface :as patient-simulator]
+            [ehrt.sim-check.check :as check]
+            [ehrt.sim-engine.config :as config]
+            [ehrt.sim-engine.decide :as decide]
+            [ehrt.sim-engine.run :as run]
+            [ehrt.sim-engine.state :as state]
+            [ehrt.sim-engine.streams :as streams])
+  (:import [java.util Random]))
+
+;; --- the runs ---------------------------------------------------------
+
+(defn- module-config
+  "A module-only run, the shape the oracle's module roots use."
+  [module-id file overrides]
+  (let [module (:payload (patient-simulator/load-module
+                          module-id (slurp (io/resource (str "sim/modules/" file ".json")))))]
+    (merge {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+            :modules [(patient-simulator/singleton-closure module)]
+            :module-assignment [{:module-id module-id :weight 1}]
+            :module-horizon-days 36500}
+           overrides)))
+
+(def ^:private osteoporosis-config
+  "The oracle's `osteoporosis` root, verbatim
+  (`ehrt.oracle.digest/osteoporosis-pair`): 156 visits, each writing one
+  order."
+  (module-config "osteoporosis" "osteoporosis" {}))
+
+(def ^:private sinusitis-config
+  "The oracle's `sinusitis` root, verbatim: 22 visits, 7 of them writing
+  an order."
+  (module-config "sinusitis" "sinusitis" {:seed 1 :patients 30 :module-horizon-days 3650}))
+
+(def ^:private order-a {:module "fills" :state :first-prescription})
+(def ^:private order-b {:module "fills" :state :second-prescription})
+(def ^:private a-concept {:system :rxnorm :code "834102" :display "Penicillin V Potassium 500 MG Oral Tablet"})
+
+(def ^:private two-order-visit-config
+  {:seed 11 :patients 3 :arrival-gap 90
+   :pathways [{:weight 1
+               :pathway {:name "two-orders"
+                         :steps [{:type :outpatient-visit}
+                                 {:type :medication-order :codes [a-concept] :citation order-a}
+                                 {:type :delay :from 5 :to 5}
+                                 {:type :medication-order :codes [a-concept] :citation order-b}
+                                 {:type :delay :from 20 :to 20}
+                                 {:type :outpatient-visit-end}]}}]})
+
+(def ^:private admission-order-config
+  {:seed 11 :patients 3 :arrival-gap 90
+   :pathways [{:weight 1
+               :pathway {:name "stay-order"
+                         :steps [{:type :admission :location "Renal"}
+                                 {:type :medication-order :codes [a-concept] :citation order-a}
+                                 {:type :delay :from 60 :to 60}
+                                 {:type :discharge}]}}]})
+
+(defn- subject-of [event] (:patient-id (first (:participants event))))
+
+(defn- indexed-of [kind ground-truth]
+  (keep-indexed (fn [i e] (when (= kind (:event e)) [i e])) ground-truth))
+
+(defn- ok? [r]
+  (result/ok? (check/check-all (:ground-truth r) (:facility r))))
+
+(defn- violations [r]
+  (pr-str (:violations (:payload (check/check-all (:ground-truth r) (:facility r))))))
+
+;; --- step 1: what the key does -----------------------------------------
+
+(deftest the-key-is-an-engine-config-key
+  (is (contains? (set config/config-keys) :dispense)))
+
+(defn- every-order-is-filled-once-after-its-visit-closed
+  "The shape (a) asks for, over every order of a run: the order, later
+  that patient's visit end, later still one community dispense naming
+  the order by log index, at the end's instant or after it."
+  [ground-truth]
+  (let [log (vec ground-truth)
+        orders (indexed-of :medication-order log)
+        dispenses (indexed-of :medication-dispense log)]
+    (is (seq orders) "the run writes orders at all")
+    (is (= (count orders) (count dispenses)) "one fill per order")
+    (is (= (mapv first orders) (sort (map (comp :order-event-id second) dispenses)))
+        "and each order is named by exactly one of them")
+    (doseq [[di d] dispenses
+            :let [oi (:order-event-id d)
+                  order (nth log oi)
+                  closer (first (filter (fn [[i e]] (and (> i oi)
+                                                         (= :outpatient-visit-end (:event e))
+                                                         (= (subject-of d) (subject-of e))))
+                                        (map-indexed vector log)))]]
+      (is (= :community (:setting d)))
+      (is (= (subject-of order) (subject-of d)))
+      (is (= (:citation order) (:order-citation d)))
+      (is (some? closer) "the visit that wrote the order closes in the log")
+      (when closer
+        (is (< (first closer) di) "the fill follows the visit's closing event in the log")
+        (is (<= (:t (second closer)) (:t d)) "at that event's instant or later")))
+    dispenses))
+
+(deftest a-module-compiled-visits-order-is-filled-in-the-community-after-the-visit-closes
+  (let [r (run/run (assoc osteoporosis-config :dispense true))
+        dispenses (every-order-is-filled-once-after-its-visit-closed (:ground-truth r))]
+    (is (= 156 (count dispenses)))
+    (is (not-any? #(contains? (second %) :citation) dispenses)
+        "a derived fill is no module state's and no step's: it cites nothing")
+    (is (ok? r) (violations r))))
+
+(deftest a-derived-fill-does-not-carry-the-closed-visits-encounter-id
+  (let [r (run/run (assoc osteoporosis-config :dispense true :encounters true))
+        log (vec (:ground-truth r))
+        dispenses (every-order-is-filled-once-after-its-visit-closed log)]
+    (is (= 156 (count dispenses)))
+    (is (every? #(contains? (nth log (:order-event-id (second %))) :encounter-id) dispenses)
+        "the orders are stamped with their visit, so the question is a real one")
+    (is (not-any? #(contains? (second %) :encounter-id) dispenses)
+        "the fill is after the visit, so it is stamped with no encounter")
+    (is (ok? r) (violations r))))
+
+(deftest two-orders-in-one-visit-are-filled-in-the-orders-own-order
+  (let [r (run/run (assoc two-order-visit-config :dispense true))
+        log (vec (:ground-truth r))
+        dispenses (every-order-is-filled-once-after-its-visit-closed log)]
+    (is (= 6 (count dispenses)))
+    (doseq [[_ per-patient] (group-by (comp subject-of second) dispenses)]
+      (is (= [order-a order-b] (mapv (comp :order-citation second) per-patient)))
+      (is (apply < (map (comp :order-event-id second) per-patient))))
+    (is (ok? r) (violations r))))
+
+(deftest an-order-written-during-an-admission-gets-no-derived-fill
+  (let [r (run/run (assoc admission-order-config :dispense true))]
+    (is (= 3 (count (indexed-of :medication-order (:ground-truth r)))))
+    (is (empty? (indexed-of :medication-dispense (:ground-truth r))))
+    (is (ok? r) (violations r))))
+
+(deftest without-the-key-nothing-is-derived
+  (doseq [cfg [osteoporosis-config sinusitis-config two-order-visit-config admission-order-config]]
+    (is (empty? (indexed-of :medication-dispense (:ground-truth (run/run cfg)))))))
+
+(deftest an-order-ended-inside-its-visit-gets-no-derived-fill
+  (testing "the dispense law bounds a fill by its order's end, so an order
+            the visit itself ended is not one the visit left to fill"
+    (let [cfg {:seed 11 :patients 2 :arrival-gap 90 :dispense true
+               :pathways [{:weight 1
+                           :pathway {:name "ended-in-visit"
+                                     :steps [{:type :outpatient-visit}
+                                             {:type :medication-order :codes [a-concept] :citation order-a}
+                                             {:type :medication-order :codes [a-concept] :citation order-b}
+                                             {:type :delay :from 10 :to 10}
+                                             {:type :medication-end :order-citation order-a}
+                                             {:type :delay :from 10 :to 10}
+                                             {:type :outpatient-visit-end}]}}]}
+          r (run/run cfg)
+          dispenses (indexed-of :medication-dispense (:ground-truth r))]
+      (is (= [order-b order-b] (mapv (comp :order-citation second) dispenses)))
+      (is (ok? r) (violations r)))))
+
+(deftest deriving-a-fill-takes-no-draw
+  (let [patient (assoc (state/initial-patient "P1" "MRN000001")
+                       :status :admitted :class :outpatient :attending "prov-1"
+                       :encounter {:ordinal 0 :admitted-at 100}
+                       :medication-orders [{:citation order-b :ordered-t 40 :status :active}
+                                           {:citation order-a :ordered-t 110 :status :active}])
+        world {:patients {"P1" patient} :ground-truth []}
+        closing {:type :outpatient-visit-end}]
+    (testing "with the key: the closing event alone, and one queue entry at
+              its own instant holding one community step per order this
+              visit wrote"
+      (let [rng (Random. 1)
+            decided (decide/decide (streams/one-stream rng) 130 (assoc world :dispense true) "P1" closing)]
+        (is (= [:outpatient-visit-end] (mapv :event (:events decided))))
+        (is (= {:t 130 :patient-id "P1"
+                :steps [{:type :medication-dispense :setting :community :order-citation order-a}]}
+               (:schedule-followup decided))
+            "the order from before this visit opened is not this visit's")
+        (is (= (.nextLong (Random. 1)) (.nextLong rng)) "the stream is where a fresh one starts")))
+    (testing "without it: the decide's answer is the one it always gave"
+      (let [decided (decide/decide (streams/one-stream (Random. 1)) 130 world "P1" closing)]
+        (is (= #{:events :advance} (set (keys decided))))))
+    (testing "with it and nothing to fill: no queue entry either"
+      (let [bare (assoc-in world [:patients "P1" :medication-orders] [])
+            decided (decide/decide (streams/one-stream (Random. 1)) 130 (assoc bare :dispense true) "P1" closing)]
+        (is (= #{:events :advance} (set (keys decided))))))))
