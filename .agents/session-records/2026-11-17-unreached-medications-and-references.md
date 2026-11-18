@@ -413,3 +413,14 @@ for mod in sys.argv[1:]:
 
 ## Close
 
+Pushed `fd31ee2c..ef4a8995` as one commit (this record, the prompt
+archive, docsgen's three generated files). Before it: the docs-tooling
+brick tests green (exit 0); the leak grep over the staged diff found
+nothing identifying the downstream consumer; gitleaks clean.
+`bin/post-push-verify fd31ee2c ef4a8995`: remote tip matches; the
+commit message is ASCII; CI not yet indexed at that moment (disclosed
+by the script). **CI run 44208032780 completed `success`** at
+`ef4a899524e1e967d897db8dd0511e6966e6ed43`, attempt 1 -- the close
+marker. No local `make test` (docs-only, AGENTS.md 22). No tag paid.
+Background processes this session started: one `gh run watch`,
+exited with the run; none left running.
