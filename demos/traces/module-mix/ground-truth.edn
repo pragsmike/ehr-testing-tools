@@ -328,7 +328,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 17}],
+    :references 27}],
   :warm-up false}
  {:event :registered,
   :t 7020,
@@ -391,7 +391,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
+    :references 8}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -403,10 +403,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -428,7 +424,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
+    :references 18}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -440,10 +436,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -455,10 +447,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -471,10 +459,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -496,7 +480,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
+    :references 36}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -508,10 +492,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -523,10 +503,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -538,10 +514,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -553,10 +525,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -567,11 +535,7 @@
    {:event :condition-end,
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
-    :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}],
+    :references nil}],
   :warm-up false}
  {:event :registered,
   :t 9180,
@@ -1287,7 +1251,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
+    :references 12}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -1299,10 +1263,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -1314,10 +1274,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -1329,10 +1285,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -1344,10 +1296,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -1359,10 +1307,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -1373,11 +1317,7 @@
    {:event :condition-end,
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
-    :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}],
+    :references nil}],
   :warm-up false}
  {:event :registered,
   :t 35940,
@@ -1625,7 +1565,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}],
+    :references 32}],
   :warm-up false}
  {:event :registered,
   :t 40020,
@@ -1751,7 +1691,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
+    :references 24}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -1764,10 +1704,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -1779,10 +1715,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -1794,10 +1726,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -1809,10 +1737,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -1823,11 +1747,7 @@
    {:event :condition-end,
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
-    :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}],
+    :references nil}],
   :warm-up false}
  {:event :registered,
   :t 45300,
@@ -2003,7 +1923,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
+    :references 12}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -2015,10 +1935,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -2030,10 +1946,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -2045,10 +1957,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -2060,10 +1968,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -2085,7 +1989,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}],
+    :references 34}],
   :warm-up false}
  {:event :registered,
   :t 51480,
@@ -2355,7 +2259,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
+    :references 12}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -2367,10 +2271,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -2382,10 +2282,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -2407,7 +2303,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
+    :references 26}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -2419,10 +2315,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -2434,10 +2326,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -2448,11 +2336,7 @@
    {:event :condition-end,
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
-    :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}],
+    :references nil}],
   :warm-up false}
  {:event :registered,
   :t 56040,
@@ -2644,7 +2528,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 10}],
+    :references 40}],
   :warm-up false}
  {:event :registered,
   :t 60000,
@@ -2729,7 +2613,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
+    :references 16}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -2741,10 +2625,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -2756,10 +2636,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -2771,10 +2647,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -2786,10 +2658,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -2801,10 +2669,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -2826,7 +2690,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
+    :references 42}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -2838,10 +2702,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -2853,10 +2713,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -2868,10 +2724,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -2882,11 +2734,7 @@
    {:event :condition-end,
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
-    :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}],
+    :references nil}],
   :warm-up false}
  {:event :registered,
   :t 60900,
@@ -3066,7 +2914,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}],
+    :references 28}],
   :warm-up false}
  {:event :registered,
   :t 68880,
@@ -3406,7 +3254,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 18}
+    :references 32}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -3418,10 +3266,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 18}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -3432,11 +3276,7 @@
    {:event :condition-end,
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
-    :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 18}],
+    :references nil}],
   :warm-up false}
  {:event :registered,
   :t 75420,
@@ -3543,7 +3383,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
+    :references 24}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -3555,10 +3395,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -3570,10 +3406,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -3595,7 +3427,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
+    :references 38}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -3607,10 +3439,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -3632,7 +3460,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
+    :references 48}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -3644,10 +3472,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -3658,11 +3482,7 @@
    {:event :condition-end,
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
-    :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}],
+    :references nil}],
   :warm-up false}
  {:event :registered,
   :t 75420,
@@ -4288,7 +4108,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
+    :references 24}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -4300,10 +4120,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -4315,10 +4131,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -4340,7 +4152,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
+    :references 38}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -4351,11 +4163,7 @@
    {:event :condition-end,
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
-    :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}],
+    :references nil}],
   :warm-up false}
  {:event :registered,
   :t 88620,
@@ -4946,7 +4754,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 22}
+    :references 28}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -4959,10 +4767,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 22}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -4973,11 +4777,7 @@
    {:event :condition-end,
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
-    :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 22}],
+    :references nil}],
   :warm-up false}
  {:event :registered,
   :t 105540,
@@ -5071,7 +4871,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
+    :references 12}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -5083,10 +4883,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -5097,11 +4893,7 @@
    {:event :condition-end,
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
-    :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}],
+    :references nil}],
   :warm-up false}
  {:event :registered,
   :t 109140,
@@ -5360,7 +5152,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
+    :references 12}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -5372,10 +5164,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -5386,11 +5174,7 @@
    {:event :condition-end,
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
-    :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}],
+    :references nil}],
   :warm-up false}
  {:event :registered,
   :t 122040,
@@ -5464,7 +5248,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
+    :references 12}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -5476,10 +5260,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -5491,10 +5271,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -5516,7 +5292,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
+    :references 26}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -5528,10 +5304,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -5543,10 +5315,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -5558,10 +5326,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -5572,11 +5336,7 @@
    {:event :condition-end,
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
-    :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}],
+    :references nil}],
   :warm-up false}
  {:event :registered,
   :t 124200,
@@ -6061,7 +5821,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 10}],
+    :references 36}],
   :warm-up false}
  {:event :registered,
   :t 134820,
@@ -6413,7 +6173,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
+    :references 12}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -6425,10 +6185,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -6440,10 +6196,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -6455,10 +6207,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -6470,10 +6218,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -6485,10 +6229,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -6510,7 +6250,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}],
+    :references 38}],
   :warm-up false}
  {:event :registered,
   :t 147000,
@@ -6773,7 +6513,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
+    :references 32}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -6784,11 +6524,7 @@
    {:event :condition-end,
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
-    :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}],
+    :references nil}],
   :warm-up false}
  {:event :registered,
   :t 159780,
@@ -6980,7 +6716,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
+    :references 32}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -6992,10 +6728,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -7017,7 +6749,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
+    :references 42}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -7029,10 +6761,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -7044,10 +6772,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -7069,7 +6793,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}],
+    :references 56}],
   :warm-up false}
  {:event :registered,
   :t 164880,
@@ -7376,7 +7100,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 2}],
+    :references 12}],
   :warm-up false}
  {:event :registered,
   :t 171060,
@@ -8221,7 +7945,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 18}
+    :references 32}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -8233,10 +7957,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 18}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -8248,10 +7968,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 18}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -8273,7 +7989,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 18}
+    :references 46}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -8285,10 +8001,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 18}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -8300,10 +8012,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 18}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -8315,10 +8023,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 18}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -8330,10 +8034,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 18}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -8345,10 +8045,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 18}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -8360,10 +8056,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 18}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -8374,11 +8066,7 @@
    {:event :condition-end,
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
-    :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 18}],
+    :references nil}],
   :warm-up false}
  {:event :registered,
   :t 198060,
@@ -8646,7 +8334,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
+    :references 24}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -8668,7 +8356,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
+    :references 30}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -8681,10 +8369,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -8706,7 +8390,7 @@
    {:event :medication-end,
     :codes nil,
     :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
+    :references 40}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -8718,10 +8402,6 @@
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
     :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}
    {:event :condition-onset,
     :codes
     [{:system :snomed,
@@ -8732,11 +8412,7 @@
    {:event :condition-end,
     :codes nil,
     :citation {:module "sinusitis", :state :sinusitis-ends},
-    :references nil}
-   {:event :medication-end,
-    :codes nil,
-    :citation {:module "sinusitis", :state :end-antibiotic},
-    :references 6}],
+    :references nil}],
   :warm-up false}
  {:event :outpatient-visit,
   :t 4701240,
