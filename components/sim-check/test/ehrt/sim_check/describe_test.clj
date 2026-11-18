@@ -131,6 +131,30 @@
     (is (empty? (check/medication-dispense-references-existing-order-and-follows-it-in-time log)))
     (is (empty? (check/clinical-content-only-when-admitted log)))))
 
+(deftest the-dispense-key-configures-the-community-row-and-only-that-row
+  (testing "ADR-0187: no authored dispense step anywhere, and the key on"
+    (let [amoxicillin {:system :rxnorm :code "562251"
+                       :display "Amoxicillin 250 MG / Clavulanate 125 MG Oral Tablet"}
+          order {:module "fill" :state :prescription}
+          opts {:seed 3 :patients 2 :dispense true
+                :pathways [{:pathway {:name "prescribe"
+                                      :steps [{:type :outpatient-visit}
+                                              {:type :medication-order :codes [amoxicillin] :citation order}
+                                              {:type :delay :from 20 :to 20}
+                                              {:type :outpatient-visit-end}]}
+                            :weight 1}]}
+          describe-with (fn [o] (describe/describe (:ground-truth (run/run o))
+                                                   {:configuration {:source :caller-config :opts o
+                                                                    :churn-profile :unknown}}))
+          keyed (describe-with opts)
+          keyless (describe-with (dissoc opts :dispense))]
+      (is (= [:yes 2] ((juxt :configured :observed) (row keyed :medication-dispense-community)))
+          "the key is the configuration, and the two derived fills are observed")
+      (is (= [:no 0] ((juxt :configured :observed) (row keyed :medication-dispense-inpatient)))
+          "the key derives nothing inpatient")
+      (is (= [:no 0] ((juxt :configured :observed) (row keyless :medication-dispense-community)))
+          "and without it the row reads as it did"))))
+
 (deftest an-authored-allergy-onset-step-is-configured-and-observed
   (let [peanut {:system :snomed :code "762952008" :display "Peanut (substance)"}
         opts {:seed 3 :patients 2
