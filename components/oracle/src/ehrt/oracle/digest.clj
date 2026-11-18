@@ -42,7 +42,8 @@
   component-code versions, and hashing itself happens in the calling
   shell (`sha256sum`), not in-process.
 
-  CURRENT STATE, 2026-11-17 (ADR-0186, the `dispense` root; before it,
+  CURRENT STATE, 2026-11-18 (ADR-0187, the `osteoporosis-dispense` root;
+  before it, 2026-11-17, ADR-0186, the `dispense` root; before it,
   2026-09-30, ADR-0184, the `allergy` root; before it,
   2026-09-29, ADR-0182, the `immunization` root; before that, 2026-08-28, arc 4 sweep 3, ADR-0175 design (b)'s own
   step 0; before it, arc 4 sweep 2, designs (a) and
@@ -51,7 +52,7 @@
   before that, arc 3b sweep 1, ADR-0174 ruling A1; before
   that, arc 3a part 4, ADR-0173 ruling D1's commit 2; previously
   2026-08-19, ADR-0156, review-4 register row L1-5).
-  `roots` holds 44 roots in two families:
+  `roots` holds 45 roots in two families:
 
     3 INTERPRETER-LAYER batches -- appendicitis/sore-throat/
       ear-infections. 100 well-mixed seeds x both sexes = 200 walks per
@@ -61,7 +62,7 @@
       well-distributed for their own first draw, confirmed repeatedly
       across GMF coverage waves.
 
-   41 ENGINE-LAYER pairs -- engine/run plus emit-hl7/emit, ground truth
+   42 ENGINE-LAYER pairs -- engine/run plus emit-hl7/emit, ground truth
       AND emitted HL7 both captured, at the run-config each root's own
       vendored/engine test already established as producing real
       content. The 33rd, `demographic-fold`, is the first root to turn
@@ -113,6 +114,11 @@
       `:medication-dispense`, the kind contract 1.12.0 added, in both of
       its settings, and the first root with NO module at all: every event
       in it is authored. One event kind (31 of 31), zero message types.
+      The 42nd, `osteoporosis-dispense` (ADR-0187), is the `osteoporosis`
+      root's own config plus the `:dispense` engine key, and the only
+      root whose dispenses are DERIVED: 156 `:community` fills, one per
+      order, each after its visit closed. No new event kind, zero message
+      types.
 
   This paragraph replaced an opening that read `Six roots, matching this
   session's own J1 ruling verbatim` -- true when written and never
@@ -121,7 +127,7 @@
   false; a cold reader simply got a third of the population and no
   signal that it was a third. The count is gated now
   (`ehrt.docs-tooling.oracle-coverage-test`), and the COVERAGE block
-  beside `roots` states what these 44 can and cannot witness.
+  beside `roots` states what these 45 can and cannot witness.
 
   Dated note (2026-08-03, ADR-0033 AR-4b): three more roots join at the
   ENGINE layer -- ear-infections-engine/urinary-tract-infections-engine/
@@ -1222,6 +1228,36 @@
                   :pathways (mapv (fn [i] {:patient-ordinal i :pathway (if (even? i) stay visit)})
                                   (range 12))})))
 
+(defn- osteoporosis-dispense-pair
+  "ADR-0187's own root (2026-11-18), and THE ONLY ROOT WHOSE DISPENSES
+  ARE DERIVED. FIRST BASELINE, not a regression check: the `:dispense`
+  engine key did not exist before this root's own commit range.
+
+  `osteoporosis-pair`'s config, key for key, plus `:dispense true`. That
+  root's log holds 156 medication orders, every one written in an
+  outpatient visit and none ended; here each is followed, after its
+  visit's closing event and at that event's instant, by one `:community`
+  `:medication-dispense` naming it by log index. 1,236 events against
+  that root's 1,080.
+
+  THE TWO ROOTS ARE ONE HOSPITAL. The key draws nothing, so deleting this
+  root's 156 dispenses and renumbering the log indices after them leaves
+  `osteoporosis`'s ground truth event for event
+  (`ehrt.sim-engine.dispense-derivation-test`, which runs this config).
+  A digest change in one that is not matched in the other is therefore a
+  change to the derivation, and not to the module walk.
+
+  THE COVERAGE IT ADDS: no event kind and no message type -- `dispense`
+  already witnesses the kind, and the kind reaches no wire. It adds the
+  DERIVED producer, which no other root reaches: every other root runs
+  without the key."
+  []
+  (let [module (:payload (patient-simulator/load-module "osteoporosis" (slurp (io/resource "sim/modules/osteoporosis.json"))))]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [(patient-simulator/singleton-closure module)] :module-assignment [{:module-id "osteoporosis" :weight 1}]
+                  :module-horizon-days 36500
+                  :dispense true})))
+
 (defn- injuries-pair
   "Injuries arc close (2026-08-11, ADR-0107): FIRST BASELINE, not a
   regression check -- this closure never completed a round trip before
@@ -1344,7 +1380,7 @@
 ;;     on one root, never what it reported.
 ;;
 ;; THE STRUCTURAL CAUSE, re-derived rather than inferred from the
-;; instrumentation: 36 of the 44 roots pass `:pathway {:name
+;; instrumentation: 37 of the 45 roots pass `:pathway {:name
 ;; "module-only" :steps []}` -- `encounter-horizon`, `bed-cycle`,
 ;; `scheduling`, `chatter-charges` and (2026-08-28) `order-pathway` are
 ;; five of the eight exceptions and pass
@@ -1401,7 +1437,7 @@
 ;; ADT^A20 unavoidably so, since it is the only root that can emit one.
 ;;
 ;; The two sets below are the committed claim, asserted against a FRESH
-;; 44-root digest by `ehrt.integration.oracle-coverage-test` and checked
+;; 45-root digest by `ehrt.integration.oracle-coverage-test` and checked
 ;; for shape, population, membership and location on every push by
 ;; `ehrt.docs-tooling.oracle-coverage-test`.
 
@@ -1489,7 +1525,7 @@
     :transfer})
 
 (def ^:private witnessed-message-types
-  "Every MSH-9 the 41 engine-layer roots emit. ADT^A02 is death-fixture's
+  "Every MSH-9 the 42 engine-layer roots emit. ADT^A02 is death-fixture's
   alone, once. ADT^A34 is emitted by no root at all.
 
   WIDENED AGAIN 2026-08-28 by `scheduling`, arc 4 sweep 4's own turn-on
@@ -1599,7 +1635,8 @@
    "demographic-fold"                   demographic-fold-pair
    "immunization"                       immunization-pair
    "allergy"                            allergy-pair
-   "dispense"                           dispense-pair})
+   "dispense"                           dispense-pair
+   "osteoporosis-dispense"              osteoporosis-dispense-pair})
 
 (defn -main
   "Writes one <root>.edn per root into out-dir (pr-str of the batch or
