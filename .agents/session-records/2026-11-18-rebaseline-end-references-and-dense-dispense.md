@@ -445,4 +445,9 @@ go green past it.
 - `3bc83631` the front door's msg/event figure
 - `f8df1749` the 47-deep catalog pin
 
-The CI run id is appended below by the commit that follows the push.
+### Push and CI
+
+Pushed `164fae67..ac118ee4`, twelve commits. `bin/post-push-verify
+164fae67 ac118ee4`: clean, every message ASCII. CI run 44451723717 at
+`ac118ee4`: success. That run is the close marker. This paragraph's own
+commit follows it and is docs-only.
