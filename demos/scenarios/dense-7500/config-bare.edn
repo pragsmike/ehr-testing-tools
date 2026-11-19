@@ -52,7 +52,7 @@
 ;;
 ;; DERIVED SIBLINGS. `config-nobed.edn` is this file with its one
 ;; `:bed-cycle true` line removed; `config-bare.edn` is this file's own
-;; byte PREFIX, ending where the nine opt-in keys begin. Both are
+;; byte PREFIX, ending where the ten opt-in keys begin. Both are
 ;; derived from these bytes and neither is independently authored.
 {:facility {:id :metro-general
             ;; SIZED SO THE STEADY-STATE CENSUS NEVER EXHAUSTS THE

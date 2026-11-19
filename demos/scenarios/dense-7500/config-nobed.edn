@@ -52,7 +52,7 @@
 ;;
 ;; DERIVED SIBLINGS. `config-nobed.edn` is this file with its one
 ;; `:bed-cycle true` line removed; `config-bare.edn` is this file's own
-;; byte PREFIX, ending where the nine opt-in keys begin. Both are
+;; byte PREFIX, ending where the ten opt-in keys begin. Both are
 ;; derived from these bytes and neither is independently authored.
 {:facility {:id :metro-general
             ;; SIZED SO THE STEADY-STATE CENSUS NEVER EXHAUSTS THE
@@ -2133,4 +2133,12 @@
            {:name :bed-feed
             :filter {:message-types #{"ADT^A01" "ADT^A20"}
                      :patient-classes #{:inpatient}}
-            :msh {:receiving-app "BED-MANAGEMENT" :receiving-facility "CENTRAL"}}]}
+            :msh {:receiving-app "BED-MANAGEMENT" :receiving-facility "CENTRAL"}}]
+ ;; THE TENTH KEY, appended 2026-11-18 (ADR-0188). `:dispense` derives
+ ;; one `:community` `:medication-dispense` for each order an outpatient
+ ;; visit wrote and left open, after that visit closes (ADR-0187). It
+ ;; draws nothing, so it is the one opt-in key that reshuffles nothing:
+ ;; delete the dispenses from this file's log, renumber, and the log of
+ ;; this file without the key is left, event for event. No pathway here
+ ;; authors a dispense, so the inpatient setting stays empty.
+ :dispense true}

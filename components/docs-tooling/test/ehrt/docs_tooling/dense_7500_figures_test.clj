@@ -115,10 +115,10 @@
   prose rather than filename -- mapped to the same cell keys. Three are
   the 7,500-arrival cells and the fourth is the ground-truth-only
   28,024 sibling; the 750 one is the scenario README's alone."
-  {"all nine opt-in keys" :config-edn-7500
+  {"all ten opt-in keys" :config-edn-7500
    "the same, less `:bed-cycle`" :config-nobed-7500
    "no opt-in key at all" :config-bare-7500
-   "all nine opt-in keys, 28,024 arrivals, ground truth only" :config-28024-28024})
+   "all ten opt-in keys, 28,024 arrivals, ground truth only" :config-28024-28024})
 
 (defn- figures [] (edn/read-string (slurp figures-path)))
 
@@ -355,7 +355,7 @@
                (pr-str root-readme-anchor)
                " -- this gate holds exactly two msg/event figures there; a reworded "
                "clause reads as none, and a third figure would go unchecked")))
-    (testing "all nine opt-in keys"
+    (testing "all ten opt-in keys"
       (is (== (:msg-per-event (:config-edn-7500 cells)) (first found))
           (str root-readme-path " quotes " (first found)
                " for the all-keys cell but " figures-path " holds "

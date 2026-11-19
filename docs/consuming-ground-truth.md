@@ -714,10 +714,10 @@ largest completed run of this configuration is now 28,024 arrivals and
 
 | Cell | events | messages | msg/event | process wall |
 |---|---|---|---|---|
-| all nine opt-in keys | 167,715 | 176,971 | **1.0552** | 126.10 s |
+| all ten opt-in keys | 167,715 | 176,971 | **1.0552** | 126.10 s |
 | the same, less `:bed-cycle` | 125,700 | 134,886 | **1.0731** | 106.04 s |
 | no opt-in key at all | 101,120 | 65,643 | **0.6492** | 51.63 s |
-| all nine opt-in keys, 28,024 arrivals, ground truth only | 671,589 | — | — | 386.61 s |
+| all ten opt-in keys, 28,024 arrivals, ground truth only | 671,589 | — | — | 386.61 s |
 
 **The first three rows are one generation of one committed configuration**,
 re-measured 2026-09-30 at `fecbe43b`. Their COUNTS last moved under

@@ -128,7 +128,7 @@ fi
 bare_prefix="$(head -c "$prefix_bytes" demos/scenarios/dense-7500/config-bare.edn | sha256sum | awk '{print $1}')"
 full_prefix="$(head -c "$prefix_bytes" demos/scenarios/dense-7500/config.edn | sha256sum | awk '{print $1}')"
 if [ "$bare_prefix" != "$full_prefix" ]; then
-  fail "additive prefix: config-bare.edn's first $prefix_bytes bytes hash to $bare_prefix but config.edn's hash to $full_prefix -- the nine opt-in keys are no longer a pure append"
+  fail "additive prefix: config-bare.edn's first $prefix_bytes bytes hash to $bare_prefix but config.edn's hash to $full_prefix -- the ten opt-in keys are no longer a pure append"
 fi
 echo "  additive prefix: config-bare.edn's own $prefix_bytes bytes ARE config.edn's prefix, sha256 $bare_prefix"
 

@@ -23,10 +23,20 @@ directory instead of a dead one.
 
 | file | what | how it relates to `config.edn` |
 |---|---|---|
-| [`config.edn`](config.edn) | the skeleton **plus all nine opt-in keys** | the provenance -- these are the bytes the other two are cut from |
+| [`config.edn`](config.edn) | the skeleton **plus all ten opt-in keys** | the provenance -- these are the bytes the other two are cut from |
 | [`config-nobed.edn`](config-nobed.edn) | the same, **less `:bed-cycle`** | `config.edn` with exactly one line deleted |
 | [`config-bare.edn`](config-bare.edn) | the skeleton, **no opt-in key at all** | `config.edn`'s own byte PREFIX, plus a closing brace |
-| [`config-28024.edn`](config-28024.edn) | the same nine keys, **`:persons` sized for 28,024 arrivals** | `config.edn` with exactly one line changed: `:persons {:count 56048}` |
+| [`config-28024.edn`](config-28024.edn) | the same ten keys, **`:persons` sized for 28,024 arrivals** | `config.edn` with exactly one line changed: `:persons {:count 56048}` |
+
+**The tenth key is `:dispense`, appended 2026-11-18 (ADR-0188).** It
+gives each medication order an outpatient visit wrote, and left open,
+one `:community` `:medication-dispense` after that visit closes. It
+draws nothing, so unlike the other nine it reshuffles nothing: delete
+the dispenses from `config.edn`'s log, renumber, and the log of the same
+file without the key is left, event for event. No pathway here authors
+a dispense, so every dispense in this scenario is a community fill and
+the inpatient setting is empty; nearly all of this scenario's orders are
+written during admissions, which the key does not fill.
 
 **All three siblings are DERIVED, and each rule is a command rather
 than a description.** Run from this directory, each line reproduces its
@@ -63,8 +73,8 @@ $ diff demos/scenarios/dense-7500/config.edn demos/scenarios/dense-7500/config-n
 
 The second is the additive claim the 2026-08-29 record made of its own
 three scale points, re-established here: `config-bare.edn` minus its
-own closing brace and newline is byte-identical to the first **154,196
-bytes** of `config.edn`, sha-256 `5c3d7659...` on both sides. The
+own closing brace and newline is byte-identical to the first **154,195
+bytes** of `config.edn`, sha-256 `a47c5b8c...` on both sides. The
 exerciser re-derives that length from the files themselves rather than
 carrying the number as a literal.
 
@@ -351,7 +361,7 @@ neither of those two does.
 and the arrival rate were chosen by the 2026-08-24 spike to hold
 concurrent census CONSTANT while the patient count grows, so that a
 log-log slope over this scenario measures the algorithm and not a
-busier hospital. Two of the nine opt-in keys carry an ambulatory
+busier hospital. Two of the ten opt-in keys carry an ambulatory
 decade's numbers over acute traffic on purpose, frozen rather than
 retuned; `config.edn`'s own block above `:scheduling` names which and
 why.
