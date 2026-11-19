@@ -168,3 +168,13 @@ a valid artifact of the earlier pin. New 28,024 sha-256 above.
 - Authors no dispense anywhere.
 - Re-measures nothing in `docs/consuming-ground-truth.md` below the
   Scale table's four rows; the 2026-08-29 paragraphs say so themselves.
+
+### Dated correction, 2026-11-19 (ADR-0189)
+
+"The message differences are the rule's, not the key's" is wrong, at
+least in part. A dispense renders no message, but the emitter draws
+once per ground-truth event for chatter and latency, so the key's added
+events shift which restatements fire. At the 750 cell the same tree
+writes 35,926 messages without the key, which is the count before this
+ADR: there the whole -1 was the key's and the reference rule moved no
+message count. The 7,500 cells were not separated.
