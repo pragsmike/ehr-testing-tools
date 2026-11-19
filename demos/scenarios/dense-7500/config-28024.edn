@@ -70,13 +70,17 @@
             ;; buys is headroom in the ladder as a whole -- 273.7
             ;; inpatient census against 680 reachable inpatient beds.
             :wards [{:id :ed :name "Emergency" :beds 180 :surge-slots 40
-                     :surge-format "%s-H%02d" :class :ed :turnaround-minutes [5 15]}
+                     :surge-format "%s-H%02d" :class :ed :turnaround-minutes [5 15]
+                     :dispense-minutes [5 25]}
                     {:id :medicine-a :name "Medicine A" :beds 200 :surge-slots 40
-                     :surge-format "%s-H%02d" :class :inpatient :turnaround-minutes [15 30]}
+                     :surge-format "%s-H%02d" :class :inpatient :turnaround-minutes [15 30]
+                     :dispense-minutes [15 60]}
                     {:id :medicine-b :name "Medicine B" :beds 200 :surge-slots 40
-                     :surge-format "%s-H%02d" :class :inpatient :turnaround-minutes [15 30]}
+                     :surge-format "%s-H%02d" :class :inpatient :turnaround-minutes [15 30]
+                     :dispense-minutes [15 60]}
                     {:id :surgery :name "Surgery" :beds 160 :surge-slots 40
-                     :surge-format "%s-H%02d" :class :inpatient :turnaround-minutes [15 30]}]}
+                     :surge-format "%s-H%02d" :class :inpatient :turnaround-minutes [15 30]
+                     :dispense-minutes [15 60]}]}
  ;; FOUR PROVIDERS, BETWEEN THEM ELIGIBLE FOR ALL FOUR WARDS -- the
  ;; spike's own F5-3 finding, which is that a ward with no eligible
  ;; attending is a run that stops. Dr. Vance is eligible everywhere,
@@ -2137,9 +2141,14 @@
             :msh {:receiving-app "BED-MANAGEMENT" :receiving-facility "CENTRAL"}}]
  ;; THE TENTH KEY, appended 2026-11-18 (ADR-0188). `:dispense` derives
  ;; one `:community` `:medication-dispense` for each order an outpatient
- ;; visit wrote and left open, after that visit closes (ADR-0187). It
- ;; draws nothing, so it is the one opt-in key that reshuffles nothing:
- ;; delete the dispenses from this file's log, renumber, and the log of
- ;; this file without the key is left, event for event. No pathway here
- ;; authors a dispense, so the inpatient setting stays empty.
+ ;; visit wrote and left open, after that visit closes (ADR-0187), and
+ ;; one `:inpatient` dispense for each order written during an
+ ;; admission, a pharmacy turnaround later (ADR-0189). The turnaround is
+ ;; drawn from the `:dispense-minutes` range of the ward the patient is
+ ;; in when the order is written, stated on each ward above; an order
+ ;; ended, or a stay closed, before it elapses is not dispensed. The
+ ;; draw is on a stream of its own, so this is the one opt-in key that
+ ;; reshuffles nothing: delete the dispenses from this file's log,
+ ;; renumber, and the log of this file without the key is left, event
+ ;; for event. No pathway here authors a dispense.
  :dispense true}
