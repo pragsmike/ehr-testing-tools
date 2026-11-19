@@ -232,3 +232,52 @@ or latency.
 - Writes `:dispense-minutes` into `default-facility`, which leans on
   the class defaults.
 - Makes the wire stable under the key.
+
+### Dated addendum, 2026-11-19: two owed items paid
+
+Session record `2026-11-19-dense-inpatient-analgesia-and-inpatient-root`.
+A scenario edit and a new oracle root; no ADR of their own.
+
+**`dense-inpatient`'s realism on this one point.** There was no later
+point in the stay for the analgesia order's end, so the order moved
+earlier: directly after the care plan starts, ahead of the 60 to 180
+minute delay. Same 21 steps, same delays, same codes (`b6fb4ab3`).
+Measured at seed 20260824, `--churn`:
+
+| | 7,500 before | 7,500 now | 750 before | 750 now | 28,024 before | 28,024 now |
+|---|---|---|---|---|---|---|
+| orders written in admissions | 4,938 | 4,943 | 489 | 493 | 20,201 | 20,168 |
+| `:inpatient` dispenses | 2,461 | 4,912 | 247 | 491 | 10,095 | 20,121 |
+| undispensed: ended at the order's own instant | 2,444 | 0 | 240 | 0 | 10,062 | 0 |
+| undispensed: the stay closed first | 31 | 29 | 2 | 2 | 38 | 41 |
+| undispensed: merged away first | 2 | 2 | 0 | 0 | 6 | 6 |
+| undispensed fraction | 50.2% | 0.6% | 49.5% | 0.4% | 50.0% | 0.2% |
+| `:community` fills | 48 | 48 | 3 | 3 | 57 | 59 |
+| order to dispense, ED (n; min / median / max) | 2,410; 5 / 15 / 25 | 2,720; 5 / 15 / 25 | 235; 5 / 15 / 25 | 269; 5 / 15 / 25 | 9,950; 5 / 15 / 25 | 10,949; 5 / 15 / 25 |
+| order to dispense, inpatient ward | 51; 15 / 41 / 59 | 2,192; 15 / 38 / 60 | 12; 15 / 45 / 54 | 222; 15 / 37 / 60 | 145; 15 / 38 / 60 | 9,172; 15 / 37 / 60 |
+
+The run moved beyond the medication kinds, in every cell, the keyless
+one included (101,120 to 101,069 events). Subjects did not move. The
+new 28,024 log is 270,551,734 bytes, sha-256
+`26e31b4f44df3c9cd52a0429f15f0262f3dde4a6dec7575f2ee8bea845b652b0`;
+`ce0982de...` is kept in `figures.edn` under `:pre-order-move`.
+
+**An oracle root for the inpatient half.** `dispense-inpatient`
+(`e0bbcdee`), the 46th root, a first baseline: twelve authored stays,
+nine dispenses across an ED ward, an inpatient ward on the class
+default and one stating its own range, six orders pharmacy never
+reaches, `:encounters` on. Both instruments across its commit: every
+existing root IDENTICAL, the new root target-side only.
+
+**What the pathway edit cost the mutation gate.** With nearly every
+closed order dispensed, the site predicates above left two operators
+with no site in any population. A fourth population, `dense-7500` less
+its `:dispense` key, sites them again (`8340c4e3`). `brick:corpus` now
+runs 17 minutes.
+
+**Still owed:** the pathway's drug codes (an oral penicillin, and
+alendronic acid as analgesia for acute abdominal pain); scaling the
+module cohort with the arrival count; community lag and unfilled
+prescriptions as config options; chronic refills; counting the sites
+the mutation operators give up, which would also retire the fourth
+population.

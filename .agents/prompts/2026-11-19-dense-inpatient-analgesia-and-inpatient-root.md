@@ -1,0 +1,33 @@
+# Session: dense-inpatient writes its second medication order mid-stay; an oracle root for the inpatient dispense
+
+Context. ADR-0189 measured that half of dense-7500's admission-written orders are never dispensed (2,477 of 4,938 at 7,500), and that 2,444 of those are one authoring quirk: `dense-inpatient` writes its `:analgesia-start` order and ends it at the same instant, the last instant of the stay, so no pharmacy turnaround can elapse. ADR-0189 names two things owed that this session pays: that pathway's realism on this one point, and an oracle root exercising the inpatient half of the `:dispense` key. No engine change. dense-7500 moves; its figures are regenerated here. Stability across revisions is relaxed by standing ruling (ADR-0189 records it); determinism at one revision is not. Base `3b6e836f` (verify HEAD == origin/main, clean tree, `bin/preflight`; a red `Integration` run at an old commit already fixed is not a HALT). HALT only on a premise mismatch that changes what is built; report every other difference and carry on.
+
+Read first (ranges at `3b6e836f`):
+- notes/adr/0189-*.md, whole ("What moved", line 104 "no oracle root exercises the inpatient half", "Owed next"); .agents/session-records/2026-11-19-inpatient-dispense-derived.md (the figures drill as last run, the per-cell table, how ward class at the order was read)
+- demos/scenarios/dense-7500/config.edn 72-79 (wards and their `:dispense-minutes`), 99-150 (`dense-inpatient`, 21 steps); the scenario README (the pathway's description, the three sibling-derivation rules, the dispense passages written under ADR-0189); figures.edn
+- components/oracle/src/ehrt/oracle/digest.clj 1173-1260 (`dispense-pair`, `osteoporosis-dispense-pair`), 1640-1645; the two oracle-coverage tests that pin the root counts
+- components/sim/docs/operational-models.md, "Pharmacy turnaround"
+
+Author ruling, verbatim, 2026-11-19: "go" -- to: "Move the analgesia order's end later in `dense-inpatient`, to an existing later point in the stay, so the order can be dispensed. I'd leave the drug codes alone ... Add an oracle root that exercises the inpatient half."
+
+A correction the channel owes that ruling: there is no later point. Read at `3b6e836f`, the `:analgesia-start` order is followed by an observation, both medication ends, the care-plan end and the discharge with no delay between them. The end cannot move later; the ORDER must move earlier. That serves the ruling's stated purpose ("so the order can be dispensed") by the only means the pathway offers. If the executor reads the pathway differently, HALT.
+
+Channel expectations (not rulings; correct from the tree and report):
+- Move the one `:medication-order` step citing `:analgesia-start` to directly after the `:care-plan-start` step, ahead of the `{:type :delay :from 60 :to 180}`. Nothing else in the pathway changes: same 21 steps, same delays in the same order, same codes, both ends where they are.
+- The patient is then in Medicine A when it is written; that ward's range is [15 60] minutes and the next delay is at least 60, so every such order is dispensed unless the stay is cut short by churn or a merge.
+- The undispensed fraction at 7,500 falls from about 50% to about 1%; inpatient dispenses roughly double to about 4,900.
+- The step count is unchanged, so the patient-stream draw count is unchanged; the run may still move beyond the medication kinds, because churn insertions land beside different steps. Not known. Report it.
+
+Steps:
+1. Predict, in the record, before any edit: for the 750 and 7,500 cells, admission-written orders, inpatient dispenses, undispensed by cause; and whether subjects, arrivals and non-medication event counts move.
+   Invariant: tree untouched. Gate: the prediction, committed with or ahead of step 2.
+2. The pathway edit, in `config.edn`, and the siblings by their own derivation rules, re-run and compared as the README says.
+   Invariant: `git diff` on `config.edn` is one step moved, nothing else. Gate: `sim check` ok over the new 750 cell; two runs byte-identical; the erasure test's dense case, if the tree has one, still green.
+3. Measure against step 1: the per-cell dispense table as ADR-0189 printed it (orders written in admissions, dispensed, undispensed by cause, order-to-dispense minutes by ward class, community fills), plus what else moved.
+   Invariant: none; this is a measurement. Gate: the table beside the prediction, each difference explained.
+4. Figures by ADR-0189's drill, the 28,024 cell included (`-J-Xmx8g`, one run); keep `ce0982de...` labelled as the value before this change. Re-pin what the suite shows moved, each in its own commit. The README's pathway description and its dispense passages say what is now true.
+   Invariant: no figure in a consumer doc is one this session did not measure. Gate: the figures gate; `describe` over the new 750 cell.
+5. Oracle root `dispense-inpatient`, engine-pair shape, FIRST BASELINE, small. One run that holds: an order written in an ED ward and one in an inpatient ward, each dispensed inside its ward's range; a ward with its own `:dispense-minutes` beside one taking the class default; an order ended before its turnaround elapses, so undispensed; a stay closed before a turnaround elapses, so undispensed; `:encounters` on, so each dispense carries its stay's id. An engine test asserts those counts by name.
+   Invariant: both instruments with `--declared-digest-change`: every existing root identical, the new root target-side only; root-count pins move by one. Gate: the banners.
+6. Record what ADR-0189 owed and is now paid: a dated addendum to ADR-0189 closing those two items with this session's measured table. Expectation, not a ruling: a scenario edit and a new root need no ADR of their own; if the tree's rule says otherwise, write it and say why. Still owed, named: the pathway's drug codes (an oral penicillin and "alendronic acid" as analgesia for acute abdominal pain); scaling the module cohort with the arrival count; community lag and unfilled prescriptions as config options; chronic refills; counting the sites the mutation operators give up.
+7. Not docs-only: full `make test` unpiped with MAKE_EXIT recorded, then `make integration`; nothing written into the tree while either runs. Archive this prompt under the same slug; record; `make docsgen`; push; `bin/post-push-verify 3b6e836f <tip>`; `gh run watch --exit-status`; CI green is the close marker. The record carries the downstream line: dense's inpatient orders are now dispensed at the measured rate, the pin, the new 28k sha, schema unchanged. Report: the shas, the CI run id, step 1 against step 3, the new figures, and every premise this prompt got wrong.

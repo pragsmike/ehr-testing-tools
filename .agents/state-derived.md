@@ -37,9 +37,9 @@ wrong (ADR-0139 D1-4). Compare the sets, not the cardinalities.
 |---|---|
 | module JSONs (`components/sim/resources/sim/modules/*.json`) | 31 |
 | NOTICE provenance rows | 80 |
-| regression-oracle roots (`ehrt.oracle.digest`'s own `roots` map) | 45 |
+| regression-oracle roots (`ehrt.oracle.digest`'s own `roots` map) | 46 |
 
-Oracle roots: `appendicitis`, `sore-throat`, `ear-infections`, `sinusitis`, `death-fixture`, `sepsis`, `ear-infections-engine`, `urinary-tract-infections-engine`, `total-joint-replacement-engine`, `urinary-tract-infections-history-engine`, `ear-infections-history-engine`, `asthma`, `bronchitis`, `sleep-apnea`, `fibromyalgia`, `dementia`, `hypothyroidism`, `rheumatoid-arthritis`, `osteoarthritis`, `osteoporosis`, `attention-deficit-disorder`, `allergic-rhinitis`, `dermatitis`, `metabolic-syndrome-care`, `vhd-pulmonic`, `vhd-tricuspid`, `med-rec`, `anemia`, `colorectal`, `veteran-lung-cancer`, `veteran-prostate-cancer`, `veteran-ptsd`, `encounter-horizon`, `bed-cycle`, `scheduling`, `chatter-charges`, `order-pathway`, `veteran-self-harm`, `veteran-substance-abuse-treatment`, `injuries`, `demographic-fold`, `immunization`, `allergy`, `dispense`, `osteoporosis-dispense`
+Oracle roots: `appendicitis`, `sore-throat`, `ear-infections`, `sinusitis`, `death-fixture`, `sepsis`, `ear-infections-engine`, `urinary-tract-infections-engine`, `total-joint-replacement-engine`, `urinary-tract-infections-history-engine`, `ear-infections-history-engine`, `asthma`, `bronchitis`, `sleep-apnea`, `fibromyalgia`, `dementia`, `hypothyroidism`, `rheumatoid-arthritis`, `osteoarthritis`, `osteoporosis`, `attention-deficit-disorder`, `allergic-rhinitis`, `dermatitis`, `metabolic-syndrome-care`, `vhd-pulmonic`, `vhd-tricuspid`, `med-rec`, `anemia`, `colorectal`, `veteran-lung-cancer`, `veteran-prostate-cancer`, `veteran-ptsd`, `encounter-horizon`, `bed-cycle`, `scheduling`, `chatter-charges`, `order-pathway`, `veteran-self-harm`, `veteran-substance-abuse-treatment`, `injuries`, `demographic-fold`, `immunization`, `allergy`, `dispense`, `osteoporosis-dispense`, `dispense-inpatient`
 
 ## Test surface
 
@@ -59,7 +59,7 @@ Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entr
 | rulings rows | 113 |
 | rulings rows superseded | 6 |
 | session records | 285 |
-| archived prompts | 276 |
+| archived prompts | 277 |
 
 ### Roadmap rows by section
 
