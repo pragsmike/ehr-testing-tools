@@ -607,6 +607,30 @@
                              (not= p (subject-id %)))
                        events)))
 
+(defn- orders-a-dispense-cites
+  "Every log index a `:medication-dispense` names as its order.
+
+  ADR-0189, and a PREDICATE for the reason `orphan-participant-sites`
+  gives: a dispense is a second citer of a `:medication-order`, under
+  its own law (`medication-dispense-references-existing-order-and-
+  follows-it-in-time`, which reads the order's patient, its instant and
+  its end). So an operator that reattributes a dispensed order, or
+  moves or repoints an end onto one, convicts that law as well, and
+  Q5(a) is set equality. Until ADR-0189 no gated population dispensed
+  an order an end also cites; `dense-7500` now does, at about half its
+  admission-written orders.
+
+  The operators below that could reach such a site say `no dispense
+  cites it` and give the site up. NOTHING TAKES THOSE SITES YET: the
+  dispense has no column of its own in `referential-columns`, which is
+  the mutation column ADR-0188 and ADR-0189 name as owed. A dispensed
+  order is today a site no operator in this catalog mutates."
+  [events]
+  (into #{}
+        (comp (filter #(= :medication-dispense (:event %)))
+              (keep :order-event-id))
+        events))
+
 (def ^:private referential-shapes
   "The five defect shapes, one per disjunct of the referential
   invariants' shared form -- `(nil? target)` reached by both PHANTOM
@@ -638,9 +662,25 @@
    {:shape :cross-patient
     :edit "at a real event of the right kind belonging to a DIFFERENT patient"
     :violation "at an event of the right kind belonging to a different patient"
+    ;; ADR-0189: and no dispense of the other patient's event is LATER
+    ;; than this carrier. Repointing an END there ends that order at
+    ;; this end's instant, and a dispense of it after that instant
+    ;; would convict the dispense's own law as a second finding. An
+    ;; earlier dispense is untouched, which is why this asks the
+    ;; instant and not merely whether a dispense cites the order: the
+    ;; referent is the log's FIRST such event, and on a log that
+    ;; dispenses, that order usually is dispensed.
     :sites (fn [column events]
-             (filterv #(some? (cross-patient-index column events (nth events %)))
-                      (resolving-sites column events)))
+             (let [last-dispense-t (reduce (fn [m e]
+                                             (if (and (= :medication-dispense (:event e))
+                                                      (:order-event-id e))
+                                               (update m (:order-event-id e) (fnil max 0) (:t e))
+                                               m))
+                                           {} events)]
+               (filterv #(let [carrier (nth events %)]
+                           (when-some [i (cross-patient-index column events carrier)]
+                             (not (some-> (last-dispense-t i) (> (:t carrier))))))
+                        (resolving-sites column events))))
     :apply (fn [column events site]
              (assoc-in events [site (:field column)]
                        (cross-patient-index column events (nth events site))))}
@@ -669,6 +709,7 @@
     ;; a SET over a singleton, and measurement confirmed it.
     :extra-findings #{:timestamps-monotone}
     :sites (fn [column events]
+             (let [dispensed (orders-a-dispense-cites events)]
              (filterv (fn [i]
                         (let [e (nth events i)
                               target (nth events (get e (:field column)))]
@@ -678,8 +719,13 @@
                           ;; is what makes the moved clock land behind
                           ;; the citer's own predecessor and trip
                           ;; monotonicity as well.
-                          (and (pos? (:t target)) (<= (:t target) (:t e)))))
-                      (resolving-sites column events)))
+                          (and (pos? (:t target)) (<= (:t target) (:t e))
+                               ;; ADR-0189: an end moved to before its
+                               ;; order now precedes every dispense of
+                               ;; that order, which the dispense's own
+                               ;; law convicts as a third finding.
+                               (not (dispensed (get e (:field column)))))))
+                      (resolving-sites column events))))
     :apply (fn [column events site]
              (let [target (nth events (get (nth events site) (:field column)))]
                (assoc-in events [site :t] (dec (:t target)))))}])
@@ -993,7 +1039,10 @@
   cites me` out loud; the 14 sites it gives up are taken by the two
   operators below, one per span column, which declare the five."
   [events]
-  (let [cited (into #{} (mapcat #(starts-cited-by % events)) span-columns)]
+  (let [cited (into (orders-a-dispense-cites events)
+                    (mapcat #(starts-cited-by % events)) span-columns)]
+    ;; ADR-0189: `cited` now holds the orders a DISPENSE cites too. A
+    ;; dispense reads its order's patient just as an end does.
     (vec (keep-indexed
           (fn [i e] (when (and (orphan-site? e) (not (cited i))) i))
           events))))
@@ -1009,9 +1058,13 @@
   match would convict the referential invariant for a different reason
   than the one this operator declares."
   [column events]
-  (let [cited (starts-cited-by column events)]
+  (let [cited (starts-cited-by column events)
+        ;; ADR-0189: less the orders a dispense cites as well, where the
+        ;; dispense's own law would join the five as a sixth.
+        dispensed (orders-a-dispense-cites events)]
     (vec (keep-indexed
           (fn [i e] (when (and (cited i)
+                               (not (dispensed i))
                                (orphan-site? e)
                                (= (:target column) (:event e)))
                       i))

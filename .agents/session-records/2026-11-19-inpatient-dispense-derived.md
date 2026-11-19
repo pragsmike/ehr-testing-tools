@@ -152,6 +152,13 @@ turnaround".
    key. `describe-version` was left at 1.3.0 on ADR-0187's reasoning;
    the prompt did not rule on it.
 
+8. **Not predicted: the event-mutation gate.** Step 3's prediction
+   named corpora and oracle roots and missed a gate that reads
+   `dense-7500` as a population. Two mutation operators convicted the
+   dispense law as an extra finding. Fixed by narrowing four site
+   predicates (ADR-0189, "The mutation operators give up dispensed
+   orders"). How many sites each operator gave up was not counted.
+
 ## Downstream line
 
 `dense-7500` now carries dispenses in both settings: at 7,500 arrivals

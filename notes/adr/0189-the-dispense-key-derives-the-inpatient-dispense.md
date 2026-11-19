@@ -159,6 +159,25 @@ dispenses deleted and renumbered equals the log the same tree writes
 from the config without the key, event for event (33,296 events).
 `check-all` is clean over the keyed log, 47 invariants.
 
+### The mutation operators give up dispensed orders
+
+The suite found this, not the prediction. `dense-7500` is a population
+of the event-mutation gate, and a dispense is a second citer of a
+`:medication-order` under its own law. Two operators went red on set
+equality, each convicting the dispense law as one finding more than it
+declares: `:orphan-closed-medication-order` and
+`:inverted-span-medication-end-order-event-id`.
+
+The remedy is the one that file already states for ends: a predicate,
+not a wider declaration. Four site predicates now say that no dispense
+cites the order (`:orphan-participant`, the closed-start operators,
+the inverted-span shape) or that no dispense of the repointed-to order
+is later than the end (the cross-patient shape). No declared finding
+set, contract or operator id changed.
+
+So a dispensed order is, today, a site no operator mutates. Nothing
+takes those sites until the dispense has a column of its own.
+
 ### What did not change
 
 - Event schema 1.12.0. The dispense is ADR-0186's kind, unchanged.
@@ -187,6 +206,10 @@ or latency.
 
 ### Owed next
 
+- **The mutation column for the dispense** (carried from ADR-0188, and
+  now sharper): the dispense's own `:order-event-id` shapes, and
+  operators that take the dispensed-order sites the existing ones gave
+  up above.
 - **`dense-inpatient`'s own realism.** Its analgesia order and its end
   share an instant, so half of this scenario's admission orders can
   never be dispensed.
