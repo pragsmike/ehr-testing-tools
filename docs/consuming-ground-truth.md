@@ -725,7 +725,7 @@ largest completed run of this configuration is now 28,024 arrivals and
 
 **The first three rows are one generation of one committed configuration**,
 re-measured 2026-11-18 at `3ba95de9`. Their COUNTS last moved under
-the second ground-truth rebaseline (ADR-0188): an end that names its
+the second ground-truth rebaseline[^adr-0188]: an end that names its
 opening by state now references the latest opening no earlier end
 references, which moves facts and a handful of messages and no event
 count, and the `:dispense` key adds 48 community fills to each of the
@@ -956,3 +956,5 @@ different faults rather than three ways of saying the same thing.
 [^adr-0180]: Design record [ADR-0180](../notes/ADRs.md).
 
 [^adr-0185]: Design record [ADR-0185](../notes/ADRs.md).
+
+[^adr-0188]: Design record [ADR-0188](../notes/ADRs.md).
