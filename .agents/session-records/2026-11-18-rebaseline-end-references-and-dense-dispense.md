@@ -1,14 +1,15 @@
-# The second ground-truth rebaseline: HALTED at step 5 -- the reference fix is built and its prediction held; dense-7500 cannot take authored inpatient dispenses and keep the erasure law
+# The second ground-truth rebaseline (ADR-0188): an end references the latest open opening; dense-7500 takes the `:dispense` key, key only, after a HALT at step 5
 
 2026-11-18. Base `164fae67`. `bin/preflight` exit 0, no findings (HEAD
 matched origin/main; tree clean; HEAD not tagged stable-*, disclosed;
 last five CI runs green).
 
-**NOTHING IS PUSHED.** This session's commits are local on `main`,
-ahead of `origin/main`. Steps 1 to 4 are done. Step 5's invariant
-cannot hold as written, which the prompt makes a HALT; steps 5 to 8
-were not done, and no ADR was written. The next session's preflight
-will report HEAD ahead of origin until the author rules.
+**This record has two halves.** The session halted at step 5 and
+reported; that half is below, unchanged except for this head, and its
+"nothing is pushed" was true when written. The author then ruled
+**"Key only"** (2026-11-18): dense-7500 takes the engine key and
+authors no dispense. The second half, "Resumed under 'Key only'", is
+steps 5 to 8 under that ruling.
 
 ## Why nothing is pushed
 
@@ -249,6 +250,94 @@ re-pinned: that belongs with the ADR and the notice. Poly stops at the
 first failing project, so what later projects would show is unknown.
 `make integration` was not run.
 
+## Resumed under "Key only"
+
+The author's answer to the halt, verbatim: "Key only".
+
+### Step 5 as ruled (`3ba95de9`)
+
+`config.edn` gains `:dispense true`, appended after `:fan-out` as the
+tenth opt-in key. The three derivation rules in the scenario README
+were re-run and `cmp` clean against the committed siblings;
+`config-bare.edn` stays bare of the key. "Nine opt-in keys" became ten
+in the configs' header, both READMEs, the Scale table's row labels,
+the figures gate's label map and the exerciser's failure text. The
+bare prefix is one byte shorter, 154,195, sha-256 `a47c5b8c...`.
+
+Gate, 750 cell, seed 20260824, `--churn`, against the config as
+committed at `3a6d150f`:
+
+- 33,296 -> 33,299 events; 492 orders; 3 dispenses, all `:community`,
+  0 `:inpatient`, 0 carrying `:encounter-id`.
+- Erasure: dispenses deleted and renumbered, equal to the prior log
+  event for event.
+- `check-all` `:ok` over 33,299 events, 47 invariants.
+- `describe` 1.3.0: `:medication-dispense-community` observed 3,
+  `:medication-dispense-inpatient` observed 0. Read over a bare log,
+  so `:configured` is `:unknown` on every opt-in row.
+
+The prompt's gates ":inpatient dispenses equal dense-inpatient orders"
+and "both dispense rows configured and observed" do not apply under
+the ruling: nothing inpatient is authored.
+
+### Step 6: figures, once
+
+Measured at `3ba95de9`, provenance method (one warm-up, two timed runs
+per cell, `/usr/bin/time -v`, JVM defaults; the 28,024 cell one run
+with `-Xmx8g`). Windows-side LoadPercentage before each run: 12, 10,
+16; 20, 6, 5; 2, 13, 4; 12, 6, 1; 1. None discarded. All three runs of
+every cell wrote a byte-identical `events.edn`.
+
+| cell | t1 / t2 wall | mean | RSS MiB t1 / t2 | events | messages | dispenses | events sha-256 |
+|---|---|---|---|---|---|---|---|
+| config 7,500 | 167.11 / 150.66 | 158.89 | 1736 / 1865 | 167,763 | 176,973 | 48 | `5cbc248e...` |
+| nobed 7,500 | 139.21 / 115.55 | 127.38 | 1546 / 1625 | 125,748 | 134,891 | 48 | `bde46ea5...` |
+| bare 7,500 | 52.75 / 61.43 | 57.09 | 1057 / 986 | 101,120 | 65,643 | 0 | `56559a11...` |
+| config 750 | 65.76 / 62.55 | 64.16 | 1019 / 1014 | 33,299 | 35,925 | 3 | `99d31898...` |
+| 28,024 | 382.87 | -- | 4906 | 671,646 (32,080 subjects) | -- | 57 | `5fb8187b...` (264,575,690 bytes) |
+
+Every event-count movement is the dispenses; the reference rule moved
+no count. Messages moved +2, +5, 0, -1, which is the rule's doing: a
+dispense renders no message. The walls rose 11 to 26% in every cell,
+the bare one included, whose counts did not move; not attributed. The
+two timed walls of the two large cells differ by 16 and 24 seconds,
+so read the means loosely. Peak RSS at 28,024 rose 3,769 -> 4,906 MiB
+under the same `-Xmx8g`; one run, a GC high-water mark, not attributed.
+
+Orders at 7,500: 4,986 in the keyed cells. `describe` over the 28,024
+log: `reinstated-stay-without-closer` 4, as before.
+`veteran_substance_abuse_treatment` at 7,500 reads 178 / 90, the
+example consuming-ground-truth already carries.
+
+`bin/demo-exerciser-dense-7500` then reproduced 167,763 / 176,973 /
+33,299 and rewrote `:asserted` itself; its only failure was the
+tree-clean postcondition, expected mid-session.
+
+NOT re-measured: the scenario README's five-column carrier table
+(dated 2026-09-06 there) and consuming-ground-truth's 2026-08-29
+paragraphs, which say so themselves.
+
+### The re-pin (`bc516435`)
+
+Three gated corpora, digests and baselines. Differing events, all
+`:registered` `:pre-horizon-facts`: seed-202-ed-tuesday 2 of 1,214,
+seed-424242-clinic-decade 15 of 1,774, seed-5-clinic-decade 27 of
+1,412. adhd-seed-45 byte-identical.
+
+### Downstream line
+
+Corpora that move: every corpus that walks a module ending a state it
+opens more than once -- among shipped scenarios `dense-7500` (all five
+cells), `ed-tuesday` and `clinic-decade`; among oracle roots the ten
+named above. Why: an end's `:references` now names its own opening,
+and `dense-7500`'s keyed cells gain community dispenses (48 at 7,500,
+3 at 750, 57 at 28,024). Event schema 1.12.0, unchanged. A retained
+corpus is a valid artifact of the earlier pin. The new 28,024 log is
+264,575,690 bytes, sha-256
+`5fb8187b5aef0bef2f518b61becc5ddc21ce042eafca6bd7f861beef5d8cc6c0`.
+`dense-7500` now carries dispenses in the COMMUNITY setting only; the
+inpatient half is unruled (ADR-0188, owed next).
+
 ## Where the prompt's premises differed
 
 1. **Step 5's erasure invariant is false**, for the two reasons above.
@@ -316,7 +405,5 @@ after the delay that follows the transfer and the same step for
 
 ## Close
 
-Not closed. Two local commits beyond the two above: the regenerated
-module-mix trace, and this record with the archived prompt. No push,
-no `bin/post-push-verify`, no CI run. Background processes this
-session started have all exited.
+The halt half closed with nothing pushed. The resumed half's suite,
+push and CI results are appended below by the close commit.
