@@ -131,7 +131,7 @@
     (is (empty? (check/medication-dispense-references-existing-order-and-follows-it-in-time log)))
     (is (empty? (check/clinical-content-only-when-admitted log)))))
 
-(deftest the-dispense-key-configures-the-community-row-and-only-that-row
+(deftest the-dispense-key-configures-both-dispense-rows
   (testing "ADR-0187: no authored dispense step anywhere, and the key on"
     (let [amoxicillin {:system :rxnorm :code "562251"
                        :display "Amoxicillin 250 MG / Clavulanate 125 MG Oral Tablet"}
@@ -150,10 +150,27 @@
           keyless (describe-with (dissoc opts :dispense))]
       (is (= [:yes 2] ((juxt :configured :observed) (row keyed :medication-dispense-community)))
           "the key is the configuration, and the two derived fills are observed")
-      (is (= [:no 0] ((juxt :configured :observed) (row keyed :medication-dispense-inpatient)))
-          "the key derives nothing inpatient")
+      (is (= [:yes 0] ((juxt :configured :observed) (row keyed :medication-dispense-inpatient)))
+          "ADR-0189: the key configures the inpatient half too; this run admits nobody, so none is observed")
       (is (= [:no 0] ((juxt :configured :observed) (row keyless :medication-dispense-community)))
-          "and without it the row reads as it did"))))
+          "and without it the row reads as it did")
+      (is (= [:no 0] ((juxt :configured :observed) (row keyless :medication-dispense-inpatient))))))
+  (testing "ADR-0189: an order written during an admission, and the key on"
+    (let [order {:module "fill" :state :stay-order}
+          opts {:seed 3 :patients 2 :dispense true
+                :pathways [{:pathway {:name "stay"
+                                      :steps [{:type :admission :location "Renal"}
+                                              {:type :medication-order
+                                               :codes [{:system :rxnorm :code "562251"
+                                                        :display "Amoxicillin 250 MG / Clavulanate 125 MG Oral Tablet"}]
+                                               :citation order}
+                                              {:type :delay :from 120 :to 120}
+                                              {:type :discharge}]}
+                            :weight 1}]}
+          r (describe/describe (:ground-truth (run/run opts))
+                               {:configuration {:source :caller-config :opts opts :churn-profile :unknown}})]
+      (is (= [:yes 2] ((juxt :configured :observed) (row r :medication-dispense-inpatient))))
+      (is (= [:yes 0] ((juxt :configured :observed) (row r :medication-dispense-community)))))))
 
 (deftest an-authored-allergy-onset-step-is-configured-and-observed
   (let [peanut {:system :snomed :code "762952008" :display "Peanut (substance)"}

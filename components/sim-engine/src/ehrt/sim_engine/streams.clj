@@ -265,6 +265,15 @@
    :world    3
    :facility 4
    :emission 5
+   ;; 7, ADR-0189: `:pharmacy` -- the turnaround between an order written
+   ;; during an admission and its derived `:inpatient` dispense, drawn
+   ;; only under the `:dispense` key. Keyed by arrival ordinal, as
+   ;; `:patient` is. A family of its own and not a draw on `:patient` or
+   ;; `:facility`, so that setting the key, or retuning one ward's
+   ;; `:dispense-minutes`, moves no other draw of the run: the erasure
+   ;; law (ADR-0187) holds for the whole key because of this row. The
+   ;; scheme marker stays \"1.0\": no existing stream's seed changed.
+   :pharmacy 7
    ;; 6 is RESERVED for `:mutation` (ADR-0176 section 2(iii), ruling
    ;; Q4(a); tree-recorded here by ruling Q13(a), 2026-09-01, after the
    ;; spine and breadth sessions each carried it forward unwritten).
@@ -338,5 +347,5 @@
   moved is which stream `run` hands each family, and `run` builds that
   map itself."
   [^Random rng]
-  {:patient rng :person rng :world rng :facility rng :emission rng})
+  {:patient rng :person rng :world rng :facility rng :emission rng :pharmacy rng})
 

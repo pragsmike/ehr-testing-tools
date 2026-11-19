@@ -103,19 +103,20 @@
   two-valued where the two above are three-valued: `:yes` or `:no`,
   modules or not.
 
-  `:yes` when an authored step dispenses in `setting`. And, for
-  `:community` alone, when the run's options carry the `:dispense`
-  engine key truthy (ADR-0187): that key derives a community fill for
-  each order an outpatient visit wrote, and derives nothing inpatient.
-  The key says fills are CONFIGURED, not that the log holds one -- a run
-  whose outpatient visits wrote no order reads `:yes` beside an
-  `:observed` of 0."
+  `:yes` when an authored step dispenses in `setting`. And, for either
+  setting, when the run's options carry the `:dispense` engine key
+  truthy: that key derives a community fill for each order an
+  outpatient visit wrote (ADR-0187) and an inpatient dispense for each
+  order an admission wrote (ADR-0189). The key says dispenses are
+  CONFIGURED, not that the log holds one -- a run with no admission, or
+  whose every admission-written order was stopped before pharmacy
+  filled it, reads `:yes` beside an `:observed` of 0."
   [setting]
   (fn [configuration]
     (cond (nil? configuration) :unknown
           (some #(and (= :medication-dispense (:type %)) (= setting (:setting %)))
                 (authored-steps (:opts configuration))) :yes
-          (and (= :community setting) (get-in configuration [:opts :dispense])) :yes
+          (get-in configuration [:opts :dispense]) :yes
           :else :no)))
 
 (defn- kind? [k] (fn [_ctx {:keys [event]}] (= k (:event event))))
@@ -245,6 +246,10 @@
    ;; ADR-0187: the community row also reads the `:dispense` engine key.
    ;; No row and no key was added and no existing report reads
    ;; differently, so `describe-version` did not move.
+   ;;
+   ;; ADR-0189: the inpatient row reads the key too, since the key now
+   ;; derives that half. Again no row and no key, and a report of a run
+   ;; without the key reads as it did; `describe-version` did not move.
    {:group :opt-in :family :medication-dispense-inpatient
     :cites "clinical-content-only-when-admitted (a :medication-dispense whose :setting is :inpatient)"
     :configured-by (medication-dispense-configured :inpatient)

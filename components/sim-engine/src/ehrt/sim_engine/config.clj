@@ -80,20 +80,24 @@
    ;; ratio -- it is a fact generator, so it DRAWS, and the reshuffle it
    ;; causes belongs entirely to the turn-on commit.
    :scheduling
-   ;; ADR-0187: DERIVED DISPENSES' own opt-in. Truthy gives every
-   ;; medication order an outpatient visit wrote and left open one
+   ;; ADR-0187, ADR-0189: DERIVED DISPENSES' own opt-in. Truthy gives
+   ;; every medication order an outpatient visit wrote and left open one
    ;; `:community` `:medication-dispense`, queued at the visit's own
-   ;; closing instant and decided after the close has been folded.
+   ;; closing instant and decided after the close has been folded; and
+   ;; every order written during an admission one `:inpatient`
+   ;; dispense, queued a pharmacy turnaround later and emitted only if
+   ;; the order is still active and the stay still open then.
    ;; ABSENT ENTIRELY is the byte-identical path, the opt-in law the
    ;; four keys above establish.
    ;;
-   ;; UNLIKE `:scheduling`, IT DRAWS NOTHING. It adds events and moves no
-   ;; stream, so the same seed with and without it is the same hospital:
-   ;; delete the dispenses, renumber the log indices after them, and the
-   ;; keyless log is what is left
-   ;; (`ehrt.sim-engine.dispense-derivation-test`). An AUTHORED
-   ;; `:medication-dispense` step needs no key, and this key does not
-   ;; look for one.
+   ;; UNLIKE `:scheduling`, IT MOVES NO OTHER DRAW. The community half
+   ;; draws nothing. The inpatient half draws its turnaround on the
+   ;; `:pharmacy` stream family, which nothing else reads. So the same
+   ;; seed with and without the key is the same hospital: delete the
+   ;; dispenses, renumber the log indices after them, and the keyless
+   ;; log is what is left (`ehrt.sim-engine.dispense-derivation-test`).
+   ;; An AUTHORED `:medication-dispense` step needs no key, and this key
+   ;; does not look for one.
    :dispense])
 
 (def Persons

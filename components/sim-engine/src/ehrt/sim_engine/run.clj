@@ -1507,6 +1507,13 @@
         ;; draw-free -- so each one is constructed and never read.
         streams-by-pid (into {} (for [i (concat firsts hook-patient-ordinals)]
                                   [(pid-for i) (nth patient-rngs i)]))
+        ;; ADR-0189: each patient's `:pharmacy` stream, the turnaround
+        ;; draws of the derived inpatient dispense. Built only under the
+        ;; `:dispense` key; without it this is nil and `decide` is handed
+        ;; the stream map it always was.
+        pharmacy-by-pid (when dispense
+                          (into {} (for [i (concat firsts hook-patient-ordinals)]
+                                     [(pid-for i) (stream seed :pharmacy i)])))
         ;; ADR-0180 site 7 (2026-09-07, ruling R-check-once): `entries`
         ;; joins the three the loop already threads. `:replay-entries`
         ;; has been at full product on this site since apply-unification
@@ -1649,7 +1656,8 @@
                   ;; where the queue does and is handed to `decide` as
                   ;; part of the world it asks its questions of.
                   ;; `encounters/encounter-openable?` is its only reader.
-                  (decide/decide (assoc base-streams :patient (get streams-by-pid patient-id))
+                  (decide/decide (cond-> (assoc base-streams :patient (get streams-by-pid patient-id))
+                                   pharmacy-by-pid (assoc :pharmacy (get pharmacy-by-pid patient-id)))
                           t (assoc world :pending-openers reserved) patient-id step)]
               ;; A :rejected decide outcome (an illegal cancel/bed-swap/
               ;; merge -- Task 1's validity-table enforcement) is NOT a

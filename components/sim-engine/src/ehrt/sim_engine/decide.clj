@@ -1734,13 +1734,58 @@
                      (citation-fields step))]
      :advance 0}))
 
+(defn- derived-inpatient-dispense
+  "ADR-0189, the `:dispense` key's inpatient half: the queue entry that
+  will dispense the order `step` is about to write, or nil. Nil without
+  the key, nil when the patient's open encounter is not an admission,
+  and nil for an order that states no citation -- a dispense finds its
+  order by citation, so there would be nothing to find it by.
+
+  WHEN. `t` plus one draw from the pharmacy turnaround range of the ward
+  the patient is in now (`sim-model/dispense-minutes`), in seconds. A
+  patient admitted with no location yet reads their home ward's range,
+  and failing that the `:inpatient` class default.
+
+  THE DRAW is on the patient's `:pharmacy` stream and on no other
+  (`streams/stream-family-tag`). FIXED CONSUMPTION, one draw per such
+  order even when `lo` = `hi`, for `turnaround-seconds`' own reason.
+
+  WHAT IS QUEUED is a `:pharmacy-dispense` step, an engine-internal type
+  as `:bed-cleaning` and `:result-followup` are, and not the authored
+  `:medication-dispense`: it carries what `decide :pharmacy-dispense`
+  needs to tell whether the order is still there to fill.
+
+  Derived, not authored (ADR-0188's halt): a step in the pathway costs
+  the patient draws under churn and a queue turn without it."
+  [{pharmacy-rng :pharmacy} t world patient citation]
+  (when (and (:dispense world) citation (= :inpatient (:class patient)))
+    (when-let [encounter (:encounter patient)]
+      (when (nil? pharmacy-rng)
+        (throw (ex-info "the :dispense key derives an inpatient dispense, which draws on the :pharmacy stream; this decide was handed none"
+                        {:t t :order-citation citation})))
+      (let [facility (:facility world)
+            ward (or (sim-model/ward-by-name facility (:ward (:location patient)))
+                     (sim-model/ward-by-name facility (:home-ward patient)))
+            [lo hi] (if ward
+                      (sim-model/dispense-minutes ward)
+                      (:inpatient sim-model/default-dispense-minutes))]
+        {:t (+ t (* 60 (streams/rand-int-in pharmacy-rng lo hi)))
+         :steps [(cond-> {:type :pharmacy-dispense :order-citation citation :ordered-t t
+                          :admitted-at (:admitted-at encounter)}
+                   (:encounter-id encounter) (assoc :encounter-id (:encounter-id encounter)))]}))))
+
 (defmethod decide :medication-order decide-medication-order
-  [_streams t world patient-id {:keys [codes] :as step}]
-  (let [patient (get-in world [:patients patient-id])]
-    {:events [(merge {:event :medication-order :t t :active-mrn (:active-mrn patient) :codes codes
-                      :participants [{:patient-id patient-id :role :subject}]}
-                     (citation-fields step))]
-     :advance 0}))
+  [streams t world patient-id {:keys [codes] :as step}]
+  (let [patient (get-in world [:patients patient-id])
+        dispense (some-> (derived-inpatient-dispense streams t world patient (:citation step))
+                         (assoc :patient-id patient-id))]
+    ;; Without the `:dispense` key `dispense` is nil and this map is the
+    ;; one it always was.
+    (cond-> {:events [(merge {:event :medication-order :t t :active-mrn (:active-mrn patient) :codes codes
+                              :participants [{:patient-id patient-id :role :subject}]}
+                             (citation-fields step))]
+             :advance 0}
+      dispense (assoc :schedule-followup dispense))))
 
 ;; ADR-0182 (schema 1.10.0): the Vaccine fact, the same shape as the M5b
 ;; kinds above -- no draw (`_streams`), no state change, citation when
@@ -1839,6 +1884,44 @@
                       :participants [{:patient-id patient-id :role :subject}]}
                      (citation-fields step))]
      :advance 0}))
+
+;; ADR-0189: the queued half of `derived-inpatient-dispense`. Pharmacy
+;; reaches the order now, a turnaround after it was written, and fills
+;; it only if it is still there to fill:
+;;
+;; * the patient is still in the SAME admission -- the one open now
+;;   opened at the instant, and under `:encounters` carries the id, that
+;;   the order's did. A discharge since, a cancelled admission, or an
+;;   outpatient visit opened since all fail this; a discharge that was
+;;   cancelled does not, the stay being open again.
+;; * the order is still `:active`, and is the patient's LATEST order of
+;;   its citation. `last-cited-index` resolves a citation to the latest
+;;   order, so a dispense of an earlier one would name the wrong order;
+;;   the later order has a queue entry of its own.
+;;
+;; Otherwise NOTHING is emitted: the order was stopped, or the patient
+;; left, before pharmacy filled it. That is a fact of the model, and it
+;; is what keeps both dispense laws true without bending either
+;; (`clinical-content-only-when-admitted`, and the dispense law's bound
+;; by the order's end). The event, when there is one, is `decide
+;; :medication-dispense`'s own. No draw: the turnaround was drawn when
+;; the order was written.
+(defmethod decide :pharmacy-dispense decide-pharmacy-dispense
+  [streams t world patient-id {:keys [order-citation ordered-t admitted-at encounter-id]}]
+  (let [patient (get-in world [:patients patient-id])
+        encounter (:encounter patient)
+        latest (last (filter #(= order-citation (:citation %)) (:medication-orders patient)))]
+    (if (and (= :admitted (:status patient))
+             (= :inpatient (:class patient))
+             encounter
+             (= admitted-at (:admitted-at encounter))
+             (= encounter-id (:encounter-id encounter))
+             latest
+             (= :active (:status latest))
+             (= ordered-t (:ordered-t latest)))
+      (decide streams t world patient-id
+              {:type :medication-dispense :setting :inpatient :order-citation order-citation})
+      {:events [] :advance 0})))
 
 ;; GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R2(b)): the SAME
 ;; decide/evolve shape :medication-order/:medication-end establish,
