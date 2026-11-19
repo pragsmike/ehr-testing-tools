@@ -7,7 +7,7 @@
 
 **You bring:** A system whose behaviour is defined over patients, encounters, appointments and beds, plus a seed -- and, where your facility is not the shipped default, the --config file that describes it.
 
-**You get:** The run's whole world model as a bare EDN vector: the versioned ground-truth event log every shipped emitter is a projection of, with a stated set of guarantees and an equally explicit set of exclusions. `ehrt sim check` is the reference judge over that log -- 46 invariants, every one reported by name -- and `ehrt sim mutate` injects one named defect class into it, so you can prove your own checks report that class and nothing else.
+**You get:** The run's whole world model as a bare EDN vector: the versioned ground-truth event log every shipped emitter is a projection of, with a stated set of guarantees and an equally explicit set of exclusions. `ehrt sim check` is the reference judge over that log -- 47 invariants, every one reported by name -- and `ehrt sim mutate` injects one named defect class into it, so you can prove your own checks report that class and nothing else.
 
 **Maturity:** usable
 
@@ -39,7 +39,7 @@ bin/ehrt sim check --config demos/scenarios/ed-tuesday/config.edn < out/ground-t
 
 **`ehrt sim check` is the sim-side judge, not `ehrt corpus check`.** It reads a ground-truth EDN vector on stdin and runs an invariant catalog over it -- occupancy against the facility's capacity, timestamps monotone per patient, a discharge closing an encounter an admission opened, an appointment reaching at most one terminal, a bed never double-occupied. Exit 0 with `:status :ok` means every invariant held; exit 1 with `:status :rejected` carries a `:violations` vector naming the invariant, the patient and the instant.
 
-**A green check is a statement about that catalog and nothing else.** [consuming-ground-truth.md's "What is not warranted"](../consuming-ground-truth.md#what-is-not-warranted) is the other half of the contract and is meant to be read with the same weight -- including that several invariants are vacuous on a log that never opted into the kinds they police, while all 46 are still listed as checked. Count the kinds in your own log.
+**A green check is a statement about that catalog and nothing else.** [consuming-ground-truth.md's "What is not warranted"](../consuming-ground-truth.md#what-is-not-warranted) is the other half of the contract and is meant to be read with the same weight -- including that several invariants are vacuous on a log that never opted into the kinds they police, while all 47 are still listed as checked. Count the kinds in your own log.
 
 **Controlled negatives.** `ehrt sim mutate --operator-id ID --seed N` is a filter over the same vector: it injects one named defect class and declares up front which findings the checker must then report -- exactly that set, in either direction. Put it between the run and the check and you have a negative test for your own pipeline that fails loudly if your checks have gone blind. See [consuming-ground-truth.md's fault-injection section](../consuming-ground-truth.md#fault-injection-as-it-stands-today) for the catalog and the taxonomy, and [operators.md](../operators.md) for the operator ids.
 

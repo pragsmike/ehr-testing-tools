@@ -446,10 +446,10 @@ check is testing what you configured — and that is the one remaining
 case where this section's old advice, *trust the run's own self-check*,
 still has nothing better to offer.
 
-**Seven of the 45 are vacuous on a log that does not opt in.** The three
+**Seven of the 47 are vacuous on a log that does not opt in.** The three
 bed-cycle invariants are no-ops on a log with no `:bed-status-change`,
 and the four scheduling invariants are no-ops on a log with no
-`:appointment` — but all 46 are still listed in
+`:appointment` — but all 47 are still listed in
 `:invariants-checked`. A green check on a thin log is a weaker statement
 than a green check on a rich one, and the report does not distinguish
 them for you. Count the kinds in your own log;
