@@ -249,6 +249,49 @@ correctness law the engine enforces. Baking a census floor into the
 invariant catalog would make it impossible to ever generate the
 messy-but-real traffic of a hospital ignoring its own policy.
 
+## Pharmacy turnaround (ADR-0189)
+
+A ward also states how long its pharmacy takes. `:dispense-minutes`
+`[lo hi]` is an optional `Ward` key: the minutes from a medication order
+written during an admission on that ward to its `:inpatient`
+`:medication-dispense`, drawn uniformly over the range, one draw per
+order. It is read only when the run sets the `:dispense` engine key;
+the key is the opt-in, and this is what tunes it.
+
+```clojure
+{:id :ed :name "Emergency" :beds 0 :surge-slots 6 :surge-format "%s-H%02d"
+ :class :ed :turnaround-minutes [5 15] :dispense-minutes [5 25]}
+```
+
+A ward that states none takes its class's default:
+
+| ward `:class` | default `:dispense-minutes` | basis |
+|---|---|---|
+| `:ed` | `[5 25]` | cabinet-stocked doses at a level I trauma centre: median order entry to cabinet dispense 9 to 15 minutes (J Pharm Pract, doi 10.1177/0897190017735390) |
+| `:inpatient` | `[15 60]` | pharmacy-processed STAT orders at a community hospital: median 29 minutes, interquartile range 16 to 63 (Pharmacy Practice 2016;14(2):647, PMC4930852); pharmacy-prepared IV antibiotics: median order to delivery 43, later 27 minutes (J Pediatr Pharmacol Ther 2025;30(2):191) |
+
+**The defaults are provisional.** They were chosen from a quick reading
+of those three studies and are fitted to none of them. Uniform is the
+engine's shape for a range, as it is for bed turnaround; the published
+distributions are right-skewed. A site with its own pharmacy data
+states its own range per ward.
+
+The schema refuses a range that is not one: both ends are integers,
+`0 <= lo <= hi`. `[0 0]` is legal and dispenses at the order's own
+instant.
+
+The ward is the one the patient is in **when the order is written**; a
+transfer before the dispense does not change the draw. The draw is on
+the patient's `:pharmacy` RNG family, which nothing else reads, so
+setting the key or retuning a ward moves no other draw of the run.
+
+**An order can go undispensed.** When the turnaround elapses, pharmacy
+fills the order only if the patient is still in the same admission and
+the order is still active. An order ended first, or a stay closed
+first, gets no dispense: the order was stopped before pharmacy filled
+it. A patient absorbed by a merge takes their unfilled orders with
+them.
+
 ## Scheduling (arc 3b sweep 3, ADR-0174 section 2(b))
 
 **Not a scheduler.** Behind the run-config opt-in `:scheduling`, the

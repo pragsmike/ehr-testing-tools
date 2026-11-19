@@ -121,6 +121,11 @@ the move, not by interface-design judgment (R5, ADR-0001).
   `:turnaround-minutes` or its **class default**. The ONE reading of
   that key (ADR-0174 ruling D1): `ehrt.sim-engine.engine`'s cycle draws
   through this and never through `get` directly.
+- `dispense-minutes` — `(dispense-minutes ward)` → the ward's own
+  `:dispense-minutes` or its **class default**
+  (`default-dispense-minutes`, also exported): the pharmacy turnaround
+  range the `:dispense` engine key draws from (ADR-0189). The ONE
+  reading of that key, as `turnaround-minutes` is of its own.
 - `default-provider-templates` — the built-in provider templates.
 - `materialize-providers` — `(materialize-providers rng templates)` →
   templates with `:id` filled in. **The one place provider NPIs are

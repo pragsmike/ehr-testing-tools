@@ -30,13 +30,49 @@ directory instead of a dead one.
 
 **The tenth key is `:dispense`, appended 2026-11-18 (ADR-0188).** It
 gives each medication order an outpatient visit wrote, and left open,
-one `:community` `:medication-dispense` after that visit closes. It
-draws nothing, so unlike the other nine it reshuffles nothing: delete
-the dispenses from `config.edn`'s log, renumber, and the log of the same
-file without the key is left, event for event. No pathway here authors
-a dispense, so every dispense in this scenario is a community fill and
-the inpatient setting is empty; nearly all of this scenario's orders are
-written during admissions, which the key does not fill.
+one `:community` `:medication-dispense` after that visit closes. Since
+ADR-0189 (2026-11-19) it also gives each order written during an
+admission one `:inpatient` dispense, a pharmacy turnaround later. The
+turnaround is drawn from the `:dispense-minutes` range of the ward the
+patient is in when the order is written, and every ward here states its
+own: Emergency `[5 25]`, the three inpatient wards `[15 60]`. Those are
+the class defaults, written out; they are provisional
+([`operational-models.md`](../../../components/sim/docs/operational-models.md#pharmacy-turnaround-adr-0189)
+has their basis). The draw is on a stream of its own, so unlike the
+other nine keys this one reshuffles no ground truth: delete the
+dispenses from `config.edn`'s log, renumber, and the log of the same
+file without the key is left, event for event. The rendered messages
+are not held fixed the same way; see "The counts last moved" below. No
+pathway here authors a dispense.
+
+**About half of this scenario's admission-written orders are never
+dispensed, and that is the pathway's doing.** An order is dispensed
+only if it is still active, and the stay still open, when the
+turnaround elapses. `dense-inpatient` writes two orders per stay. The
+antibiotic runs for the stay and is dispensed. The analgesia order and
+its end share one instant, so pharmacy never reaches it. At 7,500
+arrivals:
+
+| | 7,500 (`config.edn`) | 750 | 28,024 |
+|---|---|---|---|
+| medication orders | 4,986 | 492 | 20,258 |
+| written during an admission | 4,938 | 489 | 20,201 |
+| `:inpatient` dispenses | 2,461 | 247 | 10,095 |
+| undispensed: ended at the order's own instant | 2,444 | 240 | 10,062 |
+| undispensed: the stay closed first | 31 | 2 | 38 |
+| undispensed: the patient was merged away first | 2 | 0 | 6 |
+| undispensed fraction | 50.2% | 49.5% | 50.0% |
+| `:community` fills | 48 | 3 | 57 |
+| order to dispense, ordered in the ED (min / median / max, minutes) | 5 / 15 / 25 | 5 / 15 / 25 | 5 / 15 / 25 |
+| order to dispense, ordered on an inpatient ward | 15 / 41 / 59 | 15 / 45 / 54 | 15 / 38 / 60 |
+
+Every dispensed order is the antibiotic. The stays that closed first
+are ones in which a vendored module wrote an order and the stay closed
+before the turnaround elapsed. `config-nobed.edn` has the same orders and
+the same dispense counts as `config.edn`; without the bed cycle more
+of its patients are on an inpatient ward when the order is written (88
+against 51, with a 15 / 42 / 60 spread). Nearly every order is written
+in the ED, where a stay begins. Measured 2026-11-19 at `8acd6028`.
 
 **All three siblings are DERIVED, and each rule is a command rather
 than a description.** Run from this directory, each line reproduces its
@@ -187,7 +223,7 @@ table.
 
 ## What to look for
 
-Witnessed 2026-11-18 at `3ba95de9`, seed 20260824, `--churn`, on the
+Witnessed 2026-11-19 at `8acd6028`, seed 20260824, `--churn`, on the
 traffic-scale programme's own reference machine (WSL2, 6c/12t
 i7-10750H, 15 GiB, OpenJDK 21.0.7, JVM defaults as shipped --
 `MaxHeapSize` 3.88 GB, `bin/ehrt` sets no JVM options). One warm-up
@@ -211,7 +247,21 @@ both existed, these cells sat at a measurement taken one commit before
 ADR-0180's site 1 and survived all seven of its sites without one of
 them going red.
 
-**The counts last moved under ADR-0188**, two ground-truth changes
+**The counts last moved under ADR-0189**: the `:dispense` key now
+derives an `:inpatient` dispense for each order written during an
+admission. That is **+2,461** events at the all-keys cell and at
+`config-nobed.edn`, **+247** at 750, and nothing at `config-bare.edn`.
+No other ground-truth event moved. Messages moved by **-17**, **+4**,
+**0** and **-5**. A dispense renders no message of its own, but the
+emitter takes one draw per ground-truth event to decide its
+restatement chatter and its latency, so adding events to the log
+shifts which ADT^A08 and ADT^A31 restatements fire: at 750 the whole
+difference is six ADT^A08. The walls fell in every cell, the bare one
+included, whose counts did not move, so that fall is not attributed to
+this change. The figures before it are `figures.edn`'s
+`:provenance :prior`.
+
+**Before that, the counts moved under ADR-0188**, two ground-truth changes
 declared as one. First, an end that names its opening by state now
 references the latest opening no earlier end references, where it used
 to reference the first; that moves facts carried on `:registered`
@@ -220,10 +270,11 @@ events and a handful of messages, and no event count. Second, the
 visit wrote: **+48** events at the all-keys cell and at
 `config-nobed.edn`, **+3** at 750, and nothing at `config-bare.edn`,
 which does not carry the key. Messages moved by **+2**, **+5**, **0**
-and **-1**; a dispense renders no message of its own. The walls rose
+and **-1**; part of that is the key's own, for the reason given above,
+and not the reference rule's as first recorded. The walls rose
 again in every cell, the bare one included, whose counts did not move
 at all, so that rise is not attributed to this change. The figures
-before it are `figures.edn`'s `:provenance :prior`.
+before it are `figures.edn`'s `:provenance :prior-1`.
 
 **Before that, the counts moved under ADR-0185**, the ground-truth rebaseline:
 a legal `:cancel-discharge` now owes a closing `:discharge` after a 4-
@@ -237,7 +288,7 @@ emitting to the end of the run (A08 at the all-keys cell: 52,091 ->
 5,520). The walls rose 14-22% in every cell, the bare one included,
 whose counts barely moved, so that rise is not attributed to the
 rebaseline. The figures before it are `figures.edn`'s
-`:provenance :prior-1`.
+`:provenance :prior-2`.
 
 **Before that, the counts moved under ADR-0179**, which releases the bed
 an absorbed record was holding at the instant of a merge and carries a
@@ -272,20 +323,24 @@ default heap, not as a footprint.
 
 | cell | arrivals | events | messages | msg/event | process wall | peak RSS |
 |---|---|---|---|---|---|---|
-| `config.edn` | 7,500 | **167,763** | **176,973** | **1.0549** | 158.89 s | 1,801 MB |
-| `config-nobed.edn` | 7,500 | **125,748** | **134,891** | **1.0727** | 127.38 s | 1,585 MB |
-| `config-bare.edn` | 7,500 | **101,120** | **65,643** | **0.6492** | 57.09 s | 1,022 MB |
-| `config.edn` | 750 | **33,299** | **35,925** | **1.0789** | 64.16 s | 1,017 MB |
+| `config.edn` | 7,500 | **170,224** | **176,956** | **1.0395** | 123.58 s | 1,903 MB |
+| `config-nobed.edn` | 7,500 | **128,209** | **134,895** | **1.0521** | 106.83 s | 1,692 MB |
+| `config-bare.edn` | 7,500 | **101,120** | **65,643** | **0.6492** | 51.06 s | 1,170 MB |
+| `config.edn` | 750 | **33,546** | **35,920** | **1.0708** | 54.80 s | 1,167 MB |
 
 **The ground-truth-only cell** is a different measurement, in its own
 table because it has no message column to fill: `config-28024.edn`,
-measured 2026-11-18 at `3ba95de9` on the same machine, ONE run of the
+measured 2026-11-19 at `8acd6028` on the same machine, ONE run of the
 `sim run --format ground-truth` command under "The ground-truth-only
 path" above, `-Xmx8g` explicit, `/usr/bin/time -v` around the whole
-process. Its log is 264,575,690 bytes with sha-256
-`5fb8187b5aef0bef...beef5d8cc6c0`, and it carries 57 `:community`
-dispenses. Events and subjects are
+process. Its log is 267,680,351 bytes with sha-256
+`ce0982dec2e5d0dc...4b0ad9d961ce`, and it carries 10,095 `:inpatient`
+and 57 `:community` dispenses. Events and subjects are
 `ehrt sim describe`'s own counts over it. **The log this cell wrote
+from ADR-0188 until ADR-0189** -- 264,575,690 bytes, sha-256
+`5fb8187b5aef0bef...beef5d8cc6c0`, at `3ba95de9` -- remains a valid
+artifact of that pin, and `figures.edn` keeps its figures under
+`:pre-adr-0189`. **The log this cell wrote
 from the ground-truth rebaseline until ADR-0188** -- 264,570,024 bytes,
 sha-256 `ee59219eb81eb07f...8c96dd29a4`, at `fecbe43b` -- remains a
 valid artifact of that pin, and `figures.edn` keeps its figures under
@@ -298,7 +353,7 @@ figures under `:pre-rebaseline`.
 
 | cell | arrivals | events | subjects | bytes | process wall | peak RSS |
 |---|---|---|---|---|---|---|
-| `config-28024.edn` | 28,024 | **671,646** | **32,080** | **264,575,690** | 382.87 s | 4,906 MB |
+| `config-28024.edn` | 28,024 | **681,741** | **32,080** | **267,680,351** | 371.04 s | 4,602 MB |
 
 Its wall is NOT comparable with the table above -- a `sim run` that
 emits nothing, against a `corpus generate` that also renders, checks
@@ -320,19 +375,19 @@ window and drops 16% of it outright. **The opt-in that looks like pure
 added volume is also a throttle**, and the bare cell is the one running
 without it.
 
-**The bed cycle is worth a quarter of this corpus.** 167,763 events
-against 125,748 is **42,015 events, 25.0% of the whole log**, and
-42,082 messages with them -- every one of it bed housekeeping, on a
+**The bed cycle is worth a quarter of this corpus.** 170,224 events
+against 128,209 is **42,015 events, 24.7% of the whole log**, and
+42,061 messages with them -- every one of it bed housekeeping, on a
 scenario that actually boards people, against `clinic-decade`'s 300
-where nobody is boarded. Its own 42,015 events carry **1.0016 messages
+where nobody is boarded. Its own 42,015 events carry **1.0011 messages
 each** -- one ADT message per housekeeping event, which is what a
 status change lowered into its own message looks like. (Before the
 ground-truth rebaseline the cycle read as message-RICHER than the log
 it rides on; that was the periodic chatter of reinstated stays that
 never closed, which ran longer on the bed-cycle run.)
 
-**Messages per event no longer climbs at 10^5.** 1.0789 at 750
-arrivals to 1.0549 at 7,500. Until the ground-truth rebaseline it rose
+**Messages per event no longer climbs at 10^5.** 1.0708 at 750
+arrivals to 1.0395 at 7,500. Until the ground-truth rebaseline it rose
 (1.2097 to 1.3327): a reinstated stay never closed, so its periodic
 ADT^A08 chatter ran to the end of the run, and the longer run carried
 more of it -- at 7,500 arrivals A08 fell from 52,091 messages to 5,520
