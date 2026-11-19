@@ -124,6 +124,10 @@
                                 :codes [{:system :snomed :code "385691007"
                                          :display "Fracture care (regime/therapy)"}]
                                 :citation {:module "dense-inpatient" :state :care-plan}}
+                               {:type :medication-order
+                                :codes [{:system :rxnorm :code "904419"
+                                         :display "Alendronic acid 10 MG Oral Tablet"}]
+                                :citation {:module "dense-inpatient" :state :analgesia-start}}
                                {:type :delay :from 60 :to 180}
                                {:type :procedure
                                 :codes [{:system :snomed :code "274474001"
@@ -136,10 +140,6 @@
                                                 :value -1.4 :unit "{T-score}"}]}
                                {:type :order :profile :cbc}
                                {:type :delay :from 30 :to 90}
-                               {:type :medication-order
-                                :codes [{:system :rxnorm :code "904419"
-                                         :display "Alendronic acid 10 MG Oral Tablet"}]
-                                :citation {:module "dense-inpatient" :state :analgesia-start}}
                                {:type :observation
                                 :codes [{:system :loinc :code "8310-5" :display "Body temperature"}]
                                 :value 37.1 :unit "Cel"}
