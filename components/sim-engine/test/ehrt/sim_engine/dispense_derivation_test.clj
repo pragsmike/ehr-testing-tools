@@ -146,10 +146,14 @@
       (is (apply < (map (comp :order-event-id second) per-patient))))
     (is (ok? r) (violations r))))
 
-(deftest an-order-written-during-an-admission-gets-no-derived-fill
-  (let [r (run/run (assoc admission-order-config :dispense true))]
+(deftest an-order-written-during-an-admission-gets-no-community-fill
+  ;; ADR-0189: it gets an `:inpatient` dispense instead, which
+  ;; `ehrt.sim-engine.inpatient-dispense-derivation-test` covers.
+  (let [r (run/run (assoc admission-order-config :dispense true))
+        dispenses (map second (indexed-of :medication-dispense (:ground-truth r)))]
     (is (= 3 (count (indexed-of :medication-order (:ground-truth r)))))
-    (is (empty? (indexed-of :medication-dispense (:ground-truth r))))
+    (is (= 3 (count dispenses)))
+    (is (= #{:inpatient} (set (map :setting dispenses))))
     (is (ok? r) (violations r))))
 
 (deftest without-the-key-nothing-is-derived
