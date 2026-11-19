@@ -42,8 +42,9 @@
   component-code versions, and hashing itself happens in the calling
   shell (`sha256sum`), not in-process.
 
-  CURRENT STATE, 2026-11-18 (ADR-0187, the `osteoporosis-dispense` root;
-  before it, 2026-11-17, ADR-0186, the `dispense` root; before it,
+  CURRENT STATE, 2026-11-19 (the `dispense-inpatient` root ADR-0189
+  named as owed; before it, 2026-11-18, ADR-0187, the
+  `osteoporosis-dispense` root; before it, 2026-11-17, ADR-0186, the `dispense` root; before it,
   2026-09-30, ADR-0184, the `allergy` root; before it,
   2026-09-29, ADR-0182, the `immunization` root; before that, 2026-08-28, arc 4 sweep 3, ADR-0175 design (b)'s own
   step 0; before it, arc 4 sweep 2, designs (a) and
@@ -52,7 +53,7 @@
   before that, arc 3b sweep 1, ADR-0174 ruling A1; before
   that, arc 3a part 4, ADR-0173 ruling D1's commit 2; previously
   2026-08-19, ADR-0156, review-4 register row L1-5).
-  `roots` holds 45 roots in two families:
+  `roots` holds 46 roots in two families:
 
     3 INTERPRETER-LAYER batches -- appendicitis/sore-throat/
       ear-infections. 100 well-mixed seeds x both sexes = 200 walks per
@@ -62,7 +63,7 @@
       well-distributed for their own first draw, confirmed repeatedly
       across GMF coverage waves.
 
-   42 ENGINE-LAYER pairs -- engine/run plus emit-hl7/emit, ground truth
+   43 ENGINE-LAYER pairs -- engine/run plus emit-hl7/emit, ground truth
       AND emitted HL7 both captured, at the run-config each root's own
       vendored/engine test already established as producing real
       content. The 33rd, `demographic-fold`, is the first root to turn
@@ -119,6 +120,11 @@
       root whose dispenses are DERIVED: 156 `:community` fills, one per
       order, each after its visit closed. No new event kind, zero message
       types.
+      The 43rd, `dispense-inpatient` (2026-11-19, owed by ADR-0189), is
+      the only root reaching the INPATIENT half of that key: twelve
+      authored stays, nine `:inpatient` dispenses each inside its ward's
+      range, six orders pharmacy never reaches. No new event kind, zero
+      message types.
 
   This paragraph replaced an opening that read `Six roots, matching this
   session's own J1 ruling verbatim` -- true when written and never
@@ -127,7 +133,7 @@
   false; a cold reader simply got a third of the population and no
   signal that it was a third. The count is gated now
   (`ehrt.docs-tooling.oracle-coverage-test`), and the COVERAGE block
-  beside `roots` states what these 45 can and cannot witness.
+  beside `roots` states what these 46 can and cannot witness.
 
   Dated note (2026-08-03, ADR-0033 AR-4b): three more roots join at the
   ENGINE layer -- ear-infections-engine/urinary-tract-infections-engine/
@@ -1262,6 +1268,77 @@
                   :module-horizon-days 36500
                   :dispense true})))
 
+(defn- dispense-inpatient-pair
+  "The root ADR-0189 named as owed (2026-11-19), and THE ONLY ROOT
+  REACHING THE INPATIENT HALF OF THE `:dispense` KEY. FIRST BASELINE,
+  not a regression check: until this root both instruments were
+  IDENTICAL across ADR-0189's own build, because no root wrote an order
+  during an admission with the key on.
+
+  NO MODULE; TWELVE AUTHORED STAYS, FOUR SHAPES BY ORDINAL, every delay
+  fixed, so the only draws that vary are on the `:pharmacy` stream.
+  (0) ordered in the ED, on the class default [5 25];
+  (1) ordered on Renal, on the inpatient class default [15 60];
+  (2) ordered on Cardiology, which states its own `:dispense-minutes`
+  [40 50]; (3) two orders pharmacy never reaches -- one ended at its own
+  instant, one whose stay closes five minutes on. `:encounters` is on,
+  so each dispense carries its stay's `:encounter-id`.
+
+  THROUGH `engine-pair`.
+  `ehrt.sim-engine.inpatient-dispense-derivation-test/the-inpatient-
+  root-holds-each-case-by-name` runs the same config, asserts each case
+  by name and runs `check-all`, since this path does not self-check.
+
+  Measured at the config below: 72 events -- 12 `:registered`, 12
+  `:admission`, 12 `:discharge`, 15 `:medication-order`, 12
+  `:medication-end`, 9 `:medication-dispense` (all `:inpatient`, three
+  per dispensing ward), 6 orders undispensed. NO `:transfer`, on
+  purpose: which roots carry one is a pinned claim of the COVERAGE
+  block below, and this root is not there to move it.
+
+  THE COVERAGE IT ADDS: no event kind and no message type. It adds the
+  derived INPATIENT producer and the `:pharmacy` stream family, which
+  no other root reaches."
+  []
+  (let [penicillin {:system :rxnorm :code "834102" :display "Penicillin V Potassium 500 MG Oral Tablet"}
+        amoxicillin {:system :rxnorm :code "562251"
+                     :display "Amoxicillin 250 MG / Clavulanate 125 MG Oral Tablet"}
+        order-in (fn [pathway state] {:module pathway :state state})
+        ed-stay {:name "ordered-in-ed"
+                 :steps [{:type :admission :location "Emergency"}
+                         {:type :medication-order :codes [penicillin] :citation (order-in "ordered-in-ed" :antibiotic)}
+                         {:type :delay :from 90 :to 90}
+                         {:type :medication-end :order-citation (order-in "ordered-in-ed" :antibiotic)}
+                         {:type :discharge}]}
+        renal-stay {:name "ordered-on-renal"
+                    :steps [{:type :admission :location "Renal"}
+                            {:type :medication-order :codes [penicillin] :citation (order-in "ordered-on-renal" :antibiotic)}
+                            {:type :delay :from 90 :to 90}
+                            {:type :medication-end :order-citation (order-in "ordered-on-renal" :antibiotic)}
+                            {:type :discharge}]}
+        cardiology-stay {:name "ordered-on-cardiology"
+                         :steps [{:type :admission :location "Cardiology"}
+                                 {:type :medication-order :codes [amoxicillin]
+                                  :citation (order-in "ordered-on-cardiology" :antibiotic)}
+                                 {:type :delay :from 90 :to 90}
+                                 {:type :medication-end :order-citation (order-in "ordered-on-cardiology" :antibiotic)}
+                                 {:type :discharge}]}
+        short-stay {:name "never-dispensed"
+                    :steps [{:type :admission :location "Renal"}
+                            {:type :medication-order :codes [penicillin] :citation (order-in "never-dispensed" :stopped)}
+                            {:type :medication-end :order-citation (order-in "never-dispensed" :stopped)}
+                            {:type :medication-order :codes [amoxicillin] :citation (order-in "never-dispensed" :outrun)}
+                            {:type :delay :from 5 :to 5}
+                            {:type :discharge}]}
+        shapes [ed-stay renal-stay cardiology-stay short-stay]
+        facility (update sim-model/default-facility :wards
+                         (fn [wards] (mapv #(cond-> % (= "Cardiology" (:name %)) (assoc :dispense-minutes [40 50]))
+                                           wards)))]
+    (engine-pair {:seed 20261119 :patients 12 :arrival-gap 90
+                  :dispense true :encounters true
+                  :facility facility
+                  :pathways (mapv (fn [i] {:patient-ordinal i :pathway (nth shapes (mod i 4))}) (range 12))})))
+
 (defn- injuries-pair
   "Injuries arc close (2026-08-11, ADR-0107): FIRST BASELINE, not a
   regression check -- this closure never completed a round trip before
@@ -1384,17 +1461,18 @@
 ;;     on one root, never what it reported.
 ;;
 ;; THE STRUCTURAL CAUSE, re-derived rather than inferred from the
-;; instrumentation: 37 of the 45 roots pass `:pathway {:name
+;; instrumentation: 37 of the 46 roots pass `:pathway {:name
 ;; "module-only" :steps []}` -- `encounter-horizon`, `bed-cycle`,
 ;; `scheduling`, `chatter-charges` and (2026-08-28) `order-pathway` are
-;; five of the eight exceptions and pass
+;; five of the nine exceptions and pass
 ;; real admit/delay/discharge pathways -- `order-pathway`'s being the
 ;; only one that also carries an `:order` step,
 ;; which is why the churn family and the allocation ladder reach them --
 ;; the sixth, (2026-09-29) `immunization`, and the seventh, (2026-09-30)
 ;; `allergy`, author a Renal stay too but turn nothing on and run a
 ;; 90-minute gap, so neither reaches them; the eighth, (2026-11-17)
-;; `dispense`, authors every pathway by ordinal, on the same terms --
+;; `dispense`, authors every pathway by ordinal, on the same terms; the
+;; ninth, (2026-11-19) `dispense-inpatient`, likewise --
 ;; and 8 of 19 components plus `bases/cli` are off the
 ;; oracle classpath entirely (`bin/regression-oracle`'s own deps block).
 ;; THREE components joined that classpath on 2026-08-26 -- person-
@@ -1441,7 +1519,7 @@
 ;; ADT^A20 unavoidably so, since it is the only root that can emit one.
 ;;
 ;; The two sets below are the committed claim, asserted against a FRESH
-;; 45-root digest by `ehrt.integration.oracle-coverage-test` and checked
+;; 46-root digest by `ehrt.integration.oracle-coverage-test` and checked
 ;; for shape, population, membership and location on every push by
 ;; `ehrt.docs-tooling.oracle-coverage-test`.
 
@@ -1529,7 +1607,7 @@
     :transfer})
 
 (def ^:private witnessed-message-types
-  "Every MSH-9 the 42 engine-layer roots emit. ADT^A02 is death-fixture's
+  "Every MSH-9 the 43 engine-layer roots emit. ADT^A02 is death-fixture's
   alone, once. ADT^A34 is emitted by no root at all.
 
   WIDENED AGAIN 2026-08-28 by `scheduling`, arc 4 sweep 4's own turn-on
@@ -1640,7 +1718,8 @@
    "immunization"                       immunization-pair
    "allergy"                            allergy-pair
    "dispense"                           dispense-pair
-   "osteoporosis-dispense"              osteoporosis-dispense-pair})
+   "osteoporosis-dispense"              osteoporosis-dispense-pair
+   "dispense-inpatient"                 dispense-inpatient-pair})
 
 (defn -main
   "Writes one <root>.edn per root into out-dir (pr-str of the batch or

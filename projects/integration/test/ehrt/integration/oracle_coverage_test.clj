@@ -81,7 +81,7 @@
               :dir root)))
 
 (defn- engine-roots
-  "The 42 engine-layer roots, keyed by name. The other three are
+  "The 43 engine-layer roots, keyed by name. The other three are
   interpreter batches whose facts are a DIFFERENT vocabulary -- see the
   nested-`:event` hazard in `ehrt.sim-engine.event-schema`, which is
   exactly the mistake a naive tree-walk for `:event` makes."
@@ -147,11 +147,11 @@
             roots (engine-roots out)]
         (testing "the digest ran at all -- a failed run must never read as agreement"
           (is (zero? exit) (str "the digest process must exit 0. stderr:\n" err))
-          (is (= 45 (count edns))
-              (str "45 roots today. A root added or removed lands here first. Found "
+          (is (= 46 (count edns))
+              (str "46 roots today. A root added or removed lands here first. Found "
                    (count edns) "."))
-          (is (= 42 (count roots))
-              (str "42 engine-layer roots produce `{:ground-truth :hl7}`; the other three are "
+          (is (= 43 (count roots))
+              (str "43 engine-layer roots produce `{:ground-truth :hl7}`; the other three are "
                    "interpreter batches. Found " (count roots) ".")))
         (let [kinds (witnessed-event-kinds roots)
               types (witnessed-message-types roots)]

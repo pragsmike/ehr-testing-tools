@@ -195,3 +195,83 @@
     (is (= 12 (count (indexed-of :medication-dispense a))) "the comparison is of runs that dispense")
     (is (= a b))
     (is (= (pr-str a) (pr-str b)))))
+
+;; --- the oracle root's config ---------------------------------------------
+
+;; The SAME config as the oracle's `dispense-inpatient` root
+;; (`ehrt.oracle.digest/dispense-inpatient-pair`), kept in step by hand,
+;; since sim-engine cannot depend on oracle. Twelve stays, four shapes by
+;; ordinal, every delay fixed so the only draws that vary are pharmacy's.
+
+(def ^:private inpatient-producer-config
+  (let [penicillin {:system :rxnorm :code "834102" :display "Penicillin V Potassium 500 MG Oral Tablet"}
+        amoxicillin {:system :rxnorm :code "562251"
+                     :display "Amoxicillin 250 MG / Clavulanate 125 MG Oral Tablet"}
+        order-in (fn [pathway state] {:module pathway :state state})
+        ;; ordered in the ED, on the class default [5 25]
+        ed-stay {:name "ordered-in-ed"
+                 :steps [{:type :admission :location "Emergency"}
+                         {:type :medication-order :codes [penicillin] :citation (order-in "ordered-in-ed" :antibiotic)}
+                         {:type :delay :from 90 :to 90}
+                         {:type :medication-end :order-citation (order-in "ordered-in-ed" :antibiotic)}
+                         {:type :discharge}]}
+        ;; an inpatient ward on the class default [15 60]
+        renal-stay {:name "ordered-on-renal"
+                    :steps [{:type :admission :location "Renal"}
+                            {:type :medication-order :codes [penicillin] :citation (order-in "ordered-on-renal" :antibiotic)}
+                            {:type :delay :from 90 :to 90}
+                            {:type :medication-end :order-citation (order-in "ordered-on-renal" :antibiotic)}
+                            {:type :discharge}]}
+        ;; an inpatient ward stating its own range, [40 50]
+        cardiology-stay {:name "ordered-on-cardiology"
+                         :steps [{:type :admission :location "Cardiology"}
+                                 {:type :medication-order :codes [amoxicillin]
+                                  :citation (order-in "ordered-on-cardiology" :antibiotic)}
+                                 {:type :delay :from 90 :to 90}
+                                 {:type :medication-end :order-citation (order-in "ordered-on-cardiology" :antibiotic)}
+                                 {:type :discharge}]}
+        ;; two orders pharmacy never reaches: one ended at its own
+        ;; instant, one whose stay closes 5 minutes on, under the floor of 15
+        short-stay {:name "never-dispensed"
+                    :steps [{:type :admission :location "Renal"}
+                            {:type :medication-order :codes [penicillin] :citation (order-in "never-dispensed" :stopped)}
+                            {:type :medication-end :order-citation (order-in "never-dispensed" :stopped)}
+                            {:type :medication-order :codes [amoxicillin] :citation (order-in "never-dispensed" :outrun)}
+                            {:type :delay :from 5 :to 5}
+                            {:type :discharge}]}
+        shapes [ed-stay renal-stay cardiology-stay short-stay]]
+    {:seed 20261119 :patients 12 :arrival-gap 90
+     :dispense true :encounters true
+     :facility (facility-with "Cardiology" [40 50])
+     :pathways (mapv (fn [i] {:patient-ordinal i :pathway (nth shapes (mod i 4))}) (range 12))}))
+
+(deftest the-inpatient-root-holds-each-case-by-name
+  (let [{:keys [ground-truth] :as r} (run/run inpatient-producer-config)
+        log (vec ground-truth)
+        orders (indexed-of :medication-order log)
+        dispenses (mapv second (indexed-of :medication-dispense log))
+        order-of (fn [d] (nth log (:order-event-id d)))
+        lag-minutes (fn [d] (/ (- (:t d) (:t (order-of d))) 60))
+        by-pathway (group-by #(:module (:citation (order-of %))) dispenses)
+        dispensed (set (map :order-event-id dispenses))
+        undispensed (remove (comp dispensed first) orders)]
+    (is (= {:registered 12 :admission 12 :discharge 12
+            :medication-order 15 :medication-end 12 :medication-dispense 9}
+           (frequencies (map :event log))))
+    (is (every? #(= :inpatient (:setting %)) dispenses))
+    (is (= {"ordered-in-ed" 3 "ordered-on-renal" 3 "ordered-on-cardiology" 3}
+           (update-vals by-pathway count))
+        "three orders dispensed in each of the three wards")
+    (testing "each inside the range of the ward the order was written on"
+      (is (every? #(<= 5 (lag-minutes %) 25) (by-pathway "ordered-in-ed")) "the ED class default")
+      (is (every? #(<= 15 (lag-minutes %) 60) (by-pathway "ordered-on-renal")) "the inpatient class default")
+      (is (every? #(<= 40 (lag-minutes %) 50) (by-pathway "ordered-on-cardiology")) "Cardiology's own range"))
+    (testing "the two orders pharmacy never reaches"
+      (is (= {:stopped 3 :outrun 3}
+             (frequencies (map #(:state (:citation (second %))) undispensed)))
+          "ended at its own instant; outrun by the discharge"))
+    (testing "each dispense carries the id of the stay that wrote its order"
+      (doseq [d dispenses]
+        (is (some? (:encounter-id d)))
+        (is (= (:encounter-id (order-of d)) (:encounter-id d)))))
+    (is (ok? r) (violations r))))
