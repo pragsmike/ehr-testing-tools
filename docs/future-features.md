@@ -274,7 +274,7 @@ defaults by ward class), unless the order has ended or the stay has
 closed by then; such an order stays undispensed. The key moves no
 other draw, so the same seed with and without it is the same hospital
 plus the dispenses. One shipped scenario sets the key, `dense-7500`,
-whose 7,500-arrival log carries 2,461 inpatient dispenses and 48
+whose 7,500-arrival log carries 4,912 inpatient dispenses and 48
 community fills; none authors the step.
 No event kind for a medication
 administration exists. None of the three kinds renders to any HL7 v2

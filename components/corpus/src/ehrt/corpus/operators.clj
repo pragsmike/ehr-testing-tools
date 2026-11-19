@@ -618,7 +618,8 @@
   moves or repoints an end onto one, convicts that law as well, and
   Q5(a) is set equality. Until ADR-0189 no gated population dispensed
   an order an end also cites; `dense-7500` now does, at about half its
-  admission-written orders.
+  admission-written orders then and at nearly all of them since its
+  pathway wrote the second order mid-stay (2026-11-19).
 
   The operators below that could reach such a site say `no dispense
   cites it` and give the site up. NOTHING TAKES THOSE SITES YET: the
