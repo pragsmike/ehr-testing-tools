@@ -29,7 +29,7 @@
   sim path -- scheduling, identification, medication spans -- which
   those roots do not exercise.
 
-  So the population here is THREE real runs. Two are the opt-in demo
+  So the population here was THREE real runs. Two are the opt-in demo
   configs that were, on 2026-09-01, the only distinct logs in the tree
   carrying candidate sites at all; the measurement behind that choice is
   `.agents/plans/2026-09-01-event-mutation-population-ledger.md`. The
@@ -38,6 +38,20 @@
   carrier columns -- the other three were population gaps until P7
   (2026-09-05) measured this config carrying all three. Every one of
   them is measured clean before anything is injected.
+
+  A FOURTH, 2026-11-19: the third's own config with its `:dispense`
+  key taken out, and nothing else. ADR-0189's site predicates give up
+  every order a dispense cites, and once `dense-inpatient` wrote its
+  second order mid-stay the keyed log dispensed every closed order it
+  holds: two operators, `:orphan-closed-medication-order` and
+  `:inverted-span-medication-end-order-event-id`, were left with no
+  site in any population. By ADR-0187's erasure law this log is the
+  third's with its dispenses deleted, so it offers both their sites
+  back and every other operator the sites it had. `config-bare.edn`
+  was tried first and does not serve: without `:encounters` three
+  orphan operators convict one invariant fewer than they declare. The
+  dispensed sites themselves are still given up and still not counted;
+  that is the mutation column ADR-0189 names as owed.
 
   THE THIRD POPULATION IS EXPENSIVE AND THE REASON IS NOT THIS FILE'S.
   Its run is ~54 s and FLAT in `--patients` (the cost is the
@@ -128,6 +142,13 @@
    ;; the other two are structure, not witness (P7 record, section 1).
    :dense-7500
    (delay (let [cfg (config "demos/scenarios/dense-7500/config.edn")]
+            {:log (run-log cfg 5 20 {:churn true}) :facility (:facility cfg)}))
+   ;; The fourth: the third less its `:dispense` key, for the two
+   ;; operators whose sites are closed medication orders no dispense
+   ;; cites (the namespace docstring has why). Same seed, arrivals and
+   ;; churn as the third.
+   :dense-7500-undispensed
+   (delay (let [cfg (dissoc (config "demos/scenarios/dense-7500/config.edn") :dispense)]
             {:log (run-log cfg 5 20 {:churn true}) :facility (:facility cfg)}))})
 
 (defn- pop-of [k] @(get populations k))
@@ -250,7 +271,7 @@
                 :participant-ids-exist-in-run
                 :registered-is-every-patients-first-event}
     :effect :one-event}
-   {:id :orphan-closed-medication-order :population :dense-7500
+   {:id :orphan-closed-medication-order :population :dense-7500-undispensed
     :findings #{:clinical-content-only-when-admitted
                 :every-encounter-is-opened-and-closed-or-still-open
                 :participant-ids-exist-in-run
@@ -305,7 +326,7 @@
     :findings #{medication-end-invariant} :effect :one-event}
    {:id :wrong-kind-medication-end-order-event-id :population :dense-7500
     :findings #{medication-end-invariant} :effect :one-event}
-   {:id :inverted-span-medication-end-order-event-id :population :dense-7500
+   {:id :inverted-span-medication-end-order-event-id :population :dense-7500-undispensed
     :findings #{medication-end-invariant :timestamps-monotone}
     :effect :one-event :moves-t? true}
 
@@ -421,7 +442,7 @@
 (def ^:private population-order
   "The populations in a fixed order, so the matrix below and every
   report over it read the same on every run."
-  [:clinic-decade :ed-tuesday :dense-7500])
+  [:clinic-decade :ed-tuesday :dense-7500 :dense-7500-undispensed])
 
 (def ^:private site-matrix
   "Every (operator, population) pair with the number of candidate sites
@@ -430,7 +451,7 @@
   (`mutate.clj:160`, over a vector).
 
   A `delay` for the same reason `populations` is one: the whole matrix
-  costs three real runs, and a namespace nobody selected should pay
+  costs four real runs, and a namespace nobody selected should pay
   nothing."
   (delay
    (vec (for [{:keys [id]} loop-rows
