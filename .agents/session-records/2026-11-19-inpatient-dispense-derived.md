@@ -189,4 +189,6 @@ With chatter or latency configured, message counts move by a handful.
   `5065965e`, `8acd6028`, `8a507c06`, `03018265`, `52b974ac`, then the
   close commits. Pushed together; the red commit travels with its green
   successors.
-- CI run id: appended by the commit after the push.
+- Pushed `046e611c..e1e4137a`; `bin/post-push-verify 046e611c e1e4137a`
+  clean. CI run 44554490954 (`test`) green at `e1e4137a`: the close
+  marker.
