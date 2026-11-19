@@ -407,3 +407,42 @@ after the delay that follows the transfer and the same step for
 
 The halt half closed with nothing pushed. The resumed half's suite,
 push and CI results are appended below by the close commit.
+
+### The resumed half: suite and integration
+
+Five runs of the gates over the resumed commits, nothing written into
+the tree while any of them ran.
+
+| run | tree | result | cause |
+|---|---|---|---|
+| `make test` 1 | `1aa912f6` | MAKE_EXIT=2 | `no-visible-adr-token-in-prose-test`: the consumer doc named this ADR inline. Fixed by footnote, `c51ab389`. |
+| `make test` 2 | `c51ab389` | MAKE_EXIT=2 | `the-front-door-quotes-the-figures-file-test`: the root README still quoted 1.0552. Fixed, `3bc83631`. |
+| `make test` 3 | `3bc83631` | MAKE_EXIT=0 | 30 min 13 s. |
+| `make integration` 1 | `3bc83631` | MAKE_EXIT=2 | `bin/usecase-ground-truth-oracle`: "expected 46 invariants checked, got 47". Fixed, `f8df1749`. |
+| `make test` 4 | `f8df1749` | MAKE_EXIT=0 | 29 min 21 s. |
+| `make integration` 2 | `f8df1749` | MAKE_EXIT=0 | every exerciser "tree clean". |
+
+The third red is not this session's change. The check catalog went from
+46 to 47 invariants under ADR-0186, and the pin in
+`bin/usecase-ground-truth-oracle`, with the two figures in
+`components/corpus/docs/use-cases.edn` and the "46" in
+`docs/consuming-ground-truth.md`, stayed at 46. `make test` does not run
+that script, so the pin was red on `main` from ADR-0186 until now and
+nothing reported it. Corrected here because `make integration` could not
+go green past it.
+
+### Commits, on `164fae67`
+
+- `c8b83cc1` red tests and the prediction
+- `0c4bc797` the reference rule
+- `1fa427c8` the module-mix trace regenerated
+- `3a6d150f` the halt record and the archived prompt
+- `3ba95de9` `:dispense true` joins the opt-in keys, key only
+- `bc516435` three gated corpora re-pinned
+- `0640af98` figures, once
+- `1aa912f6` ADR-0188 and this record's resumed half
+- `c51ab389` the ADR cited by footnote
+- `3bc83631` the front door's msg/event figure
+- `f8df1749` the 47-deep catalog pin
+
+The CI run id is appended below by the commit that follows the push.
