@@ -198,4 +198,13 @@ retained corpus is a valid artifact of the earlier pin.
 
 ## Close
 
-Appended by the close commits.
+Gates at `412b7b6f`, clean tree, nothing written into it while either ran:
+
+- `make test`, unpiped to a log: `MAKE_EXIT=0`; poly execution time 32 minutes 7 seconds.
+- `make integration`: `MAKE_EXIT=0`; poly execution time 18 minutes 47 seconds.
+
+Commits over `3b6e836f`: `87e5e8b0` (prediction), `b6fb4ab3` (the pathway
+edit and siblings), `8340c4e3` (the mutation gate's fourth population),
+`e0bbcdee` (the `dispense-inpatient` root), `5681d390` (figures),
+`412b7b6f` (ADR-0189 addendum, record, prompt archived), then this close.
+The CI run id is appended by the commit after the push.
