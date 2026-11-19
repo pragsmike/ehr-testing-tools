@@ -177,4 +177,16 @@ With chatter or latency configured, message counts move by a handful.
 
 ## Close
 
-Appended by the close commits.
+- `make test` run 1 at `03018265`: MAKE_EXIT=2. One failure,
+  `the-closed-oracle-loop-holds-for-every-sited-pair-test`: two mutation
+  operators convicted the dispense invariant beyond their declared sets
+  (item 8 above). Fixed by site predicates in `52b974ac`.
+- `make test` run 2 at `52b974ac`, unpiped to a log: MAKE_EXIT=0, poly
+  execution time 29 minutes 20 seconds.
+- `make integration` at `52b974ac`, directly after: MAKE_EXIT=0.
+- Nothing was written into the tree while either ran.
+- Commits over `046e611c`: `05e47820`, `bf24dfcc` (red), `18a7f84f`,
+  `5065965e`, `8acd6028`, `8a507c06`, `03018265`, `52b974ac`, then the
+  close commits. Pushed together; the red commit travels with its green
+  successors.
+- CI run id: appended by the commit after the push.
