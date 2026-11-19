@@ -662,6 +662,18 @@
   (edn/read-string (pr-str gt))))` -- value AND bytes both survive, so
   the committed baseline is a faithful pin for BOTH gates below.
 
+  RE-PINNED 2026-11-18, THREE of four, by ADR-0188 -- the second
+  declared ground-truth rebaseline. An end that names its opening by
+  state now references the latest opening no earlier end references,
+  where it referenced the first. No event count moved and no in-log
+  event moved: every difference is a `:registered` event whose
+  `:pre-horizon-facts` carry a corrected `:references`, or fewer facts
+  because a walk whose medication now really ends routes differently
+  before the horizon. Differing events: seed-202-ed-tuesday 2 of 1,214
+  (first at index 84), seed-424242-clinic-decade 15 of 1,774 (first at
+  17), seed-5-clinic-decade 27 of 1,412 (first at 8). The adhd run is
+  untouched: its module ends nothing by a state opened twice.
+
   RE-PINNED 2026-09-30, ONE of four, by ADR-0185 -- the declared
   ground-truth rebaseline (`roadmap.md#cancel-discharge-reopens-an-
   encounter-that-never-closes` and `#determinism-hash-order-dependence`).
@@ -773,9 +785,9 @@
   1,058, adhd 12 -> 66. The growth is the fold: `:demographic-update`,
   `:coverage-change`, hook-created encounters and unidentified
   arrivals, none of which existed in any corpus before this commit."
-  {:seed-202-ed-tuesday       "5276fa02860f9a123e2a86d8dc94856126365bdc08b60d6f9adb2fa2ecf94ac5"
-   :seed-424242-clinic-decade "2d5a4274fb5ebbab8fdb22eacf36b4ee37b55a7df4e37190071cd4a9408d64d0"
-   :seed-5-clinic-decade      "8acde4736af97be3a5d842e44f37d50a546988799401efd09417bf1e45269e4c"
+  {:seed-202-ed-tuesday       "e488425223fd787d685573bccebf5b9ac35e0114591cb2f45b27ba2b15a8ef3c"
+   :seed-424242-clinic-decade "cbda5772f16e73c2e5d5da14cee30d6faea54b1f3d63158fc3e0e4fa3c0a7301"
+   :seed-5-clinic-decade      "a52cbbc5a9492bb96d206eb57fdd4381f9b6b853486cdb0c50b65bce192b93c9"
    :adhd-seed-45              "c5491b4b640587380392449e870b457aaa96ece4ba42f9743a6cf0add92970bf"})
 
 (defn- arc0-baseline
