@@ -93,6 +93,9 @@
 ;; turnaround range, promoted so `ehrt.sim-engine.engine`'s cycle draws
 ;; through it rather than reaching for the key itself.
 (defn turnaround-minutes [ward] (config/turnaround-minutes ward))
+;; ADR-0189: the pharmacy turnaround range, read the same one way.
+(def default-dispense-minutes config/default-dispense-minutes)
+(defn dispense-minutes [ward] (config/dispense-minutes ward))
 (def default-provider-templates config/default-provider-templates)
 (defn materialize-providers [rng provider-templates] (config/materialize-providers rng provider-templates))
 

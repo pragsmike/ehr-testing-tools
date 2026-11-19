@@ -44,7 +44,23 @@
    ;; `default-turnaround-minutes` below -- so a facility config written
    ;; before this sweep keeps validating unchanged, which is the same
    ;; law the run-config opt-in follows.
-   [:turnaround-minutes {:optional true} [:tuple :int :int]]])
+   [:turnaround-minutes {:optional true} [:tuple :int :int]]
+   ;; ADR-0189: the PHARMACY turnaround range, in MINUTES, `[lo hi]`
+   ;; inclusive -- from an order written during an admission on this
+   ;; ward to its `:inpatient` dispense. One draw per order, uniform, as
+   ;; the bed turnaround above is.
+   ;;
+   ;; Optional, and NOT the opt-in: the `:dispense` run-config key is.
+   ;; This is what a ward's dispensing is TUNED by once that key is set,
+   ;; and absent it falls back to `default-dispense-minutes` below.
+   ;;
+   ;; Unlike `:turnaround-minutes` the schema refuses a range that is
+   ;; not one: `lo` and `hi` are non-negative and `lo` <= `hi`. `[0 0]`
+   ;; is a range, the dispense at the order's own instant.
+   [:dispense-minutes {:optional true}
+    [:and [:tuple :int :int]
+     [:fn {:error/message "must be [lo hi] with 0 <= lo <= hi"}
+      (fn [[lo hi]] (<= 0 lo hi))]]]])
 
 (def default-turnaround-minutes
   "The fallback `:turnaround-minutes` for a ward that declares none, by
@@ -67,6 +83,36 @@
   [ward]
   (or (:turnaround-minutes ward)
       (get default-turnaround-minutes (:class ward))))
+
+(def default-dispense-minutes
+  "The fallback `:dispense-minutes` for a ward that declares none, by
+  ward CLASS (ADR-0189): minutes from an order written during an
+  admission to its `:inpatient` dispense, uniform over the range.
+
+  PROVISIONAL. Chosen from three published turnaround studies, read
+  quickly, and not fitted to any of them:
+
+  * `:ed` -- cabinet-stocked doses at a level I trauma centre, median
+    order entry to cabinet dispense 9 to 15 minutes (J Pharm Pract,
+    doi 10.1177/0897190017735390).
+  * `:inpatient` -- pharmacy-processed STAT orders at a community
+    hospital, median 29 minutes, interquartile range 16 to 63 (Pharmacy
+    Practice 2016;14(2):647, PMC4930852); pharmacy-prepared IV
+    antibiotics, median order to delivery 43 and later 27 minutes
+    (J Pediatr Pharmacol Ther 2025;30(2):191).
+
+  Uniform is the engine's shape for a range, not a claim about the
+  distributions those studies report, which are right-skewed. A site
+  with its own pharmacy data states its own per ward."
+  {:ed [5 25]
+   :inpatient [15 60]})
+
+(defn dispense-minutes
+  "`ward`'s own `:dispense-minutes`, or its class's default. The ONE
+  reading of that key, as `turnaround-minutes` is of its own."
+  [ward]
+  (or (:dispense-minutes ward)
+      (get default-dispense-minutes (:class ward))))
 
 (def Facility
   [:map

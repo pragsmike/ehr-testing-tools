@@ -79,3 +79,24 @@
     (is (not (config/valid-latency-profile? {"admission" {:from-minutes 5 :to-minutes 45}}))))
   (testing "a range missing either bound is invalid"
     (is (not (config/valid-latency-profile? {:admission {:from-minutes 5}})))))
+
+;; --- ADR-0189: a ward's pharmacy turnaround -----------------------------
+
+(defn- ward-with [range]
+  (assoc (first (:wards config/default-facility)) :dispense-minutes range))
+
+(deftest dispense-minutes-is-the-wards-own-range-or-its-class-default
+  (is (= [5 25] (:ed config/default-dispense-minutes)))
+  (is (= [15 60] (:inpatient config/default-dispense-minutes)))
+  (doseq [ward (:wards config/default-facility)]
+    (is (= (get config/default-dispense-minutes (:class ward)) (config/dispense-minutes ward))
+        "a ward that states none reads its class default"))
+  (is (= [3 9] (config/dispense-minutes (ward-with [3 9])))))
+
+(deftest an-invalid-dispense-range-is-refused-by-the-ward-schema
+  (let [facility (fn [range] (assoc config/default-facility :wards [(ward-with range)]))]
+    (is (config/valid-facility? (facility [10 30])))
+    (is (config/valid-facility? (facility [0 0])) "a fixed, immediate turnaround is a range")
+    (is (config/valid-facility? config/default-facility) "and the key is optional")
+    (doseq [bad [[30 10] [-1 5] [5] [5 10 15] ["5" "10"] [1.5 2.5] 20 nil]]
+      (is (not (config/valid-facility? (facility bad))) (pr-str bad)))))
