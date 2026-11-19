@@ -269,8 +269,10 @@ instant it closes. That is one fill per order — a prescription meant to
 run for years is filled once — and orders written during an admission,
 which here includes every emergency-department visit, get none. The key
 draws nothing, so the same seed with and without it is the same
-hospital plus the fills. No shipped scenario sets the key or authors
-the step, so no shipped corpus contains a dispense. No event kind for a medication
+hospital plus the fills. One shipped scenario sets the key,
+`dense-7500`, whose 7,500-arrival log carries 48 community fills; none
+authors the step, so no shipped corpus contains an inpatient dispense.
+No event kind for a medication
 administration exists. None of the three kinds renders to any HL7 v2
 message: no pharmacy order, dispense or administration message (RDE,
 RDS, RAS) is emitted. The FHIR emitter renders each order as a

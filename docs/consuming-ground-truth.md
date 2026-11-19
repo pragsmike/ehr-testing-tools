@@ -512,10 +512,14 @@ exactly once, however long the prescription runs, and it fills nothing
 written during an admission — an emergency-department visit is an
 admission here, so a prescription written at an ED discharge gets none.
 The key does not look for an authored fill of the same order: a pathway
-that authors one and runs with the key gets two. No shipped scenario
-sets the key or authors the step, so every corpus this workspace ships
-still holds orders with no dispense at all. Do not read that absence as
-an order that went unfilled: nothing was asked to fill it. No event
+that authors one and runs with the key gets two. One shipped scenario
+sets the key, [`dense-7500`](../demos/scenarios/dense-7500/README.md),
+and none authors the step. Its 7,500-arrival log holds 4,986 medication
+orders and 48 dispenses, all `:community`: nearly all of its orders are
+written during admissions, which the key does not fill. Every other
+shipped corpus holds orders with no dispense at all. Do not read a
+missing dispense as an order that went unfilled: nothing was asked to
+fill it. No event
 records a medication administration, and no pharmacy message goes on
 the HL7 v2 wire for any of the three kinds.
 [`future-features.md`](future-features.md#medication-dispensing-and-administration)
@@ -709,18 +713,23 @@ paragraphs below still report, is in
 
 **10^5 events is comfortable, and the decade above it is entered: the
 largest completed run of this configuration is now 28,024 arrivals and
-671,589 events — a committed sibling, quoted in the fourth row below.
+671,646 events — a committed sibling, quoted in the fourth row below.
 10^6 events have not been run at all.**
 
 | Cell | events | messages | msg/event | process wall |
 |---|---|---|---|---|
-| all ten opt-in keys | 167,715 | 176,971 | **1.0552** | 126.10 s |
-| the same, less `:bed-cycle` | 125,700 | 134,886 | **1.0731** | 106.04 s |
-| no opt-in key at all | 101,120 | 65,643 | **0.6492** | 51.63 s |
-| all ten opt-in keys, 28,024 arrivals, ground truth only | 671,589 | — | — | 386.61 s |
+| all ten opt-in keys | 167,763 | 176,973 | **1.0549** | 158.89 s |
+| the same, less `:bed-cycle` | 125,748 | 134,891 | **1.0727** | 127.38 s |
+| no opt-in key at all | 101,120 | 65,643 | **0.6492** | 57.09 s |
+| all ten opt-in keys, 28,024 arrivals, ground truth only | 671,646 | — | — | 382.87 s |
 
 **The first three rows are one generation of one committed configuration**,
-re-measured 2026-09-30 at `fecbe43b`. Their COUNTS last moved under
+re-measured 2026-11-18 at `3ba95de9`. Their COUNTS last moved under
+the second ground-truth rebaseline (ADR-0188): an end that names its
+opening by state now references the latest opening no earlier end
+references, which moves facts and a handful of messages and no event
+count, and the `:dispense` key adds 48 community fills to each of the
+two cells that carry it. Before that they moved under
 the ground-truth rebaseline[^adr-0185]: reinstated stays now close, so
 the periodic ADT^A08 chatter a never-closing stay emitted to the end of
 the run is gone — the all-keys cell's messages fell from 222,819 to
@@ -729,9 +738,9 @@ peers are drawn in patient-id order. Before that the counts moved under
 the merge-transfer ruling[^adr-0179], and the walls under the
 index-and-fold programme[^adr-0180], which shortened this
 configuration's generate phase between 2.5× and 3.4×. The walls rose
-14–22% at this re-measurement in every cell, the bare one included,
-whose counts barely moved, so that rise is not attributed to the
-rebaseline. The scenario README names every movement and links their
+14–22% at the 2026-09-30 re-measurement and 11–26% again at this one,
+in every cell both times, the bare one included, whose counts did not
+move here at all, so neither rise is attributed to a rebaseline. The scenario README names every movement and links their
 derivations. They are
 [`demos/scenarios/dense-7500/`](../demos/scenarios/dense-7500/README.md)'s
 `config.edn`, `config-nobed.edn` and `config-bare.edn` at `--seed
@@ -749,16 +758,18 @@ deliberate.** It is
 [`config-28024.edn`](../demos/scenarios/dense-7500/config-28024.edn) —
 `config.edn` with its one `:persons :count` line set by that file's own
 rule to twice the arrivals — at `--seed 20260824 --patients 28024
---churn --format ground-truth`, measured 2026-09-30 at `fecbe43b`: ONE
+--churn --format ground-truth`, measured 2026-11-18 at `3ba95de9`: ONE
 run, `sim run` rather than `corpus generate`, with the heap set
 explicitly (`-Xmx8g`) rather than left at the default. `--format
 ground-truth` emits no message, so there is no message count to quote,
 and the wall is not comparable with the three above it. The run wrote a
-264,570,024-byte event log whose sha-256 begins `ee59219e`. Before the
-ground-truth rebaseline the same command wrote 263,570,096 bytes
-beginning `589600c5`, a log independently reproduced byte for byte on
-another host and JDK build; that log remains a valid pre-rebaseline
-artifact, and regenerating gives the new bytes. **Its module cohort is a 7,500-arrival run's** — see
+264,575,690-byte event log whose sha-256 begins `5fb8187b`, carrying 57
+community dispenses. From the first ground-truth rebaseline until this
+one the same command wrote 264,570,024 bytes beginning `ee59219e`, and
+before that 263,570,096 bytes beginning `589600c5`, a log independently
+reproduced byte for byte on another host and JDK build. Both remain
+valid artifacts of the pin they were written under, and regenerating
+gives the new bytes. **Its module cohort is a 7,500-arrival run's** — see
 [Describing a corpus](#describing-a-corpus) — so read it as the
 all-keys configuration's population, facility and churn at nearly four
 times the arrivals, not as the same mix scaled up.
