@@ -38,7 +38,8 @@
 ;; EVERY CODE HERE IS ALREADY IN THIS TREE, none invented: the SNOMED
 ;; and RxNorm concepts are lifted from the vendored Synthea modules
 ;; under `components/sim/resources/sim/modules/` (`injuries.json`,
-;; `sore_throat.json`, `osteoporosis.json`), the LOINC observation code
+;; `sore_throat.json`, `osteoporosis.json`, `sinusitis.json`,
+;; `metabolic_syndrome/medications.json`), the LOINC observation code
 ;; from the same, and the `:cbc`/`:bmp` order profiles are the shipped
 ;; catalytic in `components/sim-engine/resources/sim-engine/
 ;; order-profiles.edn`. No CPT anywhere (`sim/F4`).
@@ -191,8 +192,72 @@
                                 :care-plan-citation {:module "dense-surgical" :state :care-plan}}
                                {:type :discharge}]}
              :weight 20}
+            ;; THE CLINIC, added 2026-11-20: three outpatient visits,
+            ;; and between them HALF of the weighted pool (50 + 20 + 30
+            ;; against 45 + 35 + 20 above). A weight applies to every
+            ;; arrival that draws a pathway, so the clinic's share
+            ;; follows `--patients` where the module cohort below does
+            ;; not. THESE SIX WEIGHTS ARE THE DIAL: the outpatient share
+            ;; of arrivals is the last three over all six, and the mix
+            ;; of visits is the last three among themselves.
+            ;;
+            ;; ALL THREE WEIGHTS ARE PROVISIONAL. One half outpatient,
+            ;; and of that 50% a short-course prescription, 20% a
+            ;; long-term one, 30% none: an author's estimate with no
+            ;; source behind it. A real hospital's traffic is far more
+            ;; outpatient than one half (the scenario README gives the
+            ;; survey figures); this scenario stays inpatient-heavy on
+            ;; purpose.
+            ;;
+            ;; No order is ended inside its visit: under `:dispense` an
+            ;; order is filled only if still active when the visit
+            ;; closes. NOTHING IN THE IR MARKS AN AUTHORED ORDER
+            ;; LONG-TERM; the `:chronic-start` state name is the only
+            ;; sign, and nothing reads it.
+            ;;
+            ;; An acute visit that ends in a short course: the drug is
+            ;; `sinusitis.json`'s own first-line antibiotic.
+            {:pathway {:name "dense-clinic-acute"
+                       :steps [{:type :outpatient-visit :reason "Sinusitis"}
+                               {:type :delay :from 5 :to 15}
+                               {:type :observation
+                                :codes [{:system :loinc :code "8310-5" :display "Body temperature"}]
+                                :value 37.8 :unit "Cel"}
+                               {:type :medication-order
+                                :codes [{:system :rxnorm :code "562251"
+                                         :display "Amoxicillin 250 MG / Clavulanate 125 MG Oral Tablet"}]
+                                :citation {:module "dense-clinic-acute" :state :antibiotic-start}}
+                               {:type :delay :from 5 :to 20}
+                               {:type :outpatient-visit-end}]}
+             :weight 50}
+            ;; A long-term condition reviewed and a long-term medication
+            ;; started: `metabolic_syndrome/medications.json`'s
+            ;; metformin, which that module marks chronic.
+            {:pathway {:name "dense-clinic-chronic"
+                       :steps [{:type :outpatient-visit :reason "Diabetes review"}
+                               {:type :delay :from 5 :to 15}
+                               {:type :observation
+                                :codes [{:system :loinc :code "8310-5" :display "Body temperature"}]
+                                :value 36.8 :unit "Cel"}
+                               {:type :medication-order
+                                :codes [{:system :rxnorm :code "860975"
+                                         :display "24 HR Metformin hydrochloride 500 MG Extended Release Oral Tablet"}]
+                                :citation {:module "dense-clinic-chronic" :state :chronic-start}}
+                               {:type :delay :from 5 :to 20}
+                               {:type :outpatient-visit-end}]}
+             :weight 20}
+            ;; Seen and sent home with nothing prescribed.
+            {:pathway {:name "dense-clinic-review"
+                       :steps [{:type :outpatient-visit :reason "Routine review"}
+                               {:type :delay :from 5 :to 15}
+                               {:type :observation
+                                :codes [{:system :loinc :code "8310-5" :display "Body temperature"}]
+                                :value 36.7 :unit "Cel"}
+                               {:type :delay :from 5 :to 20}
+                               {:type :outpatient-visit-end}]}
+             :weight 30}
             ;; THE MODULE COHORT, EVERY EIGHTH ORDINAL. Disjoint from
-            ;; the three weighted pathways above by explicit ordinal --
+            ;; the six weighted pathways above by explicit ordinal --
             ;; the same disjoint-cohort shape `ed-tuesday` ships, for
             ;; the same reason: an empty pathway makes the module's own
             ;; compiled content the whole of that patient's queue, so
