@@ -757,4 +757,14 @@ def put(base,p):
 
 ## Close
 
-Appended by the close commit.
+Pushed `a7f37add..54b9457a` as one commit (this record, the prompt
+archive, docsgen's three generated files). Before it: `make docsgen`
+exit 0; the docs-tooling brick tests green (exit 0); gitleaks clean
+over the staged diff, and a grep of it for host paths and personal
+identifiers found nothing. `bin/post-push-verify a7f37add 54b9457a`:
+remote tip matches; the commit message is ASCII; CI not yet indexed at
+that moment (disclosed by the script). **CI run 44809502778 completed
+`success`** at `54b9457a` -- the close marker. No local `make test`
+(docs-only, AGENTS.md 22). No tag. Background processes this session
+started: the 41 simulation runs and one `gh run watch`, all exited;
+none left running.
