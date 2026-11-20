@@ -207,4 +207,5 @@ Commits over `3b6e836f`: `87e5e8b0` (prediction), `b6fb4ab3` (the pathway
 edit and siblings), `8340c4e3` (the mutation gate's fourth population),
 `e0bbcdee` (the `dispense-inpatient` root), `5681d390` (figures),
 `412b7b6f` (ADR-0189 addendum, record, prompt archived), then this close.
-The CI run id is appended by the commit after the push.
+Pushed `3b6e836f..d5d5700d`; `bin/post-push-verify` clean. CI run
+44641924962 (`test`) green at `d5d5700d` -- the close marker.
