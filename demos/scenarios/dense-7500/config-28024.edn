@@ -89,7 +89,19 @@
                      :dispense-minutes [15 60]}
                     {:id :surgery :name "Surgery" :beds 160 :surge-slots 40
                      :surge-format "%s-H%02d" :class :inpatient :turnaround-minutes [15 30]
-                     :dispense-minutes [15 60]}]}
+                     :dispense-minutes [15 60]}]
+            ;; THE COMMUNITY PHARMACY, which belongs to no ward
+            ;; (ADR-0190). Under `:dispense`, a prescription written at
+            ;; a clinic visit, or still unfilled when a stay is
+            ;; discharged, is filled with this probability, this many
+            ;; minutes after the visit closes or the patient leaves:
+            ;; four in five, one hour to seven days, uniform. These are
+            ;; the defaults, written out, and they are PROVISIONAL
+            ;; (`operational-models.md` has their basis). A
+            ;; prescription with no fill in the log is one the patient
+            ;; never filled.
+            :community-fill-share 0.80
+            :community-fill-minutes [60 10080]}
  ;; FOUR PROVIDERS, BETWEEN THEM ELIGIBLE FOR ALL FOUR WARDS -- the
  ;; spike's own F5-3 finding, which is that a ward with no eligible
  ;; attending is a run that stops. Dr. Vance is eligible everywhere,
