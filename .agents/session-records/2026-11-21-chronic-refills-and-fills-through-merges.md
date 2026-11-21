@@ -389,3 +389,38 @@ fills, 760 of them refills, 117 dispenses after a merge; at 28,024,
 190,088,591 bytes, sha-256
 `dd4516c020a3b0730425e1d3bab02840f2d5d65f9e19a4ede077c873f286a42e`. A
 retained corpus is a valid artifact of the earlier pin, at 1.12.0.
+
+## Close
+
+Gates, each to a full log with its exit code captured, nothing written
+into the tree while either ran.
+
+| run | tip | result | poly execution time |
+|---|---|---|---|
+| `make test`, first | `f18626f1` | **MAKE_EXIT=2** | -- |
+| `make test`, second | `aaaed90a` | MAKE_EXIT=0 | 33 minutes 22 seconds |
+| `make integration` | `aaaed90a` | MAKE_EXIT=0 | 18 minutes 49 seconds |
+
+The first run failed on one assertion: `ehrt.sim.run-test` pins the
+describe text header, and read "describe 1.3.0". The pin sits in
+the same namespace as the catalog pin fixed in `ffdcf2f5`, and that
+brick's green run was before the describe bump (`e35ce7cd`); I did not
+run the brick again after the bump, so the full suite was the first
+run to see it. I swept the tree for any other pin of the report version, found
+none, restated the header pin in `aaaed90a` and ran the whole suite
+again. No mutation population and no conformance pin moved; the
+figures exerciser and the README exercisers under `make integration`
+were green on the first run at `aaaed90a`.
+
+Commits over `29668820`:
+
+    516cf579 engine, schema 1.13.0
+    a9e4547e dense-7500 config: the marker and three options
+    334bceb4 oracle root: osteoporosis-dispense states a long tail
+    ffdcf2f5 pins: the invariant catalog is 48 deep
+    e35ce7cd describe 1.4.0
+    5ef656b4 dense-7500 figures and docs
+    f18626f1 ADR-0191, record, prompt archived
+    aaaed90a pins: the describe text header reads 1.4.0
+
+The CI run id follows in its own commit.
