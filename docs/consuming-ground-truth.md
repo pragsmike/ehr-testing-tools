@@ -548,11 +548,14 @@ The key does not look for an authored dispense of the same order: a
 pathway that authors one and runs with the key gets two. One shipped
 scenario sets the key,
 [`dense-7500`](../demos/scenarios/dense-7500/README.md), and none
-authors the step. Its 7,500-arrival log holds 4,991 medication orders,
-4,943 of them written during an admission, and 4,960 dispenses: 4,912
-`:inpatient` and 48 `:community`. The other 31 admission-written
-orders are undispensed: 29 whose stay closed before the turnaround
-elapsed and 2 whose patient was merged away first. Every other
+authors the step. Half of that scenario's pathway arrivals take an
+authored clinic visit and half an authored stay; its README says where
+the weights are and that they are provisional. Its 7,500-arrival log
+holds 4,490 medication orders: 1,925 written during an outpatient
+visit, each filled once `:community` at the instant its visit closes,
+and 2,565 written during an admission, 2,533 of them dispensed
+`:inpatient`. The other 32 admission-written orders are undispensed:
+each was written at the instant its stay closed. Every other
 shipped corpus holds orders with no dispense at all, and there a
 missing dispense says nothing: nothing was asked to fill it. No event
 records a medication administration, and no pharmacy message goes on
@@ -656,7 +659,7 @@ explicit patient ordinals, and the highest is **7,496**. At its
  :configured :yes,
  :configured-detail {:assigned-ordinals 134, :ordinal-range [48 7496],
                      :patients 7500, :weighted false},
- :observed 178, :subjects 90, ...}
+ :observed 180, :subjects 91, ...}
 ```
 
 At `--patients 28000` the same config gives the same `:ordinal-range`
@@ -682,7 +685,7 @@ which is a submodule a listed module calls. Neither is a name
 `:fails` count is exactly the violation count of the invariant it
 names, on the same log. On a clean corpus `:fails` is 0 and `:holds`
 tells you how much the invariant had to check. At the 7,500 cell,
-10,274 results each belong to an order placed before them, and 34,553
+5,250 results each belong to an order placed before them, and 24,952
 clinical events landed inside an open stay.
 
 ## Scale
@@ -747,20 +750,26 @@ paragraphs below still report, is in
 `.agents/plans/2026-08-24-traffic-scale-program.md`'s appendix.
 
 **10^5 events is comfortable, and the decade above it is entered: the
-largest completed run of this configuration is now 28,024 arrivals and
-691,758 events — a committed sibling, quoted in the fourth row below.
+largest completed run of this configuration is 28,024 arrivals and
+504,233 events — a committed sibling, quoted in the fourth row below.
 10^6 events have not been run at all.**
 
 | Cell | events | messages | msg/event | process wall |
 |---|---|---|---|---|
-| all ten opt-in keys | 172,867 | 177,104 | **1.0245** | 127.35 s |
-| the same, less `:bed-cycle` | 130,887 | 135,033 | **1.0317** | 105.20 s |
-| no opt-in key at all | 101,069 | 65,580 | **0.6489** | 52.73 s |
-| all ten opt-in keys, 28,024 arrivals, ground truth only | 691,758 | — | — | 373.04 s |
+| all ten opt-in keys | 127,176 | 125,948 | **0.9903** | 134.18 s |
+| the same, less `:bed-cycle` | 101,659 | 100,487 | **0.9885** | 102.41 s |
+| no opt-in key at all | 67,780 | 40,207 | **0.5932** | 44.08 s |
+| all ten opt-in keys, 28,024 arrivals, ground truth only | 504,233 | — | — | 363.49 s |
 
 **The first three rows are one generation of one committed configuration**,
-re-measured 2026-11-19 at `b6fb4ab3`. Their COUNTS last moved that day,
-when the scenario's inpatient pathway began writing its second
+re-measured 2026-11-20 at `2edf7a4e`. Their COUNTS last moved that day,
+when the scenario gained three weighted clinic pathways that take half
+of the arrivals drawing a pathway: a clinic visit is far shorter than
+a stay and holds no bed, so every cell lost a quarter to a third of
+its events (the all-keys cell 45,691 of 172,867), and the all-keys
+cell's community fills went from 48 to 1,925 while its inpatient
+dispenses fell from 4,912 to 2,533. Before that they moved on
+2026-11-19, when the scenario's inpatient pathway began writing its second
 medication order mid-stay instead of at the stay's last instant: the
 order is now dispensed, which is about 2,450 more events in each keyed
 cell, and because a moved step reshuffles what follows it every cell
@@ -786,7 +795,9 @@ configuration's generate phase between 2.5× and 3.4×. The walls rose
 14–22% at the 2026-09-30 re-measurement and 11–26% again on 2026-11-18,
 in every cell both times, the bare one included, so neither rise is
 attributed to a rebaseline; they fell back at the first 2026-11-19
-re-measurement and moved under 4% at this one. The scenario README names every movement and links their
+re-measurement and moved under 4% at the second. At this one the
+all-keys wall rose 5% on a log a quarter smaller, and the keyless
+cell's fell 16%. The scenario README names every movement and links their
 derivations. They are
 [`demos/scenarios/dense-7500/`](../demos/scenarios/dense-7500/README.md)'s
 `config.edn`, `config-nobed.edn` and `config-bare.edn` at `--seed
@@ -804,19 +815,20 @@ deliberate.** It is
 [`config-28024.edn`](../demos/scenarios/dense-7500/config-28024.edn) —
 `config.edn` with its one `:persons :count` line set by that file's own
 rule to twice the arrivals — at `--seed 20260824 --patients 28024
---churn --format ground-truth`, measured 2026-11-19 at `b6fb4ab3`: ONE
+--churn --format ground-truth`, measured 2026-11-20 at `2edf7a4e`: ONE
 run, `sim run` rather than `corpus generate`, with the heap set
 explicitly (`-Xmx8g`) rather than left at the default. `--format
 ground-truth` emits no message, so there is no message count to quote,
 and the wall is not comparable with the three above it. The run wrote a
-270,551,734-byte event log whose sha-256 begins `26e31b4f`, carrying
-20,121 inpatient and 59 community dispenses. Earlier on 2026-11-19 the
-same command wrote 267,680,351 bytes beginning `ce0982de`; from the
+189,203,716-byte event log whose sha-256 begins `d50929d2`, carrying
+10,332 inpatient and 7,791 community dispenses. From 2026-11-19 until
+then the same command wrote 270,551,734 bytes beginning `26e31b4f`;
+earlier on 2026-11-19, 267,680,351 bytes beginning `ce0982de`; from the
 second ground-truth rebaseline until then, 264,575,690
 bytes beginning `5fb8187b`; from the first rebaseline until the second,
 264,570,024 bytes beginning `ee59219e`; and
 before that 263,570,096 bytes beginning `589600c5`, a log independently
-reproduced byte for byte on another host and JDK build. All four remain
+reproduced byte for byte on another host and JDK build. All five remain
 valid artifacts of the pin they were written under, and regenerating
 gives the new bytes. **Its module cohort is a 7,500-arrival run's** — see
 [Describing a corpus](#describing-a-corpus) — so read it as the
