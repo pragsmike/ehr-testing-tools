@@ -3,7 +3,7 @@
 
 # Session prompts — index
 
-Generated index of [`.agents/prompts`](.) — 279 files. The convention, what a record contains, and where this sits relative to every other register are in [`README.md`](README.md); annotations that used to ride these rows are in [`../plans/state-history-2026-08.md`](../plans/state-history-2026-08.md), dated.
+Generated index of [`.agents/prompts`](.) — 280 files. The convention, what a record contains, and where this sits relative to every other register are in [`README.md`](README.md); annotations that used to ride these rows are in [`../plans/state-history-2026-08.md`](../plans/state-history-2026-08.md), dated.
 
   * 2026-08-01-agent-ux-capture.md
   * 2026-08-01-migration-session-1.md
@@ -282,5 +282,6 @@ Generated index of [`.agents/prompts`](.) — 279 files. The convention, what a 
   * 2026-11-18-rebaseline-end-references-and-dense-dispense.md
   * 2026-11-19-dense-inpatient-analgesia-and-inpatient-root.md
   * 2026-11-19-inpatient-dispense-derived.md
+  * 2026-11-20-community-fill-share-lag-and-discharge-prescriptions.md
   * 2026-11-20-dense-outpatient-pathways.md
   * 2026-11-20-module-yield-census.md
