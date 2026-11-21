@@ -323,3 +323,5 @@ Commits over `77cc8f54`: `affd8630` (prediction), `2edf7a4e` (the three
 pathways and siblings), `c8190c1e` (two sim-brick floors), `5b8439e3`
 (config comment), `0894ee7b` (figures and docs), `b012a2e5` (ADR-0189
 addendum, record, prompt archived), then this close.
+Pushed `77cc8f54..2889a7eb`; `bin/post-push-verify` clean. CI run
+44853039450 (`test`) green at `2889a7eb` -- the close marker.
