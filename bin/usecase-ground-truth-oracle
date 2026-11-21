@@ -117,7 +117,7 @@ grep -q ':status :ok' "$piped_verdict" \
 grep -q ':status :ok' "$retained_verdict" \
   || fail "the retained asset's verdict is not :status :ok"
 
-# 3. The catalog really is 47 invariants deep, counted out of the run's
+# 3. The catalog really is 48 invariants deep, counted out of the run's
 #    own :invariants-checked rather than out of prose. The page states
 #    that number twice -- in :get and in the strip's own comment -- so it
 #    is asserted rather than trusted. It read 45 from 2026-09-05 until
@@ -126,10 +126,11 @@ grep -q ':status :ok' "$retained_verdict" \
 #    supposed to catch the drift was itself the thing that drifted.
 #    It drifted the same way again on 2026-11-17, when ADR-0186 added
 #    the dispense invariant and no session ran this tier; found
-#    2026-11-18, 46 -> 47.
+#    2026-11-18, 46 -> 47. 2026-11-21, ADR-0191: 47 -> 48, the fill
+#    numbering invariant, found by running this script the same day.
 invariants="$(sed -n 's/.*:invariants-checked \[\([^]]*\)\].*/\1/p' "$retained_verdict" \
   | tr ' ' '\n' | grep -c .)"
-[ "$invariants" -eq 47 ] || fail "expected 47 invariants checked, got $invariants"
+[ "$invariants" -eq 48 ] || fail "expected 48 invariants checked, got $invariants"
 
 # 4. The FOUR config-needing invariants the strip's own comment names are
 #    among them, by name. This is the reason the taught commands pass

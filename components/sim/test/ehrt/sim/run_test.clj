@@ -1017,10 +1017,15 @@
                      "; the byte gate above carries the diagnostic."))))))))
 
 (def ^:private arc0-invariant-catalog
-  "The 47 invariant names `check-all` reports, in reporting order --
+  "The 48 invariant names `check-all` reports, in reporting order --
   pinned so the findings assertion below is a full-value `=` rather than
   a check of one key. Catalog drift is itself a change in what \"identical
   findings\" means, so it belongs inside the gate, not outside it.
+
+  RE-PINNED AGAIN 2026-11-21, 47 -> 48, by ADR-0191, on the same terms:
+  `medication-dispense-fill-numbers-count-up-from-one` is an ADDITION,
+  vacuous on all four corpora (none holds a dispense), so no FINDING
+  moved.
 
   RE-PINNED AGAIN 2026-11-17, 46 -> 47, by ADR-0186 (per R-catalog-pin
   the new name is an ADDITION with this dated citation -- nothing
