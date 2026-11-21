@@ -311,3 +311,15 @@ mix is three weights in `demos/scenarios/dense-7500/config.edn`'s
 45 / 35 / 20 for the stays), all provisional; change them and re-derive
 the three siblings by the README's commands. A retained corpus is a
 valid artifact of the earlier pin.
+
+## Close
+
+Gates at `b012a2e5`, clean tree, nothing written into it while either ran:
+
+- `make test`, unpiped to a log: `MAKE_EXIT=0`; poly execution time 32 minutes 14 seconds.
+- `make integration`: `MAKE_EXIT=0`; poly execution time 21 minutes 16 seconds.
+
+Commits over `77cc8f54`: `affd8630` (prediction), `2edf7a4e` (the three
+pathways and siblings), `c8190c1e` (two sim-brick floors), `5b8439e3`
+(config comment), `0894ee7b` (figures and docs), `b012a2e5` (ADR-0189
+addendum, record, prompt archived), then this close.
