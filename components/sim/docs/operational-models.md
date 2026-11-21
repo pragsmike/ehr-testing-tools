@@ -292,6 +292,81 @@ first, gets no dispense: the order was stopped before pharmacy filled
 it. A patient absorbed by a merge takes their unfilled orders with
 them.
 
+## The community pharmacy (ADR-0190)
+
+A prescription a patient takes home is filled outside the hospital, or
+not at all. Two optional `Facility` keys, beside `:wards`, say how
+often and how soon. They sit on the facility because a community
+pharmacy belongs to no ward. Like `:dispense-minutes` they are read
+only when the run sets the `:dispense` engine key.
+
+```clojure
+{:id :metro-general
+ :wards [...]
+ :community-fill-share 0.80
+ :community-fill-minutes [60 10080]}
+```
+
+| key | meaning | default |
+|---|---|---|
+| `:community-fill-share` | the probability, 0 to 1, that a prescription is filled at all | `0.80` |
+| `:community-fill-minutes` | `[lo hi]` minutes from the visit's close, or the discharge, to the fill; uniform | `[60 10080]`, one hour to seven days |
+
+**Which prescriptions.** Each medication order an outpatient visit
+wrote and left open, counted from the visit's close. And each
+**discharge prescription**: an order written during an admission that
+is still active, and that pharmacy never dispensed, when the stay is
+discharged, counted from the discharge. An order the stay ended, or one
+already dispensed `:inpatient`, is not one.
+
+**Both defaults are provisional.** They were chosen from a quick
+reading of four studies and are fitted to none of them:
+
+- 78% of 195,930 e-prescriptions were filled, and 72% of those for a
+  new medication (Fischer et al., J Gen Intern Med 2010;25(4):284-90,
+  PMID 20131023).
+- 17% of 150,565 new prescriptions in primary care were never filled
+  (Tamblyn et al., CMAJ; <https://cmaj.ca/node/149155>).
+- Of 32,586 new chronic-medication orders in an elderly US cohort, 75%
+  were filled within 7 days and 81% within 30 (Franklin et al., J Gen
+  Intern Med 2018, PMC6206334).
+- After discharge from a general medicine service, 28% of patients with
+  new prescriptions had not filled one or more at 7 days (PMC3642181).
+
+**One share for every prescription is a simplification.** The studies
+report shares that differ by drug class, by whether the medication is
+new, and by setting.
+
+**A uniform lag is cruder than the studies.** Real first fills cluster
+in the first day or two and trail off over weeks. A uniform draw over
+one hour to seven days puts the median at three and a half days and
+lets nothing arrive later than seven. Uniform is the engine's shape for
+a range, not a claim about that distribution.
+
+The schema refuses a share outside 0 to 1 and a range that is not one
+(`0 <= lo <= hi`, integers). A share of `1` with a range of `[0 0]`
+fills every prescription at the instant its visit closes, which is the
+rule this key had before these options existed (ADR-0187).
+
+**The draws.** Two per prescription, on the patient's `:pharmacy` RNG
+family: filled at all, then the lag. Both are always taken, so one
+prescription's outcome, or a retuned option, moves no other draw. A
+visit's orders are drawn when the visit closes. An admission order's
+are drawn when the order is written, after its turnaround draw, since
+whether it becomes a discharge prescription is not known until later.
+
+**A prescription can go unfilled, and absence is the only record.**
+Four ways: the share's draw; the order ended before the lag elapsed;
+the patient died first; the patient was absorbed by a merge first. One
+more for a discharge prescription: a cancelled discharge put the
+patient back in the bed. No event marks an unfilled prescription. A
+consumer must not read a `:medication-order` with no
+`:medication-dispense` as an error.
+
+**A community fill belongs to no encounter.** It carries no
+`:encounter-id`, also when it lands while the same patient is inside a
+later visit or stay.
+
 ## Scheduling (arc 3b sweep 3, ADR-0174 section 2(b))
 
 **Not a scheduler.** Behind the run-config opt-in `:scheduling`, the

@@ -251,10 +251,9 @@ them. **Which one you join against is the fact worth telling us.**
 
 The first two now share one event kind, told apart by a stated
 `:setting`; the third has none. What is still undecided: how often a
-long-running prescription refills and for how long, whether a
-prescription written at an emergency-department discharge is filled,
-how long a community fill lags its visit and how many prescriptions go
-unfilled, and whether any of it reaches a wire format.
+long-running prescription refills and for how long, a lag whose shape
+is closer to real first fills than a uniform range, and whether any of
+it reaches a wire format.
 
 *Today:* a `:medication-order` is a prescription fact and nothing more —
 the patient, the medication's codes, and a citation to the module state
@@ -264,17 +263,23 @@ it fills and states its `:setting`, `:inpatient` or `:community`; it
 repeats no codes and carries no fill number. **Two things produce one.**
 A pathway step you author does, in either setting. The `:dispense`
 engine key derives both. Each order an outpatient visit
-wrote and left open gets one `:community` fill, after the visit closes
-and at the instant it closes. That is one fill per order — a
-prescription meant to run for years is filled once. Each order written
+wrote and left open is filled `:community` with a stated probability
+(`:community-fill-share`, default 0.80) after a drawn lag
+(`:community-fill-minutes`, default one hour to seven days after the
+visit closes); both are facility options and both defaults are
+provisional. That is at most one fill per order — a prescription meant
+to run for years is filled once, and about one in five is never filled
+at all, which a consumer must not read as an error. Each order written
 during an admission, which here includes every emergency-department
 visit, gets one `:inpatient` dispense after a pharmacy turnaround drawn
 from a range its ward states (`:dispense-minutes`, with provisional
 defaults by ward class), unless the order has ended or the stay has
-closed by then; such an order stays undispensed. The key moves no
+closed by then. An order still active when its stay is discharged, and
+never dispensed inpatient, is a discharge prescription and is filled in
+the community under the same share and lag. The key moves no
 other draw, so the same seed with and without it is the same hospital
 plus the dispenses. One shipped scenario sets the key, `dense-7500`,
-whose 7,500-arrival log carries 2,533 inpatient dispenses and 1,925
+whose 7,500-arrival log carries 2,533 inpatient dispenses and 1,490
 community fills; none authors the step.
 No event kind for a medication
 administration exists. None of the three kinds renders to any HL7 v2

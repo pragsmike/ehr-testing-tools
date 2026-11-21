@@ -112,9 +112,10 @@ once rather than per key.
    single ground-truth byte.
 
    **One engine key is the exception for ground truth: `:dispense`
-   adds events and moves no other draw.** Its community half draws
-   nothing. Its inpatient half draws a pharmacy turnaround for each
-   order an admission writes, on a stream nothing else reads. So the
+   adds events and moves no other draw.** It draws a pharmacy
+   turnaround for each order an admission writes, and for each
+   prescription whether it is filled in the community and how long
+   after, all on one stream nothing else reads. So the
    same seed with and without it describes the *same* hospital. The two
    logs differ by the `:medication-dispense` events
    themselves and by every log index after the first of them — each
@@ -171,7 +172,7 @@ noted. Each of these reaches the simulation itself.
 | **`:encounters`** | — | **the encounter horizon.** Truthy lifts the one-encounter-per-patient wall and mints an `:encounter-id` at every opener, so a returning person opens a *second* encounter on the same patient and the same MRN — which is what an MPI under test needs to see |
 | **`:bed-cycle`** | — | **the bed-status cycle.** Truthy makes a vacated bed go `:dirty` → `:cleaning` → `:ready` at each ward's own pace, gates allocation on `:ready`, and produces `:bed-status-change` |
 | **`:scheduling`** | — | **appointments.** Splits arrivals scheduled-vs-walk-in and books follow-ups at discharge; produces `:appointment`, `:reschedule`, `:appointment-cancel`, `:no-show` |
-| `:dispense` | — | derived dispenses. Truthy gives each medication order an outpatient visit wrote, and left open, one `:medication-dispense` with `:setting :community`, after the visit's closing event and at that event's instant. And gives each order written during an admission one `:inpatient` dispense, a pharmacy turnaround later, unless the order has ended or the stay has closed by then. The turnaround is drawn from the ward's `:dispense-minutes` `[lo hi]` (default `[5 25]` for an `:ed` ward, `[15 60]` for an `:inpatient` one; provisional). Moves no other draw: rule 2's exception |
+| `:dispense` | — | derived dispenses. Truthy gives each medication order an outpatient visit wrote, and left open, a drawn chance of one `:medication-dispense` with `:setting :community`, a drawn lag after the visit closes: the facility's `:community-fill-share` (default `0.80`) and `:community-fill-minutes` `[lo hi]` (default `[60 10080]`); both provisional. And gives each order written during an admission one `:inpatient` dispense, a pharmacy turnaround later, unless the order has ended or the stay has closed by then. The turnaround is drawn from the ward's `:dispense-minutes` `[lo hi]` (default `[5 25]` for an `:ed` ward, `[15 60]` for an `:inpatient` one; provisional). An admission order still active and undispensed when its stay is discharged is a discharge prescription, filled `:community` under the same share and lag. Moves no other draw: rule 2's exception |
 
 The four bold rows are the ones that make the stream rich, and the
 three below `:persons` did not exist in any corpus this repository
@@ -522,10 +523,13 @@ prescribed, and a `:medication-end` closes it. Since event schema 1.12.0
 a `:medication-dispense` can name the order it fills, in one of two
 stated settings, and there are two ways to get one. A pathway step you
 author produces one in either setting. The `:dispense` engine key
-derives both. It produces one `:community` fill for each order an
-outpatient visit wrote and left open, placed after that visit closes;
-it fills each such order exactly once, however long the prescription
-runs. And it produces one `:inpatient` dispense for each order written
+derives both. Each order an outpatient visit wrote and left open is a
+prescription the patient takes home: it is filled `:community` with a
+probability the facility states (`:community-fill-share`, default
+0.80), after a lag drawn from a range the facility states
+(`:community-fill-minutes`, default one hour to seven days after the
+visit closes). It is filled at most once, however long the
+prescription runs. And the key produces one `:inpatient` dispense for each order written
 during an admission — an emergency-department visit is an admission
 here — after a pharmacy turnaround drawn from the range of the ward the
 patient was in when the order was written. A ward states that range as
@@ -533,16 +537,30 @@ patient was in when the order was written. A ward states that range as
 default, `[5 25]` minutes for an `:ed` ward and `[15 60]` for an
 `:inpatient` one. Those defaults are provisional
 ([`operational-models.md`](../components/sim/docs/operational-models.md#pharmacy-turnaround-adr-0189)
-gives their basis). The dispense carries the stay's `:encounter-id`.
+gives their basis, and the community pharmacy's). An inpatient
+dispense carries the stay's `:encounter-id`; a community fill carries
+none, also when it lands during a later visit or stay of the same
+patient.
+
+**A prescription with no fill is not an error.** Under the key about
+one prescription in five is never filled, because that is what the
+share's draw says; others are unfilled because the order ended before
+the lag elapsed or the patient was merged away or died first. Nothing
+in the log marks an unfilled prescription beyond the absence of a
+`:medication-dispense` naming it. Do not treat that absence as a
+defect in the corpus, and do not assume a fill follows its order
+closely: with the default range it can be a week behind.
 
 **Under the key, an admission-written order with no dispense is an
 order pharmacy never filled.** When the turnaround elapses the order is
 dispensed only if it is still active and the patient is still in the
 same stay. An order ended first, a stay closed first, or a patient
-merged away first leaves the order undispensed, and nothing in the log
-marks it beyond the absence. A prescription written at an ED discharge
-is usually such an order: the stay closes before pharmacy reaches it, and the
-community half does not fill it either.
+merged away first leaves the order undispensed inpatient, and nothing
+in the log marks it beyond the absence. One of those cases is a
+**discharge prescription**: an order still active when its stay is
+discharged, never dispensed inpatient. A prescription written at an ED
+discharge is the usual one. It is filled in the community under the
+same share and lag as a visit's, counted from the discharge.
 
 The key does not look for an authored dispense of the same order: a
 pathway that authors one and runs with the key gets two. One shipped
@@ -551,11 +569,13 @@ scenario sets the key,
 authors the step. Half of that scenario's pathway arrivals take an
 authored clinic visit and half an authored stay; its README says where
 the weights are and that they are provisional. Its 7,500-arrival log
-holds 4,490 medication orders: 1,925 written during an outpatient
-visit, each filled once `:community` at the instant its visit closes,
-and 2,565 written during an admission, 2,533 of them dispensed
-`:inpatient`. The other 32 admission-written orders are undispensed:
-each was written at the instant its stay closed. Every other
+holds 4,490 medication orders. 1,925 were written during an outpatient
+visit, and 1,463 of those are filled `:community`, between 63 and
+10,078 minutes after the visit closed (median 4,990, about three and a
+half days); the other 462 have no fill. 2,565 were written during an
+admission, and 2,533 of those are dispensed `:inpatient`. The other 32
+were written at the instant their stay closed: they are discharge
+prescriptions, and 27 of them are filled `:community`. Every other
 shipped corpus holds orders with no dispense at all, and there a
 missing dispense says nothing: nothing was asked to fill it. No event
 records a medication administration, and no pharmacy message goes on
@@ -751,19 +771,22 @@ paragraphs below still report, is in
 
 **10^5 events is comfortable, and the decade above it is entered: the
 largest completed run of this configuration is 28,024 arrivals and
-504,233 events — a committed sibling, quoted in the fourth row below.
+502,436 events — a committed sibling, quoted in the fourth row below.
 10^6 events have not been run at all.**
 
 | Cell | events | messages | msg/event | process wall |
 |---|---|---|---|---|
-| all ten opt-in keys | 127,176 | 125,948 | **0.9903** | 134.18 s |
-| the same, less `:bed-cycle` | 101,659 | 100,487 | **0.9885** | 102.41 s |
-| no opt-in key at all | 67,780 | 40,207 | **0.5932** | 44.08 s |
-| all ten opt-in keys, 28,024 arrivals, ground truth only | 504,233 | — | — | 363.49 s |
+| all ten opt-in keys | 126,741 | 125,961 | **0.9938** | 105.08 s |
+| the same, less `:bed-cycle` | 101,224 | 100,498 | **0.9928** | 93.17 s |
+| no opt-in key at all | 67,780 | 40,207 | **0.5932** | 41.25 s |
+| all ten opt-in keys, 28,024 arrivals, ground truth only | 502,436 | — | — | 325.65 s |
 
 **The first three rows are one generation of one committed configuration**,
-re-measured 2026-11-20 at `2edf7a4e`. Their COUNTS last moved that day,
-when the scenario gained three weighted clinic pathways that take half
+re-measured 2026-11-20 at `10ae3f71`. Their COUNTS last moved that day,
+when a community fill became a draw[^adr-0190]: a prescription is now
+filled four times in five, one hour to seven days after its visit
+closes, so the two cells that carry the key hold 435 fewer events and
+the third is untouched. Before that, the same day, the scenario gained three weighted clinic pathways that take half
 of the arrivals drawing a pathway: a clinic visit is far shorter than
 a stay and holds no bed, so every cell lost a quarter to a third of
 its events (the all-keys cell 45,691 of 172,867), and the all-keys
@@ -795,9 +818,10 @@ configuration's generate phase between 2.5× and 3.4×. The walls rose
 14–22% at the 2026-09-30 re-measurement and 11–26% again on 2026-11-18,
 in every cell both times, the bare one included, so neither rise is
 attributed to a rebaseline; they fell back at the first 2026-11-19
-re-measurement and moved under 4% at the second. At this one the
-all-keys wall rose 5% on a log a quarter smaller, and the keyless
-cell's fell 16%. The scenario README names every movement and links their
+re-measurement and moved under 4% at the second. At the first
+2026-11-20 re-measurement the all-keys wall rose 5% on a log a quarter
+smaller; at this one it fell 22% on a log that barely moved. Read no
+wall here to better than that. The scenario README names every movement and links their
 derivations. They are
 [`demos/scenarios/dense-7500/`](../demos/scenarios/dense-7500/README.md)'s
 `config.edn`, `config-nobed.edn` and `config-bare.edn` at `--seed
@@ -815,20 +839,21 @@ deliberate.** It is
 [`config-28024.edn`](../demos/scenarios/dense-7500/config-28024.edn) —
 `config.edn` with its one `:persons :count` line set by that file's own
 rule to twice the arrivals — at `--seed 20260824 --patients 28024
---churn --format ground-truth`, measured 2026-11-20 at `2edf7a4e`: ONE
+--churn --format ground-truth`, measured 2026-11-20 at `10ae3f71`: ONE
 run, `sim run` rather than `corpus generate`, with the heap set
 explicitly (`-Xmx8g`) rather than left at the default. `--format
 ground-truth` emits no message, so there is no message count to quote,
 and the wall is not comparable with the three above it. The run wrote a
-189,203,716-byte event log whose sha-256 begins `d50929d2`, carrying
-10,332 inpatient and 7,791 community dispenses. From 2026-11-19 until
-then the same command wrote 270,551,734 bytes beginning `26e31b4f`;
+188,719,656-byte event log whose sha-256 begins `bd4dec16`, carrying
+10,332 inpatient and 5,994 community dispenses. Earlier on 2026-11-20
+the same command wrote 189,203,716 bytes beginning `d50929d2`; from
+2026-11-19 until then, 270,551,734 bytes beginning `26e31b4f`;
 earlier on 2026-11-19, 267,680,351 bytes beginning `ce0982de`; from the
 second ground-truth rebaseline until then, 264,575,690
 bytes beginning `5fb8187b`; from the first rebaseline until the second,
 264,570,024 bytes beginning `ee59219e`; and
 before that 263,570,096 bytes beginning `589600c5`, a log independently
-reproduced byte for byte on another host and JDK build. All five remain
+reproduced byte for byte on another host and JDK build. All six remain
 valid artifacts of the pin they were written under, and regenerating
 gives the new bytes. **Its module cohort is a 7,500-arrival run's** — see
 [Describing a corpus](#describing-a-corpus) — so read it as the
@@ -1021,3 +1046,5 @@ different faults rather than three ways of saying the same thing.
 [^adr-0188]: Design record [ADR-0188](../notes/ADRs.md).
 
 [^adr-0189]: Design record [ADR-0189](../notes/ADRs.md).
+
+[^adr-0190]: Design record [ADR-0190](../notes/ADRs.md).
