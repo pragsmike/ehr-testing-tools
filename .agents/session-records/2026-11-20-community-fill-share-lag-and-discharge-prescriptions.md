@@ -284,3 +284,8 @@ Commits over `7190220d`:
 - `3f76459e` figures and docs
 - `0402b5d1` ADR-0190, this record, the prompt archived
 - this commit: the close
+
+Pushed `7190220d..5d58408f`; `bin/post-push-verify 7190220d 5d58408f`
+reported the remote tip matching and every message ASCII. CI run
+44865788647 (`test`) concluded success at `5d58408f`, read with
+`gh run view`. Closed.
