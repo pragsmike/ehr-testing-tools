@@ -256,3 +256,31 @@ session. Event schema 1.12.0, unchanged. New 28,024 log: 188,719,656
 bytes, sha-256
 `bd4dec16e8358184c3a3fc0f3b7bf93c91d322fd04ca206acbcf2dcd24c5222f`. A
 retained corpus is a valid artifact of the earlier pin.
+
+## Close
+
+Both gates ran at `0402b5d1`, tree clean, nothing written into the
+tree while either ran, each to a full log with its exit code captured.
+
+- `make test`: `MAKE_EXIT=0`; poly execution time 32 minutes 25
+  seconds; no `FAIL in` or `ERROR in` line in the log.
+- `make integration`: `MAKE_EXIT=0`; poly execution time 19 minutes 9
+  seconds; no `FAIL in` or `ERROR in` line in the log.
+
+Pins and mutation populations: the full suite showed nothing further
+to move. Every pin that changed was restated in the bricks edited in
+steps 1 to 4 (the sim-engine dispense tests, the two oracle roots,
+dense's figures and README literals). The mutation gate's populations
+are still sited, and the sim brick's floors over the dense 750 cell,
+the conformance tests and the oracle-coverage pins all hold as they
+stood at `7190220d`.
+
+Commits over `7190220d`:
+
+- `c67d4a6f` the engine change, its tests, the record through the
+  prediction
+- `10ae3f71` dense-7500 states the two options
+- `27ee84b6` the two keyed oracle roots
+- `3f76459e` figures and docs
+- `0402b5d1` ADR-0190, this record, the prompt archived
+- this commit: the close
