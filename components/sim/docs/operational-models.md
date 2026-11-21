@@ -357,7 +357,8 @@ whether it becomes a discharge prescription is not known until later.
 
 **A prescription can go unfilled, and absence is the only record.**
 Four ways: the share's draw; the order ended before the lag elapsed;
-the patient died first; the patient was absorbed by a merge first. One
+the patient died first; a newer order of the same citation replaced
+it. (Until ADR-0191 a merge was a fifth: see below.) One
 more for a discharge prescription: a cancelled discharge put the
 patient back in the bed. No event marks an unfilled prescription. A
 consumer must not read a `:medication-order` with no
@@ -366,6 +367,115 @@ consumer must not read a `:medication-order` with no
 **A community fill belongs to no encounter.** It carries no
 `:encounter-id`, also when it lands while the same patient is inside a
 later visit or stay.
+
+## Refills, and a fill through a merge (ADR-0191)
+
+A long-term medication is refilled. A medication order may be marked
+**chronic**, and every dispense carries a **fill number**.
+
+**The marker.** `:chronic true` on a `:medication-order` step and on
+the event it produces. It is `true` or absent; absent means nobody
+marked the order, and `false` is never written. Four vendored modules
+carry Synthea's own flag and it now reaches the event (`osteoporosis`,
+`metabolic_syndrome/medications`, `medications/emergency_inhaler`,
+`medications/maintenance_inhaler`). A pathway author states it on the
+step:
+
+```clojure
+{:type :medication-order
+ :codes [{:system :rxnorm :code "860975"
+          :display "24 HR Metformin hydrochloride 500 MG Extended Release Oral Tablet"}]
+ :chronic true
+ :citation {:module "clinic" :state :chronic-start}}
+```
+
+**The fill number.** `:fill-number` on every `:medication-dispense`,
+authored, inpatient and community alike: which dispense of its order
+this is, from 1. Several dispenses naming one `:order-event-id` are one
+prescription filled and refilled.
+
+**The chain.** Under the `:dispense` engine key, each community fill
+of a chronic order may be followed by another. Three more optional
+`Facility` keys say how:
+
+```clojure
+{:id :metro-general
+ :wards [...]
+ :community-fill-share 0.80
+ :community-fill-minutes [60 10080]
+ :refill-interval-days [28 35]
+ :refill-continuation 0.94
+ :refill-tail-days 90}
+```
+
+| key | meaning | default |
+|---|---|---|
+| `:refill-interval-days` | `[lo hi]` days from one fill to the next; uniform | `[28 35]` |
+| `:refill-continuation` | the probability, 0 to 1, that a fill is followed by another | `0.94` |
+| `:refill-tail-days` | no refill is queued later than the run's last arrival plus this many days | `90` |
+
+The schema refuses an interval that is not `1 <= lo <= hi` in whole
+days, a chance outside 0 to 1, and a tail that is not a non-negative
+whole number.
+
+A refill takes no share draw and no lag: it lands one interval after
+the fill before it. It is declined, and the chain ends, if the order
+has ended by then, if a newer order of the same citation has replaced
+it, or if the patient has died. An `:inpatient` dispense is never
+refilled. A prescription that was never filled is never refilled. A
+chronic discharge prescription is refilled as a clinic visit's is. A
+`:medication-dispense` step you author starts no chain.
+
+**All three defaults are provisional.**
+
+- A 30-day supply is the traditional retail unit. Ninety-day fills are
+  real and are not modelled: they ran at 12 to 15% across four drug
+  classes in a post-infarction cohort of 353,259 patients
+  (<https://scholars.duke.edu/individual/pub1470204>).
+- About half of patients who start a chronic medication discontinue it
+  (Franklin et al., J Gen Intern Med 2018, PMC6206334, as background).
+  0.94 compounded over twelve refills is about one half.
+- One interval and one chance for every chronic order and every fill
+  is a simplification: real discontinuation is front-loaded.
+
+**The tail, and what it does to a run's time span.** Without a bound a
+patient who keeps refilling would keep the run going for as long as the
+draws allowed, so no refill is queued for an instant later than the
+last arrival plus `:refill-tail-days`. The arrival clock is the
+measure because it is fixed by the configuration before anything is
+decided: `--patients` arrivals, each up to `:arrival-gap` minutes after
+the one before. Three consequences:
+
+- A run whose events all fall near its arrivals grows by up to the
+  tail: with the default, about three months of refills after the last
+  visit.
+- A run that already extends far past its arrivals does not grow.
+  `dense-7500` runs twenty years past its last arrival on `:persons`
+  alone, and its refills sit inside its first 110 days.
+- **An order written after the bound is filled and never refilled.**
+  The arrival clock is short (under 20 days in `dense-7500`'s
+  28,024-arrival cell), and a module with a long horizon, a booked
+  visit or a returning person can write an order well past it. A site
+  that wants those refilled states a longer tail.
+
+**The draws.** Two per community fill of a chronic order, on the
+`:pharmacy` RNG family of the patient who wrote the order: another
+fill or not, then the interval. Both are always taken.
+
+**A pending fill follows its patient through a merge.** A merge
+corrects a record; the person still collects the medication. A queued
+inpatient dispense or community fill whose patient is absorbed is
+carried to the surviving record: the dispense is the survivor's event,
+under the surviving MRN, and it still names the absorbed record's
+order. A chronic chain carries on for the survivor. A carried
+inpatient dispense goes to the survivor only if the survivor is an
+inpatient at that instant, and then carries the survivor's own
+`:encounter-id`; the absorbed record's stay never closes, so there is
+no other stay to dispense into.
+
+**A chain stops without an event.** The patient stopped (the draw),
+the tail was reached, the order ended, or a newer order replaced it.
+As with a missing first fill, absence is the only record.
 
 ## Scheduling (arc 3b sweep 3, ADR-0174 section 2(b))
 

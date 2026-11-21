@@ -55,13 +55,19 @@ file without the key is left, event for event. The rendered messages
 are not held fixed the same way; see "The counts last moved" below. No
 pathway here authors a dispense.
 
-**About three clinic prescriptions in four are filled, days later, and
-nearly every admission-written order is dispensed.** The two clinic
-pathways that prescribe write one order per visit and leave it open.
-Each is filled with probability 0.80, after a lag of one hour to seven
-days from the visit's close. **A prescription with no fill is not a
-defect**: the patient never filled it, or was merged into another
-record before the lag ran out. An admission-written order is dispensed
+**About four clinic prescriptions in five are filled, days later; the
+long-term one is then refilled; and nearly every admission-written
+order is dispensed.** The two clinic pathways that prescribe write one
+order per visit and leave it open. Each is filled with probability
+0.80, after a lag of one hour to seven days from the visit's close.
+**A prescription with no fill is not a defect**: the patient never
+filled it. `dense-clinic-chronic` marks its order `:chronic true`, so
+each fill of it is followed by another 28 to 35 days later with chance
+0.94, until the patient stops or the tail is reached: 90 days after
+the last arrival. Every dispense carries a `:fill-number`; group them
+by `:order-event-id`. A fill still pending when its patient's record is
+merged away is emitted for the surviving record (ADR-0191). An
+admission-written order is dispensed
 only if it is still active, and the stay still open, when the
 turnaround elapses. `dense-inpatient` writes two orders per stay: the
 antibiotic in the ED, before the transfer, and the analgesia order on
@@ -73,35 +79,50 @@ both. At the three measured arrival counts:
 |---|---|---|---|
 | medication orders | 4,490 | 488 | 18,166 |
 | written during an outpatient visit | 1,925 | 198 | 7,791 |
-| of them filled `:community` | 1,463 (76.0%) | 152 (76.8%) | 5,961 (76.5%) |
-| unfilled, patient merged away within a week of the close | 66 | 6 | 224 |
-| unfilled, nothing else in the log to say why | 396 | 40 | 1,606 |
-| lag from the visit's close, minutes (min / median / max) | 63 / 4,990 / 10,078 | 76 / 5,423 / 10,044 | 63 / 4,961 / 10,078 |
+| of them filled `:community` | 1,511 (78.5%) | 156 (78.8%) | 6,122 (78.6%) |
+| of them with no fill | 414 | 42 | 1,669 |
+| lag from the visit's close to the first fill, minutes (min / median / max) | 63 / 4,996 / 10,078 | 76 / 5,722 / 10,044 | 63 / 4,983 / 10,078 |
+| marked `:chronic true` | 534 | 60 | 2,262 |
+| of them filled | 424 | 48 | 1,799 |
+| refills (a `:fill-number` above 1) | 760 | 81 | 3,596 |
+| chronic orders collected once / twice / three / four times | 38 / 34 / 330 / 22 | 6 / 4 / 37 / 1 | 127 / 149 / 1,122 / 401 |
+| days between one fill and the next (min / median / max) | 28 / 31 / 35 | 28 / 32 / 35 | 28 / 31 / 35 |
 | written during an admission | 2,565 | 290 | 10,375 |
-| `:inpatient` dispenses | 2,533 | 287 | 10,332 |
+| `:inpatient` dispenses | 2,533 | 288 | 10,334 |
 | discharge prescriptions (active and undispensed at the discharge) | 32 | 2 | 41 |
 | of them filled `:community` | 27 | 0 | 33 |
-| never dispensed or filled: the patient was merged away first | 0 | 1 | 2 |
-| `:community` fills, all | 1,490 | 152 | 5,994 |
-| community fills per inpatient dispense | 0.59 | 0.53 | 0.58 |
+| `:community` fills, all | 2,298 | 237 | 9,751 |
+| community fills per inpatient dispense | 0.91 | 0.82 | 0.94 |
+| dispenses whose patient is the survivor of the order's patient | 117 | 17 | 470 |
 | community fills carrying an `:encounter-id` | 0 | 0 | 0 |
-| community fills landing inside a later visit or stay | 1 | 0 | 15 |
-| order to dispense, ordered in the ED (min / median / max, minutes) | 5 / 15 / 25 | 5 / 15 / 25 | 5 / 15 / 25 |
-| order to dispense, ordered on an inpatient ward | 15 / 38 / 60 | 15 / 37 / 60 | 15 / 37 / 60 |
+| first fills landing inside a later visit or stay | 2 | 0 | 20 |
 
-The filled share is under 0.80 because a patient absorbed by a merge
-during the lag takes the unfilled prescription with them; the log
-cannot say which of the merged rows the draw would have left unfilled
-anyway. At 7,500 the visit fills are 1,015 of `dense-clinic-acute`'s
-antibiotic, 406 of `dense-clinic-chronic`'s metformin and 42 of the
-vendored modules' own orders. The inpatient dispenses are 1,267
-antibiotic and 1,266 analgesia. **The discharge prescriptions are all
-vendored modules'**: `injuries` and the submodules it calls prescribe
-at the instant of an ED discharge, so pharmacy never reaches those
-orders, and since ADR-0190 they are filled in the community like a
-clinic prescription, counted from the discharge. `config-nobed.edn`
-holds the same order, dispense and fill counts as `config.edn`.
-Measured 2026-11-20 at `10ae3f71`.
+The filled share is a little under 0.80 on the draw alone: at 7,500,
+1,540 would be expected and 1,511 are filled. Until ADR-0191 a patient
+absorbed by a merge during the lag took the unfilled prescription with
+them, and the share was 0.76. At 7,500 the first fills are 1,045 of
+`dense-clinic-acute`'s antibiotic, 424 of `dense-clinic-chronic`'s
+metformin and 42 of the vendored modules' own orders; every refill is
+metformin, since no vendored order that a module marks chronic reaches
+this log. A chain ends on the patient's own draw (74 at 7,500), on the
+tail (345), or because the patient returned and was prescribed
+metformin again, at which point the newer order takes over (5). None
+ends on a `:medication-end`: no clinic pathway here ends its order.
+The inpatient dispenses are all `dense-inpatient`'s two orders. **The
+discharge prescriptions are all vendored modules'**: `injuries` and the
+submodules it calls prescribe at the instant of an ED discharge, so
+pharmacy never reaches those orders, and since ADR-0190 they are filled
+in the community like a clinic prescription, counted from the
+discharge. Measured 2026-11-21 at the commit that states the chronic
+marker here.
+
+**The tail does not lengthen this log.** Its arrivals span 5.3 days at
+7,500 (0.5 at 750, 19.6 at 28,024), and it already runs about twenty
+years past them on `:persons` alone. Every refill sits inside its
+first 110 days.
+
+**Until ADR-0191 a prescription was filled at most once**, 1,490
+community fills at 7,500, and a fill pending at a merge was dropped.
 
 **Until ADR-0190 every clinic prescription was filled, at the instant
 its visit closed**: 1,925 community fills at 7,500, and the 32
@@ -207,10 +228,10 @@ discharge, 407 vendored-module visits, and 2,655 admissions no
 pathway here authors (births and deliveries, occupational injuries,
 unidentified patients).
 
-**Nothing marks the long-term order as long-term.** An authored
-medication order carries no chronic flag in the pathway IR. The
-citation's state name, `:chronic-start`, is the only sign, and nothing
-reads it. A refill rule would need a real marker; none exists yet.
+**The long-term order says so.** `dense-clinic-chronic`'s metformin
+order carries `:chronic true` (ADR-0191), which is what makes its fill
+refill. The citation's state name, `:chronic-start`, is a label only.
+Remove the key and the order is filled at most once.
 
 **The drug codes are lifted, not chosen clinically.** Every code is one
 a vendored module already carries: the antibiotic is `sinusitis.json`'s,
@@ -336,7 +357,7 @@ table.
 
 ## What to look for
 
-Witnessed 2026-11-20 at `10ae3f71`, seed 20260824, `--churn`, on the
+Witnessed 2026-11-21 at `ffdcf2f5`, seed 20260824, `--churn`, on the
 traffic-scale programme's own reference machine (WSL2, 6c/12t
 i7-10750H, 15 GiB, OpenJDK 21.0.7, JVM defaults as shipped --
 `MaxHeapSize` 3.88 GB, `bin/ehrt` sets no JVM options). One warm-up
@@ -360,7 +381,20 @@ both existed, these cells sat at a measurement taken one commit before
 ADR-0180's site 1 and survived all seven of its sites without one of
 them going red.
 
-**The counts last moved under ADR-0190**, on 2026-11-20: a community
+**The counts last moved under ADR-0191**, on 2026-11-21: a chronic
+order's community fill is refilled, and a fill pending when its patient
+is merged away is emitted for the survivor (above). The all-keys cell
+went from 1,490 community fills to 2,298, 760 of them refills, which
+is **+808** events there and at `config-nobed.edn`, **+86** at 750,
+and no count at `config-bare.edn`. No other ground-truth event moved,
+but every keyed log's dispenses gained `:fill-number` and every cell's
+`dense-clinic-chronic` orders gained `:chronic true`, the bare cell's
+included, so all four logs are new bytes under event schema 1.13.0.
+Messages moved by **-19**, **-19**, **0** and **-7**, for the reason
+given under ADR-0189 below. The walls moved under 3% in every cell.
+The figures before it are `figures.edn`'s `:provenance :prior`.
+
+**Before that, the counts moved under ADR-0190**, on 2026-11-20: a community
 fill is now a draw (above). The all-keys cell went from 1,925
 community fills to 1,490, which is **-435** events there and at
 `config-nobed.edn`, **-46** at 750, and nothing at `config-bare.edn`.
@@ -369,7 +403,7 @@ are the same events in the same order. Messages moved by **+13**,
 **+11**, **0** and **+5**, for the reason given under ADR-0189 below.
 The walls fell in every cell, the bare one included, whose counts did
 not move, so that fall is not attributed to this change. The figures
-before it are `figures.edn`'s `:provenance :prior`.
+before it are `figures.edn`'s `:provenance :prior-1`.
 
 **Before that, the counts moved on 2026-11-20, at `2edf7a4e`**, with a scenario
 edit and no ADR: three weighted clinic pathways joined the pool and
@@ -383,7 +417,7 @@ all-keys cell, **-29,228** at `config-nobed.edn`, **-33,289** at
 subjects at the all-keys cell and at 750 did not move (8,522 and
 2,797). The walls did not fall with the events: the all-keys cell took
 134.18 s against 127.35. The figures before it are `figures.edn`'s
-`:provenance :prior-1`.
+`:provenance :prior-2`.
 
 **Before that, the counts moved on 2026-11-19, at `b6fb4ab3`**, with a scenario
 edit and no ADR: `dense-inpatient` writes its analgesia order mid-stay
@@ -397,7 +431,7 @@ every later draw on a shared stream follows: events moved by
 **+148**, **+138**, **-63** and **+27**. `config-bare.edn` moved with
 no key at all, which is how the edit is known to be the cause and not
 the dispenses. Subjects did not move in any cell. The figures before
-it are `figures.edn`'s `:provenance :prior-2`.
+it are `figures.edn`'s `:provenance :prior-3`.
 
 **Before that, the counts moved under ADR-0189**: the `:dispense` key now
 derives an `:inpatient` dispense for each order written during an
@@ -411,7 +445,7 @@ shifts which ADT^A08 and ADT^A31 restatements fire: at 750 the whole
 difference is six ADT^A08. The walls fell in every cell, the bare one
 included, whose counts did not move, so that fall is not attributed to
 this change. The figures before it are `figures.edn`'s
-`:provenance :prior-3`.
+`:provenance :prior-4`.
 
 **Before that, the counts moved under ADR-0188**, two ground-truth changes
 declared as one. First, an end that names its opening by state now
@@ -426,7 +460,7 @@ and **-1**; part of that is the key's own, for the reason given above,
 and not the reference rule's as first recorded. The walls rose
 again in every cell, the bare one included, whose counts did not move
 at all, so that rise is not attributed to this change. The figures
-before it are `figures.edn`'s `:provenance :prior-4`.
+before it are `figures.edn`'s `:provenance :prior-5`.
 
 **Before that, the counts moved under ADR-0185**, the ground-truth rebaseline:
 a legal `:cancel-discharge` now owes a closing `:discharge` after a 4-
@@ -440,7 +474,7 @@ emitting to the end of the run (A08 at the all-keys cell: 52,091 ->
 5,520). The walls rose 14-22% in every cell, the bare one included,
 whose counts barely moved, so that rise is not attributed to the
 rebaseline. The figures before it are `figures.edn`'s
-`:provenance :prior-5`.
+`:provenance :prior-6`.
 
 **Before that, the counts moved under ADR-0179**, which releases the bed
 an absorbed record was holding at the instant of a merge and carries a
@@ -475,20 +509,24 @@ default heap, not as a footprint.
 
 | cell | arrivals | events | messages | msg/event | process wall | peak RSS |
 |---|---|---|---|---|---|---|
-| `config.edn` | 7,500 | **126,741** | **125,961** | **0.9938** | 105.08 s | 1,687 MB |
-| `config-nobed.edn` | 7,500 | **101,224** | **100,498** | **0.9928** | 93.17 s | 1,487 MB |
-| `config-bare.edn` | 7,500 | **67,780** | **40,207** | **0.5932** | 41.25 s | 1,114 MB |
-| `config.edn` | 750 | **29,655** | **31,165** | **1.0509** | 54.22 s | 1,082 MB |
+| `config.edn` | 7,500 | **127,549** | **125,942** | **0.9874** | 107.73 s | 1,679 MB |
+| `config-nobed.edn` | 7,500 | **102,032** | **100,479** | **0.9848** | 92.51 s | 1,464 MB |
+| `config-bare.edn` | 7,500 | **67,780** | **40,207** | **0.5932** | 41.50 s | 1,013 MB |
+| `config.edn` | 750 | **29,741** | **31,158** | **1.0476** | 53.82 s | 1,083 MB |
 
 **The ground-truth-only cell** is a different measurement, in its own
 table because it has no message column to fill: `config-28024.edn`,
-measured 2026-11-20 at `10ae3f71` on the same machine, ONE run of the
+measured 2026-11-21 at `ffdcf2f5` on the same machine, ONE run of the
 `sim run --format ground-truth` command under "The ground-truth-only
 path" above, `-Xmx8g` explicit, `/usr/bin/time -v` around the whole
-process. Its log is 188,719,656 bytes with sha-256
-`bd4dec16e8358184...cf2dcd24c5222f`, and it carries 10,332 `:inpatient`
-and 5,994 `:community` dispenses. Events and subjects are
-`ehrt sim describe`'s own counts over it. **The log this cell wrote
+process. Its log is 190,088,591 bytes with sha-256
+`dd4516c020a3b073...77c873f286a42e`, and it carries 10,334 `:inpatient`
+and 9,751 `:community` dispenses, 3,596 of the second refills. Events
+and subjects are `ehrt sim describe`'s own counts over it. **The log
+this cell wrote from ADR-0190 until ADR-0191** -- 188,719,656 bytes,
+sha-256 `bd4dec16e8358184...cf2dcd24c5222f`, at `10ae3f71`, event schema
+1.12.0 -- remains a valid artifact of that pin, and `figures.edn` keeps
+its figures under `:pre-adr-0191`. **The log this cell wrote
 from the clinic pathways until ADR-0190** -- 189,203,716 bytes, sha-256
 `d50929d2616fa983...6618dbc79b9c76`, at `2edf7a4e` -- remains a valid
 artifact of that pin, and `figures.edn` keeps its figures under
@@ -517,7 +555,7 @@ figures under `:pre-rebaseline`.
 
 | cell | arrivals | events | subjects | bytes | process wall | peak RSS |
 |---|---|---|---|---|---|---|
-| `config-28024.edn` | 28,024 | **502,436** | **32,080** | **188,719,656** | 325.65 s | 3,215 MB |
+| `config-28024.edn` | 28,024 | **506,195** | **32,080** | **190,088,591** | 324.77 s | 3,541 MB |
 
 Its wall is NOT comparable with the table above -- a `sim run` that
 emits nothing, against a `corpus generate` that also renders, checks
@@ -539,8 +577,8 @@ window and drops 16% of it outright. **The opt-in that looks like pure
 added volume is also a throttle**, and the bare cell is the one running
 without it.
 
-**The bed cycle is worth a fifth of this corpus.** 126,741 events
-against 101,224 is **25,517 events, 20.1% of the whole log**, and
+**The bed cycle is worth a fifth of this corpus.** 127,549 events
+against 102,032 is **25,517 events, 20.0% of the whole log**, and
 25,463 messages with them -- every one of it bed housekeeping, on a
 scenario that actually boards people, against `clinic-decade`'s 300
 where nobody is boarded. Its own 25,517 events carry **0.9979 messages
@@ -550,8 +588,8 @@ ground-truth rebaseline the cycle read as message-RICHER than the log
 it rides on; that was the periodic chatter of reinstated stays that
 never closed, which ran longer on the bed-cycle run.)
 
-**Messages per event no longer climbs at 10^5.** 1.0509 at 750
-arrivals to 0.9938 at 7,500. Until the ground-truth rebaseline it rose
+**Messages per event no longer climbs at 10^5.** 1.0476 at 750
+arrivals to 0.9874 at 7,500. Until the ground-truth rebaseline it rose
 (1.2097 to 1.3327): a reinstated stay never closed, so its periodic
 ADT^A08 chatter ran to the end of the run, and the longer run carried
 more of it -- at 7,500 arrivals A08 fell from 52,091 messages to 5,520

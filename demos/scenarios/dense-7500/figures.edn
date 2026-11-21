@@ -48,29 +48,43 @@
 
 ;; BEGIN asserted -- rewritten by bin/demo-exerciser-dense-7500 on every run
  :asserted
- {:config-edn-7500 {:events 126741 :messages 125961 :msg-per-event 0.9938}
-  :config-edn-750 {:events 29655}}
+ {:config-edn-7500 {:events 127549 :messages 125942 :msg-per-event 0.9874}
+  :config-edn-750 {:events 29741}}
 ;; END asserted
 
  :quoted
- {:config-edn-7500 {:wall-s 105.08 :peak-rss-mb 1687}
-  :config-nobed-7500 {:events 101224 :messages 100498 :msg-per-event 0.9928
-                      :wall-s 93.17 :peak-rss-mb 1487}
+ {:config-edn-7500 {:wall-s 107.73 :peak-rss-mb 1679}
+  :config-nobed-7500 {:events 102032 :messages 100479 :msg-per-event 0.9848
+                      :wall-s 92.51 :peak-rss-mb 1464}
   :config-bare-7500 {:events 67780 :messages 40207 :msg-per-event 0.5932
-                     :wall-s 41.25 :peak-rss-mb 1114}
-  :config-edn-750 {:messages 31165 :msg-per-event 1.0509
-                   :wall-s 54.22 :peak-rss-mb 1082}
-  :config-28024-28024 {:events 502436 :subjects 32080 :bytes 188719656
-                       :wall-s 325.65 :peak-rss-mb 3215}}
+                     :wall-s 41.50 :peak-rss-mb 1013}
+  :config-edn-750 {:messages 31158 :msg-per-event 1.0476
+                   :wall-s 53.82 :peak-rss-mb 1083}
+  :config-28024-28024 {:events 506195 :subjects 32080 :bytes 190088591
+                       :wall-s 324.77 :peak-rss-mb 3541}}
 
  :cell-provenance
  {:config-28024-28024
-  {:sha "10ae3f71"
-   :date "2026-11-20"
+  {:sha "ffdcf2f5"
+   :date "2026-11-21"
    :machine "WSL2, 6c/12t i7-10750H, 15 GiB, OpenJDK 21.0.7, -Xmx8g explicit (clojure -J-Xmx8g -M:ehrt, the alias bin/ehrt execs)"
    :command "sim run --seed 20260824 --patients 28024 --churn --config demos/scenarios/dense-7500/config-28024.edn --format ground-truth"
    :method "one run here, /usr/bin/time -v around the whole process, JVM startup included. :bytes is the stdout event vector's own length; :events and :subjects are `ehrt sim describe`'s over that vector."
-   :events-sha256 "bd4dec16e8358184c3a3fc0f3b7bf93c91d322fd04ca206acbcf2dcd24c5222f"
+   :events-sha256 "dd4516c020a3b0730425e1d3bab02840f2d5d65f9e19a4ede077c873f286a42e"
+   ;; THE LOG BEFORE ADR-0191, kept as history. ADR-0191 (2026-11-21)
+   ;; made a chronic order's community fill refill, numbered every
+   ;; dispense, and carried a fill pending at a merge to the survivor.
+   ;; This cell went from 5,994 `:community` fills to 9,751 (6,155
+   ;; first fills and 3,596 refills) and from 10,332 `:inpatient`
+   ;; dispenses to 10,334; every dispense gained `:fill-number` and
+   ;; 2,262 orders gained `:chronic true`. Nothing else in its ground
+   ;; truth moved. The log below is what the command above wrote from
+   ;; ADR-0190 until then, at 10ae3f71, under event schema 1.12.0. It
+   ;; is a valid artifact of that pin; it is not what the command
+   ;; writes today.
+   :pre-adr-0191 {:sha "10ae3f71" :date "2026-11-20"
+                  :events 502436 :bytes 188719656 :wall-s 325.65 :peak-rss-mb 3215
+                  :events-sha256 "bd4dec16e8358184c3a3fc0f3b7bf93c91d322fd04ca206acbcf2dcd24c5222f"}
    ;; THE LOG BEFORE ADR-0190, kept as history. ADR-0190 (2026-11-20)
    ;; made the community fill a draw: a share that is filled, and a
    ;; lag. This cell went from 7,791 `:community` fills, every one at
@@ -141,10 +155,24 @@
                     :downstream-config-sha256-prefix "7f7070"}}}
 
  :provenance
- {:sha "10ae3f71"
-  :date "2026-11-20"
+ {:sha "ffdcf2f5"
+  :date "2026-11-21"
   :machine "WSL2, 6c/12t i7-10750H, 15 GiB, OpenJDK 21.0.7, JVM defaults as shipped -- MaxHeapSize 3.88 GB, bin/ehrt sets no JVM options"
-  :method "one warm-up run, then two timed runs per cell, one JVM per run, a fresh spool target per run, /usr/bin/time -v around each; every wall is the mean of the two timed runs, and peak RSS is that process's own maximum resident set size in MiB, meaned the same way. The two timed runs of every cell wrote a BYTE-IDENTICAL events.edn and spooled the same number of messages. Windows-side LoadPercentage sampled before every run, and no run started above 20 (the twelve samples ran 0 to 14)."
+  :method "one warm-up run, then two timed runs per cell, one JVM per run, a fresh spool target per run, /usr/bin/time -v around each; every wall is the mean of the two timed runs, and peak RSS is that process's own maximum resident set size in MiB, meaned the same way. The two timed runs of every cell wrote a BYTE-IDENTICAL events.edn and spooled the same number of messages. Windows-side LoadPercentage sampled before every run, and no run started above 20 (the twelve samples ran 1 to 12). config.edn 7,500's first timed run overlapped analysis jobs on the same host and read 109.92 s against the second's 105.54 s; both are in the mean."
+
+  ;; The counts above last moved under ADR-0191 (2026-11-21, measured
+  ;; at ffdcf2f5, event schema 1.13.0): a chronic order's community
+  ;; fill is refilled every 28 to 35 days with continuation 0.94, up
+  ;; to 90 days past the last arrival; and a fill pending when its
+  ;; patient is merged away is emitted for the survivor. config.edn at
+  ;; 7,500 went from 1,490 community fills to 2,298 (1,538 first fills
+  ;; and 760 refills): +808 events there and at config-nobed.edn, +86
+  ;; at 750 (85 fills and one carried inpatient dispense), and no
+  ;; count at config-bare.edn, whose log changed all the same: its 638
+  ;; chronic orders gained `:chronic true`. No other ground-truth
+  ;; event moved. Messages moved by -19, -19, 0 and -7, for ADR-0189's
+  ;; reason. The figures before it are :prior below.
+  ;;
 
   ;; The counts above last moved under ADR-0190 (2026-11-20, measured
   ;; at 10ae3f71): a community fill is now a draw. A prescription is
@@ -157,7 +185,7 @@
   ;; ground-truth event moved. Messages moved by +13, +11, 0 and +5,
   ;; for ADR-0189's reason. The walls fell in every cell, the bare one
   ;; included, whose counts did not move, so that fall is not
-  ;; attributed to this change. The figures before it are :prior below.
+  ;; attributed to this change. The figures before it are :prior-1 below.
   ;;
   ;; Before that, the counts moved on 2026-11-20 at 2edf7a4e, a
   ;; scenario edit and no ADR: three weighted outpatient pathways
@@ -169,7 +197,7 @@
   ;; -33,289 at config-bare.edn, -4,118 at 750. Under the `:dispense`
   ;; key config.edn at 7,500 went from 48 `:community` fills to 1,925
   ;; and from 4,912 `:inpatient` dispenses to 2,533. The figures
-  ;; before it are :prior-1 below.
+  ;; before it are :prior-2 below.
   ;;
   ;; Before that, the counts moved on 2026-11-19 at b6fb4ab3, a
   ;; scenario edit and no ADR: `dense-inpatient` writes its
@@ -182,7 +210,7 @@
   ;; fall among the steps, so every other kind moved a little too,
   ;; config-bare.edn's included (-51 events, with no key at all).
   ;; Subjects did not move in any cell. The figures before it are
-  ;; :prior-2 below.
+  ;; :prior-3 below.
   ;;
   ;; Before that, the counts moved under ADR-0189 (2026-11-19): the
   ;; `:dispense` key now derives an `:inpatient` dispense for each
@@ -195,7 +223,7 @@
   ;; shift which restatements fire. The walls fell in every cell,
   ;; config-bare.edn's included, whose counts did not move, so that
   ;; fall is not attributed to this change. The figures before it
-  ;; are :prior-3 below.
+  ;; are :prior-4 below.
   ;;
   ;; Before that, the counts moved under ADR-0188 (2026-11-18), two
   ;; changes declared as one. The end-reference fix moves facts on
@@ -207,7 +235,7 @@
   ;; this change either. (CORRECTED 2026-11-19: the message movement
   ;; that ADR attributed to the end-reference fix was at least partly
   ;; the key's own, for the reason given above.) The figures before
-  ;; it are :prior-4 below.
+  ;; it are :prior-5 below.
   ;;
   ;; Before that:
 
@@ -227,7 +255,16 @@
   ;; whose sha-256 is 096959857076f22901fa92a9fd71cca0edbc469b109118b6a469fcf0b49dc2b2,
   ;; the digest .agents/plans/2026-09-05-7-event-divergence.md recorded
   ;; for this cell before any of those sites landed.
-  :prior {:sha "2edf7a4e" :date "2026-11-20"
+  :prior {:sha "10ae3f71" :date "2026-11-20"
+          :counts {:config-edn-7500 {:events 126741 :messages 125961}
+                   :config-nobed-7500 {:events 101224 :messages 100498}
+                   :config-bare-7500 {:events 67780 :messages 40207}
+                   :config-edn-750 {:events 29655 :messages 31165}}
+          :walls {:config-edn-7500 105.08 :config-nobed-7500 93.17
+                  :config-bare-7500 41.25 :config-edn-750 54.22}
+          :peak-rss-mb {:config-edn-7500 1687 :config-nobed-7500 1487
+                        :config-bare-7500 1114 :config-edn-750 1082}}
+  :prior-1 {:sha "2edf7a4e" :date "2026-11-20"
           :counts {:config-edn-7500 {:events 127176 :messages 125948}
                    :config-nobed-7500 {:events 101659 :messages 100487}
                    :config-bare-7500 {:events 67780 :messages 40207}
@@ -236,7 +273,7 @@
                   :config-bare-7500 44.08 :config-edn-750 63.05}
           :peak-rss-mb {:config-edn-7500 1601 :config-nobed-7500 1493
                         :config-bare-7500 887 :config-edn-750 934}}
-  :prior-1 {:sha "b6fb4ab3" :date "2026-11-19"
+  :prior-2 {:sha "b6fb4ab3" :date "2026-11-19"
           :counts {:config-edn-7500 {:events 172867 :messages 177104}
                    :config-nobed-7500 {:events 130887 :messages 135033}
                    :config-bare-7500 {:events 101069 :messages 65580}
@@ -245,7 +282,7 @@
                   :config-bare-7500 52.73 :config-edn-750 55.45}
           :peak-rss-mb {:config-edn-7500 1848 :config-nobed-7500 1701
                         :config-bare-7500 1098 :config-edn-750 1191}}
-  :prior-2 {:sha "8acd6028" :date "2026-11-19"
+  :prior-3 {:sha "8acd6028" :date "2026-11-19"
           :counts {:config-edn-7500 {:events 170224 :messages 176956}
                    :config-nobed-7500 {:events 128209 :messages 134895}
                    :config-bare-7500 {:events 101120 :messages 65643}
@@ -254,7 +291,7 @@
                   :config-bare-7500 51.06 :config-edn-750 54.80}
           :peak-rss-mb {:config-edn-7500 1903 :config-nobed-7500 1692
                         :config-bare-7500 1170 :config-edn-750 1167}}
-  :prior-3 {:sha "3ba95de9" :date "2026-11-18"
+  :prior-4 {:sha "3ba95de9" :date "2026-11-18"
           :counts {:config-edn-7500 {:events 167763 :messages 176973}
                    :config-nobed-7500 {:events 125748 :messages 134891}
                    :config-bare-7500 {:events 101120 :messages 65643}
@@ -263,7 +300,7 @@
                   :config-bare-7500 57.09 :config-edn-750 64.16}
           :peak-rss-mb {:config-edn-7500 1801 :config-nobed-7500 1585
                         :config-bare-7500 1022 :config-edn-750 1017}}
-  :prior-4 {:sha "fecbe43b" :date "2026-09-30"
+  :prior-5 {:sha "fecbe43b" :date "2026-09-30"
           :counts {:config-edn-7500 {:events 167715 :messages 176971}
                    :config-nobed-7500 {:events 125700 :messages 134886}
                    :config-bare-7500 {:events 101120 :messages 65643}
@@ -272,7 +309,7 @@
                   :config-bare-7500 51.63 :config-edn-750 57.74}
           :peak-rss-mb {:config-edn-7500 1852 :config-nobed-7500 1681
                         :config-bare-7500 1074 :config-edn-750 1063}}
-  :prior-5 {:sha "2ba3490c" :date "2026-09-07"
+  :prior-6 {:sha "2ba3490c" :date "2026-09-07"
           :counts {:config-edn-7500 {:events 167197 :messages 222819}
                    :config-nobed-7500 {:events 125642 :messages 165466}
                    :config-bare-7500 {:events 100868 :messages 65457}
@@ -281,7 +318,7 @@
                   :config-bare-7500 42.36 :config-edn-750 48.20}
           :peak-rss-mb {:config-edn-7500 1927 :config-nobed-7500 1984
                         :config-bare-7500 1135 :config-edn-750 1183}}
-  :prior-6 {:sha "4ddf62c2" :date "2026-09-06"
+  :prior-7 {:sha "4ddf62c2" :date "2026-09-06"
           :walls {:config-edn-7500 278.64 :config-nobed-7500 231.14
                   :config-bare-7500 142.12 :config-edn-750 54.37}
           :peak-rss-mb {:config-edn-7500 2415 :config-nobed-7500 2178

@@ -333,7 +333,11 @@ log always carries the version of the contract that produced it.
   (1.7.0, 1.10.0, 1.12.0), because the version is your only handle on which
   kinds a log can contain. 1.11.0's was owed outright: besides `:allergy-onset` it
   widened the nested `:pre-horizon-facts` `:event` enum, which
-  `classify-change` counts as a changed value schema.
+  `classify-change` counts as a changed value schema. 1.13.0's was owed
+  too: `:fill-number` is a new REQUIRED key on `:medication-dispense`,
+  so a 1.12.0 log that holds a dispense does not validate against
+  1.13.0 (one that holds none does). The same version added the
+  optional `:chronic` on `:medication-order`.
 - **Anything else bumps it** — a key removed, an optional key made
   required, a value schema changed, a kind removed.
 - **A key or kind slated for removal is marked deprecated here for one
@@ -1464,7 +1468,7 @@ manifest.edn`, and is then described as the envelope would be.
 **It is versioned separately.** `:describe-version` is the report's own
 semver, independent of the event schema's version and the manifest's.
 A new key or a new row is a minor bump. A key removed, or a value
-whose meaning changes, is a major bump. This page documents `1.3.0`.
+whose meaning changes, is a major bump. This page documents `1.4.0`.
 `1.1.0` added the `:bare-log+manifest` source and the rows a manifest's
 assignment record makes observable (below). Over input without that
 record, a `1.1.0` report is the `1.0.0` report with only the version
@@ -1473,7 +1477,11 @@ event schema 1.11.0's new kind; its witnesses show `:category`.
 `1.3.0` added two, `:medication-dispense-inpatient` and
 `:medication-dispense-community`, for event schema 1.12.0's new kind —
 one row per `:setting`, so each is counted on its own; their witnesses
-show `:order-event-id`.
+show `:order-event-id`. `1.4.0` added two `:measure` rows for event
+schema 1.13.0: `:medication-refill`, a dispense whose `:fill-number` is
+above 1, and `:dispense-after-merge`, a dispense whose order was
+written under a record since merged into the dispense's patient; their
+witnesses show `:order-event-id` and `:fill-number`.
 
 **Equal inputs give equal bytes.** Every map is sorted by key and every
 list has a fixed order, so running `describe` twice over the same log
@@ -1481,7 +1489,7 @@ prints byte-identical output. You can checksum a report.
 
 | Key | What it holds |
 |---|---|
-| `:describe-version` | `"1.3.0"` |
+| `:describe-version` | `"1.4.0"` |
 | `:identity` | which log this is. Always present: `:source` (`:envelope`, `:bare-log+manifest` or `:bare-log`), `:events`, `:log-sha256`, and `:configured-from` (`:manifest-invocation`, `:caller-config` or `:none`). With a manifest (an envelope's, or `--manifest`), also: `:seed`, `:config`, `:event-schema-version`, `:generator` and `:churn-flag`, copied from the manifest as written. With `--config`, also: the file's `:config {:path :sha256}` |
 | `:counts` | `:events`, `:subjects` (distinct patient participants), and `:by-kind`, which maps each kind to `{:events n :subjects n}` |
 | `:temporal` | `:min-t` and `:max-t`. When the manifest gives a reference date, also `:min-iso` and `:max-iso`, anchored the way the HL7 emitter anchors timestamps |

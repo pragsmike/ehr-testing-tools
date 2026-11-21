@@ -250,26 +250,36 @@ consumer who asks for "dispense events" usually means exactly one of
 them. **Which one you join against is the fact worth telling us.**
 
 The first two now share one event kind, told apart by a stated
-`:setting`; the third has none. What is still undecided: how often a
-long-running prescription refills and for how long, a lag whose shape
-is closer to real first fills than a uniform range, and whether any of
-it reaches a wire format.
+`:setting`; the third has none. What is still undecided: refills for a
+medication the patient was already on before the log begins, a 90-day
+supply beside the 30-day one, a lag whose shape is closer to real first
+fills than a uniform range, and whether any of it reaches a wire
+format.
 
 *Today:* a `:medication-order` is a prescription fact and nothing more —
 the patient, the medication's codes, and a citation to the module state
 that wrote it. A `:medication-end` closes it, naming its order by that
-citation. A `:medication-dispense` (event schema 1.12.0) names the order
-it fills and states its `:setting`, `:inpatient` or `:community`; it
-repeats no codes and carries no fill number. **Two things produce one.**
+citation. An order may be marked `:chronic true` (event schema 1.13.0):
+a long-term medication, from a vendored module's own flag or a pathway
+author's; absent means nobody marked it. A `:medication-dispense` names
+the order it fills, states its `:setting`, `:inpatient` or
+`:community`, and carries a `:fill-number` from 1; it repeats no
+codes. **Two things produce one.**
 A pathway step you author does, in either setting. The `:dispense`
 engine key derives both. Each order an outpatient visit
 wrote and left open is filled `:community` with a stated probability
 (`:community-fill-share`, default 0.80) after a drawn lag
 (`:community-fill-minutes`, default one hour to seven days after the
 visit closes); both are facility options and both defaults are
-provisional. That is at most one fill per order — a prescription meant
-to run for years is filled once, and about one in five is never filled
-at all, which a consumer must not read as an error. Each order written
+provisional. About one in five is never filled at all, which a
+consumer must not read as an error. A fill of a chronic order is then
+refilled every 28 to 35 days, each fill followed by another with
+chance 0.94, until the patient stops, the order ends, or a configured
+tail after the run's last arrival is reached (`:refill-interval-days`,
+`:refill-continuation`, `:refill-tail-days`, default 90 days; all
+provisional). So one order may have several dispenses, numbered, and
+the chain ends without an event. A fill pending when its patient's
+record is merged away is given to the surviving record. Each order written
 during an admission, which here includes every emergency-department
 visit, gets one `:inpatient` dispense after a pharmacy turnaround drawn
 from a range its ward states (`:dispense-minutes`, with provisional
@@ -279,8 +289,8 @@ never dispensed inpatient, is a discharge prescription and is filled in
 the community under the same share and lag. The key moves no
 other draw, so the same seed with and without it is the same hospital
 plus the dispenses. One shipped scenario sets the key, `dense-7500`,
-whose 7,500-arrival log carries 2,533 inpatient dispenses and 1,490
-community fills; none authors the step.
+whose 7,500-arrival log carries 2,533 inpatient dispenses and 2,298
+community fills, 760 of them refills; none authors the step.
 No event kind for a medication
 administration exists. None of the three kinds renders to any HL7 v2
 message: no pharmacy order, dispense or administration message (RDE,
@@ -288,8 +298,8 @@ RDS, RAS) is emitted. The FHIR emitter renders each order as a
 `MedicationRequest` carrying its codes, status and authored time, and no
 `MedicationDispense` or `MedicationAdministration`. The detail the
 shipped modules author on an order — dosage, duration, refills,
-as-needed and instructions, and the flags marking an order chronic or
-an administration — is not carried into the log.
+as-needed and instructions, and the flag marking an administration —
+is not carried into the log. The flag marking an order chronic is.
 [`consuming-ground-truth.md`](consuming-ground-truth.md#what-is-not-warranted)
 says the same where a consumer of the log will read it.
 
