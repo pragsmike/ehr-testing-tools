@@ -63,8 +63,14 @@
   for event schema 1.12.0's new kind -- one row per `:setting`, so the
   report counts each. An `:inpatient` dispense also joins the
   `:during-encounter` predicate, as it joins the invariant that
-  predicate cites. Every 1.2.0 row reads exactly as before."
-  "1.3.0")
+  predicate cites. Every 1.2.0 row reads exactly as before.
+
+  1.4.0 (ADR-0191, 2026-11-21): two ADDITIVE measures over the dispense,
+  `:medication-refill` (a `:fill-number` above 1) and
+  `:dispense-after-merge` (the cited order's subject was merged into the
+  dispense's), for event schema 1.13.0. Every 1.3.0 row reads exactly
+  as before."
+  "1.4.0")
 
 (def default-witnesses 3)
 

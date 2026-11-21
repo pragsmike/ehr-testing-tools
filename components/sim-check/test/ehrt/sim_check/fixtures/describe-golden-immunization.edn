@@ -8,7 +8,7 @@
    :registered {:events 12, :subjects 12}},
   :events 52,
   :subjects 12},
- :describe-version "1.3.0",
+ :describe-version "1.4.0",
  :families
  [{:cites "churn step :cancel-admit (decide :cancel-admit)",
    :configured :unknown,
@@ -162,6 +162,20 @@
    "result-references-existing-order-and-follows-it-in-time (ADR-0179 R-inv): the cited order names a subject merged into the result's",
    :configured :emergent,
    :family :result-after-merge,
+   :group :measure,
+   :observed 0,
+   :witnesses []}
+  {:cites
+   "medication-dispense-fill-numbers-count-up-from-one: a :medication-dispense whose :fill-number is above 1",
+   :configured :emergent,
+   :family :medication-refill,
+   :group :measure,
+   :observed 0,
+   :witnesses []}
+  {:cites
+   "medication-dispense-references-existing-order-and-follows-it-in-time (ADR-0191): the cited order names a subject merged into the dispense's",
+   :configured :emergent,
+   :family :dispense-after-merge,
    :group :measure,
    :observed 0,
    :witnesses []}

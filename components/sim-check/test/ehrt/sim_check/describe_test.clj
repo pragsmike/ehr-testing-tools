@@ -17,6 +17,8 @@
             [ehrt.sim-engine.churn :as churn]
             [ehrt.sim-engine.interface :as engine]
             [ehrt.sim-engine.run :as run]
+            [ehrt.sim-engine.streams :as streams]
+            [ehrt.sim-model.interface :as sim-model]
             [ehrt.patient-simulator.interface :as patient-simulator]))
 
 (def ^:private immunization-producer-config
@@ -48,7 +50,7 @@
   (let [a (describe/describe @immunization-log)
         b (describe/describe (:ground-truth (run/run immunization-producer-config)))]
     (is (= (pr-str a) (pr-str b)) "a fresh run of the same root, described, gives the same bytes")
-    (is (= describe/describe-version (:describe-version a) "1.3.0"))))
+    (is (= describe/describe-version (:describe-version a) "1.4.0"))))
 
 ;; --- step 1 (b): the golden --------------------------------------------------
 
@@ -338,3 +340,41 @@
         text (describe/render-text r)]
     (is (.contains ^String text (get-in r [:identity :log-sha256])))
     (is (.contains ^String text "immunization"))))
+
+;; --- ADR-0191 (describe 1.4.0): the two dispense measures -------------------
+
+(deftest refills-and-dispenses-after-a-merge-are-counted
+  (let [seed 400
+        absorbed-id (streams/patient-id-for seed 1)
+        rx {:module "clinic" :state :long-term}
+        log (:ground-truth
+             (run/run {:seed seed :patients 2 :arrival-gap 0 :dispense true
+                       :facility (merge sim-model/default-facility
+                                        {:community-fill-share 1 :community-fill-minutes [600 600]
+                                         :refill-continuation 1 :refill-interval-days [30 30]
+                                         :refill-tail-days 100})
+                       :pathways [{:patient-ordinal 0
+                                   :pathway {:name "survivor"
+                                             :steps [{:type :admission :location "Renal"}
+                                                     {:type :delay :from 180 :to 180}
+                                                     {:type :merge :with absorbed-id}
+                                                     {:type :delay :from 60 :to 60}
+                                                     {:type :discharge}]}}
+                                  {:patient-ordinal 1
+                                   :pathway {:name "clinic"
+                                             :steps [{:type :outpatient-visit}
+                                                     {:type :medication-order :chronic true :citation rx
+                                                      :codes [{:system :rxnorm :code "860975" :display "Metformin"}]}
+                                                     {:type :delay :from 20 :to 20}
+                                                     {:type :outpatient-visit-end}]}}]}))
+        r (describe/describe log)
+        refills (row r :medication-refill)
+        carried (row r :dispense-after-merge)]
+    (is (= 4 (count (filter #(= :medication-dispense (:event %)) log))))
+    (is (= {:group :measure :configured :emergent :observed 3}
+           (select-keys refills [:group :configured :observed]))
+        "fills 2, 3 and 4")
+    (is (= {:group :measure :configured :emergent :observed 4}
+           (select-keys carried [:group :configured :observed]))
+        "all four are the survivor's, citing the absorbed record's order")
+    (is (zero? (:observed (row r :result-after-merge))) "the result's own row does not count a dispense")))

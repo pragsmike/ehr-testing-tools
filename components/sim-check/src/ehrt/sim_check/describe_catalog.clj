@@ -136,17 +136,21 @@
   result's subject by a merge no later than the result's own `:t` --
   read through `check/resolves-through-merges?`, the same resolution
   `result-references-existing-order-and-follows-it-in-time` uses."
-  [{:keys [log merges]} event]
+  ([ctx event] (crosses-a-merge? ctx event :order-placed))
+  ;; ADR-0191: the same condition over a `:medication-dispense` and the
+  ;; `:medication-order` it cites; `order-kind` is the kind the cited
+  ;; event must be.
+  ([{:keys [log merges]} event order-kind]
   (let [subject (:patient-id (first (:participants event)))
         target (get log (:order-event-id event))]
     (boolean
      (and target
-          (= :order-placed (:event target))
+          (= order-kind (:event target))
           (some (fn [{:keys [patient-id]}]
                   (and patient-id
                        (not= patient-id subject)
                        (check/resolves-through-merges? merges patient-id subject (:t event))))
-                (:participants target))))))
+                (:participants target)))))))
 
 (def rows
   "The fixed rows, in report order within each group. Module and pathway
@@ -269,6 +273,23 @@
     :observed-by (fn [ctx {:keys [event]}]
                    (and (= :result-available (:event event)) (crosses-a-merge? ctx event)))
     :witness-fields [:order-event-id]}
+   ;; ADR-0191 (describe 1.4.0): two measures over the dispense. A
+   ;; refill is a dispense numbered above 1; a dispense after a merge is
+   ;; the result row above, read over a dispense and its order.
+   {:group :measure :family :medication-refill
+    :cites "medication-dispense-fill-numbers-count-up-from-one: a :medication-dispense whose :fill-number is above 1"
+    :configured-by emergent
+    :observed-by (fn [_ {:keys [event]}]
+                   (and (= :medication-dispense (:event event))
+                        (some-> (:fill-number event) (> 1))))
+    :witness-fields [:order-event-id :fill-number]}
+   {:group :measure :family :dispense-after-merge
+    :cites "medication-dispense-references-existing-order-and-follows-it-in-time (ADR-0191): the cited order names a subject merged into the dispense's"
+    :configured-by emergent
+    :observed-by (fn [ctx {:keys [event]}]
+                   (and (= :medication-dispense (:event event))
+                        (crosses-a-merge? ctx event :medication-order)))
+    :witness-fields [:order-event-id :fill-number]}
    {:group :measure :family :pending-result-at-discharge
     :cites "order-only-when-admitted (a result is deliberately not scoped to the stay): the subject is :discharged or :expired as the result lands"
     :configured-by emergent
