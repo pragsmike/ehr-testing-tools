@@ -1885,8 +1885,9 @@
 (def ^:private dense-7500-cell
   "The `dense-7500` 750-arrival cell, at `bin/demo-exerciser-dense-7500`'s
   own opts (that script's second command, verbatim but for `--emit hl7`)
-  -- 33,306 events and 40,291 messages, the largest population this
-  project measures anywhere.
+  -- 33,306 events and 40,291 messages when this was written (29,701
+  events since 2026-11-20), the largest population this project
+  measures anywhere.
 
   IT IS HERE AND NOT IN `gated-runs`, on purpose. It is not a gated
   corpus: it carries no pinned arc-0 baseline, it is not in the
@@ -1993,9 +1994,12 @@
   ;; the dense cell 1 and 1,019 -- so the clinic corpora are what make
   ;; the O half bite and the dense cell is the I control. The dense
   ;; cell's I floor re-measured 1,018 under ADR-0185's rebaseline.
+  ;; RE-MEASURED 2026-11-20 at 2edf7a4e, when half of the dense
+  ;; scenario's pathway arrivals became clinic visits: 282 and 550. The
+  ;; dense cell now makes the O half bite as well.
   (doseq [[id r min-o min-i] [[:seed-424242-clinic-decade (corpus :seed-424242-clinic-decade) 13 8]
                               [:seed-5-clinic-decade (corpus :seed-5-clinic-decade) 14 0]
-                              [:dense-7500-750 @dense-7500-cell 1 1018]]]
+                              [:dense-7500-750 @dense-7500-cell 282 550]]]
     (testing (str "corpus " id)
       (let [{:keys [ground-truth messages]} (:payload r)
             expected (expected-classes ground-truth)
@@ -2123,8 +2127,10 @@
                               (= "" field))))
                         rendered)]
       (is (= (count expected) (count rendered)) "every observation/report event rendered exactly one ORU")
-      ;; 1,019 measured; 1,018 after ADR-0185's rebaseline.
-      (is (<= 1018 placed) (str "the dense cell carries fewer observations/reports under a bed than measured: " placed))
+      ;; 1,019 measured; 1,018 after ADR-0185's rebaseline; 550 since
+      ;; half of this scenario's pathway arrivals became clinic visits
+      ;; (2026-11-20, 2edf7a4e).
+      (is (<= 550 placed) (str "the dense cell carries fewer observations/reports under a bed than measured: " placed))
       (is (= placed populated)
           (str populated " order-less ORUs render a populated PV1-3; " placed " were taken in a bed"))
       (is (empty? wrong)
