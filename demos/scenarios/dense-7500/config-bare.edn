@@ -101,7 +101,18 @@
             ;; prescription with no fill in the log is one the patient
             ;; never filled.
             :community-fill-share 0.80
-            :community-fill-minutes [60 10080]}
+            :community-fill-minutes [60 10080]
+            ;; REFILLS (ADR-0191). A community fill of an order marked
+            ;; `:chronic true` is followed by another this many days
+            ;; later, with this chance each time: 28 to 35 days,
+            ;; uniform, and 0.94. No refill is queued later than the
+            ;; last arrival plus the tail, 90 days. The defaults,
+            ;; written out, and PROVISIONAL like the two above. Several
+            ;; dispenses citing one order are one prescription refilled;
+            ;; `:fill-number` says which.
+            :refill-interval-days [28 35]
+            :refill-continuation 0.94
+            :refill-tail-days 90}
  ;; FOUR PROVIDERS, BETWEEN THEM ELIGIBLE FOR ALL FOUR WARDS -- the
  ;; spike's own F5-3 finding, which is that a ward with no eligible
  ;; attending is a run that stops. Dr. Vance is eligible everywhere,
@@ -231,9 +242,9 @@
             ;;
             ;; No order is ended inside its visit: under `:dispense` an
             ;; order is filled only if still active when the visit
-            ;; closes. NOTHING IN THE IR MARKS AN AUTHORED ORDER
-            ;; LONG-TERM; the `:chronic-start` state name is the only
-            ;; sign, and nothing reads it.
+            ;; closes. `dense-clinic-chronic` marks its order `:chronic
+            ;; true` (ADR-0191), which is what makes its fill refill;
+            ;; the `:chronic-start` state name is a label only.
             ;;
             ;; An acute visit that ends in a short course: the drug is
             ;; `sinusitis.json`'s own first-line antibiotic.
@@ -262,6 +273,7 @@
                                {:type :medication-order
                                 :codes [{:system :rxnorm :code "860975"
                                          :display "24 HR Metformin hydrochloride 500 MG Extended Release Oral Tablet"}]
+                                :chronic true
                                 :citation {:module "dense-clinic-chronic" :state :chronic-start}}
                                {:type :delay :from 5 :to 20}
                                {:type :outpatient-visit-end}]}
