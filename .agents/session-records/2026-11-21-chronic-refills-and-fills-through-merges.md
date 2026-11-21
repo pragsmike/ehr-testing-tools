@@ -423,4 +423,7 @@ Commits over `29668820`:
     f18626f1 ADR-0191, record, prompt archived
     aaaed90a pins: the describe text header reads 1.4.0
 
-The CI run id follows in its own commit.
+Pushed `29668820..559a4233`; `bin/post-push-verify 29668820 559a4233`
+passed its tip and ASCII checks. CI run **44937339617** concluded
+`success` at `559a4233` (`gh run watch --exit-status` 0, confirmed with
+`gh run view`). Closed.
