@@ -223,3 +223,21 @@ and the keyless log is left. On dense the logs before and after this
 session, less their dispenses, their index fields and the order
 events' `:chronic`, were compared at 750 and 7,500 (below).
 Both: 29,216 and 122,718 non-dispense events, equal event for event.
+
+## Step 5: oracle roots, predicted before the instruments ran
+
+Certain to move: the three roots that hold a dispense, for the fill
+number (`dispense`, `osteoporosis-dispense`, `dispense-inpatient`),
+and `osteoporosis`, whose 156 orders gain `:chronic true`. Possible:
+`asthma` and `metabolic-syndrome-care`, if either log holds an
+in-horizon order from an inhaler submodule or
+`metabolic_syndrome/medications`; I did not know before running. Every
+other root: IDENTICAL, which is the proof that with the key absent
+nothing but the two fields differs.
+
+`osteoporosis-dispense` reached no refill on the default tail: the
+tail is measured from the last arrival, six days in, and the module
+writes its orders across a hundred years. Measured on that config: 134
+fills, all number 1. The root now states `:refill-tail-days 36500` and
+nothing else, and is the one root reaching a refill: 134 first fills,
+2,129 refills, fill numbers up to 85, 3,343 events, `check-all` ok.
