@@ -104,7 +104,10 @@
    [:status [:enum :active :completed]]
    [:ended-t {:optional true} :int]
    ;; ADR-0174 section 2(a) -- see ConditionRecord's own entry.
-   [:encounter-id {:optional true} :string]])
+   [:encounter-id {:optional true} :string]
+   ;; ADR-0191: a long-term medication, from the order event. `true` or
+   ;; absent.
+   [:chronic {:optional true} [:= true]]])
 
 (def CarePlanRecord
   "GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R2(b)): one care
@@ -364,6 +367,12 @@
    [:conditions {:optional true} [:vector ConditionRecord]]
    [:observations {:optional true} [:vector ObservationRecord]]
    [:medication-orders {:optional true} [:vector MedicationOrderRecord]]
+   ;; ADR-0191: how many dispenses this patient has received, per order
+   ;; -- keyed by the order's log index, or by its citation when the
+   ;; order predates the horizon. Written by `evolve
+   ;; :medication-dispense`, read by `decide :medication-dispense` to
+   ;; number the next fill. Absent until a first dispense.
+   [:dispense-counts {:optional true} [:map-of [:or :int sim-model/Citation] :int]]
    [:care-plans {:optional true} [:vector CarePlanRecord]]
    ;; ADR-0174 section 2(a) (arc 3b sweep 1): the encounter, made
    ;; explicit. `:encounter` is the OPEN one (nil between encounters),

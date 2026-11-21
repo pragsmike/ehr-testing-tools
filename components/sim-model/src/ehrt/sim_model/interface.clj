@@ -102,6 +102,12 @@
 (def default-community-fill-minutes config/default-community-fill-minutes)
 (defn community-fill-share [facility] (config/community-fill-share facility))
 (defn community-fill-minutes [facility] (config/community-fill-minutes facility))
+(def default-refill-interval-days config/default-refill-interval-days)
+(def default-refill-continuation config/default-refill-continuation)
+(def default-refill-tail-days config/default-refill-tail-days)
+(defn refill-interval-days [facility] (config/refill-interval-days facility))
+(defn refill-continuation [facility] (config/refill-continuation facility))
+(defn refill-tail-days [facility] (config/refill-tail-days facility))
 (def default-provider-templates config/default-provider-templates)
 (defn materialize-providers [rng provider-templates] (config/materialize-providers rng provider-templates))
 

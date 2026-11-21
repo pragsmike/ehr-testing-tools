@@ -1822,8 +1822,12 @@
                          (assoc :patient-id patient-id))]
     ;; Without the `:dispense` key `dispense` is nil and this map is the
     ;; one it always was.
-    (cond-> {:events [(merge {:event :medication-order :t t :active-mrn (:active-mrn patient) :codes codes
-                              :participants [{:patient-id patient-id :role :subject}]}
+    (cond-> {:events [(merge {:event :medication-order :t t :active-mrn (:active-mrn patient) :codes codes}
+                             ;; ADR-0191 (schema 1.13.0): `:chronic true`
+                             ;; when the step states it, absent otherwise
+                             ;; (`select-keys` of an absent key is `{}`).
+                             (select-keys step [:chronic])
+                             {:participants [{:patient-id patient-id :role :subject}]}
                              (citation-fields step))]
              :advance 0}
       dispense (assoc :schedule-followup dispense))))
@@ -1913,15 +1917,41 @@
 ;; a log event -- so a dispense of an order from before the horizon will
 ;; need no new shape. No draw (`_streams`). The order's `:codes` are not
 ;; copied: the reference is the link, and a copy could disagree with it.
+;;
+;; ADR-0191 (schema 1.13.0): `:fill-number`, which dispense of its order
+;; this is, from 1. One more than the most the engine knows to have been
+;; dispensed: what the subject's own `:dispense-counts` holds for the
+;; order, what the ordering patient's holds when that is someone else,
+;; and what the step says came before it.
+;;
+;; TWO ENGINE-INTERNAL STEP KEYS, never authored (the pathway schema
+;; does not admit them): `:order-patient-id`, the patient who holds the
+;; order when the subject is the survivor of a merge that absorbed them;
+;; and `:prior-fills`, the fill number of the dispense a refill follows.
+;; The second is what keeps a chain's numbers right across a SECOND
+;; merge, when neither the new survivor's counts nor the original
+;; record's frozen ones have seen the fills in between.
+(defn- order-key
+  "What `:dispense-counts` is keyed by: the order's log index, or its
+  citation when it has none (`evolve :medication-dispense`)."
+  [order-event-id order-citation]
+  (or order-event-id order-citation))
+
 (defmethod decide :medication-dispense decide-medication-dispense
-  [_streams t world patient-id {:keys [setting order-citation] :as step}]
+  [_streams t world patient-id {:keys [setting order-citation order-patient-id prior-fills] :as step}]
   (let [{:keys [ground-truth patients]} world
         patient (get patients patient-id)
+        owner-id (or order-patient-id patient-id)
         order-event-id (log-index/last-cited-index world ground-truth :medication-order
-                                                   patient-id order-citation)]
+                                                   owner-id order-citation)
+        k (order-key order-event-id order-citation)
+        fills-so-far (max (get-in patient [:dispense-counts k] 0)
+                          (get-in patients [owner-id :dispense-counts k] 0)
+                          (or prior-fills 0))]
     {:events [(merge {:event :medication-dispense :t t :active-mrn (:active-mrn patient)
                       :setting setting
                       :order-event-id order-event-id :order-citation order-citation
+                      :fill-number (inc fills-so-far)
                       :participants [{:patient-id patient-id :role :subject}]}
                      (citation-fields step))]
      :advance 0}))
@@ -1962,36 +1992,83 @@
 ;; inpatient" is known: this step is the only thing that could have
 ;; dispensed it. A cancelled admission, an expired patient (whose stay
 ;; never closes) and a stay still open all fall through to nothing.
+;;
+;; ADR-0191: THROUGH A MERGE. The run loop re-queues this step on the
+;; survivor when its patient is absorbed, and marks it with
+;; `:order-patient-id`, the patient who wrote the order. The ORDER and
+;; the STAY it was written in are then read off that absorbed record,
+;; which nothing changes after its merge; WHO IS DISPENSED TO is the
+;; survivor. So a carried step dispenses `:inpatient` when the survivor
+;; is an inpatient now, in whatever stay they hold, and the encounter
+;; stamp names that stay. A merge joins two records of one person, and
+;; the person is in a bed. If the absorbed record's stay had already
+;; been discharged, the step is a discharge prescription as it would
+;; have been. Otherwise nothing: the absorbed stay never closes.
 (defmethod decide :pharmacy-dispense decide-pharmacy-dispense
-  [streams t world patient-id {:keys [order-citation ordered-t admitted-at encounter-id community-lag-seconds]}]
+  [streams t world patient-id {:keys [order-citation ordered-t admitted-at encounter-id community-lag-seconds
+                                      order-patient-id]}]
   (let [patient (get-in world [:patients patient-id])
-        encounter (:encounter patient)
-        latest (last (filter #(= order-citation (:citation %)) (:medication-orders patient)))
+        carried? (and order-patient-id (not= order-patient-id patient-id))
+        owner (if carried? (get-in world [:patients order-patient-id]) patient)
+        latest (last (filter #(= order-citation (:citation %)) (:medication-orders owner)))
         still-to-fill? (and latest
                             (= :active (:status latest))
                             (= ordered-t (:ordered-t latest)))
         same-stay? #(and (= admitted-at (:admitted-at %)) (= encounter-id (:encounter-id %)))
-        discharged (when (and still-to-fill? (not (and encounter (same-stay? encounter))))
+        owner-encounter (:encounter owner)
+        discharged (when (and still-to-fill? (not (and owner-encounter (same-stay? owner-encounter))))
                      (last (filter #(and (same-stay? %) (not (:cancelled %)) (= :discharged (:status %)))
-                                   (:encounters patient))))]
+                                   (:encounters owner))))
+        carry (fn [step] (cond-> step carried? (assoc :order-patient-id order-patient-id)))]
     (cond
       (and (= :admitted (:status patient))
            (= :inpatient (:class patient))
-           encounter
-           (same-stay? encounter)
+           (:encounter patient)
+           (or carried? (same-stay? (:encounter patient)))
            still-to-fill?)
       (decide streams t world patient-id
-              {:type :medication-dispense :setting :inpatient :order-citation order-citation})
+              (carry {:type :medication-dispense :setting :inpatient :order-citation order-citation}))
 
       (and discharged community-lag-seconds (not= :expired (:status patient)))
       {:events [] :advance 0
        :schedule-followup {:t (max t (+ (:discharged-at discharged) community-lag-seconds))
                            :patient-id patient-id
-                           :steps [(cond-> {:type :community-fill :order-citation order-citation
-                                            :ordered-t ordered-t :admitted-at admitted-at}
-                                     encounter-id (assoc :encounter-id encounter-id))]}}
+                           :steps [(carry (cond-> {:type :community-fill :order-citation order-citation
+                                                   :ordered-t ordered-t :admitted-at admitted-at}
+                                            encounter-id (assoc :encounter-id encounter-id)))]}}
 
       :else {:events [] :advance 0})))
+
+(defn- refill-followup
+  "ADR-0191: the queue entry for the fill after this one, or nil. Called
+  once a community fill of a CHRONIC order has been emitted, under the
+  `:dispense` key.
+
+  TWO DRAWS, on the ORDERING patient's `:pharmacy` stream: whether
+  another fill follows (`sim-model/refill-continuation`), then how many
+  days later (`sim-model/refill-interval-days`). FIXED CONSUMPTION, both
+  taken for every such fill, the interval's too when the first has said
+  no and when `lo` = `hi`.
+
+  THE TAIL. Nothing is queued for an instant later than the world's
+  `:refill-horizon-t`, the last arrival plus
+  `sim-model/refill-tail-days`: without a bound a patient who keeps
+  refilling would keep the run going for as long as the draws allowed."
+  [{pharmacy-rng :pharmacy} t world patient-id step fill-number]
+  (when (nil? pharmacy-rng)
+    (throw (ex-info "the :dispense key draws a refill on the :pharmacy stream; this decide was handed none"
+                    {:t t :patient-id patient-id})))
+  (when-not (contains? world :refill-horizon-t)
+    (throw (ex-info "the :dispense key bounds a refill chain by the world's :refill-horizon-t; this world carries none"
+                    {:t t :patient-id patient-id})))
+  (let [facility (:facility world)
+        u (.nextDouble ^Random pharmacy-rng)
+        [lo hi] (sim-model/refill-interval-days facility)
+        next-t (+ t (days->seconds (streams/rand-int-in pharmacy-rng lo hi)))]
+    (when (and (< u (sim-model/refill-continuation facility))
+               (<= next-t (:refill-horizon-t world)))
+      {:t next-t :patient-id patient-id
+       :steps [(assoc step :prior-fills fill-number)]})))
 
 ;; ADR-0190: the queued half of a drawn community fill, for a visit's
 ;; order (`derived-community-fills`) and for a discharge prescription
@@ -2009,23 +2086,41 @@
 ;;
 ;; A community fill needs no open encounter and belongs to none: when it
 ;; lands inside a LATER encounter of the same patient,
-;; `encounters/stamp-encounter` leaves it unstamped. A patient absorbed
-;; by a merge never reaches here; the run loop drops the step. No draw.
+;; `encounters/stamp-encounter` leaves it unstamped.
+;;
+;; ADR-0191: A REFILL IS THIS SAME STEP, queued again by
+;; `refill-followup` when the order is chronic, and declined on the same
+;; three tests: a chain stops when its order ends. No share draw and no
+;; lag on a refill. An authored `:medication-dispense` starts no chain;
+;; only this derived step does.
+;;
+;; THROUGH A MERGE, as `decide :pharmacy-dispense` above: the order and
+;; its stay are read off the absorbed record `:order-patient-id` names,
+;; death off the survivor, and the fill is the survivor's event.
 (defmethod decide :community-fill decide-community-fill
-  [streams t world patient-id {:keys [order-citation ordered-t admitted-at encounter-id] :as step}]
+  [streams t world patient-id {:keys [order-citation ordered-t admitted-at encounter-id order-patient-id] :as step}]
   (let [patient (get-in world [:patients patient-id])
-        encounter (:encounter patient)
-        latest (last (filter #(= order-citation (:citation %)) (:medication-orders patient)))]
+        carried? (and order-patient-id (not= order-patient-id patient-id))
+        owner (if carried? (get-in world [:patients order-patient-id]) patient)
+        owner-encounter (:encounter owner)
+        latest (last (filter #(= order-citation (:citation %)) (:medication-orders owner)))]
     (if (and latest
              (= :active (:status latest))
              (= ordered-t (:ordered-t latest))
              (not= :expired (:status patient))
              (not (and (contains? step :admitted-at)
-                       encounter
-                       (= admitted-at (:admitted-at encounter))
-                       (= encounter-id (:encounter-id encounter)))))
-      (decide streams t world patient-id
-              {:type :medication-dispense :setting :community :order-citation order-citation})
+                       owner-encounter
+                       (= admitted-at (:admitted-at owner-encounter))
+                       (= encounter-id (:encounter-id owner-encounter)))))
+      (let [outcome (decide streams t world patient-id
+                            (cond-> {:type :medication-dispense :setting :community :order-citation order-citation}
+                              carried? (assoc :order-patient-id order-patient-id)
+                              (:prior-fills step) (assoc :prior-fills (:prior-fills step))))
+            refill (when (and (:chronic latest) (:dispense world))
+                     (refill-followup streams t world patient-id step
+                                      (:fill-number (first (:events outcome)))))]
+        (cond-> outcome
+          refill (assoc :schedule-followup refill)))
       {:events [] :advance 0})))
 
 ;; GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R2(b)): the SAME

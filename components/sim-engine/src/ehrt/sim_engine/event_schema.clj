@@ -457,7 +457,9 @@
   written during an admission. Same shape, same version.
   ADDENDUM 2026-11-20, ADR-0190: a derived community fill is now a
   draw, so an order may have none; and a `:community` dispense never
-  carries `:encounter-id`. Same shape, same version.)
+  carries `:encounter-id`. Same shape, same version.
+  ADDENDUM 2026-11-21: \"there is no fill number\" stopped being true at
+  1.13.0, below.)
 
   NO BUMP IS OWED, AND THIS ONE IS TAKEN -- 1.10.0's situation and
   1.10.0's reason. `classify-change` against the frozen 1.11.0 baseline,
@@ -473,8 +475,34 @@
   are the follow-on) and no FHIR MedicationDispense resource.
 
   MADE UNDER THE WAIVER, disclosed: no deprecation release was run, and
+  none is owed in any case, since nothing was removed.
+
+  1.13.0 (2026-11-21, ADR-0191) is the REFILL: two keys. `:chronic` on
+  `:medication-order`, OPTIONAL, `true` or absent, carried from a
+  vendored module's own flag or stated by a pathway author. And
+  `:fill-number` on `:medication-dispense`, REQUIRED, an integer from 1:
+  which dispense of its order this is. Under the `:dispense` engine key
+  a chronic order's community fill is now followed by refills, so
+  several dispenses may cite one `:order-event-id`; and a fill pending
+  when its patient is merged away is emitted for the survivor, so a
+  dispense's subject may be the survivor of the order's subject.
+
+  THIS BUMP IS OWED, and `classify-change` against the frozen 1.12.0
+  baseline, before the re-freeze, says so with one reason:
+
+    {:additive? false,
+     :breaking [\":medication-dispense: new REQUIRED key: :fill-number (add it as {:optional true} to stay additive)\"]}
+
+  `:chronic` alone is additive. `:fill-number` is required because a
+  consumer grouping fills needs it on every dispense, and a key that is
+  sometimes absent would have to be defaulted by every reader. The
+  cost: A 1.12.0-ERA LOG THAT HOLDS A DISPENSE DOES NOT VALIDATE AGAINST
+  1.13.0. One that holds none validates unchanged. A consumer that only
+  reads the keys it knew keeps working.
+
+  MADE UNDER THE WAIVER, disclosed: no deprecation release was run, and
   none is owed in any case, since nothing was removed."
-  "1.12.0")
+  "1.13.0")
 
 ;; --- shared leaf schemas --------------------------------------------------
 ;;
@@ -1103,6 +1131,10 @@
             :transition "Opens an :active entry in the patient's :medication-orders accumulator."}
            [:active-mrn :string]
            [:codes [:vector sim-model/Concept]]
+           ;; 1.13.0 (ADR-0191): a long-term medication. `true` or
+           ;; ABSENT -- absent means not marked chronic, and `false` is
+           ;; never written (ADR-0178).
+           [:chronic {:optional true} [:= true]]
            [:citation {:optional true} sim-model/Citation])]
 
     [:medication-end
@@ -1121,7 +1153,7 @@
 
     [:medication-dispense
      (kind :medication-dispense
-           {:doc "A medication order is dispensed, resolved to its order by CITATION rather than by log position. `:setting` says which dispense this is: `:inpatient`, a pharmacy dispense to the unit during an open encounter, or `:community`, a fill of a prescription outside any encounter. The order's codes are not repeated and no fill number is carried. Deliberately renders no HL7 message and no FHIR resource yet."
+           {:doc "A medication order is dispensed, resolved to its order by CITATION rather than by log position. `:setting` says which dispense this is: `:inpatient`, a pharmacy dispense to the unit during an open encounter, or `:community`, a fill of a prescription outside any encounter. `:fill-number` counts the dispenses of one order, from 1, in log order: several dispenses citing one `:order-event-id` are one prescription filled and refilled. The order's codes are not repeated. Deliberately renders no HL7 message and no FHIR resource yet."
             :transition "No state change; the log itself is the record."}
            [:active-mrn :string]
            ;; 1.12.0 (ADR-0186): STATED by the step, never inferred from
@@ -1134,6 +1166,10 @@
            [:order-event-id [:maybe :int]]
            ;; NOT nilable, unlike the end's: the step requires it.
            [:order-citation sim-model/Citation]
+           ;; 1.13.0 (ADR-0191): which dispense of its order this is,
+           ;; from 1. REQUIRED, on authored, inpatient and community
+           ;; dispenses alike.
+           [:fill-number [:int {:min 1}]]
            [:citation {:optional true} sim-model/Citation])]
 
     [:care-plan-start

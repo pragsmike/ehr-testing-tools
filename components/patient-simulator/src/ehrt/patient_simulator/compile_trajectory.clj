@@ -302,7 +302,15 @@
            :citation (citation event)}
     (:codes event) (assoc :codes (:codes event))))
 
-(defn- medication-order->step [event] {:type :medication-order :codes (:codes event) :citation (citation event)})
+(defn- medication-order->step
+  "ADR-0191: `:chronic true` rides the step only when the module marked
+  the state chronic; absent otherwise, never `false`. A PRE-HORIZON
+  order becomes a registration fact carrying `:codes` only, so the
+  marker does not reach it: refills for an order that predates the
+  horizon are still owed."
+  [event]
+  (cond-> {:type :medication-order :codes (:codes event) :citation (citation event)}
+    (true? (:chronic event)) (assoc :chronic true)))
 
 (defn- vaccine->step
   "ADR-0182: `:series` rides the step only when the Vaccine state stated

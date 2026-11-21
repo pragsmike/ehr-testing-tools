@@ -1467,9 +1467,20 @@
   ground: the fact is definitionally prior to every event of that
   patient. In that branch the end is not looked for, since an end of a
   pre-horizon order carries no index to find it by; no producer writes
-  a dispense of a pre-horizon order today."
+  a dispense of a pre-horizon order today.
+
+  ADR-0191: \"the same patient\" is resolved THROUGH A MERGE, exactly as
+  the result's law resolves it (ADR-0179 R-inv,
+  `resolves-through-merges?`): an order whose subject was merged into
+  the dispense's subject at or before the dispense's own `:t` is that
+  patient's order. A fill pending when its patient is absorbed is
+  emitted for the survivor, and still cites the absorbed record's
+  order. The widening accepts nothing on a log with no `:merge` and
+  nothing between two patients no merge joins. The end's law above is
+  NOT widened: an absorbed record's end is never carried."
   [ground-truth]
   (let [indexed (vec ground-truth)
+        merges (merges-forward ground-truth)
         pre-horizon-citations (pre-horizon-medication-order-citations-by-patient ground-truth)
         end-t-by-order (reduce (fn [m event]
                                  (if-let [order-idx (and (= :medication-end (:event event)) (:order-event-id event))]
@@ -1487,10 +1498,37 @@
           :when (and (not pre-horizon-referent?)
                      (or (nil? target)
                          (not= :medication-order (:event target))
-                         (not (some #(= patient-id (:patient-id %)) (:participants target)))
+                         (not (some #(resolves-through-merges? merges (:patient-id %) patient-id (:t event))
+                                    (:participants target)))
                          (> (:t target) (:t event))
                          (some-> (get end-t-by-order target-idx) (< (:t event)))))]
       {:invariant :medication-dispense-references-existing-order-and-follows-it-in-time :patient-id patient-id :at (:t event)})))
+
+(defn medication-dispense-fill-numbers-count-up-from-one
+  "ADR-0191. The dispenses of ONE order carry `:fill-number` 1, 2, 3 ...
+  in log order, which is time order: no gap, no repeat, none out of
+  turn. An order is the `:order-event-id` a dispense cites; a dispense
+  of a pre-horizon order has none, and its order is then its subject
+  and its `:order-citation`.
+
+  One finding per offending dispense, at that dispense: the first whose
+  number is not one more than the count of its order's dispenses before
+  it. A dispense with no `:fill-number` at all offends here too, which
+  is how a pre-1.13.0 log reads."
+  [ground-truth]
+  (:findings
+   (reduce (fn [{:keys [seen] :as acc} event]
+             (if (= :medication-dispense (:event event))
+               (let [patient-id (:patient-id (first (:participants event)))
+                     k (if-let [idx (:order-event-id event)] idx [patient-id (:order-citation event)])
+                     expected (inc (get seen k 0))]
+                 (cond-> (assoc-in acc [:seen k] expected)
+                   (not= expected (:fill-number event))
+                   (update :findings conj {:invariant :medication-dispense-fill-numbers-count-up-from-one
+                                           :patient-id patient-id :at (:t event)})))
+               acc))
+           {:seen {} :findings []}
+           ground-truth)))
 
 (defn- pre-horizon-care-plan-start-citations-by-patient
   "patient-id -> the set of :citation values riding that patient's own
@@ -2177,6 +2215,7 @@
    ;; ADR-0186: beside the end's law, whose order resolution and
    ;; pre-horizon allowance it reads the same way.
    #'medication-dispense-references-existing-order-and-follows-it-in-time
+   #'medication-dispense-fill-numbers-count-up-from-one
    ;; ADR-0166: the twin span. Added beside its mirror, not appended at
    ;; the end, because a reader comparing the two should find them
    ;; adjacent -- the reason the catalog is documented as being in

@@ -1241,8 +1241,16 @@
    ;; `kebab-key`, the raw string VALUE left untouched -- it names an
    ;; attribute, slug-normalized at INTERPRETER time same as :attribute/
    ;; :symptom already are, not at load time).
+   ;; ADR-0191: `:chronic` -- Synthea's own flag for a long-term
+   ;; medication (State.java's MedicationOrder), declared here and
+   ;; carried by the interpreter to the trajectory event as `:chronic
+   ;; true` when the module states `true`; a stated `false` and an
+   ;; absent key both leave the event without the key. A state's
+   ;; `prescription` map (dose, duration, refills) is not read by
+   ;; anything downstream of this loader (ADR-0191, owed next).
    [:medication-order (with-transitions [:type [:= :medication-order]] [:codes [:vector sim-model/Concept]]
-                        [:reason {:optional true} :string] [:assign-to-attribute {:optional true} :string])]
+                        [:reason {:optional true} :string] [:assign-to-attribute {:optional true} :string]
+                        [:chronic {:optional true} :boolean])]
    [:medication-end (with-transitions [:type [:= :medication-end]] [:medication-order {:optional true} :keyword]
                        [:referenced-by-attribute {:optional true} :string])]
    ;; GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R2(b), G1): the

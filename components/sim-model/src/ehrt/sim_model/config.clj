@@ -168,6 +168,67 @@
   [facility]
   (or (:community-fill-minutes facility) default-community-fill-minutes))
 
+(def default-refill-interval-days
+  "The fallback `:refill-interval-days` for a facility that states none
+  (ADR-0191): `[lo hi]` DAYS, inclusive, uniform, from one community
+  fill of a chronic order to the next. Twenty-eight to thirty-five.
+
+  PROVISIONAL. A 30-day supply is the traditional retail unit, and a
+  patient collects the next a few days either side of running out.
+  Ninety-day fills are real and are not modelled: they ran at 12 to 15%
+  across four drug classes in a post-infarction cohort of 353,259
+  patients (https://scholars.duke.edu/individual/pub1470204). One
+  range for every chronic order, uniform because that is the engine's
+  shape for a range."
+  [28 35])
+
+(def default-refill-continuation
+  "The fallback `:refill-continuation` for a facility that states none
+  (ADR-0191): the probability that a community fill of a chronic order
+  is followed by another.
+
+  PROVISIONAL. About half of patients who start a chronic medication
+  discontinue it (Franklin et al., J Gen Intern Med 2018, PMC6206334,
+  as background), and 0.94 compounded over twelve refills is about one
+  half. One number for every chronic order and every fill: real
+  discontinuation is front-loaded."
+  0.94)
+
+(def default-refill-tail-days
+  "The fallback `:refill-tail-days` for a facility that states none
+  (ADR-0191): no refill is queued for an instant later than the run's
+  last arrival plus this many DAYS. Ninety.
+
+  It bounds the chain, and it is the only thing that does for a
+  patient who keeps refilling: without it a run would go on emitting
+  refills for as long as the continuation draw allowed. The arrival
+  clock is the measure because it is the one span a run's configuration
+  fixes before anything is decided."
+  90)
+
+(defn refill-interval-days
+  "`facility`'s own `:refill-interval-days`, or the default. The ONE
+  reading of that key."
+  [facility]
+  (or (:refill-interval-days facility) default-refill-interval-days))
+
+(defn refill-continuation
+  "`facility`'s own `:refill-continuation`, or the default. The ONE
+  reading of that key. `contains?`: a stated 0 is a chance, not an
+  absence."
+  [facility]
+  (if (contains? facility :refill-continuation)
+    (:refill-continuation facility)
+    default-refill-continuation))
+
+(defn refill-tail-days
+  "`facility`'s own `:refill-tail-days`, or the default. The ONE reading
+  of that key. `contains?`: a stated 0 is a tail, not an absence."
+  [facility]
+  (if (contains? facility :refill-tail-days)
+    (:refill-tail-days facility)
+    default-refill-tail-days))
+
 (def Facility
   [:map
    [:id :keyword]
@@ -188,7 +249,25 @@
    [:community-fill-minutes {:optional true}
     [:and [:tuple :int :int]
      [:fn {:error/message "must be [lo hi] with 0 <= lo <= hi"}
-      (fn [[lo hi]] (<= 0 lo hi))]]]])
+      (fn [[lo hi]] (<= 0 lo hi))]]]
+   ;; ADR-0191: the REFILL chain of a chronic order, three more options
+   ;; of the same pharmacy. `:refill-interval-days` -- `[lo hi]` days
+   ;; inclusive from one community fill to the next, uniform, refused
+   ;; unless 1 <= lo <= hi (a zero interval would refill forever at one
+   ;; instant). `:refill-continuation` -- the probability, 0 to 1
+   ;; inclusive, that a fill is followed by another. `:refill-tail-days`
+   ;; -- no refill is queued later than the last arrival plus this many
+   ;; days; a non-negative integer.
+   [:refill-interval-days {:optional true}
+    [:and [:tuple :int :int]
+     [:fn {:error/message "must be [lo hi] with 1 <= lo <= hi"}
+      (fn [[lo hi]] (<= 1 lo hi))]]]
+   [:refill-continuation {:optional true}
+    [:and number?
+     [:fn {:error/message "must be a number from 0 to 1"} (fn [p] (<= 0 p 1))]]]
+   [:refill-tail-days {:optional true}
+    [:and :int
+     [:fn {:error/message "must be a non-negative integer"} (fn [d] (<= 0 d))]]]])
 
 (defn valid-facility? [facility] (m/validate Facility facility))
 (defn explain-facility [facility] (m/explain Facility facility))

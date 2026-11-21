@@ -1750,6 +1750,45 @@
                 (assoc (a-dispense 10 "P1") :order-event-id nil)]))
       "the order is a registration fact: the end's own allowance, read the same way"))
 
+;; ADR-0191: the dispense law resolves its order THROUGH A MERGE, as the
+;; result's law does; and the fill numbers of one order count up from 1.
+
+(deftest medication-dispense-law-resolves-the-order-through-a-merge
+  (let [merge-at (fn [t] {:event :merge :t t :surviving-mrn "M2" :merged-mrn "M1" :merged-mrns #{"M1"}
+                          :participants [{:patient-id "P2" :role :survivor} {:patient-id "P1" :role :merged}]})
+        law check/medication-dispense-references-existing-order-and-follows-it-in-time]
+    (is (empty? (law (dispense-log (merge-at 8) (a-dispense 10 "P2"))))
+        "P1 wrote the order, P2 absorbed P1, the fill is P2's")
+    (is (seq (law (dispense-log (a-dispense 10 "P2") (merge-at 12))))
+        "a merge that has not happened yet joins nobody")
+    (is (seq (law (dispense-log (merge-at 8) (a-dispense 10 "P3"))))
+        "and a merge joins only the two it names")))
+
+(deftest fill-numbers-of-one-order-count-up-from-one
+  (let [law check/medication-dispense-fill-numbers-count-up-from-one
+        numbered (fn [t n] (assoc (a-dispense t "P1") :fill-number n))
+        names (fn [log] (mapv (juxt :invariant :at) (law log)))]
+    (is (empty? (law (dispense-log (numbered 5 1) (numbered 6 2) (numbered 7 3)))))
+    (is (= [[:medication-dispense-fill-numbers-count-up-from-one 6]]
+           (names (dispense-log (numbered 5 1) (numbered 6 3))))
+        "a gap")
+    (is (= [[:medication-dispense-fill-numbers-count-up-from-one 6]]
+           (names (dispense-log (numbered 5 1) (numbered 6 1) (numbered 7 3))))
+        "a repeat, and the one after it is back in step")
+    (is (= [[:medication-dispense-fill-numbers-count-up-from-one 5]]
+           (names (dispense-log (numbered 5 2))))
+        "a first dispense that is not number 1")
+    (is (= [[:medication-dispense-fill-numbers-count-up-from-one 5]]
+           (names (dispense-log (dissoc (numbered 5 1) :fill-number))))
+        "no number at all, which is how a pre-1.13.0 log reads")
+    (is (empty? (law [(assoc (numbered 5 1) :order-event-id 1)
+                      (assoc (numbered 6 1) :order-event-id 2)]))
+        "two orders each start at 1")
+    (is (empty? (law [(assoc (numbered 5 1) :order-event-id nil)
+                      (assoc (numbered 6 2) :order-event-id nil)
+                      (-> (numbered 7 1) (assoc :order-event-id nil :participants (subject "P2")))]))
+        "a pre-horizon order is its subject and its citation")))
+
 (deftest clinical-content-only-when-admitted-reads-a-dispense-by-its-setting
   (let [after-visit (fn [setting]
                       [{:event :outpatient-visit :t 0 :participants (subject "P1")}

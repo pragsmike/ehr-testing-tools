@@ -224,6 +224,11 @@
    [:medication-order [:map
                        [:type [:= :medication-order]]
                        [:codes [:vector Concept]]
+                       ;; ADR-0191: a long-term medication. `true` or
+                       ;; ABSENT, never `false` written out (ADR-0178's
+                       ;; rule for an optional fact). Under `:dispense`
+                       ;; a chronic order's community fill is refilled.
+                       [:chronic {:optional true} [:= true]]
                        [:citation {:optional true} Citation]]]
    [:medication-end [:map
                      [:type [:= :medication-end]]

@@ -92,6 +92,11 @@
    ;; admission order still active once its stay is discharged, and
    ;; never dispensed, is a discharge prescription under the community
    ;; rule.
+   ;; ADR-0191: a community fill of an order marked `:chronic true` is
+   ;; followed by refills (the facility's `:refill-interval-days`,
+   ;; `:refill-continuation` and `:refill-tail-days`), and a pharmacy
+   ;; step pending when its patient is merged away is carried to the
+   ;; survivor.
    ;; ABSENT ENTIRELY is the byte-identical path, the opt-in law the
    ;; four keys above establish.
    ;;

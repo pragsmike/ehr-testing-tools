@@ -192,6 +192,36 @@
         end-step (first (filter #(= :medication-end (:type %)) steps))]
     (is (= (:citation order-step) (:order-citation end-step)))))
 
+;; ADR-0191: a module's `chronic` flag rides the compiled order step as
+;; `:chronic true`, and is absent otherwise. A pre-horizon order becomes
+;; a registration fact with `:codes` only, so the marker does not reach
+;; it.
+(deftest a-chronic-trajectory-order-compiles-to-a-chronic-step
+  (let [codes [{:system :rxnorm :code "904419" :display "Alendronic acid 10 MG Oral Tablet"}]
+        order-step (fn [extra]
+                     (->> (ct/compile-trajectory [(ev :medication-order (merge {:t 100 :state :rx :codes codes} extra))]
+                                                 facility 100)
+                          :steps
+                          (filter #(= :medication-order (:type %)))
+                          first))]
+    (is (true? (:chronic (order-step {:chronic true}))))
+    (is (not (contains? (order-step {}) :chronic)) "absent, never false")
+    (is (sim-model/valid? {:name "t" :steps [(order-step {:chronic true})]}))
+    (let [{:keys [registration-facts]}
+          (ct/compile-trajectory [(ev :medication-order {:t 10 :pre-horizon true :state :rx :codes codes :chronic true})]
+                                 facility 100)]
+      (is (= [:medication-order] (mapv :event registration-facts)))
+      (is (not-any? #(contains? % :chronic) registration-facts)))))
+
+(deftest the-interpreter-carries-a-modules-chronic-flag-to-the-trajectory
+  (let [module (:payload (gmf/load-module "osteoporosis" (slurp (io/resource "sim/modules/osteoporosis.json"))))
+        other (:payload (gmf/load-module "medications"
+                                         (slurp (io/resource "sim/modules/metabolic_syndrome/medications.json"))))]
+    (is (true? (:chronic (:prescribe-bisphosphate (:states module)))))
+    (is (true? (:chronic (:prescribe-metformin (:states other)))))
+    (is (not (contains? (:prescribe-canagliflozin (:states other)) :chronic))
+        "a state the module does not mark carries no key")))
+
 ;; --- The never-existed-referent drop (2026-08-23, ADR-0163, R2(a)):
 ;; AR-2's own "no orphaned reference to something dropped" principle,
 ;; extended to "no reference ever existed". `history-phase?` (and

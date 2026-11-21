@@ -11,7 +11,7 @@
 ;;
 ;; Regenerate with `make event-schema-export` (also run by `make
 ;; docsgen`, so CI's freshness diff catches a stale export).
-{:event-schema-version "1.12.0",
+{:event-schema-version "1.13.0",
  :schema
  [:multi
   {:dispatch :event,
@@ -978,6 +978,7 @@
        [:system :keyword]
        [:code :string]
        [:display {:optional true} :string]]]]
+    [:chronic {:optional true} [:= true]]
     [:citation
      {:optional true}
      [:map [:module :string] [:state :keyword]]]]]
@@ -1013,7 +1014,7 @@
   [:medication-dispense
    [:map
     {:doc
-     "A medication order is dispensed, resolved to its order by CITATION rather than by log position. `:setting` says which dispense this is: `:inpatient`, a pharmacy dispense to the unit during an open encounter, or `:community`, a fill of a prescription outside any encounter. The order's codes are not repeated and no fill number is carried. Deliberately renders no HL7 message and no FHIR resource yet.",
+     "A medication order is dispensed, resolved to its order by CITATION rather than by log position. `:setting` says which dispense this is: `:inpatient`, a pharmacy dispense to the unit during an open encounter, or `:community`, a fill of a prescription outside any encounter. `:fill-number` counts the dispenses of one order, from 1, in log order: several dispenses citing one `:order-event-id` are one prescription filled and refilled. The order's codes are not repeated. Deliberately renders no HL7 message and no FHIR resource yet.",
      :transition "No state change; the log itself is the record.",
      :closed true}
     [:event [:= :medication-dispense]]
@@ -1036,6 +1037,7 @@
     [:setting [:enum :inpatient :community]]
     [:order-event-id [:maybe :int]]
     [:order-citation [:map [:module :string] [:state :keyword]]]
+    [:fill-number [:int {:min 1}]]
     [:citation
      {:optional true}
      [:map [:module :string] [:state :keyword]]]]]

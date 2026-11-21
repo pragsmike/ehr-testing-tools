@@ -1475,6 +1475,21 @@
                     ;; indistinguishable from absent to that reader and
                     ;; is what a hand-built world already looks like.
                     :dispense (when dispense true)
+                    ;; ADR-0191: the instant past which no refill is
+                    ;; queued -- the LAST ARRIVAL's time plus the
+                    ;; facility's `:refill-tail-days`. `arrivals` is
+                    ;; drawn whole in `prelude`, ascending, before
+                    ;; anything is decided, so this is a fact of the
+                    ;; configuration and not of how the run went. It is
+                    ;; the WALK-IN clock: a booked visit, a hook's
+                    ;; arrival and a person's later encounters can all
+                    ;; land after it, and an order written past this
+                    ;; instant is filled and never refilled.
+                    ;; `decide`'s `refill-followup` is its only reader.
+                    ;; Absent without the key.
+                    :refill-horizon-t (when dispense
+                                        (+ (peek arrivals)
+                                           (decide/days->seconds (sim-model/refill-tail-days facility))))
                     ;; ARC 3B SWEEP 3 (ADR-0174 section 2(b)): the six
                     ;; sub-keys, verbatim, plus the minting index that
                     ;; carries `appointment-id-for`'s two arguments.
@@ -1629,21 +1644,33 @@
             ;; merged away simply hits this branch again on the next pop,
             ;; which terminates because `:merged` is absorbing and
             ;; `decide :merge`'s `never-mergeable?` excludes it.
+            ;;
+            ;; ADR-0191 carves out TWO MORE, on the same ground: a
+            ;; pending `:pharmacy-dispense` or `:community-fill`. A merge
+            ;; corrects a record; the person still collects the
+            ;; medication. Neither holds a finished event, so nothing is
+            ;; rewritten here: the step is re-queued on the survivor at
+            ;; this same `t`, marked with `:order-patient-id` -- the
+            ;; patient who wrote the order, kept through a second merge
+            ;; -- and `decide` reads the order off that record and emits
+            ;; for the survivor.
             (let [survivor-id (get-in world [:patients patient-id :merged-into])
                   survivor (get-in world [:patients survivor-id])
                   carried (when survivor
                             (for [{:keys [type result-event] :as s} steps
-                                  :when (= :result-followup type)]
+                                  :when (#{:result-followup :pharmacy-dispense :community-fill} type)]
                               {:t t :patient-id survivor-id
-                               :steps [(assoc s :result-event
-                                              (-> result-event
-                                                  (assoc :active-mrn (:active-mrn survivor))
-                                                  (update :participants
-                                                          (fn [ps]
-                                                            (mapv #(if (= :subject (:role %))
-                                                                     (assoc % :patient-id survivor-id)
-                                                                     %)
-                                                                  ps)))))]}))
+                               :steps [(if (= :result-followup type)
+                                         (assoc s :result-event
+                                                (-> result-event
+                                                    (assoc :active-mrn (:active-mrn survivor))
+                                                    (update :participants
+                                                            (fn [ps]
+                                                              (mapv #(if (= :subject (:role %))
+                                                                       (assoc % :patient-id survivor-id)
+                                                                       %)
+                                                                    ps)))))
+                                         (assoc s :order-patient-id (or (:order-patient-id s) patient-id)))]}))
                   [queue'' seq-no'] (reduce (fn [[q n] sf]
                                               [(assoc q [(:t sf) n] (select-keys sf [:patient-id :steps]))
                                                (inc n)])
@@ -1657,7 +1684,11 @@
                   ;; part of the world it asks its questions of.
                   ;; `encounters/encounter-openable?` is its only reader.
                   (decide/decide (cond-> (assoc base-streams :patient (get streams-by-pid patient-id))
-                                   pharmacy-by-pid (assoc :pharmacy (get pharmacy-by-pid patient-id)))
+                                   ;; ADR-0191: a prescription's draws
+                                   ;; stay on the stream of the patient
+                                   ;; who wrote it, through a merge.
+                                   pharmacy-by-pid (assoc :pharmacy (get pharmacy-by-pid
+                                                                        (or (:order-patient-id step) patient-id))))
                           t (assoc world :pending-openers reserved) patient-id step)]
               ;; A :rejected decide outcome (an illegal cancel/bed-swap/
               ;; merge -- Task 1's validity-table enforcement) is NOT a

@@ -133,6 +133,14 @@
 (deftest diagnostic-report-step-without-observations-key-is-invalid
   (is (not (pathway/valid? {:name "t" :steps [{:type :diagnostic-report :codes [a-concept]}]}))))
 
+;; ADR-0191: `:chronic` on an order is `true` or absent.
+(deftest a-medication-order-may-be-marked-chronic-and-only-with-true
+  (let [order {:type :medication-order :codes [a-concept] :citation a-citation}]
+    (is (pathway/valid? {:name "t" :steps [(assoc order :chronic true)]}))
+    (is (not (pathway/valid? {:name "t" :steps [(assoc order :chronic false)]}))
+        "absent means not chronic; false is never written out")
+    (is (not (pathway/valid? {:name "t" :steps [(assoc order :chronic nil)]})))))
+
 (deftest medication-order-and-end-are-valid-ir
   (is (pathway/valid? {:name "t" :steps [{:type :medication-order :codes [a-concept] :citation a-citation}
                                           {:type :medication-end :order-citation a-citation :citation a-citation}]})))

@@ -125,3 +125,33 @@
     (is (config/valid-facility? (with :community-fill-minutes [0 0])) "a fill at the close is a range")
     (doseq [bad [[30 10] [-1 5] [5] [5 10 15] ["5" "10"] [1.5 2.5] 20 nil]]
       (is (not (config/valid-facility? (with :community-fill-minutes bad))) (pr-str bad)))))
+
+;; --- ADR-0191: the refill chain's three options ---------------------------
+
+(deftest refill-options-are-the-facilitys-own-or-the-defaults
+  (is (= [28 35] config/default-refill-interval-days))
+  (is (= 0.94 config/default-refill-continuation))
+  (is (= 90 config/default-refill-tail-days))
+  (is (= [28 35] (config/refill-interval-days config/default-facility)))
+  (is (= 0.94 (config/refill-continuation config/default-facility)))
+  (is (= 90 (config/refill-tail-days config/default-facility)))
+  (is (= [30 30] (config/refill-interval-days (assoc config/default-facility :refill-interval-days [30 30]))))
+  (is (= 0 (config/refill-continuation (assoc config/default-facility :refill-continuation 0)))
+      "a stated zero is zero, not the default")
+  (is (= 0 (config/refill-tail-days (assoc config/default-facility :refill-tail-days 0)))
+      "a stated zero is zero, not the default"))
+
+(deftest an-invalid-refill-option-is-refused-by-the-facility-schema
+  (let [with (fn [k v] (assoc config/default-facility k v))]
+    (is (config/valid-facility? (with :refill-interval-days [28 35])))
+    (is (config/valid-facility? (with :refill-interval-days [1 1])))
+    (doseq [bad [[0 5] [35 28] [-1 5] [30] [28 35 40] [28.5 35.0] ["28" "35"] 30 nil]]
+      (is (not (config/valid-facility? (with :refill-interval-days bad))) (pr-str bad)))
+    (doseq [good [0 1 0.0 1.0 0.94]]
+      (is (config/valid-facility? (with :refill-continuation good)) (pr-str good)))
+    (doseq [bad [-0.1 1.01 2 "0.94" [0.94] nil]]
+      (is (not (config/valid-facility? (with :refill-continuation bad))) (pr-str bad)))
+    (doseq [good [0 1 90 3650]]
+      (is (config/valid-facility? (with :refill-tail-days good)) (pr-str good)))
+    (doseq [bad [-1 90.0 "90" [90] nil]]
+      (is (not (config/valid-facility? (with :refill-tail-days bad))) (pr-str bad)))))

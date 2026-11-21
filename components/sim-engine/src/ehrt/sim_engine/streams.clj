@@ -279,6 +279,11 @@
    ;; patient's SECOND and later inpatient turnarounds are different
    ;; numbers than they were under ADR-0189; nothing outside the
    ;; dispenses moved.
+   ;; ADR-0191: and a refill's two draws (another fill or not, and the
+   ;; interval), taken when a community fill of a chronic order is
+   ;; emitted. Through a merge a prescription keeps drawing on the
+   ;; stream of the patient who WROTE the order, so the survivor's own
+   ;; draws are not moved by what they inherit.
    :pharmacy 7
    ;; 6 is RESERVED for `:mutation` (ADR-0176 section 2(iii), ruling
    ;; Q4(a); tree-recorded here by ruling Q13(a), 2026-09-01, after the

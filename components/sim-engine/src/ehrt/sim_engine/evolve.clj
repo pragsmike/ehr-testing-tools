@@ -439,7 +439,17 @@
 ;; nothing renders one yet (RDE/RDS and FHIR MedicationDispense are
 ;; follow-ons). The order's own :medication-orders entry is untouched: a
 ;; fill neither opens nor closes it.
-(defmethod evolve :medication-dispense evolve-medication-dispense [patient _event] patient)
+;;
+;; ADR-0191: the SUBJECT counts what has been dispensed to them, per
+;; order -- `:dispense-counts`, keyed by the order's log index
+;; (`:order-event-id`), or by its citation for an order that predates
+;; the horizon and has no index. `decide :medication-dispense` reads it
+;; to number the next fill. On the subject and not on the order's own
+;; `:medication-orders` entry: a fill carried through a merge is the
+;; survivor's event and cites an order the absorbed record holds.
+(defmethod evolve :medication-dispense evolve-medication-dispense
+  [patient {:keys [order-event-id order-citation]}]
+  (update-in patient [:dispense-counts (or order-event-id order-citation)] (fnil inc 0)))
 
 ;; --- M6 Task 1: :observation/:medication-order/:medication-end now land
 ;; in the clinical-content accumulator (`ehrt.sim-engine.state`'s own
@@ -467,10 +477,13 @@
                 observations)))
 
 (defmethod evolve :medication-order evolve-medication-order
-  [patient {:keys [t codes citation encounter-id]}]
+  [patient {:keys [t codes citation encounter-id chronic]}]
   (update patient :medication-orders (fnil conj [])
           (cond-> {:codes codes :citation citation :ordered-t t :status :active}
-            encounter-id (assoc :encounter-id encounter-id))))
+            encounter-id (assoc :encounter-id encounter-id)
+            ;; ADR-0191: kept so a community fill can tell whether to
+            ;; refill. `true` or absent.
+            chronic (assoc :chronic true))))
 
 (defmethod evolve :medication-end evolve-medication-end
   ;; Citation-based, position-independent resolution (this project's

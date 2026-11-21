@@ -3107,10 +3107,11 @@
         dispenses (filterv #(= :medication-dispense (:event %)) ground-truth)]
     (is (= [:registered :admission :medication-order :medication-dispense :medication-end :discharge] kinds)
         "exactly one :medication-dispense, between its order and that order's end")
-    (is (= [{:setting :inpatient :order-event-id order-idx :order-citation a-citation}]
-           (mapv #(select-keys % [:setting :order-event-id :order-citation]) dispenses)))
-    (is (not-any? #(contains? (first dispenses) %) [:codes :fill-number])
-        "the order's codes are not copied, and there is no fill number")
+    (is (= [{:setting :inpatient :order-event-id order-idx :order-citation a-citation :fill-number 1}]
+           (mapv #(select-keys % [:setting :order-event-id :order-citation :fill-number]) dispenses))
+        "ADR-0191: a first dispense is fill number 1")
+    (is (not (contains? (first dispenses) :codes))
+        "the order's codes are not copied")
     (let [checked (check/check-all ground-truth (:facility r))]
       (is (result/ok? checked)
           (str "the self-check's own instrument, over the whole catalog: "

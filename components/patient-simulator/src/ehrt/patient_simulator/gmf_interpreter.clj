@@ -1965,7 +1965,13 @@
       ;; scoping contract.
       :medication-order
       (let [event-idx (count (:trajectory ctx))
-            outcome (emit-and-advance module-id ctx rng state :medication-order {:codes (:codes state)} tables)]
+            outcome (emit-and-advance module-id ctx rng state :medication-order
+                                       ;; ADR-0191: the module's own
+                                       ;; `chronic` flag, `true` or
+                                       ;; absent.
+                                       (cond-> {:codes (:codes state)}
+                                         (true? (:chronic state)) (assoc :chronic true))
+                                       tables)]
         (if-let [attr (:assign-to-attribute state)]
           (update outcome :attributes assoc (keyword (root-id ctx module-id) (gmf/slug attr)) event-idx)
           outcome))
