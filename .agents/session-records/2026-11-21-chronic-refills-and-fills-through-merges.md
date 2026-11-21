@@ -241,3 +241,151 @@ writes its orders across a hundred years. Measured on that config: 134
 fills, all number 1. The root now states `:refill-tail-days 36500` and
 nothing else, and is the one root reaching a refill: 134 first fills,
 2,129 refills, fill numbers up to 85, 3,343 events, `check-all` ok.
+
+## Step 5: oracle roots, measured
+
+`bin/regression-oracle 29668820 334bceb4 --declared-digest-change` and
+`bin/ground-truth-bracket` likewise. Both exit 1 with a DIFFERS
+banner, as they do whenever a declared root moves; the per-root digest
+lists are what was read. Both show the same four roots moving and the
+other 42 identical:
+
+- `dispense`, `dispense-inpatient`: the fill number.
+- `osteoporosis`: `:chronic true` on its 156 orders.
+- `osteoporosis-dispense`: both, and its refills.
+
+`asthma` and `metabolic-syndrome-care` did not move: neither log holds
+an in-horizon order from a state its module marks chronic.
+
+I first ran `bin/usecase-ground-truth-oracle` by mistake for the second
+instrument. It is a use-case exerciser, and it failed usefully:
+`expected 47 invariants checked, got 48`. The count is pinned in the
+use-case page and its source, the exerciser, the consumer doc and one
+test docstring, and `make test` runs none of the first three. All
+re-pinned in `ffdcf2f5`.
+
+## Step 5: figures, describe, pins
+
+The usual drill, 2026-11-21 at `ffdcf2f5`: one warm-up and two timed
+runs per cell, `/usr/bin/time -v`, Windows-side load sampled before
+each run (1 to 12; none above 20). Both timed runs of every cell wrote
+a byte-identical `events.edn`. `config.edn` 7,500's first timed run
+overlapped analysis jobs I had left running on the host (109.92 s
+against 105.54 s); both are in the mean and the provenance says so.
+
+| cell | events | messages | msg/event | wall | peak RSS |
+|---|---|---|---|---|---|
+| `config.edn` 7,500 | 127,549 | 125,942 | 0.9874 | 107.73 s | 1,679 MiB |
+| `config-nobed.edn` 7,500 | 102,032 | 100,479 | 0.9848 | 92.51 s | 1,464 MiB |
+| `config-bare.edn` 7,500 | 67,780 | 40,207 | 0.5932 | 41.50 s | 1,013 MiB |
+| `config.edn` 750 | 29,741 | 31,158 | 1.0476 | 53.82 s | 1,083 MiB |
+
+28,024, one run, `-Xmx8g`: 506,195 events, 32,080 subjects,
+190,088,591 bytes, 324.77 s, 3,541 MiB, sha-256
+`dd4516c020a3b0730425e1d3bab02840f2d5d65f9e19a4ede077c873f286a42e`.
+`bd4dec16...` is kept in `figures.edn` under `:pre-adr-0191`, and the
+7,500 figures before this session under `:provenance :prior`.
+
+`config-bare.edn`'s counts did not move and its bytes did: its 638
+`dense-clinic-chronic` orders gained `:chronic true`.
+
+**Describe 1.4.0.** The catalog's `:measure` group took two rows
+without a new mechanism: `:medication-refill` and
+`:dispense-after-merge`. `describe` over the new cells:
+
+| | 7,500 | no-bed | bare | 750 | 28,024 |
+|---|---|---|---|---|---|
+| events | 127,549 | 102,032 | 67,780 | 29,741 | 506,195 |
+| subjects | 8,521 | 8,521 | 7,500 | 2,796 | 32,080 |
+| `:medication-dispense-inpatient` | 2,533 | 2,533 | 0 | 288 | 10,334 |
+| `:medication-dispense-community` | 2,298 | 2,298 | 0 | 237 | 9,751 |
+| `:medication-refill` | 760 | 760 | 0 | 81 | 3,596 |
+| `:dispense-after-merge` | 117 | 117 | 0 | 17 | 470 |
+
+They agree with the scratch census on every count.
+
+Pins moved: the invariant catalog count, 47 to 48 (`ffdcf2f5`); the
+describe golden and version; `engine-test`'s "no fill number";
+dense's derivation literals. The dense README's dispense table lost
+two rows this session did not re-measure (order-to-dispense turnaround
+by ward class), and its carrier-column table is left at its
+2026-11-20 measurement: the erasure comparison shows no non-dispense
+event moved.
+
+## Step 6 and 7: docs and ADR
+
+`operational-models.md` gains "Refills, and a fill through a merge
+(ADR-0191)" beside the community pharmacy. `formats.md`'s event section
+is regenerated; its Stability and describe passages were edited by
+hand. `consuming-ground-truth.md`: rule 2's exception, the `:dispense`
+row, the dispense passages (several dispenses per order, grouping, a
+dispense whose patient is the survivor, what the tail does not mean),
+the Scale table. `future-features.md`, the root README's one ratio,
+the dense README. ADR-0191, Accepted, amends ADR-0190.
+
+## Premises the prompt got wrong
+
+1. **"The dispense law resolving the order through the merge as the
+   end's law already does."** The end's law does not resolve through
+   merges. The result's law does (ADR-0179), and the dispense law now
+   uses the same function.
+2. **"1.13.0, additively."** `:fill-number` is required, and
+   `classify-change` calls a new required key breaking. Bumped to
+   1.13.0 with that output quoted; a 1.12.0 log holding a dispense does
+   not validate against 1.13.0.
+3. **"The log's tail past the last arrival holds refills only."**
+   Dense already runs twenty years past its last arrival. The tail
+   lengthens no dense log, and every refill sits in the first 110
+   days.
+4. **The tail in a long-horizon run.** Measured from the arrival
+   clock, it leaves an order written years in with no refill at all.
+   `osteoporosis-dispense` reached none on the default; it now states
+   a long tail. Not ruled; named in the ADR.
+5. **"`chronic` is not declared."** True, and the loader kept the key
+   anyway; nothing read it.
+6. **"Pending `:pharmacy-dispense` steps ... re-queued."** The
+   community half is a different step, `:community-fill`, and that is
+   where nearly all of them are (157 of 159 at 28,024). Both are
+   carried.
+7. **An inpatient dispense through a merge** has no stay of its own to
+   land in: the absorbed record's stay never closes. It is dispensed to
+   the survivor if the survivor is an inpatient then, under the
+   survivor's encounter. All three such steps in the measured cells
+   are.
+8. **A carried chronic fill starts a chain on the survivor**, and
+   refills pending at a merge are carried too, so more steps are
+   carried than died at the base.
+9. **A chain can stop a fourth way**: a newer order of the same
+   citation replaces the old one.
+10. **No vendored chronic order reaches a dense log.** The marker
+    reaches the event for four modules, and dense walks none of their
+    chronic states in-horizon.
+11. Not in the prompt: the invariant count is pinned in a use-case
+    exerciser `make test` does not run.
+
+Held as stated: two draws per fill on the `:pharmacy` stream; the
+three options and their defaults; inpatient dispenses do not refill; a
+discharge prescription does; a prescription never filled gets no
+refill; the erasure law.
+
+## Downstream line
+
+**Event schema 1.13.0.** Two fields: `:fill-number` on every
+`:medication-dispense` (required, from 1), and an optional `:chronic
+true` on a `:medication-order`. Under `:dispense`, a community fill of
+a chronic order is now refilled every 28 to 35 days, each fill
+followed by another with chance 0.94, none later than the last arrival
+plus 90 days (`:refill-interval-days`, `:refill-continuation`,
+`:refill-tail-days` on the facility; `dense-7500` writes all three
+out). **One order may have several dispenses: group by
+`:order-event-id`, order by `:fill-number`.** A fill pending when its
+patient is merged away is emitted for the survivor, so **a dispense's
+patient may be the survivor of its order's patient**. A chain ends
+without an event. `:chronic` absent means unmarked, not short-term.
+`dense-7500` at 7,500: 2,533 inpatient dispenses and 2,298 community
+fills, 760 of them refills, 117 dispenses after a merge; at 28,024,
+10,334 and 9,751, 3,596 refills, 470 after a merge. Describe report
+1.4.0 counts both. Pin: the tip of this session. New 28,024 log:
+190,088,591 bytes, sha-256
+`dd4516c020a3b0730425e1d3bab02840f2d5d65f9e19a4ede077c873f286a42e`. A
+retained corpus is a valid artifact of the earlier pin, at 1.12.0.
