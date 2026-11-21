@@ -1638,11 +1638,33 @@
                      (appointment-ref-field step))]
      :advance 0}))
 
+(defn- community-fill-lag-seconds
+  "ADR-0190: the two draws that decide one prescription's community
+  fill -- whether it is filled at all, then how long after. Returns the
+  lag in SECONDS, or nil for a prescription that is never filled.
+
+  FIXED CONSUMPTION: both draws are taken every time, the lag's too
+  when the share's draw has already said no and when `lo` = `hi`, so
+  one prescription's outcome, or a retuned option, moves no other
+  draw. On the patient's `:pharmacy` stream and on no other.
+
+  The options are the FACILITY's (`sim-model/community-fill-share`,
+  `sim-model/community-fill-minutes`): a community pharmacy belongs to
+  no ward."
+  [pharmacy-rng facility]
+  (let [u (.nextDouble ^Random pharmacy-rng)
+        [lo hi] (sim-model/community-fill-minutes facility)
+        minutes (streams/rand-int-in pharmacy-rng lo hi)]
+    (when (< u (sim-model/community-fill-share facility))
+      (* 60 minutes))))
+
 (defn- derived-community-fills
-  "ADR-0187, the `:dispense` key: one `:medication-dispense` STEP,
-  `:setting :community`, for each medication order the visit now closing
-  wrote and left open, in the orders' own order. Nil without the key and
-  nil with nothing to fill, so the caller attaches nothing.
+  "ADR-0187 as amended by ADR-0190, the `:dispense` key: the queue
+  entries that will fill the medication orders the visit now closing
+  wrote and left open. One entry per order that IS filled, at the
+  close plus that order's drawn lag; an order whose draw says it is
+  never filled gets none. Nil without the key and nil with nothing to
+  fill, so the caller attaches nothing.
 
   WHICH ORDERS. The patient's own `:medication-orders` records, which
   `evolve :medication-order` appends in log order. An order is this
@@ -1654,45 +1676,52 @@
   fill by its order's end, so an order the visit itself ended is not one
   the visit left to fill.
 
-  STEPS, NOT EVENTS, and that is the ruling's own condition (2026-11-18:
-  \"as long as the time is after the encounter\"). `fold/apply-events`
-  stamps a whole batch off the world as it stood BEFORE the batch, so an
-  event returned beside the closer would carry the `:encounter-id` of
-  the visit that closer closes. A step is decided later, against a world
-  in which the close has been folded.
+  THE DRAWS are `community-fill-lag-seconds`', two per such order, in
+  the orders' own order.
 
-  The step is the one a pathway authors (ADR-0186), so the event is
-  `decide :medication-dispense`'s and its `:order-event-id` is resolved
-  there, by citation, as an authored fill's is. It states no
-  `:citation`: no module state and no pathway step is its source. No
-  draw."
-  [world patient]
+  WHAT IS QUEUED is a `:community-fill` step, engine-internal as
+  `:pharmacy-dispense` is: it carries what `decide :community-fill`
+  needs to decline if the order has ended by then. STEPS, NOT EVENTS,
+  for ADR-0187's reason even at a lag of zero: `fold/apply-events`
+  stamps a whole batch off the world as it stood BEFORE the batch, so
+  an event returned beside the closer would be decided against the
+  open visit."
+  [{pharmacy-rng :pharmacy} t world patient patient-id]
   (when (:dispense world)
     (when-let [encounter (:encounter patient)]
       (let [written-here? (if-let [id (:encounter-id encounter)]
                             #(= id (:encounter-id %))
-                            #(<= (:admitted-at encounter) (:ordered-t %)))]
-        (seq (for [order (:medication-orders patient)
-                   :when (and (= :active (:status order)) (written-here? order))]
-               {:type :medication-dispense :setting :community
-                :order-citation (:citation order)}))))))
+                            #(<= (:admitted-at encounter) (:ordered-t %)))
+            orders (filter #(and (= :active (:status %)) (written-here? %)) (:medication-orders patient))]
+        (when (seq orders)
+          (when (nil? pharmacy-rng)
+            (throw (ex-info "the :dispense key draws a community fill on the :pharmacy stream; this decide was handed none"
+                            {:t t :patient-id patient-id})))
+          ;; `mapv`, not `for`: the draws must be taken here, in order,
+          ;; and not when something later realizes a lazy seq.
+          (seq (remove nil?
+                       (mapv (fn [order]
+                               (when-let [lag (community-fill-lag-seconds pharmacy-rng (:facility world))]
+                                 {:t (+ t lag) :patient-id patient-id
+                                  :steps [{:type :community-fill :order-citation (:citation order)
+                                           :ordered-t (:ordered-t order)}]}))
+                             orders))))))))
 
 (defmethod decide :outpatient-visit-end decide-outpatient-visit-end
-  [_streams t world patient-id step]
+  [streams t world patient-id step]
   (let [patient (get-in world [:patients patient-id])
-        fills (derived-community-fills world patient)]
-    ;; ADR-0187: with fills owed, ONE queue entry at this same instant,
-    ;; the shape `decide :order` uses for its result. The run loop gives
-    ;; it a `[t seq-no]` ahead of this patient's own remaining steps, so
-    ;; the fills follow the close and precede whatever the patient does
-    ;; next. Without the `:dispense` key `fills` is nil and this map is
-    ;; the one it always was.
+        fills (derived-community-fills streams t world patient patient-id)]
+    ;; ADR-0187, ADR-0190: with fills owed, one queue entry per fill, at
+    ;; the close plus that fill's own lag; the run loop takes a vector
+    ;; of them as it takes `decide :discharge`'s. Without the
+    ;; `:dispense` key `fills` is nil and this map is the one it always
+    ;; was.
     (cond-> {:events [(merge {:event :outpatient-visit-end :t t :active-mrn (:active-mrn patient)
                               :attending (:attending patient)
                               :participants [{:patient-id patient-id :role :subject}]}
                              (citation-fields step))]
              :advance 0}
-      fills (assoc :schedule-followup {:t t :patient-id patient-id :steps (vec fills)}))))
+      fills (assoc :schedule-followup (vec fills)))))
 
 ;; --- M5b: CompileTrajectory's new ground-truth event types (docs/gmf-
 ;; interpreter.md section 1's table) -- each is a real, glass-box-cited
@@ -1756,7 +1785,16 @@
   needs to tell whether the order is still there to fill.
 
   Derived, not authored (ADR-0188's halt): a step in the pathway costs
-  the patient draws under churn and a queue turn without it."
+  the patient draws under churn and a queue turn without it.
+
+  ADR-0190: THREE DRAWS PER ORDER, NOT ONE. After the turnaround come
+  `community-fill-lag-seconds`' two, taken here whether or not they are
+  ever used, and carried on the step as `:community-lag-seconds` (absent
+  for a prescription that would never be filled). They are what `decide
+  :pharmacy-dispense` needs if it finds the stay already discharged and
+  the order still active: a discharge prescription. Drawn at the order
+  so that consumption is fixed per order and does not depend on how the
+  stay went."
   [{pharmacy-rng :pharmacy} t world patient citation]
   (when (and (:dispense world) citation (= :inpatient (:class patient)))
     (when-let [encounter (:encounter patient)]
@@ -1768,11 +1806,14 @@
                      (sim-model/ward-by-name facility (:home-ward patient)))
             [lo hi] (if ward
                       (sim-model/dispense-minutes ward)
-                      (:inpatient sim-model/default-dispense-minutes))]
-        {:t (+ t (* 60 (streams/rand-int-in pharmacy-rng lo hi)))
+                      (:inpatient sim-model/default-dispense-minutes))
+            turnaround (* 60 (streams/rand-int-in pharmacy-rng lo hi))
+            community-lag (community-fill-lag-seconds pharmacy-rng facility)]
+        {:t (+ t turnaround)
          :steps [(cond-> {:type :pharmacy-dispense :order-citation citation :ordered-t t
                           :admitted-at (:admitted-at encounter)}
-                   (:encounter-id encounter) (assoc :encounter-id (:encounter-id encounter)))]}))))
+                   (:encounter-id encounter) (assoc :encounter-id (:encounter-id encounter))
+                   community-lag (assoc :community-lag-seconds community-lag))]}))))
 
 (defmethod decide :medication-order decide-medication-order
   [streams t world patient-id {:keys [codes] :as step}]
@@ -1899,28 +1940,92 @@
 ;;   order, so a dispense of an earlier one would name the wrong order;
 ;;   the later order has a queue entry of its own.
 ;;
-;; Otherwise NOTHING is emitted: the order was stopped, or the patient
-;; left, before pharmacy filled it. That is a fact of the model, and it
-;; is what keeps both dispense laws true without bending either
-;; (`clinical-content-only-when-admitted`, and the dispense law's bound
-;; by the order's end). The event, when there is one, is `decide
-;; :medication-dispense`'s own. No draw: the turnaround was drawn when
-;; the order was written.
+;; Otherwise NO INPATIENT DISPENSE is emitted: the order was stopped, or
+;; the patient left, before pharmacy filled it. That is a fact of the
+;; model, and it is what keeps both dispense laws true without bending
+;; either (`clinical-content-only-when-admitted`, and the dispense law's
+;; bound by the order's end). The event, when there is one, is `decide
+;; :medication-dispense`'s own. No draw: all three were drawn when the
+;; order was written.
+;;
+;; ADR-0190, THE DISCHARGE PRESCRIPTION. One of those cases is not
+;; nothing. When the order is still `:active` and still the latest of
+;; its citation, and the stay that wrote it has been DISCHARGED -- its
+;; record is among the patient's closed encounters, not cancelled, and
+;; closed as `:discharged` -- the patient went home with a prescription
+;; pharmacy never filled. It is then treated exactly as a visit's order
+;; is at the visit's close: if its draw said it is filled at all
+;; (`:community-lag-seconds` on the step), a `:community-fill` is queued
+;; at the DISCHARGE instant plus that lag, or now if that is already
+;; past. This is where it is decided, and not in `decide :discharge`,
+;; because this is the first instant at which "never dispensed
+;; inpatient" is known: this step is the only thing that could have
+;; dispensed it. A cancelled admission, an expired patient (whose stay
+;; never closes) and a stay still open all fall through to nothing.
 (defmethod decide :pharmacy-dispense decide-pharmacy-dispense
-  [streams t world patient-id {:keys [order-citation ordered-t admitted-at encounter-id]}]
+  [streams t world patient-id {:keys [order-citation ordered-t admitted-at encounter-id community-lag-seconds]}]
+  (let [patient (get-in world [:patients patient-id])
+        encounter (:encounter patient)
+        latest (last (filter #(= order-citation (:citation %)) (:medication-orders patient)))
+        still-to-fill? (and latest
+                            (= :active (:status latest))
+                            (= ordered-t (:ordered-t latest)))
+        same-stay? #(and (= admitted-at (:admitted-at %)) (= encounter-id (:encounter-id %)))
+        discharged (when (and still-to-fill? (not (and encounter (same-stay? encounter))))
+                     (last (filter #(and (same-stay? %) (not (:cancelled %)) (= :discharged (:status %)))
+                                   (:encounters patient))))]
+    (cond
+      (and (= :admitted (:status patient))
+           (= :inpatient (:class patient))
+           encounter
+           (same-stay? encounter)
+           still-to-fill?)
+      (decide streams t world patient-id
+              {:type :medication-dispense :setting :inpatient :order-citation order-citation})
+
+      (and discharged community-lag-seconds (not= :expired (:status patient)))
+      {:events [] :advance 0
+       :schedule-followup {:t (max t (+ (:discharged-at discharged) community-lag-seconds))
+                           :patient-id patient-id
+                           :steps [(cond-> {:type :community-fill :order-citation order-citation
+                                            :ordered-t ordered-t :admitted-at admitted-at}
+                                     encounter-id (assoc :encounter-id encounter-id))]}}
+
+      :else {:events [] :advance 0})))
+
+;; ADR-0190: the queued half of a drawn community fill, for a visit's
+;; order (`derived-community-fills`) and for a discharge prescription
+;; (directly above). The lag has elapsed; the prescription is filled
+;; only if it is still there to fill:
+;;
+;; * the order is still `:active` and is the patient's LATEST of its
+;;   citation, `decide :pharmacy-dispense`'s own test and for its
+;;   reason. An order ended during the lag is not filled.
+;; * the patient has not died since.
+;; * for a discharge prescription (the step carries `:admitted-at`), the
+;;   stay is not open again: a cancelled discharge puts the patient back
+;;   in the bed, and a community pharmacy does not fill for an
+;;   inpatient.
+;;
+;; A community fill needs no open encounter and belongs to none: when it
+;; lands inside a LATER encounter of the same patient,
+;; `encounters/stamp-encounter` leaves it unstamped. A patient absorbed
+;; by a merge never reaches here; the run loop drops the step. No draw.
+(defmethod decide :community-fill decide-community-fill
+  [streams t world patient-id {:keys [order-citation ordered-t admitted-at encounter-id] :as step}]
   (let [patient (get-in world [:patients patient-id])
         encounter (:encounter patient)
         latest (last (filter #(= order-citation (:citation %)) (:medication-orders patient)))]
-    (if (and (= :admitted (:status patient))
-             (= :inpatient (:class patient))
-             encounter
-             (= admitted-at (:admitted-at encounter))
-             (= encounter-id (:encounter-id encounter))
-             latest
+    (if (and latest
              (= :active (:status latest))
-             (= ordered-t (:ordered-t latest)))
+             (= ordered-t (:ordered-t latest))
+             (not= :expired (:status patient))
+             (not (and (contains? step :admitted-at)
+                       encounter
+                       (= admitted-at (:admitted-at encounter))
+                       (= encounter-id (:encounter-id encounter)))))
       (decide streams t world patient-id
-              {:type :medication-dispense :setting :inpatient :order-citation order-citation})
+              {:type :medication-dispense :setting :community :order-citation order-citation})
       {:events [] :advance 0})))
 
 ;; GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R2(b)): the SAME

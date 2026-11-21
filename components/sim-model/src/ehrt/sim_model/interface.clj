@@ -96,6 +96,12 @@
 ;; ADR-0189: the pharmacy turnaround range, read the same one way.
 (def default-dispense-minutes config/default-dispense-minutes)
 (defn dispense-minutes [ward] (config/dispense-minutes ward))
+;; ADR-0190: the community pharmacy's two facility options, each read
+;; the same one way.
+(def default-community-fill-share config/default-community-fill-share)
+(def default-community-fill-minutes config/default-community-fill-minutes)
+(defn community-fill-share [facility] (config/community-fill-share facility))
+(defn community-fill-minutes [facility] (config/community-fill-minutes facility))
 (def default-provider-templates config/default-provider-templates)
 (defn materialize-providers [rng provider-templates] (config/materialize-providers rng provider-templates))
 

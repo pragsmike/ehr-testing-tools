@@ -114,10 +114,81 @@
   (or (:dispense-minutes ward)
       (get default-dispense-minutes (:class ward))))
 
+(def default-community-fill-share
+  "The fallback `:community-fill-share` for a facility that states none
+  (ADR-0190): the probability that a prescription written at an
+  outpatient visit, or left undispensed at a discharge, is filled at a
+  community pharmacy at all.
+
+  PROVISIONAL. Chosen from four published studies of primary
+  non-adherence, read quickly, and not fitted to any of them:
+
+  * 78% of 195,930 e-prescriptions were filled, and 72% of those for a
+    new medication (Fischer et al., J Gen Intern Med 2010;25(4):284-90,
+    PMID 20131023).
+  * 17% of 150,565 new prescriptions in primary care were never filled
+    (Tamblyn et al., CMAJ; https://cmaj.ca/node/149155).
+  * Of 32,586 new chronic-medication orders in an elderly US cohort,
+    75% were filled within 7 days and 81% within 30 (Franklin et al.,
+    J Gen Intern Med 2018, PMC6206334).
+  * After discharge from a general medicine service, 28% of patients
+    with new prescriptions had not filled one or more at 7 days
+    (PMC3642181).
+
+  One number for every prescription: the studies report shares that
+  differ by drug class, by whether the medication is new, and by
+  setting. A site with its own data states its own."
+  0.80)
+
+(def default-community-fill-minutes
+  "The fallback `:community-fill-minutes` for a facility that states
+  none (ADR-0190): `[lo hi]` MINUTES, inclusive, from the close of the
+  visit (or the discharge) to the fill. One hour to seven days.
+
+  PROVISIONAL, on the same four studies as
+  `default-community-fill-share`. UNIFORM IS CRUDER THAN THEY ARE: real
+  first fills cluster in the first day or two and trail off over weeks,
+  and a uniform draw over seven days puts the median at three and a
+  half. Uniform is the engine's shape for a range, not a claim about
+  that distribution."
+  [60 10080])
+
+(defn community-fill-share
+  "`facility`'s own `:community-fill-share`, or the default. The ONE
+  reading of that key. `contains?`, not `or`-on-nil alone: a stated 0
+  is a share, not an absence."
+  [facility]
+  (if (contains? facility :community-fill-share)
+    (:community-fill-share facility)
+    default-community-fill-share))
+
+(defn community-fill-minutes
+  "`facility`'s own `:community-fill-minutes`, or the default. The ONE
+  reading of that key."
+  [facility]
+  (or (:community-fill-minutes facility) default-community-fill-minutes))
+
 (def Facility
   [:map
    [:id :keyword]
-   [:wards [:vector Ward]]])
+   [:wards [:vector Ward]]
+   ;; ADR-0190: the COMMUNITY pharmacy's two options. On the facility
+   ;; and not on a ward, since a community pharmacy belongs to no ward.
+   ;; Neither is the opt-in: the `:dispense` run-config key is. Absent,
+   ;; each falls back to its default above.
+   ;;
+   ;; `:community-fill-share` -- the probability, 0 to 1 inclusive, that
+   ;; a prescription is filled at all. `:community-fill-minutes` -- the
+   ;; lag from the visit's close (or the discharge) to the fill, `[lo
+   ;; hi]` minutes inclusive, uniform, refused unless 0 <= lo <= hi as
+   ;; `:dispense-minutes` is.
+   [:community-fill-share {:optional true}
+    [:and number?
+     [:fn {:error/message "must be a number from 0 to 1"} (fn [p] (<= 0 p 1))]]]
+   [:community-fill-minutes {:optional true}
+    [:and [:tuple :int :int]
+     [:fn {:error/message "must be [lo hi] with 0 <= lo <= hi"}
+      (fn [[lo hi]] (<= 0 lo hi))]]]])
 
 (defn valid-facility? [facility] (m/validate Facility facility))
 (defn explain-facility [facility] (m/explain Facility facility))

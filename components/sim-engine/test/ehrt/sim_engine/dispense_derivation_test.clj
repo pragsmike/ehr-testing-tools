@@ -22,6 +22,7 @@
             [ehrt.sim-engine.run :as run]
             [ehrt.sim-engine.state :as state]
             [ehrt.sim-engine.streams :as streams]
+            [ehrt.sim-model.interface :as sim-model]
             [malli.core :as m])
   (:import [java.util Random]))
 
@@ -73,6 +74,19 @@
                                  {:type :delay :from 60 :to 60}
                                  {:type :discharge}]}}]})
 
+(def ^:private fill-everything-at-the-close
+  "ADR-0190 made the community fill a draw: a share that is filled, and
+  a lag. A facility that fills every prescription with no lag is
+  ADR-0187's rule exactly, and the tests of that rule below run on it.
+  The draw itself is `ehrt.sim-engine.community-fill-draw-test`'s."
+  (assoc sim-model/default-facility :community-fill-share 1 :community-fill-minutes [0 0]))
+
+(defn- keyed
+  "`config` with the `:dispense` key, on a facility that fills every
+  prescription at its visit's close."
+  [config]
+  (assoc config :dispense true :facility fill-everything-at-the-close))
+
 (defn- subject-of [event] (:patient-id (first (:participants event))))
 
 (defn- indexed-of [kind ground-truth]
@@ -118,7 +132,7 @@
     dispenses))
 
 (deftest a-module-compiled-visits-order-is-filled-in-the-community-after-the-visit-closes
-  (let [r (run/run (assoc osteoporosis-config :dispense true))
+  (let [r (run/run (keyed osteoporosis-config))
         dispenses (every-order-is-filled-once-after-its-visit-closed (:ground-truth r))]
     (is (= 156 (count dispenses)))
     (is (not-any? #(contains? (second %) :citation) dispenses)
@@ -126,7 +140,7 @@
     (is (ok? r) (violations r))))
 
 (deftest a-derived-fill-does-not-carry-the-closed-visits-encounter-id
-  (let [r (run/run (assoc osteoporosis-config :dispense true :encounters true))
+  (let [r (run/run (keyed (assoc osteoporosis-config :encounters true)))
         log (vec (:ground-truth r))
         dispenses (every-order-is-filled-once-after-its-visit-closed log)]
     (is (= 156 (count dispenses)))
@@ -137,7 +151,7 @@
     (is (ok? r) (violations r))))
 
 (deftest two-orders-in-one-visit-are-filled-in-the-orders-own-order
-  (let [r (run/run (assoc two-order-visit-config :dispense true))
+  (let [r (run/run (keyed two-order-visit-config))
         log (vec (:ground-truth r))
         dispenses (every-order-is-filled-once-after-its-visit-closed log)]
     (is (= 6 (count dispenses)))
@@ -164,6 +178,7 @@
   (testing "the dispense law bounds a fill by its order's end, so an order
             the visit itself ended is not one the visit left to fill"
     (let [cfg {:seed 11 :patients 2 :arrival-gap 90 :dispense true
+               :facility fill-everything-at-the-close
                :pathways [{:weight 1
                            :pathway {:name "ended-in-visit"
                                      :steps [{:type :outpatient-visit}
@@ -178,25 +193,39 @@
       (is (= [order-b order-b] (mapv (comp :order-citation second) dispenses)))
       (is (ok? r) (violations r)))))
 
-(deftest deriving-a-fill-takes-no-draw
+(deftest deriving-a-fill-takes-two-draws-per-order-on-the-pharmacy-stream
   (let [patient (assoc (state/initial-patient "P1" "MRN000001")
                        :status :admitted :class :outpatient :attending "prov-1"
                        :encounter {:ordinal 0 :admitted-at 100}
                        :medication-orders [{:citation order-b :ordered-t 40 :status :active}
                                            {:citation order-a :ordered-t 110 :status :active}])
-        world {:patients {"P1" patient} :ground-truth []}
-        closing {:type :outpatient-visit-end}]
-    (testing "with the key: the closing event alone, and one queue entry at
-              its own instant holding one community step per order this
-              visit wrote"
-      (let [rng (Random. 1)
-            decided (decide/decide (streams/one-stream rng) 130 (assoc world :dispense true) "P1" closing)]
+        world {:patients {"P1" patient} :ground-truth []
+               :facility (assoc sim-model/default-facility :community-fill-share 1)}
+        closing {:type :outpatient-visit-end}
+        streams (fn [others pharmacy] (assoc (streams/one-stream others) :pharmacy pharmacy))]
+    (testing "with the key: the closing event alone, and one queue entry per
+              order this visit wrote, at the close plus that order's drawn lag"
+      (let [others (Random. 1) pharmacy (Random. 2)
+            decided (decide/decide (streams others pharmacy) 130 (assoc world :dispense true) "P1" closing)
+            [lo hi] sim-model/default-community-fill-minutes
+            twin (Random. 2)
+            _ (.nextDouble twin)
+            lag (* 60 (streams/rand-int-in twin lo hi))]
         (is (= [:outpatient-visit-end] (mapv :event (:events decided))))
-        (is (= {:t 130 :patient-id "P1"
-                :steps [{:type :medication-dispense :setting :community :order-citation order-a}]}
+        (is (= [{:t (+ 130 lag) :patient-id "P1"
+                 :steps [{:type :community-fill :order-citation order-a :ordered-t 110}]}]
                (:schedule-followup decided))
             "the order from before this visit opened is not this visit's")
-        (is (= (.nextLong (Random. 1)) (.nextLong rng)) "the stream is where a fresh one starts")))
+        (is (= (.nextLong (Random. 1)) (.nextLong others)) "no other family's stream moved")
+        (is (= (.nextLong twin) (.nextLong pharmacy))
+            "the pharmacy stream moved by exactly two draws: filled at all, then the lag")))
+    (testing "a prescription the draw leaves unfilled queues nothing, and takes the same two draws"
+      (let [pharmacy (Random. 2)
+            unfilled (assoc-in world [:facility :community-fill-share] 0)
+            decided (decide/decide (streams (Random. 1) pharmacy) 130 (assoc unfilled :dispense true) "P1" closing)
+            twin (doto (Random. 2) (.nextDouble) (streams/rand-int-in 60 10080))]
+        (is (= #{:events :advance} (set (keys decided))))
+        (is (= (.nextLong twin) (.nextLong pharmacy)))))
     (testing "without it: the decide's answer is the one it always gave"
       (let [decided (decide/decide (streams/one-stream (Random. 1)) 130 world "P1" closing)]
         (is (= #{:events :advance} (set (keys decided))))))
@@ -207,7 +236,8 @@
 
 ;; --- step 3: THE ERASURE LAW, the key's contract ------------------------
 ;;
-;; The key adds events and draws nothing. So a run with it is the keyless
+;; The key adds events and draws only on the `:pharmacy` stream, which
+;; nothing else reads (ADR-0189, ADR-0190). So a run with it is the keyless
 ;; run with dispenses inserted: delete every `:medication-dispense`,
 ;; renumber each log-index-bearing field past the deletions, and what is
 ;; left is the keyless log, EVENT FOR EVENT -- the whole log compared for
@@ -282,10 +312,13 @@
     (is (contains? (schema-reference-fields) :order-event-id))
     (is (contains? (schema-reference-fields) :cancels-event-id)))
   (doseq [[label cfg expected-fills]
-          [["the oracle's osteoporosis root" osteoporosis-config 156]
+          ;; The fills are counted at the DEFAULT share and lag
+          ;; (ADR-0190), so the law is held under real draws: 156, 7,
+          ;; 156 and 6 orders are written, in that order.
+          [["the oracle's osteoporosis root" osteoporosis-config 134]
            ["the oracle's sinusitis root" sinusitis-config 7]
-           ["osteoporosis, with :encounters" (assoc osteoporosis-config :encounters true) 156]
-           ["two authored orders per visit" two-order-visit-config 6]
+           ["osteoporosis, with :encounters" (assoc osteoporosis-config :encounters true) 134]
+           ["two authored orders per visit" two-order-visit-config 3]
            ["authored visits and stays under churn" churned-visits-config nil]]]
     (testing label
       (let [keyless (:ground-truth (run/run cfg))

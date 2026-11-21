@@ -172,9 +172,18 @@
   and is why this is a stamp and not a patient-wide field.
 
   With no `:encounters` opt-in NOTHING mints an id, so this function is
-  the identity on every event of every legacy run, by construction."
+  the identity on every event of every legacy run, by construction.
+
+  ADR-0190: A `:community` DISPENSE IS NEVER STAMPED. It is filled at a
+  pharmacy outside the hospital and belongs to no encounter, the one
+  that prescribed it included; with a drawn lag it can land while the
+  same patient is inside a LATER encounter, and the stamp would then
+  name an encounter that had nothing to do with it (ADR-0187's second
+  finding)."
   [world event]
-  (if (or (contains? event :encounter-id) (two-encounter-event-types (:event event)))
+  (if (or (contains? event :encounter-id)
+          (two-encounter-event-types (:event event))
+          (and (= :medication-dispense (:event event)) (= :community (:setting event))))
     event
     (let [subject (:patient-id (first (:participants event)))
           patient (get-in world [:patients subject])]

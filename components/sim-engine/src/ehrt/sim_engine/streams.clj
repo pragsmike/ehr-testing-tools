@@ -273,6 +273,12 @@
    ;; `:dispense-minutes`, moves no other draw of the run: the erasure
    ;; law (ADR-0187) holds for the whole key because of this row. The
    ;; scheme marker stays \"1.0\": no existing stream's seed changed.
+   ;; ADR-0190: the community fill's two draws (filled at all, and the
+   ;; lag) are on this stream too, for the same reason. An admission
+   ;; order therefore takes three draws here where it took one, so a
+   ;; patient's SECOND and later inpatient turnarounds are different
+   ;; numbers than they were under ADR-0189; nothing outside the
+   ;; dispenses moved.
    :pharmacy 7
    ;; 6 is RESERVED for `:mutation` (ADR-0176 section 2(iii), ruling
    ;; Q4(a); tree-recorded here by ruling Q13(a), 2026-09-01, after the

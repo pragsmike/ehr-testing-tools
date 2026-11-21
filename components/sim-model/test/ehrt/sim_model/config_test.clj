@@ -100,3 +100,28 @@
     (is (config/valid-facility? config/default-facility) "and the key is optional")
     (doseq [bad [[30 10] [-1 5] [5] [5 10 15] ["5" "10"] [1.5 2.5] 20 nil]]
       (is (not (config/valid-facility? (facility bad))) (pr-str bad)))))
+
+;; --- ADR-0190: the community pharmacy's two options ---------------------
+
+(deftest community-fill-options-are-the-facilitys-own-or-the-defaults
+  (is (= 0.80 config/default-community-fill-share))
+  (is (= [60 10080] config/default-community-fill-minutes))
+  (is (= 0.80 (config/community-fill-share config/default-facility))
+      "a facility that states none reads the default")
+  (is (= [60 10080] (config/community-fill-minutes config/default-facility)))
+  (is (= 0.5 (config/community-fill-share (assoc config/default-facility :community-fill-share 0.5))))
+  (is (= 0 (config/community-fill-share (assoc config/default-facility :community-fill-share 0)))
+      "a stated zero is zero, not the default")
+  (is (= [5 9] (config/community-fill-minutes (assoc config/default-facility :community-fill-minutes [5 9])))))
+
+(deftest an-invalid-community-fill-option-is-refused-by-the-facility-schema
+  (let [with (fn [k v] (assoc config/default-facility k v))]
+    (is (config/valid-facility? config/default-facility) "both keys are optional")
+    (doseq [good [0 1 0.0 1.0 0.8]]
+      (is (config/valid-facility? (with :community-fill-share good)) (pr-str good)))
+    (doseq [bad [-0.1 1.01 2 "0.8" [0.8] nil]]
+      (is (not (config/valid-facility? (with :community-fill-share bad))) (pr-str bad)))
+    (is (config/valid-facility? (with :community-fill-minutes [60 10080])))
+    (is (config/valid-facility? (with :community-fill-minutes [0 0])) "a fill at the close is a range")
+    (doseq [bad [[30 10] [-1 5] [5] [5 10 15] ["5" "10"] [1.5 2.5] 20 nil]]
+      (is (not (config/valid-facility? (with :community-fill-minutes bad))) (pr-str bad)))))

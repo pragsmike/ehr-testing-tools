@@ -137,14 +137,27 @@
         "the order and its end share an instant, so pharmacy never fills it")
     (is (ok? r) (violations r))))
 
-(deftest a-discharge-before-the-turnaround-elapses-leaves-the-order-undispensed
-  (let [r (run/run (assoc (stay-config "Renal" [{:type :delay :from 5 :to 5} {:type :discharge}])
-                          :dispense true))]
-    (is (= 3 (count (indexed-of :medication-order (:ground-truth r)))))
-    (is (= 3 (count (indexed-of :discharge (:ground-truth r)))))
-    (is (empty? (indexed-of :medication-dispense (:ground-truth r)))
-        "five minutes is under the inpatient default's floor of fifteen")
-    (is (ok? r) (violations r))))
+(deftest a-discharge-before-the-turnaround-elapses-leaves-the-order-undispensed-inpatient
+  ;; ADR-0190: such an order is a discharge prescription, so what the
+  ;; community pharmacy does with it is the facility's two options'.
+  ;; With the share at 0 the log is what it was under ADR-0189.
+  (let [config (assoc (stay-config "Renal" [{:type :delay :from 5 :to 5} {:type :discharge}])
+                      :dispense true)
+        with-share (fn [share] (run/run (assoc config :facility (assoc sim-model/default-facility
+                                                                       :community-fill-share share))))]
+    (testing "never dispensed :inpatient: five minutes is under the inpatient default's floor of fifteen"
+      (doseq [share [0 1]
+              :let [r (with-share share)]]
+        (is (= 3 (count (indexed-of :medication-order (:ground-truth r)))))
+        (is (= 3 (count (indexed-of :discharge (:ground-truth r)))))
+        (is (not-any? #(= :inpatient (:setting (second %)))
+                      (indexed-of :medication-dispense (:ground-truth r))))
+        (is (ok? r) (violations r))))
+    (testing "and with no community fill, not dispensed at all"
+      (is (empty? (indexed-of :medication-dispense (:ground-truth (with-share 0))))))
+    (testing "with one, filled in the community (ehrt.sim-engine.community-fill-draw-test)"
+      (is (= [:community :community :community]
+             (mapv (comp :setting second) (indexed-of :medication-dispense (:ground-truth (with-share 1)))))))))
 
 ;; --- (d) ----------------------------------------------------------------
 
@@ -153,7 +166,7 @@
     (is (empty? (indexed-of :medication-dispense
                             (:ground-truth (run/run (stay-config ward long-stay))))))))
 
-(deftest the-turnaround-is-one-draw-on-the-pharmacy-stream-and-none-without-the-key
+(deftest an-order-takes-three-draws-on-the-pharmacy-stream-and-none-without-the-key
   (let [patient (assoc (state/initial-patient "P1" "MRN000001")
                        :status :admitted :class :inpatient :attending "prov-1"
                        :home-ward "Renal" :location {:ward "Renal" :bed "REN-01"}
@@ -173,8 +186,18 @@
         (is (= 1 (count (:steps followup))))
         (is (= order-a (:order-citation (first (:steps followup)))))
         (is (= (.nextLong (Random. 1)) (.nextLong others)) "no other family's stream moved")
-        (is (= (.nextLong (doto (Random. 2) (streams/rand-int-in lo hi))) (.nextLong pharmacy))
-            "the pharmacy stream moved by exactly one draw")))
+        ;; ADR-0190: the turnaround, then the community fill's two --
+        ;; whether a discharge prescription would be filled, and its lag.
+        (let [[clo chi] sim-model/default-community-fill-minutes
+              twin (Random. 2)
+              _ (streams/rand-int-in twin lo hi)
+              u (.nextDouble twin)
+              lag (* 60 (streams/rand-int-in twin clo chi))]
+          (is (= (when (< u sim-model/default-community-fill-share) lag)
+                 (:community-lag-seconds (first (:steps followup))))
+              "the step carries the lag, or nothing for a prescription never filled")
+          (is (= (.nextLong twin) (.nextLong pharmacy))
+              "the pharmacy stream moved by exactly three draws"))))
     (testing "without it: the decide's answer is the one it always gave, and nothing is drawn"
       (let [others (Random. 1) pharmacy (Random. 2)
             decided (decide/decide (streams others pharmacy) 400 world "P1" ordering)]
@@ -231,7 +254,10 @@
                                  {:type :medication-end :order-citation (order-in "ordered-on-cardiology" :antibiotic)}
                                  {:type :discharge}]}
         ;; two orders pharmacy never reaches: one ended at its own
-        ;; instant, one whose stay closes 5 minutes on, under the floor of 15
+        ;; instant, one whose stay closes 5 minutes on, under the floor
+        ;; of 15. ADR-0190: the second is a discharge prescription, and
+        ;; this facility fills every one, two to four hours after the
+        ;; discharge.
         short-stay {:name "never-dispensed"
                     :steps [{:type :admission :location "Renal"}
                             {:type :medication-order :codes [penicillin] :citation (order-in "never-dispensed" :stopped)}
@@ -242,7 +268,8 @@
         shapes [ed-stay renal-stay cardiology-stay short-stay]]
     {:seed 20261119 :patients 12 :arrival-gap 90
      :dispense true :encounters true
-     :facility (facility-with "Cardiology" [40 50])
+     :facility (assoc (facility-with "Cardiology" [40 50])
+                      :community-fill-share 1 :community-fill-minutes [120 240])
      :pathways (mapv (fn [i] {:patient-ordinal i :pathway (nth shapes (mod i 4))}) (range 12))}))
 
 (deftest the-inpatient-root-holds-each-case-by-name
@@ -252,13 +279,18 @@
         dispenses (mapv second (indexed-of :medication-dispense log))
         order-of (fn [d] (nth log (:order-event-id d)))
         lag-minutes (fn [d] (/ (- (:t d) (:t (order-of d))) 60))
-        by-pathway (group-by #(:module (:citation (order-of %))) dispenses)
+        inpatient (filterv #(= :inpatient (:setting %)) dispenses)
+        community (filterv #(= :community (:setting %)) dispenses)
+        by-pathway (group-by #(:module (:citation (order-of %))) inpatient)
         dispensed (set (map :order-event-id dispenses))
-        undispensed (remove (comp dispensed first) orders)]
+        undispensed (remove (comp dispensed first) orders)
+        discharge-of (fn [d] (first (filter #(and (= :discharge (:event %))
+                                                  (= (subject-of d) (subject-of %)))
+                                            log)))]
     (is (= {:registered 12 :admission 12 :discharge 12
-            :medication-order 15 :medication-end 12 :medication-dispense 9}
+            :medication-order 15 :medication-end 12 :medication-dispense 12}
            (frequencies (map :event log))))
-    (is (every? #(= :inpatient (:setting %)) dispenses))
+    (is (= 9 (count inpatient)))
     (is (= {"ordered-in-ed" 3 "ordered-on-renal" 3 "ordered-on-cardiology" 3}
            (update-vals by-pathway count))
         "three orders dispensed in each of the three wards")
@@ -266,12 +298,17 @@
       (is (every? #(<= 5 (lag-minutes %) 25) (by-pathway "ordered-in-ed")) "the ED class default")
       (is (every? #(<= 15 (lag-minutes %) 60) (by-pathway "ordered-on-renal")) "the inpatient class default")
       (is (every? #(<= 40 (lag-minutes %) 50) (by-pathway "ordered-on-cardiology")) "Cardiology's own range"))
-    (testing "the two orders pharmacy never reaches"
-      (is (= {:stopped 3 :outrun 3}
-             (frequencies (map #(:state (:citation (second %))) undispensed)))
-          "ended at its own instant; outrun by the discharge"))
-    (testing "each dispense carries the id of the stay that wrote its order"
-      (doseq [d dispenses]
+    (testing "the order ended at its own instant is never filled"
+      (is (= {:stopped 3}
+             (frequencies (map #(:state (:citation (second %))) undispensed)))))
+    (testing "the order outrun by the discharge is a discharge prescription (ADR-0190)"
+      (is (= [:outrun :outrun :outrun] (mapv #(:state (:citation (order-of %))) community)))
+      (doseq [d community
+              :let [lag (/ (- (:t d) (:t (discharge-of d))) 60)]]
+        (is (<= 120 lag 240) "filled two to four hours after the discharge, this facility's range")
+        (is (not (contains? d :encounter-id)) "a community fill belongs to no encounter")))
+    (testing "each inpatient dispense carries the id of the stay that wrote its order"
+      (doseq [d inpatient]
         (is (some? (:encounter-id d)))
         (is (= (:encounter-id (order-of d)) (:encounter-id d)))))
     (is (ok? r) (violations r))))
