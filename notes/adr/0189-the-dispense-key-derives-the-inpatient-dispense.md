@@ -281,3 +281,61 @@ module cohort with the arrival count; community lag and unfilled
 prescriptions as config options; chronic refills; counting the sites
 the mutation operators give up, which would also retire the fourth
 population.
+
+### Dated addendum, 2026-11-20: `dense-7500` authors clinic visits
+
+Session record `2026-11-20-dense-outpatient-pathways`. A scenario edit;
+no ADR of its own, no engine change, schema unchanged.
+
+**Why.** The module-yield census
+(`.agents/session-records/2026-11-20-module-yield-census.md`) measured
+that module walks cannot supply a community-prescribing population: a
+walk seldom reaches a visit inside the log, and the walked share cannot
+follow `--patients`. Author ruling, 2026-11-20: author outpatient visits
+as weighted pathways; one half of pathway arrivals by default; visit
+mix 50% acute prescription, 20% chronic prescription, 30% none, all
+provisional.
+
+**What.** Three pathways joined `config.edn`'s weighted pool
+(`2edf7a4e`): `dense-clinic-acute`, `dense-clinic-chronic` and
+`dense-clinic-review` at weights 50 / 20 / 30, beside the existing
+45 / 35 / 20. The existing three are untouched. The mix is set by
+those six `:weight` values and nowhere else. Measured at seed 20260824,
+`--churn`:
+
+| | 750 before | 750 now | 7,500 before | 7,500 now | 28,024 before | 28,024 now |
+|---|---|---|---|---|---|---|
+| clinic visits, the three new pathways | 0 | 281 | 0 | 2,712 | 0 | 11,075 |
+| orders written in an outpatient visit | 3 | 198 | 48 | 1,925 | 59 | 7,791 |
+| `:community` fills | 3 | 198 | 48 | 1,925 | 59 | 7,791 |
+| orders written in an admission | 493 | 290 | 4,943 | 2,565 | 20,168 | 10,375 |
+| `:inpatient` dispenses | 491 | 287 | 4,912 | 2,533 | 20,121 | 10,332 |
+| community fills per inpatient dispense | 0.006 | 0.69 | 0.010 | 0.76 | 0.003 | 0.75 |
+| events | 33,819 | 29,701 | 172,867 | 127,176 | 691,758 | 504,233 |
+
+Every order written in a clinic visit is filled, once, at the instant
+its visit closes. The new 28,024 log is 189,203,716 bytes, sha-256
+`d50929d2616fa9834a4b1906747a9b3451bd4f8ca4d52dbcc36618dbc79b9c76`;
+`26e31b4f...` is kept in `figures.edn` under `:pre-clinic`.
+
+**Traced while the logs were open: why `injuries` orders are never
+dispensed.** The module and the medication submodules it calls write
+their prescriptions as the last act of an emergency visit, and the
+visit's end follows with no delay: in an all-`injuries` run, 210 of
+210 orders in a closed stay share their discharge's instant. The
+shortest ED turnaround is five minutes, so the stay has always closed
+first. These are the ED-discharge prescriptions named below.
+
+**Still owed:**
+
+- **A chronic marker on an authored order.** Nothing in the pathway IR
+  marks an order long-term; `dense-clinic-chronic`'s `:chronic-start`
+  state name is the only sign and nothing reads it. A refill rule
+  needs a real one.
+- **Community fill lag, unfilled prescriptions and chronic refills**, as
+  config options. Every clinic order is filled, at the close, once.
+- **The pathway drug codes**, the clinic's now included: lifted from
+  vendored modules, not chosen clinically.
+- **ED-discharge prescriptions.** Neither half of the key fills them.
+- Carried: scaling the module cohort with the arrival count; counting
+  the sites the mutation operators give up.
