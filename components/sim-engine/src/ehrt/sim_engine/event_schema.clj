@@ -454,7 +454,10 @@
   The `:dispense` engine key now derives `:community` dispenses, with
   this same shape and under this same version -- no schema change.
   ADDENDUM 2026-11-19, ADR-0189: and `:inpatient` dispenses, for orders
-  written during an admission. Same shape, same version.)
+  written during an admission. Same shape, same version.
+  ADDENDUM 2026-11-20, ADR-0190: a derived community fill is now a
+  draw, so an order may have none; and a `:community` dispense never
+  carries `:encounter-id`. Same shape, same version.)
 
   NO BUMP IS OWED, AND THIS ONE IS TAKEN -- 1.10.0's situation and
   1.10.0's reason. `classify-change` against the frozen 1.11.0 baseline,

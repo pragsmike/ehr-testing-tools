@@ -1245,13 +1245,18 @@
 
   `osteoporosis-pair`'s config, key for key, plus `:dispense true`. That
   root's log holds 156 medication orders, every one written in an
-  outpatient visit and none ended; here each is followed, after its
-  visit's closing event and at that event's instant, by one `:community`
-  `:medication-dispense` naming it by log index. 1,236 events against
-  that root's 1,080.
+  outpatient visit and none ended. Since ADR-0190 (2026-11-20) each is
+  a prescription that is filled or not by a draw, on the default
+  facility's options (share 0.80, one hour to seven days after the
+  visit closes): 134 of the 156 are followed by one `:community`
+  `:medication-dispense` naming the order by log index, and 22 are
+  never filled. 1,214 events against that root's 1,080. (Under
+  ADR-0187 alone every order was filled at its visit's closing
+  instant: 156 dispenses, 1,236 events.)
 
-  THE TWO ROOTS ARE ONE HOSPITAL. The key draws nothing, so deleting this
-  root's 156 dispenses and renumbering the log indices after them leaves
+  THE TWO ROOTS ARE ONE HOSPITAL. The key draws only on the `:pharmacy`
+  stream, which nothing else reads, so deleting this
+  root's dispenses and renumbering the log indices after them leaves
   `osteoporosis`'s ground truth event for event
   (`ehrt.sim-engine.dispense-derivation-test`, which runs this config).
   A digest change in one that is not matched in the other is therefore a
@@ -1282,17 +1287,25 @@
   (2) ordered on Cardiology, which states its own `:dispense-minutes`
   [40 50]; (3) two orders pharmacy never reaches -- one ended at its own
   instant, one whose stay closes five minutes on. `:encounters` is on,
-  so each dispense carries its stay's `:encounter-id`.
+  so each inpatient dispense carries its stay's `:encounter-id`.
+
+  ADR-0190 (2026-11-20): THE ORDER OUTRUN BY ITS DISCHARGE IS A
+  DISCHARGE PRESCRIPTION, and this is the only root reaching that
+  rule. The facility states the community pharmacy's two options so
+  the case is certain and not a draw's: share 1, two to four hours
+  after the discharge. Each of the three is filled `:community`, with
+  no `:encounter-id`.
 
   THROUGH `engine-pair`.
   `ehrt.sim-engine.inpatient-dispense-derivation-test/the-inpatient-
   root-holds-each-case-by-name` runs the same config, asserts each case
   by name and runs `check-all`, since this path does not self-check.
 
-  Measured at the config below: 72 events -- 12 `:registered`, 12
+  Measured at the config below: 75 events -- 12 `:registered`, 12
   `:admission`, 12 `:discharge`, 15 `:medication-order`, 12
-  `:medication-end`, 9 `:medication-dispense` (all `:inpatient`, three
-  per dispensing ward), 6 orders undispensed. NO `:transfer`, on
+  `:medication-end`, 12 `:medication-dispense` (9 `:inpatient`, three
+  per dispensing ward, and 3 `:community`), 3 orders never filled. NO
+  `:transfer`, on
   purpose: which roots carry one is a pinned claim of the COVERAGE
   block below, and this root is not there to move it.
 
@@ -1331,9 +1344,11 @@
                             {:type :delay :from 5 :to 5}
                             {:type :discharge}]}
         shapes [ed-stay renal-stay cardiology-stay short-stay]
-        facility (update sim-model/default-facility :wards
-                         (fn [wards] (mapv #(cond-> % (= "Cardiology" (:name %)) (assoc :dispense-minutes [40 50]))
-                                           wards)))]
+        facility (-> sim-model/default-facility
+                     (update :wards
+                             (fn [wards] (mapv #(cond-> % (= "Cardiology" (:name %)) (assoc :dispense-minutes [40 50]))
+                                               wards)))
+                     (assoc :community-fill-share 1 :community-fill-minutes [120 240]))]
     (engine-pair {:seed 20261119 :patients 12 :arrival-gap 90
                   :dispense true :encounters true
                   :facility facility
