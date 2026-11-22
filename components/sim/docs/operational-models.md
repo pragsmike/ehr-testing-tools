@@ -404,19 +404,18 @@ of a chronic order may be followed by another. Three more optional
  :community-fill-share 0.80
  :community-fill-minutes [60 10080]
  :refill-interval-days [28 35]
- :refill-continuation 0.94
- :refill-tail-days 90}
+ :refill-continuation 0.94}
 ```
 
 | key | meaning | default |
 |---|---|---|
 | `:refill-interval-days` | `[lo hi]` days from one fill to the next; uniform | `[28 35]` |
 | `:refill-continuation` | the probability, 0 to 1, that a fill is followed by another | `0.94` |
-| `:refill-tail-days` | no refill is queued later than the run's last arrival plus this many days | `90` |
+| `:refill-tail-days` | a hard cutoff: no refill is queued later than the run's last arrival plus this many days | none; absent means no cutoff |
 
 The schema refuses an interval that is not `1 <= lo <= hi` in whole
 days, a chance outside 0 to 1, and a tail that is not a non-negative
-whole number.
+whole number. A tail is stated or left out; `nil` is refused.
 
 A refill takes no share draw and no lag: it lands one interval after
 the fill before it. It is declined, and the chain ends, if the order
@@ -426,7 +425,24 @@ refilled. A prescription that was never filled is never refilled. A
 chronic discharge prescription is refilled as a clinic visit's is. A
 `:medication-dispense` step you author starts no chain.
 
-**All three defaults are provisional.**
+**What stops a chain.** With no tail stated, which is the default:
+
+- the continuation draw. At 0.94 a filled chronic order is refilled
+  15.7 times on average (0.94 / 0.06), about sixteen months of fills.
+  In `dense-7500` half stop within ten to twelve refills, and the
+  longest runs to 123, over ten years;
+- the order's end (a `:medication-end` naming it);
+- a newer order of the same citation, which takes over with a chain
+  of its own;
+- the patient's death.
+
+A merge stops nothing: a refill pending when its patient's record is
+absorbed is carried to the surviving record, and the chain runs on
+there (below). One case is not covered: a record that had already
+expired when it was absorbed is `:merged`, not `:expired`, so a refill
+carried from it is not declined for the death.
+
+**Both defaults are provisional.**
 
 - A 30-day supply is the traditional retail unit. Ninety-day fills are
   real and are not modelled: they ran at 12 to 15% across four drug
@@ -438,29 +454,41 @@ chronic discharge prescription is refilled as a clinic visit's is. A
 - One interval and one chance for every chronic order and every fill
   is a simplification: real discontinuation is front-loaded.
 
-**The tail, and what it does to a run's time span.** Without a bound a
-patient who keeps refilling would keep the run going for as long as the
-draws allowed, so no refill is queued for an instant later than the
-last arrival plus `:refill-tail-days`. The arrival clock is the
-measure because it is fixed by the configuration before anything is
-decided: `--patients` arrivals, each up to `:arrival-gap` minutes after
-the one before. Three consequences:
+**The tail is optional, and absent by default.** `:refill-tail-days`
+is for a scenario that wants a hard cutoff. Stated, no refill is
+queued for an instant later than the last arrival plus that many days.
+The arrival clock is the measure because it is fixed by the
+configuration before anything is decided: `--patients` arrivals, each
+up to `:arrival-gap` minutes after the one before.
 
-- A run whose events all fall near its arrivals grows by up to the
-  tail: with the default, about three months of refills after the last
-  visit.
-- A run that already extends far past its arrivals does not grow.
-  `dense-7500` runs twenty years past its last arrival on `:persons`
-  alone, and its refills sit inside its first 110 days.
-- **An order written after the bound is filled and never refilled.**
-  The arrival clock is short (under 20 days in `dense-7500`'s
-  28,024-arrival cell), and a module with a long horizon, a booked
-  visit or a returning person can write an order well past it. A site
-  that wants those refilled states a longer tail.
+- **Leave it out of a long-horizon scenario.** The arrival clock is
+  short (under 20 days in `dense-7500`'s 28,024-arrival cell), and a
+  module with a long horizon, a booked visit or a returning person can
+  write an order well past it. With a tail stated, an order written
+  after the bound is filled and never refilled, and every refill there
+  is sits in the weeks after the last arrival. From 2026-11-21 to
+  2026-11-22 a tail of 90 days was the default, and it confined
+  `dense-7500`'s refills to its first 110 days of twenty years.
+- **Without a tail a run ends when its chains do.** Refills are events
+  like any other and the run carries on until the last one. At the
+  default continuation that is a few years for the longest chain in a
+  few thousand: `dense-7500`'s last refill is on day 3,948 at 28,024
+  arrivals, inside a log that runs to day 7,395 on `:persons` anyway.
+  A scenario whose other events all fall near its arrivals will grow
+  by those years.
+- **State a tail with a continuation of 1.** A chain that always
+  continues, on an order nothing ever ends, never stops, and the run
+  does not finish. The schema does not refuse the combination.
 
 **The draws.** Two per community fill of a chronic order, on the
 `:pharmacy` RNG family of the patient who wrote the order: another
-fill or not, then the interval. Both are always taken.
+fill or not, then the interval. Both are always taken, and the tail
+is tested after them, so stating or dropping a tail moves no chain's
+draws. A patient has one `:pharmacy` stream, though: a chain that runs
+longer takes more of it, so a prescription the same patient is written
+later draws its share and lag further down the stream, and its fill
+can move. Measured in `dense-7500` when the default tail went: one
+such prescription at 7,500 arrivals, two at 28,024.
 
 **A pending fill follows its patient through a merge.** A merge
 corrects a record; the person still collects the medication. A queued
@@ -474,7 +502,8 @@ inpatient at that instant, and then carries the survivor's own
 no other stay to dispense into.
 
 **A chain stops without an event.** The patient stopped (the draw),
-the tail was reached, the order ended, or a newer order replaced it.
+the order ended, a newer order replaced it, or a stated tail was
+reached.
 As with a missing first fill, absence is the only record.
 
 ## Scheduling (arc 3b sweep 3, ADR-0174 section 2(b))

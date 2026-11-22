@@ -4,6 +4,9 @@
 2026-11-21, quoted below; build session 2026-11-21). Amends ADR-0190.
 Event schema **1.13.0**; describe report **1.4.0**; stream scheme
 **"1.0"**, unchanged.
+**Amended 2026-11-22** by the addendum at the foot: decisions 4 and 5
+no longer describe the default. `:refill-tail-days` is optional and
+absent by default.
 
 ### Context
 
@@ -258,3 +261,97 @@ A retained corpus is a valid artifact of the earlier pin, at 1.12.0.
 - Marks no authored order chronic but `dense-clinic-chronic`'s.
 - Starts a chain from an authored `:medication-dispense`.
 - Enforces the `Facility` schema at run time.
+
+### Addendum, 2026-11-22: the tail is optional and absent by default
+
+**The re-ruling.** Author, verbatim, 2026-11-22: "Have the prompt
+execute on the tail re-ruling.", the re-ruling being the design
+channel's: "Make the tail optional and off by default, so a chain
+stops on the continuation draw or the order's end. ... The tail stays
+available as an option for a scenario that wants a hard cutoff." The
+interval and the continuation chance stand as ruled on 2026-11-20.
+
+**The premise that was false.** The tail was ruled on 2026-11-21 on
+the expectation that a dense log spans about three weeks, so that
+refills past the arrivals would sit in an otherwise empty tail and
+would need a bound to end the run. This ADR's own session measured
+otherwise the same day: the arrival clock is 19.6 days at 28,024, and
+the log runs twenty years. So the tail lengthened nothing. It confined
+every refill to the first 110 days, stopped 1,441 of 1,799 chains
+itself where the draw stopped 342, and over a long module horizon left
+an order written years in with no refill at all, which is why
+`osteoporosis-dispense` had to state 36,500 days to show one.
+
+**What changed.** Decision 4's third row and decision 5 now read:
+
+| key | meaning | default |
+|---|---|---|
+| `:refill-tail-days` | a hard cutoff: no refill is queued later than the last arrival plus this many days; a non-negative integer | none; absent means no cutoff |
+
+`default-refill-tail-days` is gone; `sim-model/refill-tail-days`
+returns the facility's own value or nil; nil bounds nothing. A stated
+tail means exactly what it meant. The two draws are still taken first
+and the bound is tested after them, so no chain's draws move. The
+event schema is untouched (1.13.0), and so are the describe report and
+the stream scheme. `dense-7500` drops the key and keeps the other two
+written out; `osteoporosis-dispense` drops its 36,500.
+
+**What stops a chain now**, read from the code: the continuation draw;
+the order's end; a newer order of the same citation; the patient's
+death (an `:expired` subject is declined). A merge stops none, since
+the pending refill is carried and a merged record always has a
+survivor. The one gap named under "Owed next" stands: a record that
+had expired before it was absorbed is `:merged`, so a refill carried
+from it is not declined for the death. No dense cell reaches it:
+nobody in those logs dies.
+
+**Measured**, seed 20260824, `--churn`, predicted before any edit.
+
+| | 750 predicted | 750 measured | 7,500 predicted | 7,500 measured | 28,024 predicted | 28,024 measured |
+|---|---|---|---|---|---|---|
+| refills | about 700 | 647 | about 6,510 | 6,805 | about 27,600 | 27,638 |
+| refills per filled chronic order, mean | 14.5 | 13.48 | 15.4 | 16.05 | 15.3 | 15.36 |
+| median | 11 | 12 | 11 | 12 | 11 | 10 |
+| max | about 60 | 50 | about 95 | 122 | about 118 | 123 |
+| chains stopped by the draw | 48 | 48 | 419 | 419 | 1,783 | 1,783 |
+| by a newer order | 0 | 0 | 5 | 5 | 16 | 16 |
+| by an end, a death or a merge | 0 | 0 | 0 | 0 | 0 | 0 |
+| last refill, day | about 1,900 | 1,609 | about 3,000 | 3,923 | about 3,700 | 3,948 |
+| last event, day | 7,392.52 | 7,392.52 | 7,353.10 | 7,353.10 | 7,394.74 | 7,394.74 |
+| events | about 30,360 | 30,307 | about 133,300 | 133,594 | about 530,200 | 530,238 |
+| dispenses after a merge | not predicted | 94 | not predicted | 904 | not predicted | 2,731 |
+
+No chain outruns a dense log, and no log's last event moved. The
+oracle: every root IDENTICAL on both instruments, `osteoporosis-dispense`
+included, whose 36,500 days had bounded nothing.
+
+Three things the measurement showed that the re-ruling did not say.
+
+- **Dispenses after a merge are now common**: 2,731 at 28,024 against
+  470. A chain carried to a survivor in its first weeks runs on there
+  for a year or more, and every one of its refills names an order
+  written under another record.
+- **A patient's later prescription can move.** A patient has one
+  `:pharmacy` stream. A chain that runs longer takes more of it, so a
+  prescription the same patient is written afterwards draws its share
+  and lag further down. One such fill moved at 7,500 and one at 28,024,
+  where one prescription is also now filled that was not. Every other
+  order's fills are a prefix of what they were, and the log less its
+  dispenses is unchanged.
+- **Without a tail a run ends when its chains do.** A continuation of 1
+  on an order nothing ends does not finish. The schema accepts the
+  combination; the config reference says to state a tail with it.
+
+**Downstream.** Event schema 1.13.0, unchanged. Corpora that move:
+every corpus generated with `:dispense` that holds a filled chronic
+order and stated no tail. A corpus built between `516cf579` and this
+change is a valid artifact of its pin and holds no refill later than
+90 days after its last arrival.
+
+**Still owed**, restated: a per-order bound (a tail counted from each
+order, not from the arrival clock); refills for chronic orders that
+predate the horizon; a 90-day supply; a non-uniform first-fill lag;
+the pathway drug codes; prescription detail (dose, duration, the
+module's own refill count). And from this addendum: a refusal, or a
+warning, for a continuation of 1 with no tail; the expired record
+absorbed by a merge.
