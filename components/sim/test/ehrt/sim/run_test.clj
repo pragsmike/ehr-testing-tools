@@ -662,6 +662,18 @@
   (edn/read-string (pr-str gt))))` -- value AND bytes both survive, so
   the committed baseline is a faithful pin for BOTH gates below.
 
+  RE-PINNED 2026-11-22, TWO of four, by ADR-0192 -- an ADDED KEY, not
+  a rebaseline. A `:medication-order` event now carries the
+  `:prescription` its module state authors (event schema 1.14.0). No
+  draw, count, instant or ordering moved, and the proof is on the
+  corpora themselves: erase `:prescription` from the new log and it is
+  `=` to the baseline it replaces, event for event. Differing events:
+  seed-424242-clinic-decade 1 of 1,774 (index 508, a `uti/abx_tx`
+  order), seed-5-clinic-decade 2 of 1,412 (first at 682). Their other
+  14 and 11 in-log orders cite states that author no block.
+  seed-202-ed-tuesday and the adhd run write no medication order and
+  keep their pins.
+
   RE-PINNED 2026-11-18, THREE of four, by ADR-0188 -- the second
   declared ground-truth rebaseline. An end that names its opening by
   state now references the latest opening no earlier end references,
@@ -786,8 +798,8 @@
   `:coverage-change`, hook-created encounters and unidentified
   arrivals, none of which existed in any corpus before this commit."
   {:seed-202-ed-tuesday       "e488425223fd787d685573bccebf5b9ac35e0114591cb2f45b27ba2b15a8ef3c"
-   :seed-424242-clinic-decade "cbda5772f16e73c2e5d5da14cee30d6faea54b1f3d63158fc3e0e4fa3c0a7301"
-   :seed-5-clinic-decade      "a52cbbc5a9492bb96d206eb57fdd4381f9b6b853486cdb0c50b65bce192b93c9"
+   :seed-424242-clinic-decade "f70932a4aeb8a4ecd4cf307ae9af31b9d85e547e1bcb4ca1881f3bddae2302e2"
+   :seed-5-clinic-decade      "f65e779e36d7495e580a7d0624eee29810e23fc0267335775c5d1c6267555893"
    :adhd-seed-45              "c5491b4b640587380392449e870b457aaa96ece4ba42f9743a6cf0add92970bf"})
 
 (defn- arc0-baseline
