@@ -71,3 +71,137 @@ queue drains, and nothing else ends it. With no tail, a facility that
 states `:refill-continuation 1` and a chronic order that never ends
 describe a run that does not finish. The schema accepts a continuation
 of 1 today.
+
+## Step 2: red tests
+
+Red at the base (`0d8e7067`, tests only), for the stated reasons:
+
+    FAIL in (refill-options-are-the-facilitys-own-or-the-defaults) (config_test.clj:134)
+    expected: (nil? (resolve (quote ehrt.sim-model.config/default-refill-tail-days)))
+      actual: (not (nil? #'ehrt.sim-model.config/default-refill-tail-days))
+    FAIL in (refill-options-are-the-facilitys-own-or-the-defaults) (config_test.clj:138)
+    expected: (nil? (config/refill-tail-days config/default-facility))
+      actual: (not (nil? 90))
+    FAIL in (with-no-tail-stated-the-mean-chain-is-the-continuation-draws-own) (chronic_refill_test.clj:205)
+    mean refills per chain 1.9222462203023758
+    expected: (< (- expected 2.5) mean (+ expected 2.5))
+      actual: (not (< 13.166666666666652 1.9222462203023758 18.16666666666665))
+    FAIL in (with-no-tail-stated-a-chain-runs-past-day-ninety-and-stops-only-at-its-orders-end) (chronic_refill_test.clj:186)
+    expected: (= [1 2 3 4 5 6 7] (map :fill-number fills))
+      actual: (not (= [1 2 3 4 5 6 7] (1 2 3)))
+    FAIL in (with-no-tail-stated-a-chain-runs-past-day-ninety-and-stops-only-at-its-orders-end) (chronic_refill_test.clj:188)
+    expected: (> (:t (last fills)) (+ last-arrival (* 90 day)))
+      actual: (not (> 5188800 7777200))
+
+The last two repeat once per order, five times each.
+
+| the prompt's test | where | at the base |
+|---|---|---|
+| (a) no tail, continuation 1: past day 90, stopped only by the order's end | `chronic-refill-test`, new | red |
+| (b) no tail, default continuation: mean chain within 2.5 of 0.94 / 0.06 = 15.67 | `chronic-refill-test`, new, 600 patients | red (1.92) |
+| (c) a stated tail still stops a chain where it did | `a-chronic-orders-fill-is-number-one-and-is-refilled-each-interval-until-the-tail`, unchanged | green by construction |
+| (d) the schema accepts an absent tail and refuses a negative one | `config-test`; the reader's nil and the missing default are the red half | schema half green by construction |
+| (e) two runs at one revision are identical | inside (b), on the no-tail config | green by construction (asserted on a red test) |
+
+The tolerance in (b): one chain's refill count has a standard
+deviation near 16.2, some 480 chains are filled, so the mean's is near
+0.74 and 2.5 is about three of those. Measured after the change: the
+test is green.
+
+## Step 3: the change
+
+- `sim-model`: `default-refill-tail-days` is gone, from `config` and
+  from the interface. `refill-tail-days` returns the facility's own
+  value or nil. The schema entry is unchanged: optional, a
+  non-negative integer when present, and a stated `nil` is still
+  refused (leave the key out).
+- `sim-engine`: `run` sets the world's `:refill-horizon-t` to nil when
+  no tail is stated; `refill-followup` treats nil as no bound. The two
+  draws are still taken first, so no draw moves.
+- `event_schema.clj` and its three resources are untouched;
+  `event-schema-test`'s `classify-change` of the frozen baseline
+  against the live schema is green and reports no change.
+- `dense-7500`: all four configs drop the line. The README's three
+  re-derived literals moved with the comment's line count
+  (`2220d2219`, 160,789 bytes, `8e4c3aef...`).
+- `osteoporosis-dispense` drops its `:facility`.
+
+**Tests that pinned the old default without saying so.** Three tests in
+`dispense-derivation-test` run `osteoporosis` under `:dispense` on the
+default refill options. Its orders are chronic, and under the 90-day
+default nothing was refilled over its hundred-year horizon, so "one
+fill per order" held by accident of the tail. Two of them are tests of
+ADR-0187's first-fill rule and their facility now states
+`:refill-continuation 0`. The third is the erasure law, which should
+hold under real draws: it now holds over 2,263 fills where it held
+over 134, and that is the stronger test.
+
+## Step 5, first: the oracle's mover set, predicted before the instruments ran
+
+Two roots run with `:dispense`. `dispense-inpatient` writes no chronic
+order. `osteoporosis-dispense` drops a tail that bounded nothing.
+**Predicted: no root moves, 46 of 46 IDENTICAL**, and no declaration
+is owed.
+
+## Step 4: measured, beside the prediction
+
+Seed 20260824, `--churn`, at `5860f8b7`. Causes are counted from a
+scratch copy of that tree with `prn` lines in `refill-followup`,
+`decide :community-fill` and the run loop's merge branch.
+
+| | 750 predicted | 750 measured | 7,500 predicted | 7,500 measured | 28,024 predicted | 28,024 measured |
+|---|---|---|---|---|---|---|
+| refills | about 700 (500 to 900) | 647 | about 6,510 (5,900 to 7,100) | 6,805 | about 27,600 (26,400 to 28,900) | 27,638 |
+| refills per filled chronic order, mean | 14.5 | 13.48 | 15.4 | 16.05 | 15.3 | 15.36 |
+| median | 11 | 12 | 11 | 12 | 11 | 10 |
+| max | about 60 | 50 | about 95 | 122 | about 118 | 123 |
+| filled chronic orders | 48 | 48 | 424 | 424 | 1,799 | 1,799 |
+| chains stopped by the draw | 48 | 48 | 419 | 419 | 1,783 | 1,783 |
+| chains stopped by a newer order | 0 | 0 | 5 | 5 | 16 | 16 |
+| by the order's end / a death / a merge | 0 | 0 | 0 | 0 | 0 | 0 |
+| last refill, day | about 1,900 | 1,609.10 | about 3,000 | 3,922.79 | about 3,700 | 3,947.89 |
+| refills after day 110 | -- | 544 | -- | 5,856 | -- | 24,016 |
+| last event, day | 7,392.52 | 7,392.52 | 7,353.10 | 7,353.10 | 7,394.74 | 7,394.74 |
+| events | about 30,360 | 30,307 | about 133,300 | 133,594 | about 530,200 | 530,238 |
+| community fills, all | -- | 803 | -- | 8,343 | -- | 33,794 |
+| inpatient dispenses | 288 | 288 | 2,533 | 2,533 | 10,334 | 10,334 |
+| visit prescriptions filled | 156 | 156 | 1,511 | 1,511 | 6,122 | 6,122 |
+| pharmacy steps carried at a merge | 11, a few more | 11 | 78, a few more | 78 | 252, a few more | 252 |
+| dispenses whose subject is the survivor of the order's patient | not predicted | 94 | not predicted | 904 | not predicted | 2,731 |
+| of them refills | -- | 89 | -- | 857 | -- | 2,572 |
+
+No chain outran the log: the last refill is on day 3,948 of 7,395 at
+28,024, and the last event did not move in any cell.
+
+Where the prediction was wrong, and what it did not see.
+
+1. **The longest chains are longer than the mode I quoted** at 7,500
+   and 28,024 (122 and 123 refills against 95 and 118), and the last
+   refill is later by the same amount. I said those rows were loose;
+   they were.
+2. **No more steps are carried at a merge, not "a few more".** The
+   count is the base's exactly. Every carry happens in the first weeks,
+   as before.
+3. **Dispenses after a merge rose sixfold, which I did not predict**:
+   470 to 2,731 at 28,024. A chain carried to a survivor in its first
+   weeks now runs for a year or more on the survivor, and every one of
+   those refills has a subject that is not its order's. About one
+   refill in eleven is such an event.
+4. **One later prescription of the same patient can move.** The
+   channel expected that only the chains the tail stopped would change.
+   Every chain's own draws do stay where they were: at 750 and 7,500
+   and 28,024 every other order's old fills are a prefix of its new
+   ones, 37, 345 and 1,441 chains are longer, and the log less its
+   dispenses is unchanged. But a patient has ONE `:pharmacy` stream. A
+   chain that now runs on takes draws the tail used to leave untaken,
+   so a prescription the same patient is written later draws its share
+   and its lag further down the stream. Measured: at 7,500 one such
+   prescription (a `sore_throat` order on day 1,159) is filled 2.1 days
+   earlier than before; at 28,024 one (an opioid order on day 1,033) is
+   filled 3.2 days later, and one first fill exists that did not (hence
+   530,238 events where the refills alone give 530,237). None at 750.
+
+Held: the refill totals, the draw's and the newer order's counts
+exactly, the last event.
+
+**`osteoporosis-dispense`**: the oracle instruments below.
