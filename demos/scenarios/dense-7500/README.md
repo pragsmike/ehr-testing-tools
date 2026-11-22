@@ -200,11 +200,11 @@ that is not one of the 937 module ordinals draws one pathway from
 
 | pathway | what it is | weight |
 |---|---|---|
-| `dense-inpatient` | ED, then a Medicine A stay; two medication orders | 45 |
+| `dense-inpatient` | ED, then a Medicine A stay; an intravenous antibiotic (ceftriaxone) and an as-needed analgesic (acetaminophen) | 45 |
 | `dense-fast` | worked up in the ED and sent home | 35 |
 | `dense-surgical` | ED, then Surgery | 20 |
-| `dense-clinic-acute` | outpatient visit; a short-course antibiotic | 50 |
-| `dense-clinic-chronic` | outpatient visit; a long-term medication (metformin) | 20 |
+| `dense-clinic-acute` | outpatient visit; a seven-day antibiotic (amoxicillin / clavulanate) | 50 |
+| `dense-clinic-chronic` | outpatient visit; a long-term medication (metformin), 30 days with five refills | 20 |
 | `dense-clinic-review` | outpatient visit; nothing prescribed | 30 |
 
 The outpatient share of pathway arrivals is the last three weights
@@ -242,10 +242,36 @@ order carries `:chronic true` (ADR-0191), which is what makes its fill
 refill. The citation's state name, `:chronic-start`, is a label only.
 Remove the key and the order is filled at most once.
 
-**The drug codes are lifted, not chosen clinically.** Every code is one
-a vendored module already carries: the antibiotic is `sinusitis.json`'s,
-the metformin `metabolic_syndrome/medications.json`'s, the observation
-the body-temperature LOINC code the stay pathways use.
+**Every order states its prescription, and every regimen is
+provisional.** Since 2026-11-22 (ADR-0192) each of the four authored
+orders carries a `:prescription`, which reaches its `:medication-order`
+event as written:
+
+| pathway and state | drug | prescription |
+|---|---|---|
+| `dense-inpatient` `:antibiotic-start` | ceftriaxone 1000 MG Injection | one dose a day for five days |
+| `dense-inpatient` `:analgesia-start` | Acetaminophen 325 MG Oral Tablet | two tablets, four times a day, as needed |
+| `dense-clinic-acute` `:antibiotic-start` | amoxicillin 875 MG / clavulanate 125 MG Oral Tablet | one tablet twice a day for seven days, no refills |
+| `dense-clinic-chronic` `:chronic-start` | 24 HR Metformin hydrochloride 500 MG Extended Release Oral Tablet | one tablet a day, 30 days, five refills |
+
+The regimens come from general clinical knowledge and no source; no
+clinician wrote them. **Nothing reads them yet**: a dispense carries no
+quantity, and the metformin's refills still run on the facility's
+interval and continuation, past the five the order authorises.
+
+**The drug codes are lifted from the vendored modules.** Every code and
+display is one a module state already carries: the ceftriaxone and the
+amoxicillin / clavulanate are `uti/abx_tx.json`'s, the acetaminophen
+`medications/otc_pain_reliever.json`'s, the metformin
+`metabolic_syndrome/medications.json`'s, the observation the
+body-temperature LOINC code the stay pathways use. Three of the four
+changed on 2026-11-22. `dense-inpatient` admits for acute abdominal
+pain with a fever and had been writing an oral penicillin and, at
+`:analgesia-start`, a bisphosphonate; `dense-clinic-acute` wrote the
+250 MG strength of its antibiotic. **The rest of `dense-inpatient` is
+still a fracture stay**: its care plan, procedure and diagnostic
+report codes describe fracture care, a bone immobilization and a bone
+density scan. Those are owed.
 
 ## Why the dwells are what they are
 
@@ -360,13 +386,13 @@ calls the same `:ehrt` alias the wrapper does, with `-Xmx8g` in front:
 clojure -J-Xmx8g -M:ehrt sim run --seed 20260824 --patients 28024 --churn --config demos/scenarios/dense-7500/config-28024.edn --format ground-truth > out/scenarios/dense-7500-28024.edn
 ```
 
-It takes minutes, writes about 197 megabytes, and is not run by the
+It takes minutes, writes about 199 megabytes, and is not run by the
 exerciser; its figures are under "What to look for" below, in their own
 table.
 
 ## What to look for
 
-Witnessed 2026-11-22 at `0b8ba8f0`, seed 20260824, `--churn`, on the
+Witnessed 2026-11-22 at `43ca836b`, seed 20260824, `--churn`, on the
 traffic-scale programme's own reference machine (WSL2, 6c/12t
 i7-10750H, 15 GiB, OpenJDK 21.0.7, JVM defaults as shipped --
 `MaxHeapSize` 3.88 GB, `bin/ehrt` sets no JVM options). One warm-up
@@ -390,6 +416,12 @@ both existed, these cells sat at a measurement taken one commit before
 ADR-0180's site 1 and survived all seven of its sites without one of
 them going red.
 
+**Every log is new bytes since ADR-0192, and no count moved.** On
+2026-11-22 a medication order began to carry its `:prescription`
+(event schema 1.14.0) and three authored drug codes changed (above).
+Every cell holds the events and messages it held before, the bare
+cell included; only medication orders differ.
+
 **The counts last moved on 2026-11-22**, when the refill tail became
 optional and this scenario stopped stating one (ADR-0191's addendum).
 The all-keys cell went from 760 refills to 6,805, which is **+6,045**
@@ -405,7 +437,7 @@ is **+808** events there and at `config-nobed.edn`, **+86** at 750,
 and no count at `config-bare.edn`. No other ground-truth event moved,
 but every keyed log's dispenses gained `:fill-number` and every cell's
 `dense-clinic-chronic` orders gained `:chronic true`, the bare cell's
-included, so all four logs are new bytes under event schema 1.13.0.
+included, so all four logs were new bytes under event schema 1.13.0.
 Messages moved by **-19**, **-19**, **0** and **-7**, for the reason
 given under ADR-0189 below. The walls moved under 3% in every cell.
 The figures before it are `figures.edn`'s `:provenance :prior`.
@@ -525,20 +557,26 @@ default heap, not as a footprint.
 
 | cell | arrivals | events | messages | msg/event | process wall | peak RSS |
 |---|---|---|---|---|---|---|
-| `config.edn` | 7,500 | **133,594** | **125,947** | **0.9428** | 103.23 s | 1,614 MB |
-| `config-nobed.edn` | 7,500 | **108,077** | **100,467** | **0.9296** | 90.81 s | 1,473 MB |
-| `config-bare.edn` | 7,500 | **67,780** | **40,207** | **0.5932** | 39.46 s | 1,034 MB |
-| `config.edn` | 750 | **30,307** | **31,162** | **1.0282** | 52.12 s | 1,039 MB |
+| `config.edn` | 7,500 | **133,594** | **125,947** | **0.9428** | 103.88 s | 1,701 MB |
+| `config-nobed.edn` | 7,500 | **108,077** | **100,467** | **0.9296** | 92.08 s | 1,527 MB |
+| `config-bare.edn` | 7,500 | **67,780** | **40,207** | **0.5932** | 41.22 s | 1,109 MB |
+| `config.edn` | 750 | **30,307** | **31,162** | **1.0282** | 52.88 s | 1,052 MB |
 
 **The ground-truth-only cell** is a different measurement, in its own
 table because it has no message column to fill: `config-28024.edn`,
-measured 2026-11-22 at `0b8ba8f0` on the same machine, ONE run of the
+measured 2026-11-22 at `43ca836b` on the same machine, ONE run of the
 `sim run --format ground-truth` command under "The ground-truth-only
 path" above, `-Xmx8g` explicit, `/usr/bin/time -v` around the whole
-process. Its log is 197,001,464 bytes with sha-256
-`37582a56807463e7...8686eca460827b46`, and it carries 10,334 `:inpatient`
+process. Its log is 199,000,793 bytes with sha-256
+`83b33fc12054a543...f7ffec9007660277`, and it carries 10,334 `:inpatient`
 and 33,794 `:community` dispenses, 27,638 of the second refills. Events
 and subjects are `ehrt sim describe`'s own counts over it. **The log
+this cell wrote from the refill tail's removal until ADR-0192** --
+197,001,464 bytes, sha-256 `37582a56807463e7...8686eca460827b46`, at
+`0b8ba8f0`, event schema 1.13.0 -- holds the same events at the same
+instants with no prescriptions and three other drug codes; it remains
+a valid artifact of that pin, and `figures.edn` keeps its figures
+under `:pre-adr-0192`. **The log
 this cell wrote from ADR-0191 until the refill tail went** --
 190,088,591 bytes, sha-256 `dd4516c020a3b073...77c873f286a42e`, at
 `ffdcf2f5` -- remains a valid artifact of that pin, and `figures.edn`
@@ -575,7 +613,7 @@ figures under `:pre-rebaseline`.
 
 | cell | arrivals | events | subjects | bytes | process wall | peak RSS |
 |---|---|---|---|---|---|---|
-| `config-28024.edn` | 28,024 | **530,238** | **32,080** | **197,001,464** | 320.55 s | 3,573 MB |
+| `config-28024.edn` | 28,024 | **530,238** | **32,080** | **199,000,793** | 322.70 s | 3,486 MB |
 
 Its wall is NOT comparable with the table above -- a `sim run` that
 emits nothing, against a `corpus generate` that also renders, checks

@@ -523,7 +523,8 @@ unless you ask.** A `:medication-order` says a medication was
 prescribed, and a `:medication-end` closes it. Since event schema 1.12.0
 a `:medication-dispense` can name the order it fills, in one of two
 stated settings; since 1.13.0 it carries a `:fill-number`, and an order
-may be marked `:chronic true`. There are two ways to get a dispense. A pathway step you
+may be marked `:chronic true`; since 1.14.0 an order may carry its
+`:prescription`. There are two ways to get a dispense. A pathway step you
 author produces one in either setting. The `:dispense` engine key
 derives both. Each order an outpatient visit wrote and left open is a
 prescription the patient takes home: it is filled `:community` with a
@@ -543,6 +544,32 @@ gives their basis, and the community pharmacy's). An inpatient
 dispense carries the stay's `:encounter-id`; a community fill carries
 none, also when it lands during a later visit or stay of the same
 patient.
+
+**An order may carry its prescription, and nothing is computed from
+it.** `:prescription` on a `:medication-order` is what the prescriber
+wrote beside the drug, in the layout the vendored modules use:
+
+| key | meaning |
+|---|---|
+| `:dosage` | `{:amount :frequency :period :unit}`: `:amount` of the drug, `:frequency` times every `:period` `:unit`s. `:unit` is the unit of the period (`"days"`, `"hours"`), not of the dose, so `{:amount 1 :frequency 2 :period 1 :unit "days"}` is one, twice a day |
+| `:duration` | `{:quantity :unit}`: how long the course runs (`"days"`, `"weeks"`) |
+| `:refills` | refills authorised, 0 or more |
+| `:as-needed` | `true` or `false`, as written |
+| `:instructions` | coded patient instructions |
+
+Every key is optional and each is carried exactly as a module or a
+pathway author wrote it: no unit is converted and nothing is
+defaulted. **Absent means the author stated none**, not that the
+order has no dose: 51 of the 134 medication-order states in the
+vendored modules author no prescription, and their orders carry no
+`:prescription` key. Read an absent `:refills` as unstated, never as
+zero. **Nothing yet computes a quantity or a days-supply**, and no
+dispense reads the prescription: a `:medication-dispense` carries no
+amount, and a chronic order's refills run on the facility's interval
+and continuation whatever its `:duration` and `:refills` say. A
+metformin order that authorises five refills can show twenty. A
+medication the patient was already on at registration (a
+`:pre-horizon-facts` entry) does not carry its prescription.
 
 **An order may have several dispenses.** A community fill of an order
 marked `:chronic true` is refilled: the next fill lands 28 to 35 days
@@ -820,13 +847,15 @@ largest completed run of this configuration is 28,024 arrivals and
 
 | Cell | events | messages | msg/event | process wall |
 |---|---|---|---|---|
-| all ten opt-in keys | 133,594 | 125,947 | **0.9428** | 103.23 s |
-| the same, less `:bed-cycle` | 108,077 | 100,467 | **0.9296** | 90.81 s |
-| no opt-in key at all | 67,780 | 40,207 | **0.5932** | 39.46 s |
-| all ten opt-in keys, 28,024 arrivals, ground truth only | 530,238 | — | — | 320.55 s |
+| all ten opt-in keys | 133,594 | 125,947 | **0.9428** | 103.88 s |
+| the same, less `:bed-cycle` | 108,077 | 100,467 | **0.9296** | 92.08 s |
+| no opt-in key at all | 67,780 | 40,207 | **0.5932** | 41.22 s |
+| all ten opt-in keys, 28,024 arrivals, ground truth only | 530,238 | — | — | 322.70 s |
 
 **The first three rows are one generation of one committed configuration**,
-re-measured 2026-11-22 at `0b8ba8f0`. Their COUNTS last moved that day,
+re-measured 2026-11-22 at `43ca836b`, after a medication order began to
+carry its prescription: no count moved, and every log is new bytes.
+Their COUNTS last moved earlier that day,
 when the refill tail became optional and absent by default[^adr-0191]:
 a chain now stops on its own draw or its order's end and no longer 90
 days after the last arrival, so the two cells that carry the key hold
@@ -897,14 +926,16 @@ deliberate.** It is
 [`config-28024.edn`](../demos/scenarios/dense-7500/config-28024.edn) —
 `config.edn` with its one `:persons :count` line set by that file's own
 rule to twice the arrivals — at `--seed 20260824 --patients 28024
---churn --format ground-truth`, measured 2026-11-22 at `0b8ba8f0`: ONE
+--churn --format ground-truth`, measured 2026-11-22 at `43ca836b`: ONE
 run, `sim run` rather than `corpus generate`, with the heap set
 explicitly (`-Xmx8g`) rather than left at the default. `--format
 ground-truth` emits no message, so there is no message count to quote,
 and the wall is not comparable with the three above it. The run wrote a
-197,001,464-byte event log whose sha-256 begins `37582a56`, carrying
+199,000,793-byte event log whose sha-256 begins `83b33fc1`, carrying
 10,334 inpatient and 33,794 community dispenses, 27,638 of the second
-refills. From 2026-11-21 until then the same command wrote
+refills. Earlier on 2026-11-22 the same command wrote 197,001,464
+bytes beginning `37582a56`, the same events without prescriptions;
+from 2026-11-21 until then,
 190,088,591 bytes beginning `dd4516c0`; from late 2026-11-20 until
 2026-11-21,
 188,719,656 bytes beginning `bd4dec16`; earlier on 2026-11-20,
@@ -977,7 +1008,7 @@ subprocess `:invocation`. A sim manifest looks like this:
 | `:stage` | `:simulated` | which pipeline stage produced it |
 | `:generator` | `{:name "ehrt.sim" :version "0.1.0-pre" :sha256 "1b486fa2…"}` | the engine, by content hash — the cross-version reproduction key |
 | `:seeds` | `{:primary 20260811}` | the seed. One key, not Synthea's two |
-| `:event-schema-version` | `"1.13.0"` | which version of the event contract this log satisfies |
+| `:event-schema-version` | `"1.14.0"` | which version of the event contract this log satisfies |
 | `:stream-scheme` | `"1.0"` | which RNG stream partition produced it |
 | `:engine-params` | the engine keys this run used | the flag-reachable half of the config |
 | `:invocation` | `{:verb "run" :opts {…}}` | **the whole config, engine and emission keys alike** |

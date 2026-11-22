@@ -259,7 +259,11 @@ format.
 *Today:* a `:medication-order` is a prescription fact and nothing more —
 the patient, the medication's codes, and a citation to the module state
 that wrote it. A `:medication-end` closes it, naming its order by that
-citation. An order may be marked `:chronic true` (event schema 1.13.0):
+citation. An order may carry its `:prescription` (event schema 1.14.0):
+dose, duration, refills, as-needed and instructions, as the module or
+the pathway author wrote them, and absent when they wrote none. Nothing
+computes a quantity or a days-supply from it, and no dispense reads it.
+An order may be marked `:chronic true` (event schema 1.13.0):
 a long-term medication, from a vendored module's own flag or a pathway
 author's; absent means nobody marked it. A `:medication-dispense` names
 the order it fills, states its `:setting`, `:inpatient` or
@@ -296,10 +300,10 @@ administration exists. None of the three kinds renders to any HL7 v2
 message: no pharmacy order, dispense or administration message (RDE,
 RDS, RAS) is emitted. The FHIR emitter renders each order as a
 `MedicationRequest` carrying its codes, status and authored time, and no
-`MedicationDispense` or `MedicationAdministration`. The detail the
-shipped modules author on an order — dosage, duration, refills,
-as-needed and instructions, and the flag marking an administration —
-is not carried into the log. The flag marking an order chronic is.
+`MedicationDispense` or `MedicationAdministration`; the request does
+not yet carry the order's dosage. The flag the shipped modules use to
+mark an administration is not carried into the log. The prescription
+detail and the flag marking an order chronic are.
 [`consuming-ground-truth.md`](consuming-ground-truth.md#what-is-not-warranted)
 says the same where a consumer of the log will read it.
 
