@@ -365,4 +365,7 @@ Commits over `b1186f18`:
     b25331a6 ADR-0191 addendum, config reference
     70e4d52d record: oracle, figures, docs, premises, downstream line
 
-The CI run id follows in its own commit.
+Pushed `b1186f18..24e91449`; `bin/post-push-verify b1186f18 24e91449`
+passed its tip and ASCII checks. CI run **45060285496** concluded
+`success` at `24e91449` (`gh run watch --exit-status` 0, confirmed with
+`gh run view`). Closed.
