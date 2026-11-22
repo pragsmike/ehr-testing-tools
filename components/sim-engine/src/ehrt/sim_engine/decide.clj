@@ -2050,23 +2050,28 @@
   taken for every such fill, the interval's too when the first has said
   no and when `lo` = `hi`.
 
-  THE TAIL. Nothing is queued for an instant later than the world's
-  `:refill-horizon-t`, the last arrival plus
-  `sim-model/refill-tail-days`: without a bound a patient who keeps
-  refilling would keep the run going for as long as the draws allowed."
+  THE TAIL, WHEN THE FACILITY STATES ONE. Nothing is queued for an
+  instant later than the world's `:refill-horizon-t`, the last arrival
+  plus `sim-model/refill-tail-days`. That value is NIL when no tail is
+  stated, which is the default (ADR-0191's addendum, 2026-11-22), and
+  nil bounds nothing: the chain then stops on the draw above, or when
+  `decide :community-fill` declines its next fill. The test comes AFTER
+  both draws, so stating or dropping a tail moves no draw."
   [{pharmacy-rng :pharmacy} t world patient-id step fill-number]
   (when (nil? pharmacy-rng)
     (throw (ex-info "the :dispense key draws a refill on the :pharmacy stream; this decide was handed none"
                     {:t t :patient-id patient-id})))
   (when-not (contains? world :refill-horizon-t)
-    (throw (ex-info "the :dispense key bounds a refill chain by the world's :refill-horizon-t; this world carries none"
+    (throw (ex-info "the :dispense key reads a refill chain's bound off the world's :refill-horizon-t (nil for none); this world carries no such key"
                     {:t t :patient-id patient-id})))
   (let [facility (:facility world)
         u (.nextDouble ^Random pharmacy-rng)
         [lo hi] (sim-model/refill-interval-days facility)
         next-t (+ t (days->seconds (streams/rand-int-in pharmacy-rng lo hi)))]
     (when (and (< u (sim-model/refill-continuation facility))
-               (<= next-t (:refill-horizon-t world)))
+               (if-some [horizon-t (:refill-horizon-t world)]
+                 (<= next-t horizon-t)
+                 true))
       {:t next-t :patient-id patient-id
        :steps [(assoc step :prior-fills fill-number)]})))
 

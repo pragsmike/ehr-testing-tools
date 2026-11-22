@@ -104,7 +104,6 @@
 (defn community-fill-minutes [facility] (config/community-fill-minutes facility))
 (def default-refill-interval-days config/default-refill-interval-days)
 (def default-refill-continuation config/default-refill-continuation)
-(def default-refill-tail-days config/default-refill-tail-days)
 (defn refill-interval-days [facility] (config/refill-interval-days facility))
 (defn refill-continuation [facility] (config/refill-continuation facility))
 (defn refill-tail-days [facility] (config/refill-tail-days facility))

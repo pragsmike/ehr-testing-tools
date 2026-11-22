@@ -165,6 +165,48 @@
     (is (< 1 (count (distinct gaps))) "the interval is drawn")
     (is (= (:ground-truth r) (:ground-truth (run/run config))) "two runs write one log")))
 
+;; --- 2026-11-22: the tail is optional, and absent by default --------------
+;;
+;; ADR-0191's addendum. With no `:refill-tail-days` stated nothing bounds
+;; a chain but its own draw and its order's end.
+
+(def ^:private no-tail (dissoc every-fill-and-every-refill :refill-tail-days))
+
+(deftest with-no-tail-stated-a-chain-runs-past-day-ninety-and-stops-only-at-its-orders-end
+  (let [ended (update (visit chronic-order) :steps into
+                      [{:type :delay :from (* 200 24 60) :to (* 200 24 60)}
+                       {:type :medication-end :order-citation rx}])
+        r (run/run {:seed 7 :patients 5 :arrival-gap 30 :dispense true
+                    :facility (facility no-tail)
+                    :pathways [{:weight 1 :pathway ended}]})
+        log (vec (:ground-truth r))
+        last-arrival (apply max (map :t (of-kind :registered log)))]
+    (is (= 5 (count (fills-by-order log))))
+    (doseq [[_ fills] (fills-by-order log)]
+      (is (= [1 2 3 4 5 6 7] (map :fill-number fills))
+          "every thirty days to day 180; the order ends at day 200 and the fill at 210 never happens")
+      (is (> (:t (last fills)) (+ last-arrival (* 90 day))) "past where the old default stopped it"))
+    (is (ok? r) (violations r))))
+
+(deftest with-no-tail-stated-the-mean-chain-is-the-continuation-draws-own
+  (let [config (visit-config 600 chronic-order {})
+        r (run/run config)
+        log (vec (:ground-truth r))
+        chains (vals (fills-by-order log))
+        refills (map (comp dec count) chains)
+        mean (/ (reduce + refills) (double (count chains)))
+        p sim-model/default-refill-continuation
+        expected (/ p (- 1 p))]
+    (is (not (contains? (:facility config) :refill-tail-days)) "the default facility states no tail")
+    (is (< 400 (count chains) 560))
+    ;; 0.94 / 0.06 = 15.67 refills a chain. One chain's standard
+    ;; deviation is about 16.2, so the mean of some 480 has one near
+    ;; 0.74; the tolerance is about three of those.
+    (is (< (- expected 2.5) mean (+ expected 2.5)) (str "mean refills per chain " mean))
+    (is (every? #(= (range 1 (inc (count %))) (map :fill-number %)) chains))
+    (is (= (:ground-truth r) (:ground-truth (run/run config))) "two runs write one log")
+    (is (ok? r) (violations r))))
+
 ;; --- (f) ----------------------------------------------------------------
 
 (deftest a-fill-pending-at-a-merge-is-emitted-for-the-survivor

@@ -1477,7 +1477,9 @@
                     :dispense (when dispense true)
                     ;; ADR-0191: the instant past which no refill is
                     ;; queued -- the LAST ARRIVAL's time plus the
-                    ;; facility's `:refill-tail-days`. `arrivals` is
+                    ;; facility's `:refill-tail-days`, WHEN IT STATES
+                    ;; ONE. NIL OTHERWISE, which is the default since
+                    ;; 2026-11-22 and bounds nothing. `arrivals` is
                     ;; drawn whole in `prelude`, ascending, before
                     ;; anything is decided, so this is a fact of the
                     ;; configuration and not of how the run went. It is
@@ -1486,10 +1488,10 @@
                     ;; land after it, and an order written past this
                     ;; instant is filled and never refilled.
                     ;; `decide`'s `refill-followup` is its only reader.
-                    ;; Absent without the key.
-                    :refill-horizon-t (when dispense
-                                        (+ (peek arrivals)
-                                           (decide/days->seconds (sim-model/refill-tail-days facility))))
+                    ;; Nil without the `:dispense` key too.
+                    :refill-horizon-t (when-some [tail-days (when dispense
+                                                              (sim-model/refill-tail-days facility))]
+                                        (+ (peek arrivals) (decide/days->seconds tail-days)))
                     ;; ARC 3B SWEEP 3 (ADR-0174 section 2(b)): the six
                     ;; sub-keys, verbatim, plus the minting index that
                     ;; carries `appointment-id-for`'s two arguments.

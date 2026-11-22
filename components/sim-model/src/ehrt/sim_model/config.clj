@@ -194,18 +194,6 @@
   discontinuation is front-loaded."
   0.94)
 
-(def default-refill-tail-days
-  "The fallback `:refill-tail-days` for a facility that states none
-  (ADR-0191): no refill is queued for an instant later than the run's
-  last arrival plus this many DAYS. Ninety.
-
-  It bounds the chain, and it is the only thing that does for a
-  patient who keeps refilling: without it a run would go on emitting
-  refills for as long as the continuation draw allowed. The arrival
-  clock is the measure because it is the one span a run's configuration
-  fixes before anything is decided."
-  90)
-
 (defn refill-interval-days
   "`facility`'s own `:refill-interval-days`, or the default. The ONE
   reading of that key."
@@ -222,12 +210,25 @@
     default-refill-continuation))
 
 (defn refill-tail-days
-  "`facility`'s own `:refill-tail-days`, or the default. The ONE reading
-  of that key. `contains?`: a stated 0 is a tail, not an absence."
+  "`facility`'s own `:refill-tail-days`, or nil. The ONE reading of that
+  key. NIL MEANS NO BOUND, and it is what a facility that states
+  nothing gets: there is no default (ADR-0191's addendum of
+  2026-11-22). A refill chain then stops on its continuation draw or
+  when its order ends, and on nothing else.
+
+  Stated, it is a hard cutoff: no refill is queued for an instant later
+  than the run's LAST ARRIVAL plus this many DAYS. A stated 0 is a
+  tail, not an absence. The arrival clock is the measure because it is
+  the one span a run's configuration fixes before anything is decided;
+  it is also why a long-horizon scenario should leave the key out, for
+  an order written after that instant is filled and never refilled.
+
+  WITHOUT A TAIL A RUN ENDS WHEN ITS CHAINS DO. A facility that states
+  `:refill-continuation 1` and a chronic order nothing ever ends
+  describe a run that does not finish; state a tail with a
+  continuation of 1."
   [facility]
-  (if (contains? facility :refill-tail-days)
-    (:refill-tail-days facility)
-    default-refill-tail-days))
+  (:refill-tail-days facility))
 
 (def Facility
   [:map
@@ -256,8 +257,10 @@
    ;; unless 1 <= lo <= hi (a zero interval would refill forever at one
    ;; instant). `:refill-continuation` -- the probability, 0 to 1
    ;; inclusive, that a fill is followed by another. `:refill-tail-days`
-   ;; -- no refill is queued later than the last arrival plus this many
-   ;; days; a non-negative integer.
+   ;; -- OPTIONAL AND ABSENT BY DEFAULT (2026-11-22): stated, no refill
+   ;; is queued later than the last arrival plus this many days, a
+   ;; non-negative integer; absent, nothing bounds a chain but its draw
+   ;; and its order's end.
    [:refill-interval-days {:optional true}
     [:and [:tuple :int :int]
      [:fn {:error/message "must be [lo hi] with 1 <= lo <= hi"}

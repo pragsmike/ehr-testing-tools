@@ -131,10 +131,12 @@
 (deftest refill-options-are-the-facilitys-own-or-the-defaults
   (is (= [28 35] config/default-refill-interval-days))
   (is (= 0.94 config/default-refill-continuation))
-  (is (= 90 config/default-refill-tail-days))
+  (is (nil? (resolve 'ehrt.sim-model.config/default-refill-tail-days))
+      "2026-11-22: the tail has no default; absent means no bound")
   (is (= [28 35] (config/refill-interval-days config/default-facility)))
   (is (= 0.94 (config/refill-continuation config/default-facility)))
-  (is (= 90 (config/refill-tail-days config/default-facility)))
+  (is (nil? (config/refill-tail-days config/default-facility)) "absent by default")
+  (is (= 90 (config/refill-tail-days (assoc config/default-facility :refill-tail-days 90))))
   (is (= [30 30] (config/refill-interval-days (assoc config/default-facility :refill-interval-days [30 30]))))
   (is (= 0 (config/refill-continuation (assoc config/default-facility :refill-continuation 0)))
       "a stated zero is zero, not the default")
@@ -151,6 +153,7 @@
       (is (config/valid-facility? (with :refill-continuation good)) (pr-str good)))
     (doseq [bad [-0.1 1.01 2 "0.94" [0.94] nil]]
       (is (not (config/valid-facility? (with :refill-continuation bad))) (pr-str bad)))
+    (is (config/valid-facility? (dissoc config/default-facility :refill-tail-days)) "an absent tail is accepted")
     (doseq [good [0 1 90 3650]]
       (is (config/valid-facility? (with :refill-tail-days good)) (pr-str good)))
     (doseq [bad [-1 90.0 "90" [90] nil]]

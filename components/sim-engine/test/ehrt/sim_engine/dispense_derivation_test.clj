@@ -78,8 +78,14 @@
   "ADR-0190 made the community fill a draw: a share that is filled, and
   a lag. A facility that fills every prescription with no lag is
   ADR-0187's rule exactly, and the tests of that rule below run on it.
-  The draw itself is `ehrt.sim-engine.community-fill-draw-test`'s."
-  (assoc sim-model/default-facility :community-fill-share 1 :community-fill-minutes [0 0]))
+  The draw itself is `ehrt.sim-engine.community-fill-draw-test`'s.
+
+  `:refill-continuation 0` since 2026-11-22: `osteoporosis` marks its
+  orders chronic, and with no default tail a chronic fill is refilled
+  until its draw stops it. ADR-0187's rule is ONE fill per order, so
+  the facility says so. Refills are `chronic-refill-test`'s."
+  (assoc sim-model/default-facility
+         :community-fill-share 1 :community-fill-minutes [0 0] :refill-continuation 0))
 
 (defn- keyed
   "`config` with the `:dispense` key, on a facility that fills every
@@ -315,9 +321,14 @@
           ;; The fills are counted at the DEFAULT share and lag
           ;; (ADR-0190), so the law is held under real draws: 156, 7,
           ;; 156 and 6 orders are written, in that order.
-          [["the oracle's osteoporosis root" osteoporosis-config 134]
+          ;;
+          ;; 2026-11-22: and at the default REFILL options, with no
+          ;; tail. `osteoporosis` marks its orders chronic, so its 134
+          ;; first fills are followed by 2,129 refills, and the law is
+          ;; held over all 2,263.
+          [["the oracle's osteoporosis root" osteoporosis-config 2263]
            ["the oracle's sinusitis root" sinusitis-config 7]
-           ["osteoporosis, with :encounters" (assoc osteoporosis-config :encounters true) 134]
+           ["osteoporosis, with :encounters" (assoc osteoporosis-config :encounters true) 2263]
            ["two authored orders per visit" two-order-visit-config 3]
            ["authored visits and stays under churn" churned-visits-config nil]]]
     (testing label
