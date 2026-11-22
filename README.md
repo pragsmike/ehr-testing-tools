@@ -270,7 +270,7 @@ and the manual's
 tells it as a story.
 
 How much wire traffic one event turns into depends on what you switch
-on: at 10^5 events the HL7 v2 projection runs **0.9874 messages per
+on: at 10^5 events the HL7 v2 projection runs **0.9428 messages per
 event** with all ten opt-in keys enabled and **0.5932** with none of
 them, which
 [`docs/consuming-ground-truth.md`](docs/consuming-ground-truth.md#scale)

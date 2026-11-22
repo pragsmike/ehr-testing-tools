@@ -173,7 +173,7 @@ noted. Each of these reaches the simulation itself.
 | **`:encounters`** | — | **the encounter horizon.** Truthy lifts the one-encounter-per-patient wall and mints an `:encounter-id` at every opener, so a returning person opens a *second* encounter on the same patient and the same MRN — which is what an MPI under test needs to see |
 | **`:bed-cycle`** | — | **the bed-status cycle.** Truthy makes a vacated bed go `:dirty` → `:cleaning` → `:ready` at each ward's own pace, gates allocation on `:ready`, and produces `:bed-status-change` |
 | **`:scheduling`** | — | **appointments.** Splits arrivals scheduled-vs-walk-in and books follow-ups at discharge; produces `:appointment`, `:reschedule`, `:appointment-cancel`, `:no-show` |
-| `:dispense` | — | derived dispenses. Truthy gives each medication order an outpatient visit wrote, and left open, a drawn chance of one `:medication-dispense` with `:setting :community`, a drawn lag after the visit closes: the facility's `:community-fill-share` (default `0.80`) and `:community-fill-minutes` `[lo hi]` (default `[60 10080]`); both provisional. And gives each order written during an admission one `:inpatient` dispense, a pharmacy turnaround later, unless the order has ended or the stay has closed by then. The turnaround is drawn from the ward's `:dispense-minutes` `[lo hi]` (default `[5 25]` for an `:ed` ward, `[15 60]` for an `:inpatient` one; provisional). An admission order still active and undispensed when its stay is discharged is a discharge prescription, filled `:community` under the same share and lag. A community fill of an order marked `:chronic true` is refilled: every `:refill-interval-days` `[lo hi]` (default `[28 35]`), each fill followed by another with chance `:refill-continuation` (default `0.94`), none queued later than the last arrival plus `:refill-tail-days` (default `90`); all three facility options, all provisional. A fill pending when its patient is merged away is emitted for the survivor. Moves no other draw: rule 2's exception |
+| `:dispense` | — | derived dispenses. Truthy gives each medication order an outpatient visit wrote, and left open, a drawn chance of one `:medication-dispense` with `:setting :community`, a drawn lag after the visit closes: the facility's `:community-fill-share` (default `0.80`) and `:community-fill-minutes` `[lo hi]` (default `[60 10080]`); both provisional. And gives each order written during an admission one `:inpatient` dispense, a pharmacy turnaround later, unless the order has ended or the stay has closed by then. The turnaround is drawn from the ward's `:dispense-minutes` `[lo hi]` (default `[5 25]` for an `:ed` ward, `[15 60]` for an `:inpatient` one; provisional). An admission order still active and undispensed when its stay is discharged is a discharge prescription, filled `:community` under the same share and lag. A community fill of an order marked `:chronic true` is refilled: every `:refill-interval-days` `[lo hi]` (default `[28 35]`), each fill followed by another with chance `:refill-continuation` (default `0.94`), until that draw says stop or the order ends; both facility options, both provisional. `:refill-tail-days`, optional and absent by default, is a hard cutoff: stated, none is queued later than the last arrival plus that many days. A fill pending when its patient is merged away is emitted for the survivor. Moves no other draw: rule 2's exception |
 
 The four bold rows are the ones that make the stream rich, and the
 three below `:persons` did not exist in any corpus this repository
@@ -546,18 +546,18 @@ patient.
 
 **An order may have several dispenses.** A community fill of an order
 marked `:chronic true` is refilled: the next fill lands 28 to 35 days
-after it, each fill is followed by another with chance 0.94, and
-nothing is queued later than the run's last arrival plus 90 days.
-Those are three more facility options (`:refill-interval-days`,
-`:refill-continuation`, `:refill-tail-days`) and all three defaults
-are provisional. **Group dispenses by `:order-event-id`.** Within one
+after it, and each fill is followed by another with chance 0.94.
+Those are two more facility options (`:refill-interval-days`,
+`:refill-continuation`) and both defaults are provisional. At 0.94 a
+filled chronic prescription is refilled about sixteen times on
+average; most stop sooner and a few run for years. **Group dispenses by `:order-event-id`.** Within one
 order `:fill-number` counts from 1 in log order, so the highest number
 is how many times that prescription was collected, and a `:fill-number`
 above 1 is a refill. An inpatient dispense is never refilled, and a
 dispense you author starts no chain. `:chronic` absent does not mean
 short-term: it means nobody marked the order, and most vendored
 modules mark nothing. A chain ends without an event: the patient
-stopped, the tail was reached, the order ended, or the patient was
+stopped, the order ended, the patient died, or the patient was
 prescribed the same thing again and the newer order took over.
 
 **A dispense's patient may not be its order's patient.** A fill still
@@ -566,14 +566,20 @@ for the surviving record, under the surviving MRN, and its
 `:order-event-id` still names the absorbed record's order. `sim check`
 accepts exactly that case and no other cross-patient reference. If you
 join a dispense to its order by patient, resolve the patient through
-the merge first.
+the merge first. This is common, not a corner: a chain carried to a
+surviving record keeps refilling there, and in `dense-7500` about one
+dispense in twelve names an order written under another record.
 
-**The tail does not mean the end of the log holds refills only.** The
-bound is measured from the last arrival, and a run may carry on long
-after that for other reasons: `dense-7500` runs twenty years past its
-last arrival on `:persons` alone, with every refill inside its first
-110 days. An order written after the bound is filled and never
-refilled.
+**Refills run for as long as their draws say, by default.** Nothing
+bounds a chain but its own draw and its order's end, so a log's refills
+are spread over years after the prescriptions were written:
+`dense-7500`'s last one lands on day 3,923 of a log that runs to day
+7,353. A scenario can state a hard cutoff, `:refill-tail-days`, counted
+from the run's last arrival; a corpus built with one holds no refill
+after that instant, and an order written after it is filled and never
+refilled. From 2026-11-21 to 2026-11-22 a cutoff of 90 days was the
+default, and a corpus pinned in that window holds no refill past its
+first few months.
 
 **A prescription with no fill is not an error.** Under the key about
 one prescription in five is never filled, because that is what the
@@ -606,12 +612,13 @@ the weights are and that they are provisional. Its 7,500-arrival log
 holds 4,490 medication orders. 1,925 were written during an outpatient
 visit, and 1,511 of those are filled `:community`; the other 414 have
 no fill. 534 of the 1,925 are marked chronic, 424 of those were filled,
-and between them they were refilled 760 times: 38 were collected once,
-34 twice, 330 three times and 22 four times. 2,565 were written during
+and between them they were refilled 6,805 times: 38 were collected
+once, half were refilled twelve times or fewer, and the longest chain
+runs to 122 refills over ten years. 2,565 were written during
 an admission, and 2,533 of those are dispensed `:inpatient`. The other
 32 were written at the instant their stay closed: they are discharge
-prescriptions, and 27 of them are filled `:community`. 117 of the
-log's 4,831 dispenses name an order written under a record that was
+prescriptions, and 27 of them are filled `:community`. 904 of the
+log's 10,876 dispenses name an order written under a record that was
 merged away before the fill. Every other
 shipped corpus holds orders with no dispense at all, and there a
 missing dispense says nothing: nothing was asked to fill it. No event
@@ -808,19 +815,24 @@ paragraphs below still report, is in
 
 **10^5 events is comfortable, and the decade above it is entered: the
 largest completed run of this configuration is 28,024 arrivals and
-506,195 events — a committed sibling, quoted in the fourth row below.
+530,238 events — a committed sibling, quoted in the fourth row below.
 10^6 events have not been run at all.**
 
 | Cell | events | messages | msg/event | process wall |
 |---|---|---|---|---|
-| all ten opt-in keys | 127,549 | 125,942 | **0.9874** | 107.73 s |
-| the same, less `:bed-cycle` | 102,032 | 100,479 | **0.9848** | 92.51 s |
-| no opt-in key at all | 67,780 | 40,207 | **0.5932** | 41.50 s |
-| all ten opt-in keys, 28,024 arrivals, ground truth only | 506,195 | — | — | 324.77 s |
+| all ten opt-in keys | 133,594 | 125,947 | **0.9428** | 103.23 s |
+| the same, less `:bed-cycle` | 108,077 | 100,467 | **0.9296** | 90.81 s |
+| no opt-in key at all | 67,780 | 40,207 | **0.5932** | 39.46 s |
+| all ten opt-in keys, 28,024 arrivals, ground truth only | 530,238 | — | — | 320.55 s |
 
 **The first three rows are one generation of one committed configuration**,
-re-measured 2026-11-21 at `ffdcf2f5`. Their COUNTS last moved that day,
-when chronic orders began to refill[^adr-0191]: a community fill of an
+re-measured 2026-11-22 at `0b8ba8f0`. Their COUNTS last moved that day,
+when the refill tail became optional and absent by default[^adr-0191]:
+a chain now stops on its own draw or its order's end and no longer 90
+days after the last arrival, so the two cells that carry the key hold
+6,045 more events, every one a refill, and the third is byte-identical.
+The event schema did not move. Before that they moved on 2026-11-21,
+when chronic orders began to refill: a community fill of an
 order marked chronic is followed by another every 28 to 35 days, up to
 90 days past the last arrival, and a fill pending when its patient is
 merged away is emitted for the survivor, so the two cells that carry
@@ -885,14 +897,16 @@ deliberate.** It is
 [`config-28024.edn`](../demos/scenarios/dense-7500/config-28024.edn) —
 `config.edn` with its one `:persons :count` line set by that file's own
 rule to twice the arrivals — at `--seed 20260824 --patients 28024
---churn --format ground-truth`, measured 2026-11-21 at `ffdcf2f5`: ONE
+--churn --format ground-truth`, measured 2026-11-22 at `0b8ba8f0`: ONE
 run, `sim run` rather than `corpus generate`, with the heap set
 explicitly (`-Xmx8g`) rather than left at the default. `--format
 ground-truth` emits no message, so there is no message count to quote,
 and the wall is not comparable with the three above it. The run wrote a
-190,088,591-byte event log whose sha-256 begins `dd4516c0`, carrying
-10,334 inpatient and 9,751 community dispenses, 3,596 of the second
-refills. From late 2026-11-20 until then the same command wrote
+197,001,464-byte event log whose sha-256 begins `37582a56`, carrying
+10,334 inpatient and 33,794 community dispenses, 27,638 of the second
+refills. From 2026-11-21 until then the same command wrote
+190,088,591 bytes beginning `dd4516c0`; from late 2026-11-20 until
+2026-11-21,
 188,719,656 bytes beginning `bd4dec16`; earlier on 2026-11-20,
 189,203,716 bytes beginning `d50929d2`; from
 2026-11-19 until then, 270,551,734 bytes beginning `26e31b4f`;

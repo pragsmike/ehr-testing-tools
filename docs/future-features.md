@@ -274,10 +274,10 @@ visit closes); both are facility options and both defaults are
 provisional. About one in five is never filled at all, which a
 consumer must not read as an error. A fill of a chronic order is then
 refilled every 28 to 35 days, each fill followed by another with
-chance 0.94, until the patient stops, the order ends, or a configured
-tail after the run's last arrival is reached (`:refill-interval-days`,
-`:refill-continuation`, `:refill-tail-days`, default 90 days; all
-provisional). So one order may have several dispenses, numbered, and
+chance 0.94, until the patient stops or the order ends
+(`:refill-interval-days`, `:refill-continuation`; both provisional).
+A scenario that wants a hard cutoff can state `:refill-tail-days`,
+days after the run's last arrival; by default there is none. So one order may have several dispenses, numbered, and
 the chain ends without an event. A fill pending when its patient's
 record is merged away is given to the surviving record. Each order written
 during an admission, which here includes every emergency-department
@@ -289,8 +289,8 @@ never dispensed inpatient, is a discharge prescription and is filled in
 the community under the same share and lag. The key moves no
 other draw, so the same seed with and without it is the same hospital
 plus the dispenses. One shipped scenario sets the key, `dense-7500`,
-whose 7,500-arrival log carries 2,533 inpatient dispenses and 2,298
-community fills, 760 of them refills; none authors the step.
+whose 7,500-arrival log carries 2,533 inpatient dispenses and 8,343
+community fills, 6,805 of them refills; none authors the step.
 No event kind for a medication
 administration exists. None of the three kinds renders to any HL7 v2
 message: no pharmacy order, dispense or administration message (RDE,
