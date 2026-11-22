@@ -205,3 +205,137 @@ Held: the refill totals, the draw's and the newer order's counts
 exactly, the last event.
 
 **`osteoporosis-dispense`**: the oracle instruments below.
+
+## Step 5: oracle roots, measured
+
+`bin/regression-oracle b1186f18 0b8ba8f0` and `bin/ground-truth-bracket
+b1186f18 0b8ba8f0`, bare, both stopped at their soundness check with
+exit 1: `digest.clj` differs outside its leading docstring, because
+`osteoporosis-dispense` dropped its `:facility` line. That is the
+instrument doing its job, and I had not predicted it. Both were rerun
+with `--declared-digest-change`; the declaration is of that one source
+line and of no digest.
+
+    bin/regression-oracle:    IDENTICAL: every root's digest matches between b1186f18 and 0b8ba8f0   (exit 0)
+    bin/ground-truth-bracket: IDENTICAL: every digested root's :ground-truth matches between b1186f18 and 0b8ba8f0 (43 roots)   (exit 0)
+
+`osteoporosis-dispense` before and after: `c343671c...` on the first
+instrument, `6f061987...` on the second, the same on both sides. The
+36,500-day tail bounded nothing, measured.
+
+The prediction held: no root moves.
+
+## Step 5: figures, describe, pins
+
+The usual drill, 2026-11-22 at `0b8ba8f0`: one warm-up and two timed
+runs per cell, `/usr/bin/time -v`, Windows-side load sampled before
+every run (0 to 12 over the twelve samples, 14 before the 28,024 run).
+Nothing else ran on the host. Every cell's three runs wrote one
+`events.edn`.
+
+| cell | events | messages | msg/event | wall | peak RSS |
+|---|---|---|---|---|---|
+| `config.edn` 7,500 | 133,594 | 125,947 | 0.9428 | 103.23 s | 1,614 MiB |
+| `config-nobed.edn` 7,500 | 108,077 | 100,467 | 0.9296 | 90.81 s | 1,473 MiB |
+| `config-bare.edn` 7,500 | 67,780 | 40,207 | 0.5932 | 39.46 s | 1,034 MiB |
+| `config.edn` 750 | 30,307 | 31,162 | 1.0282 | 52.12 s | 1,039 MiB |
+
+28,024, one run, `-Xmx8g`: 530,238 events, 32,080 subjects,
+197,001,464 bytes, 320.55 s, 3,573 MiB, sha-256
+`37582a56807463e7dd64395555e22a6e82522c5fa83f4add8686eca460827b46`.
+`dd4516c0...` is kept in `figures.edn` under `:pre-no-tail`, labelled
+as the value before this change.
+
+The bare cell's log is byte-identical to yesterday's (`9f8b2141...`).
+Messages moved by +5, -12, 0 and +4 with no wire rendering of a
+dispense, as on every earlier change to this key: an added event moves
+the emitter's draws.
+
+`ehrt sim describe` (1.4.0, unchanged) over the new logs:
+
+| | `config.edn` 7,500 | nobed 7,500 | bare 7,500 | `config.edn` 750 | 28,024 |
+|---|---|---|---|---|---|
+| events | 133,594 | 108,077 | 67,780 | 30,307 | 530,238 |
+| subjects | 8,521 | 8,521 | 7,500 | 2,796 | 32,080 |
+| `:medication-dispense-inpatient` | 2,533 | 2,533 | 0 | 288 | 10,334 |
+| `:medication-dispense-community` | 8,343 | 8,343 | 0 | 803 | 33,794 |
+| `:medication-refill` | 6,805 | 6,805 | 0 | 647 | 27,638 |
+| `:dispense-after-merge` | 904 | 904 | 0 | 94 | 2,731 |
+
+The refill measure needed no change: it counts a `:fill-number` above
+1 and agrees with the scratch count in every cell.
+
+Pins: none of the invariant count, the describe version or the event
+schema moved, and `bin/usecase-ground-truth-oracle` is untouched. What
+moved by hand: the three README literals the exerciser re-derives, the
+two first-fill tests' facility, and the erasure test's expected fills
+(step 3).
+
+## Step 6: docs and the addendum
+
+- `components/sim/docs/operational-models.md`: the refill section says
+  the tail is optional and absent by default, what stops a chain, why
+  a long-horizon scenario should leave the tail out, that a run
+  without one ends when its chains do, and that a continuation of 1
+  wants a tail.
+- `docs/consuming-ground-truth.md`: the option row, the refill
+  passage, a new paragraph on refills running for years, the dense
+  counts, the Scale table and its history.
+- `docs/future-features.md`, the root `README.md` (0.9428), the
+  scenario README and `figures.edn`.
+- **An addendum to ADR-0191, not a new ADR.** The tree's rule
+  (the de-scaffold ruling of 2026-08-25) wants an ADR for a design
+  decision and none for process. This is a design decision, but it
+  reverses one clause of an ADR a day old on that ADR's own measured
+  finding, and the ADR listed it under "Owed next". A reader who lands
+  on ADR-0191 must not be told the default is 90; a second ADR would
+  leave that text standing. So the ADR carries an "Amended" line under
+  its status and the addendum at its foot.
+
+## Premises the prompt got wrong
+
+1. **"Every chain the draw or an end stopped under the 90-day tail is
+   unchanged; the chains the tail stopped run on."** True of the
+   chains. Not the whole of what moves: a patient has one `:pharmacy`
+   stream, so a later prescription of a patient whose chain now runs
+   on draws further down it. One fill moved at 7,500; one moved and
+   one appeared at 28,024.
+2. **"`osteoporosis-dispense` drops its 36,500; its log should be
+   IDENTICAL."** It is. But both instruments refuse to run bare on the
+   change, since the root's source line is itself a difference in
+   `digest.clj`; the declaration flag is owed for the source, not for
+   a digest.
+3. **The change is confined to "the option's reader, default and
+   docstrings, and the two configs."** Three engine tests ran
+   `osteoporosis` under `:dispense` on the default and pinned one fill
+   per order. They had been green by accident of the tail.
+4. **"A chain also ends when its patient ... is merged away without a
+   survivor to carry it."** There is no such case in the code: the run
+   loop reaches that branch only for a `:merged` record, and a merged
+   record always names its survivor.
+5. **"dense 28,024 goes from 3,596 refills to something like
+   27,000."** 27,638. The arithmetic was right; it is listed because
+   the prompt asked for it to be measured.
+6. **Not a premise, a consequence nobody stated:** dispenses whose
+   subject is not their order's go from 470 to 2,731 at 28,024, and a
+   continuation of 1 with no tail describes a run that does not end.
+
+## Downstream line
+
+**Event schema 1.13.0, unchanged.** `:refill-tail-days` is now
+optional and absent by default: under `:dispense`, a chronic
+prescription is refilled every 28 to 35 days until its 0.94 draw says
+stop or its order ends, and no longer only within 90 days of the last
+arrival. `dense-7500` states no tail. **Expect many more refills,
+spread over years**: at 7,500, 8,343 community fills, 6,805 of them
+refills, the last on day 3,923; at 28,024, 33,794 and 27,638, the last
+on day 3,948. A filled chronic order is refilled 15 to 16 times on
+average, up to 123. **About one dispense in twelve now names an order
+written under a record since merged into its patient** (904 at 7,500,
+2,731 at 28,024). Nothing but dispenses moved in any dense log; the
+no-key cell is byte-identical. Pin: the tip of this session. New
+28,024 log: 197,001,464 bytes, sha-256
+`37582a56807463e7dd64395555e22a6e82522c5fa83f4add8686eca460827b46`. A
+corpus retained from the earlier pin (`dd4516c0...`) is a valid
+artifact of it. A scenario that wants the old behaviour states
+`:refill-tail-days 90` on its facility.
