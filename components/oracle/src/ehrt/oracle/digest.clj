@@ -1258,19 +1258,22 @@
   ADR-0191 (2026-11-21): THE ONLY ROOT REACHING A REFILL. Every one of
   the 156 orders is `Prescribe_Bisphosphate`, which the module marks
   chronic, so each order event carries `:chronic true` and each first
-  fill starts a chain. On the default tail of 90 days the chain would
-  never run here: the tail is measured from the last arrival, six days
-  in, and this module writes its orders over a hundred-year horizon.
-  So the facility states `:refill-tail-days 36500` and nothing else.
-  The 134 first fills are followed by 2,129 refills, fill numbers up to
-  85: 3,343 events.
+  fill starts a chain. The 134 first fills are followed by 2,129
+  refills, fill numbers up to 85: 3,343 events.
+
+  NO TAIL IS STATED (2026-11-22), which is the default: a chain stops
+  on its draw or its order's end. Between 2026-11-21 and that date a
+  tail defaulted to 90 days from the last arrival, six days in, which
+  would have refilled nothing over this module's hundred-year horizon,
+  so the root stated `:refill-tail-days 36500`. That bounded nothing
+  here, and dropping it left this root's digest as it was.
 
   THE TWO ROOTS ARE ONE HOSPITAL. The key draws only on the `:pharmacy`
   stream, which nothing else reads, so deleting this
   root's dispenses and renumbering the log indices after them leaves
   `osteoporosis`'s ground truth event for event
-  (`ehrt.sim-engine.dispense-derivation-test`, which runs this config
-  on the default tail).
+  (`ehrt.sim-engine.dispense-derivation-test`, which runs this
+  config).
   A digest change in one that is not matched in the other is therefore a
   change to the derivation, and not to the module walk.
 
@@ -1283,7 +1286,6 @@
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
                   :modules [(patient-simulator/singleton-closure module)] :module-assignment [{:module-id "osteoporosis" :weight 1}]
                   :module-horizon-days 36500
-                  :facility (assoc sim-model/default-facility :refill-tail-days 36500)
                   :dispense true})))
 
 (defn- dispense-inpatient-pair
