@@ -148,9 +148,18 @@
                                {:type :delay :from 10 :to 30}
                                {:type :order :profile :cbc}
                                {:type :delay :from 15 :to 45}
+                               ;; ADR-0192. An intravenous antibiotic for a
+                               ;; febrile abdominal admission, where an oral
+                               ;; penicillin stood until 2026-11-22. The code
+                               ;; and display are `uti/abx_tx.json`'s
+                               ;; `Ceftriaxone` state. THE REGIMEN IS
+                               ;; PROVISIONAL, from general clinical knowledge
+                               ;; and no source: one dose a day for five days.
                                {:type :medication-order
-                                :codes [{:system :rxnorm :code "834102"
-                                         :display "Penicillin V Potassium 500 MG Oral Tablet"}]
+                                :codes [{:system :rxnorm :code "1665021"
+                                         :display "ceftriaxone 1000 MG Injection"}]
+                                :prescription {:dosage {:amount 1 :frequency 1 :period 1 :unit "days"}
+                                               :duration {:quantity 5 :unit "days"}}
                                 :citation {:module "dense-inpatient" :state :antibiotic-start}}
                                {:type :transfer :location "Medicine A"}
                                {:type :delay :from 30 :to 120}
@@ -162,9 +171,18 @@
                                 :codes [{:system :snomed :code "385691007"
                                          :display "Fracture care (regime/therapy)"}]
                                 :citation {:module "dense-inpatient" :state :care-plan}}
+                               ;; ADR-0192. The `:analgesia-start` order is an
+                               ;; analgesic now; it was a bisphosphonate until
+                               ;; 2026-11-22. The code and display are
+                               ;; `medications/otc_pain_reliever.json`'s
+                               ;; `Adult_Acetaminophen` state. PROVISIONAL
+                               ;; REGIMEN: two tablets up to four times a day,
+                               ;; as needed, with no stated duration.
                                {:type :medication-order
-                                :codes [{:system :rxnorm :code "904419"
-                                         :display "Alendronic acid 10 MG Oral Tablet"}]
+                                :codes [{:system :rxnorm :code "313782"
+                                         :display "Acetaminophen 325 MG Oral Tablet"}]
+                                :prescription {:dosage {:amount 2 :frequency 4 :period 1 :unit "days"}
+                                               :as-needed true}
                                 :citation {:module "dense-inpatient" :state :analgesia-start}}
                                {:type :delay :from 60 :to 180}
                                {:type :procedure
@@ -252,8 +270,13 @@
             ;; true` (ADR-0191), which is what makes its fill refill;
             ;; the `:chronic-start` state name is a label only.
             ;;
-            ;; An acute visit that ends in a short course: the drug is
-            ;; `sinusitis.json`'s own first-line antibiotic.
+            ;; An acute visit that ends in a short course. ADR-0192: the
+            ;; drug is the 875 MG strength of the amoxicillin /
+            ;; clavulanate this pathway has always written, code and
+            ;; display from `uti/abx_tx.json`'s `AmxClav 875, 7 day`
+            ;; state; until 2026-11-22 it was `sinusitis.json`'s 250 MG
+            ;; tablet. PROVISIONAL REGIMEN: one tablet twice a day for
+            ;; seven days, no refills.
             {:pathway {:name "dense-clinic-acute"
                        :steps [{:type :outpatient-visit :reason "Sinusitis"}
                                {:type :delay :from 5 :to 15}
@@ -261,8 +284,11 @@
                                 :codes [{:system :loinc :code "8310-5" :display "Body temperature"}]
                                 :value 37.8 :unit "Cel"}
                                {:type :medication-order
-                                :codes [{:system :rxnorm :code "562251"
-                                         :display "Amoxicillin 250 MG / Clavulanate 125 MG Oral Tablet"}]
+                                :codes [{:system :rxnorm :code "562508"
+                                         :display "amoxicillin 875 MG / clavulanate 125 MG Oral Tablet"}]
+                                :prescription {:dosage {:amount 1 :frequency 2 :period 1 :unit "days"}
+                                               :duration {:quantity 7 :unit "days"}
+                                               :refills 0}
                                 :citation {:module "dense-clinic-acute" :state :antibiotic-start}}
                                {:type :delay :from 5 :to 20}
                                {:type :outpatient-visit-end}]}
@@ -280,6 +306,15 @@
                                 :codes [{:system :rxnorm :code "860975"
                                          :display "24 HR Metformin hydrochloride 500 MG Extended Release Oral Tablet"}]
                                 :chronic true
+                                ;; ADR-0192, PROVISIONAL: one tablet a day,
+                                ;; a 30-day supply, five refills authorised.
+                                ;; NOTHING READS THIS YET: under `:dispense`
+                                ;; the refill chain still runs on the
+                                ;; facility's interval and continuation, not
+                                ;; on these 30 days or these five refills.
+                                :prescription {:dosage {:amount 1 :frequency 1 :period 1 :unit "days"}
+                                               :duration {:quantity 30 :unit "days"}
+                                               :refills 5}
                                 :citation {:module "dense-clinic-chronic" :state :chronic-start}}
                                {:type :delay :from 5 :to 20}
                                {:type :outpatient-visit-end}]}
