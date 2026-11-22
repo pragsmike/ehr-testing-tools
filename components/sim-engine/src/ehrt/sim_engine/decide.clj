@@ -1826,7 +1826,11 @@
                              ;; ADR-0191 (schema 1.13.0): `:chronic true`
                              ;; when the step states it, absent otherwise
                              ;; (`select-keys` of an absent key is `{}`).
-                             (select-keys step [:chronic])
+                             ;; ADR-0192 (schema 1.14.0): `:prescription`
+                             ;; the same way, the step's own map
+                             ;; untouched. Nothing here or downstream
+                             ;; reads it.
+                             (select-keys step [:chronic :prescription])
                              {:participants [{:patient-id patient-id :role :subject}]}
                              (citation-fields step))]
              :advance 0}

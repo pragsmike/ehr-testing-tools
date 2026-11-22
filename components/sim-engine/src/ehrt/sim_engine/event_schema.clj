@@ -501,8 +501,32 @@
   reads the keys it knew keeps working.
 
   MADE UNDER THE WAIVER, disclosed: no deprecation release was run, and
+  none is owed in any case, since nothing was removed.
+
+  1.14.0 (2026-11-22, ADR-0192) is THE PRESCRIPTION: one key.
+  `:prescription` on `:medication-order`, OPTIONAL -- what the
+  prescriber wrote beside the drug, in the vendored GMF modules' own
+  layout (`sim-model/Prescription`): `:dosage {:amount :frequency
+  :period :unit}`, `:duration {:quantity :unit}`, `:refills`,
+  `:as-needed`, `:instructions`, each optional, the map closed and never
+  empty. Carried exactly as a module or a pathway author wrote it and
+  ABSENT when they wrote none; nothing is defaulted, converted or
+  derived. NOTHING READS IT: no dispense, fill count or refill chain
+  differs for it. A pre-horizon order (a `:registered` event's
+  `:pre-horizon-facts` entry) does NOT carry it.
+
+  THIS BUMP IS ADDITIVE. `classify-change` against the frozen 1.13.0
+  baseline, before the re-freeze, returns
+
+    {:additive? true, :breaking []}
+
+  A 1.13.0-ERA LOG VALIDATES UNCHANGED AGAINST 1.14.0. The bump is
+  taken because a 1.14.0 log may carry a key a consumer validating
+  `:medication-order` as a closed map has never seen.
+
+  MADE UNDER THE WAIVER, disclosed: no deprecation release was run, and
   none is owed in any case, since nothing was removed."
-  "1.13.0")
+  "1.14.0")
 
 ;; --- shared leaf schemas --------------------------------------------------
 ;;
@@ -1135,6 +1159,13 @@
            ;; ABSENT -- absent means not marked chronic, and `false` is
            ;; never written (ADR-0178).
            [:chronic {:optional true} [:= true]]
+           ;; 1.14.0 (ADR-0192): what the prescriber wrote -- dose,
+           ;; duration, refills, as-needed, instructions -- in the
+           ;; vendored modules' own layout, carried as authored. ABSENT
+           ;; means the author stated none; the map is never empty.
+           ;; Nothing in the engine computes a quantity or a
+           ;; days-supply from it, and no dispense reads it.
+           [:prescription {:optional true} sim-model/Prescription]
            [:citation {:optional true} sim-model/Citation])]
 
     [:medication-end

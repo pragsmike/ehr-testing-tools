@@ -1969,8 +1969,12 @@
                                        ;; ADR-0191: the module's own
                                        ;; `chronic` flag, `true` or
                                        ;; absent.
+                                       ;; ADR-0192: and its own
+                                       ;; `prescription` block, as
+                                       ;; authored, or no key.
                                        (cond-> {:codes (:codes state)}
-                                         (true? (:chronic state)) (assoc :chronic true))
+                                         (true? (:chronic state)) (assoc :chronic true)
+                                         (:prescription state) (assoc :prescription (:prescription state)))
                                        tables)]
         (if-let [attr (:assign-to-attribute state)]
           (update outcome :attributes assoc (keyword (root-id ctx module-id) (gmf/slug attr)) event-idx)

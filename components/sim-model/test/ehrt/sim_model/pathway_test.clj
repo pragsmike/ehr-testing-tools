@@ -133,6 +133,41 @@
 (deftest diagnostic-report-step-without-observations-key-is-invalid
   (is (not (pathway/valid? {:name "t" :steps [{:type :diagnostic-report :codes [a-concept]}]}))))
 
+;; ADR-0192: an order's `:prescription`, in the vendored modules' own
+;; layout. Every key optional; closed at both depths.
+(deftest a-medication-order-may-carry-a-prescription-and-a-malformed-one-is-refused
+  (let [order {:type :medication-order :codes [a-concept] :citation a-citation}
+        ok? (fn [rx] (pathway/valid? {:name "t" :steps [(assoc order :prescription rx)]}))
+        dosage {:amount 1 :frequency 2 :period 1 :unit "days"}
+        duration {:quantity 2 :unit "weeks"}]
+    (is (pathway/valid? {:name "t" :steps [order]}) "the key is optional")
+    (testing "the shapes the vendored modules author"
+      (is (ok? {:dosage dosage :duration duration}))
+      (is (ok? {:dosage dosage :duration duration :instructions [a-concept]}))
+      (is (ok? {:dosage dosage :duration duration :refills 6}))
+      (is (ok? {:as-needed true}))
+      (is (ok? {:as-needed false :refills 0}) "a stated false is carried, not dropped"))
+    (testing "an author may state less"
+      (is (ok? {:dosage dosage}))
+      (is (ok? {:duration duration}))
+      (is (ok? {:refills 5})))
+    (testing "a malformed dosage"
+      (doseq [bad [(dissoc dosage :period) (dissoc dosage :unit) (assoc dosage :amount 0) (assoc dosage :frequency 0)
+                   (assoc dosage :period -1) (assoc dosage :unit :days) (assoc dosage :amount "1")
+                   (assoc dosage :route "oral") {} nil]]
+        (is (not (ok? {:dosage bad})) (pr-str bad))))
+    (testing "a malformed duration, refill count or flag"
+      (is (not (ok? {:duration {:quantity 2}})))
+      (is (not (ok? {:duration {:quantity 0 :unit "days"}})))
+      (is (not (ok? {:refills -1})))
+      (is (not (ok? {:refills 1.5})))
+      (is (not (ok? {:as-needed nil})))
+      (is (not (ok? {:instructions [{:system "SNOMED-CT" :code "1"}]})) "an instruction is a Concept"))
+    (testing "an unknown key, an empty map and nil"
+      (is (not (ok? {:dosage dosage :days-supply 30})))
+      (is (not (ok? {})) "an author who states nothing leaves the key out")
+      (is (not (ok? nil))))))
+
 ;; ADR-0191: `:chronic` on an order is `true` or absent.
 (deftest a-medication-order-may-be-marked-chronic-and-only-with-true
   (let [order {:type :medication-order :codes [a-concept] :citation a-citation}]

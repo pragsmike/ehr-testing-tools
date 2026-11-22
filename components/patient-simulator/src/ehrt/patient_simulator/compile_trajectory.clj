@@ -307,10 +307,17 @@
   the state chronic; absent otherwise, never `false`. A PRE-HORIZON
   order becomes a registration fact carrying `:codes` only, so the
   marker does not reach it: refills for an order that predates the
-  horizon are still owed."
+  horizon are still owed.
+
+  ADR-0192: `:prescription` rides the step when the module wrote one,
+  as authored, and is absent otherwise. It does not reach a pre-horizon
+  registration fact either: that fact is one closed four-key map for
+  seven kinds, and widening it is a breaking schema change
+  (`classify-change`'s rule; ADR-0192 names it as owed)."
   [event]
   (cond-> {:type :medication-order :codes (:codes event) :citation (citation event)}
-    (true? (:chronic event)) (assoc :chronic true)))
+    (true? (:chronic event)) (assoc :chronic true)
+    (:prescription event) (assoc :prescription (:prescription event))))
 
 (defn- vaccine->step
   "ADR-0182: `:series` rides the step only when the Vaccine state stated

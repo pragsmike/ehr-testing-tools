@@ -31,6 +31,51 @@
    [:code :string]
    [:display {:optional true} :string]])
 
+(def Prescription
+  "ADR-0192: what the prescriber wrote beside the drug, in the vendored
+  GMF modules' own layout (`prescription` on a MedicationOrder state),
+  keys kebab-cased and nothing else changed.
+
+  CARRIED AS AUTHORED. No unit is converted, no quantity or days-supply
+  is derived, and nothing is defaulted: a key the author did not write
+  is absent, and an order whose author wrote no prescription carries no
+  `:prescription` key at all. The map is therefore never empty.
+
+  `:dosage` -- `:amount` units of the drug, `:frequency` times every
+  `:period` `:unit`s. `:unit` is the unit of the PERIOD (\"days\",
+  \"hours\"), not of the dose: `{:amount 1 :frequency 2 :period 1 :unit
+  \"days\"}` is one, twice a day. All four are stated together.
+  `:duration` -- `:quantity` `:unit`s (\"days\", \"weeks\") the course
+  runs. `:refills` -- refills authorised, 0 or more. `:as-needed` --
+  `true` or `false` as written; unlike `:chronic`, a stated `false` is
+  kept, since the modules author it and absent means unstated.
+  `:instructions` -- coded patient instructions.
+
+  The unit strings are the author's and are not an enumeration: the 66
+  vendored modules use \"hours\", \"days\" and \"weeks\".
+
+  NOTHING IN THE ENGINE READS THIS. A dispense, a fill count and a
+  refill chain are what they would be without it."
+  [:and
+   [:map {:closed true}
+    [:dosage {:optional true}
+     [:map {:closed true}
+      [:amount [:and number? [:> 0]]]
+      [:frequency [:int {:min 1}]]
+      [:period [:int {:min 1}]]
+      [:unit :string]]]
+    [:duration {:optional true}
+     [:map {:closed true}
+      [:quantity [:int {:min 1}]]
+      [:unit :string]]]
+    [:refills {:optional true} [:int {:min 0}]]
+    [:as-needed {:optional true} :boolean]
+    [:instructions {:optional true} [:vector Concept]]]
+   ;; Never empty: an author who states nothing leaves the key out.
+   ;; Written as data (no `:fn`) because the event schema that reuses
+   ;; this is exported to EDN.
+   [:map-of {:min 1} :keyword :any]])
+
 (def ForcePlacement
   "Authoring escape hatch (components/sim/docs/operational-models.md): forces a
   specific bed, overriding the allocation ladder outright and
@@ -229,6 +274,10 @@
                        ;; rule for an optional fact). Under `:dispense`
                        ;; a chronic order's community fill is refilled.
                        [:chronic {:optional true} [:= true]]
+                       ;; ADR-0192: dose, duration, refills, as-needed,
+                       ;; instructions, as the author wrote them. ABSENT
+                       ;; when the author wrote none. Nothing reads it.
+                       [:prescription {:optional true} Prescription]
                        [:citation {:optional true} Citation]]]
    [:medication-end [:map
                      [:type [:= :medication-end]]

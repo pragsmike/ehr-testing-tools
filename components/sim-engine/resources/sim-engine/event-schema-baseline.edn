@@ -10,7 +10,7 @@
 ;;
 ;; Re-freeze ONLY when bumping schema-version, with
 ;; `make event-schema-freeze`.
-{:event-schema-version "1.13.0",
+{:event-schema-version "1.14.0",
  :schema
  [:multi
   {:dispatch :event,
@@ -978,6 +978,35 @@
        [:code :string]
        [:display {:optional true} :string]]]]
     [:chronic {:optional true} [:= true]]
+    [:prescription
+     {:optional true}
+     [:and
+      [:map
+       {:closed true}
+       [:dosage
+        {:optional true}
+        [:map
+         {:closed true}
+         [:amount [:and number? [:> 0]]]
+         [:frequency [:int {:min 1}]]
+         [:period [:int {:min 1}]]
+         [:unit :string]]]
+       [:duration
+        {:optional true}
+        [:map
+         {:closed true}
+         [:quantity [:int {:min 1}]]
+         [:unit :string]]]
+       [:refills {:optional true} [:int {:min 0}]]
+       [:as-needed {:optional true} :boolean]
+       [:instructions
+        {:optional true}
+        [:vector
+         [:map
+          [:system :keyword]
+          [:code :string]
+          [:display {:optional true} :string]]]]]
+      [:map-of {:min 1} :keyword :any]]]
     [:citation
      {:optional true}
      [:map [:module :string] [:state :keyword]]]]]

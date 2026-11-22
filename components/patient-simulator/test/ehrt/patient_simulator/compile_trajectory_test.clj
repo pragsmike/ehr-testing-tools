@@ -213,6 +213,58 @@
       (is (= [:medication-order] (mapv :event registration-facts)))
       (is (not-any? #(contains? % :chronic) registration-facts)))))
 
+;; ADR-0192: a module's `prescription` block rides the compiled order
+;; step as `:prescription`, as authored. A pre-horizon order becomes a
+;; registration fact with `:codes` only, so the block does not reach it.
+(deftest a-trajectory-orders-prescription-compiles-onto-the-step
+  (let [codes [{:system :rxnorm :code "308192" :display "Amoxicillin 500 MG Oral Tablet"}]
+        rx {:dosage {:amount 1 :frequency 3 :period 1 :unit "days"} :duration {:quantity 2 :unit "weeks"}}
+        order-step (fn [extra]
+                     (->> (ct/compile-trajectory [(ev :medication-order (merge {:t 100 :state :rx :codes codes} extra))]
+                                                 facility 100)
+                          :steps
+                          (filter #(= :medication-order (:type %)))
+                          first))]
+    (is (= rx (:prescription (order-step {:prescription rx}))))
+    (is (not (contains? (order-step {}) :prescription)) "absent when the module wrote none")
+    (is (sim-model/valid? {:name "t" :steps [(order-step {:prescription rx})]}))
+    (let [{:keys [registration-facts]}
+          (ct/compile-trajectory [(ev :medication-order {:t 10 :pre-horizon true :state :rx :codes codes :prescription rx})]
+                                 facility 100)]
+      (is (= [:medication-order] (mapv :event registration-facts)))
+      (is (not-any? #(contains? % :prescription) registration-facts)))))
+
+(deftest the-loader-declares-a-modules-prescription-and-normalizes-its-instructions
+  (let [load (fn [id path] (:payload (gmf/load-module id (slurp (io/resource (str "sim/modules/" path))))))
+        abx (:states (load "ear-infection-antibiotic" "medications/ear_infection_antibiotic.json"))
+        otc (:states (load "otc-pain-reliever" "medications/otc_pain_reliever.json"))
+        thyroid (:states (load "hypothyroidism" "hypothyroidism.json"))]
+    (is (= {:dosage {:amount 1 :frequency 3 :period 1 :unit "days"}
+            :duration {:quantity 2 :unit "weeks"}
+            :instructions [{:system :snomed :code "418577003"
+                            :display "Take at regular intervals. Complete the prescribed course unless otherwise directed (qualifier value)"}]}
+           (:prescription (:adult-amoxicillin abx)))
+        "values as authored; an instruction's code system is the tree's keyword, as every other concept's is")
+    (is (= {:as-needed true} (:prescription (:adult-acetaminophen otc))))
+    (is (= {:dosage {:amount 1 :frequency 1 :period 60 :unit "days"} :duration {:quantity 60 :unit "days"} :refills 6}
+           (:prescription (:synthroid-medication-order thyroid))))
+    (is (not (contains? (:adult-azithromycin abx) :prescription)) "a state with no block carries no key")
+    (is (every? #(sim-model/valid? {:name "t" :steps [{:type :medication-order :codes (:codes %)
+                                                       :prescription (:prescription %)}]})
+                (filter :prescription (concat (vals abx) (vals otc) (vals thyroid))))
+        "every loaded block is a valid IR prescription")))
+
+(deftest the-loader-refuses-a-malformed-prescription
+  (let [module (fn [rx] (str "{\"name\":\"m\",\"states\":{\"Initial\":{\"type\":\"Initial\",\"direct_transition\":\"Rx\"},"
+                             "\"Rx\":{\"type\":\"MedicationOrder\",\"codes\":[{\"system\":\"RxNorm\",\"code\":\"1\",\"display\":\"d\"}],"
+                             "\"prescription\":" rx ",\"direct_transition\":\"Terminal\"},"
+                             "\"Terminal\":{\"type\":\"Terminal\"}}}"))
+        ok? (fn [rx] (= :ok (:status (gmf/load-module "m" (module rx)))))]
+    (is (ok? "{\"as_needed\":true}"))
+    (is (ok? "{\"dosage\":{\"amount\":1,\"frequency\":2,\"period\":1,\"unit\":\"days\"},\"duration\":{\"quantity\":7,\"unit\":\"days\"}}"))
+    (is (not (ok? "{\"dosage\":{\"amount\":1,\"frequency\":2}}")) "a dosage missing its period")
+    (is (not (ok? "{\"supply\":30}")) "a key this loader does not know")))
+
 (deftest the-interpreter-carries-a-modules-chronic-flag-to-the-trajectory
   (let [module (:payload (gmf/load-module "osteoporosis" (slurp (io/resource "sim/modules/osteoporosis.json"))))
         other (:payload (gmf/load-module "medications"

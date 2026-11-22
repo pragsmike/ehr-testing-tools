@@ -762,6 +762,10 @@
           ;; disclosure discipline.
           (assoc :type (effective-state-type kw-type state))
           (cond-> (:codes state) (update :codes #(mapv normalize-code %))
+                  ;; ADR-0192: a prescription's coded instructions are
+                  ;; concepts like any other.
+                  (sequential? (get-in state [:prescription :instructions]))
+                  (update-in [:prescription :instructions] #(mapv normalize-code %))
                   (:code state) (update :code normalize-code)
                   (:allow state) (update :allow #(normalize-condition % name->key))
                   (:encounter-class state) (update :encounter-class
@@ -1245,12 +1249,19 @@
    ;; medication (State.java's MedicationOrder), declared here and
    ;; carried by the interpreter to the trajectory event as `:chronic
    ;; true` when the module states `true`; a stated `false` and an
-   ;; absent key both leave the event without the key. A state's
-   ;; `prescription` map (dose, duration, refills) is not read by
-   ;; anything downstream of this loader (ADR-0191, owed next).
+   ;; absent key both leave the event without the key.
+   ;; ADR-0192: `:prescription` -- the state's own `prescription` block
+   ;; (`dosage`, `duration`, `refills`, `as_needed`, `instructions`),
+   ;; declared here and carried by the interpreter to the trajectory
+   ;; event AS AUTHORED: keys kebab-cased by `kebab-key` like every
+   ;; other, an instruction's code triplet through `normalize-code`
+   ;; like every other concept, and no value touched. A state with no
+   ;; block carries no key. A block with a key outside those five, or a
+   ;; dosage missing one of its four, fails the load.
    [:medication-order (with-transitions [:type [:= :medication-order]] [:codes [:vector sim-model/Concept]]
                         [:reason {:optional true} :string] [:assign-to-attribute {:optional true} :string]
-                        [:chronic {:optional true} :boolean])]
+                        [:chronic {:optional true} :boolean]
+                        [:prescription {:optional true} sim-model/Prescription])]
    [:medication-end (with-transitions [:type [:= :medication-end]] [:medication-order {:optional true} :keyword]
                        [:referenced-by-attribute {:optional true} :string])]
    ;; GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R2(b), G1): the

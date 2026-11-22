@@ -17,6 +17,9 @@
 ;; --- pathway ---------------------------------------------------------
 
 (def Concept pathway/Concept)
+;; ADR-0192: a medication order's prescription, shared by the pathway
+;; IR step, the GMF loader and the `:medication-order` event schema.
+(def Prescription pathway/Prescription)
 (def ConditionAnnotation pathway/ConditionAnnotation)
 ;; Exported by the event-log contract arc (2026-08-16): a
 ;; `:diagnostic-report` event's own `:observations` children ARE
