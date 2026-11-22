@@ -314,3 +314,23 @@ this session. New 28,024 log: 199,000,793 bytes, sha-256
 `83b33fc12054a54347eede3cfbbacaf6157fcaa6db0d09abf7ffec9007660277`. A
 corpus retained from the earlier pin (`37582a56...`) is a valid
 artifact of it, at 1.13.0.
+
+## Close
+
+Both gates ran at `3fc01107`, tree clean, nothing written into the tree
+while either ran.
+
+- `make test`, unpiped to a log: `MAKE_EXIT=0`, poly execution time
+  32 minutes 25 seconds, no failure and no error in any brick.
+- `make integration`: `MAKE_EXIT=0`, execution time 18 minutes 49
+  seconds.
+
+The full suite showed nothing beyond what the brick runs had already
+shown: the two re-pinned clinic-decade corpora (step 5) were the only
+pins outside the changed bricks that moved.
+
+Commits over `19ba99df`: `035fd527` prediction and prompt archive,
+`7f967907` the build and schema 1.14.0, `5825e490` the two re-pinned
+corpora, `43ca836b` dense's regimens, `8ccfedf7` figures and consumer
+docs, `b0de901e` ADR-0192 and the limitation row, `3fc01107` the
+record, and this close.
