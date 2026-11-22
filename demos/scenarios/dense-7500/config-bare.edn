@@ -105,14 +105,20 @@
             ;; REFILLS (ADR-0191). A community fill of an order marked
             ;; `:chronic true` is followed by another this many days
             ;; later, with this chance each time: 28 to 35 days,
-            ;; uniform, and 0.94. No refill is queued later than the
-            ;; last arrival plus the tail, 90 days. The defaults,
-            ;; written out, and PROVISIONAL like the two above. Several
-            ;; dispenses citing one order are one prescription refilled;
-            ;; `:fill-number` says which.
+            ;; uniform, and 0.94. The defaults, written out, and
+            ;; PROVISIONAL like the two above. Several dispenses citing
+            ;; one order are one prescription refilled; `:fill-number`
+            ;; says which.
+            ;;
+            ;; NO TAIL (2026-11-22). `:refill-tail-days` is optional and
+            ;; this scenario leaves it out, as the default does: a chain
+            ;; stops when its draw says so or its order ends, and runs
+            ;; on through the twenty years of `:persons` until then. A
+            ;; stated tail is a hard cutoff measured from the LAST
+            ;; ARRIVAL, three weeks in here, and would confine every
+            ;; refill to the months just after it.
             :refill-interval-days [28 35]
-            :refill-continuation 0.94
-            :refill-tail-days 90}
+            :refill-continuation 0.94}
  ;; FOUR PROVIDERS, BETWEEN THEM ELIGIBLE FOR ALL FOUR WARDS -- the
  ;; spike's own F5-3 finding, which is that a ward with no eligible
  ;; attending is a run that stops. Dr. Vance is eligible everywhere,

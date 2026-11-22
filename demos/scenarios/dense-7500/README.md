@@ -168,14 +168,14 @@ the exerciser runs it too:
 
 ```
 $ diff demos/scenarios/dense-7500/config.edn demos/scenarios/dense-7500/config-nobed.edn
-2214d2213
+2220d2219
 <  :bed-cycle true
 ```
 
 The second is the additive claim the 2026-08-29 record made of its own
 three scale points, re-established here: `config-bare.edn` minus its
-own closing brace and newline is byte-identical to the first **160,419
-bytes** of `config.edn`, sha-256 `45fdc8ad...` on both sides. The
+own closing brace and newline is byte-identical to the first **160,789
+bytes** of `config.edn`, sha-256 `8e4c3aef...` on both sides. The
 exerciser re-derives that length from the files themselves rather than
 carrying the number as a literal.
 
