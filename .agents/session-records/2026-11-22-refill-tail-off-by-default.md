@@ -339,3 +339,30 @@ no-key cell is byte-identical. Pin: the tip of this session. New
 corpus retained from the earlier pin (`dd4516c0...`) is a valid
 artifact of it. A scenario that wants the old behaviour states
 `:refill-tail-days 90` on its facility.
+
+## Close
+
+Gates, each to a full log with its exit code captured, nothing written
+into the tree while either ran. Both at `70e4d52d`, first run.
+
+| run | result | poly execution time |
+|---|---|---|
+| `make test` | MAKE_EXIT=0 | 32 minutes 48 seconds |
+| `make integration` | MAKE_EXIT=0 | 18 minutes 37 seconds |
+
+No pin and no mutation population moved in the full suite; the figures
+exerciser left the tree clean, so its rewritten block equals the
+committed one.
+
+Commits over `b1186f18`:
+
+    0d8e7067 record: the prediction, before any edit (prompt archived)
+    246a7a7e engine and model: the tail is optional and absent by default
+    23b1b436 dense-7500: the scenario states no tail
+    5860f8b7 oracle: osteoporosis-dispense no longer states a tail
+    0b8ba8f0 record: red tests, the change, the three cells
+    d4812972 dense-7500 figures and consumer docs
+    b25331a6 ADR-0191 addendum, config reference
+    70e4d52d record: oracle, figures, docs, premises, downstream line
+
+The CI run id follows in its own commit.
