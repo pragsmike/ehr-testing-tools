@@ -312,3 +312,19 @@ sha-256
 `1795158ea3362431d3a6b8533ad409fb9508530d914f5025c711a501089ecaf4`. A
 corpus retained from the earlier pin (`83b33fc1...`) is a valid
 artifact of it, at 1.14.0.
+
+## Close
+
+At `36697a0e`, tree clean, nothing written into the tree while either
+ran:
+
+- `make test`, unpiped to a full log: **MAKE_EXIT=0**, poly execution
+  time 33 minutes 46 seconds.
+- `make integration`: **MAKE_EXIT=0**, poly execution time 19 minutes
+  21 seconds.
+
+Commits over `c383c76c`: `310efcd5` (step 1 and the prompt archive),
+`2c9e2cbe` (the build, schema 1.15.0), `3092c0a8` (the catalog pins at
+49), `ee33ac47` (dense's `:refills 11` and the offset option),
+`db286a87` (figures and docs), `e8cf7244` (ADR-0193), `36697a0e` (this
+record), and this close.
