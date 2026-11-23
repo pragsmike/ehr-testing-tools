@@ -194,9 +194,28 @@
   discontinuation is front-loaded."
   0.94)
 
+(def default-refill-offset-days
+  "The fallback `:refill-offset-days` for a facility that states none
+  (ADR-0193): `[lo hi]` DAYS, inclusive, uniform, added to the days of
+  supply an order STATES to give the days to its next fill. Two days
+  early to five days late.
+
+  PROVISIONAL, and chosen so that a 30-day supply refills 28 to 35 days
+  later, which is `default-refill-interval-days`: the same range, now
+  following the order's own supply where it states one. An order that
+  states no duration still reads `:refill-interval-days`."
+  [-2 5])
+
+(defn refill-offset-days
+  "`facility`'s own `:refill-offset-days`, or the default. The ONE
+  reading of that key."
+  [facility]
+  (or (:refill-offset-days facility) default-refill-offset-days))
+
 (defn refill-interval-days
   "`facility`'s own `:refill-interval-days`, or the default. The ONE
-  reading of that key."
+  reading of that key. Since ADR-0193 it governs only an order that
+  states no duration the tree can turn into days."
   [facility]
   (or (:refill-interval-days facility) default-refill-interval-days))
 
@@ -265,6 +284,15 @@
     [:and [:tuple :int :int]
      [:fn {:error/message "must be [lo hi] with 1 <= lo <= hi"}
       (fn [[lo hi]] (<= 1 lo hi))]]]
+   ;; ADR-0193: `:refill-offset-days` -- `[lo hi]` days inclusive, either
+   ;; sign, lo <= hi, added to an order's STATED days of supply to give
+   ;; the days to its next fill (never less than one). Read only for an
+   ;; order that states a duration; `:refill-interval-days` governs the
+   ;; rest.
+   [:refill-offset-days {:optional true}
+    [:and [:tuple :int :int]
+     [:fn {:error/message "must be [lo hi] with lo <= hi"}
+      (fn [[lo hi]] (<= lo hi))]]]
    [:refill-continuation {:optional true}
     [:and number?
      [:fn {:error/message "must be a number from 0 to 1"} (fn [p] (<= 0 p 1))]]]

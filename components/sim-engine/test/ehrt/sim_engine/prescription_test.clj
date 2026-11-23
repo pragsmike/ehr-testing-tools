@@ -3,9 +3,9 @@
   its `:prescription` -- dose, duration, refills, as-needed,
   instructions -- in the vendored modules' own layout, exactly as the
   module or the pathway author wrote it, and absent when they wrote
-  none. NOTHING READS IT: no dispense, no fill count and no draw differs
-  between a run whose orders state a prescription and one whose orders
-  do not."
+  none. Since ADR-0193 a DISPENSE reads it (see
+  `dispense-reads-prescription-test`); the order event still carries it
+  untouched."
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
@@ -99,16 +99,29 @@
     (is (not (valid? {})))
     (is (not (valid? nil)))))
 
-;; --- (e) nothing reads it ---------------------------------------------------
+;; --- (e) what reads it, and what still does not ---------------------------
+;;
+;; ADR-0192 pinned here that NOTHING read the prescription: a run with
+;; the block authored equalled one without, once the key was erased.
+;; ADR-0193 (2026-11-23) made the dispense read it, so that is true only
+;; of a block stating none of the things a dispense reads -- a count, a
+;; duration or a dosage. `dispense-reads-prescription-test` holds what
+;; each of those now does.
 
-(deftest stating-a-prescription-moves-no-dispense-no-fill-count-and-no-draw
+(deftest a-prescription-stating-no-count-duration-or-dosage-moves-nothing
   (let [without (:ground-truth (run/run (visit-config bare-order)))
-        with (:ground-truth (run/run (visit-config (assoc bare-order :prescription a-prescription))))
+        with (:ground-truth (run/run (visit-config (assoc bare-order :prescription {:as-needed false}))))
         fills (of-kind :medication-dispense with)]
     (is (< 40 (count fills)) "a chronic order under the key: first fills and refills, so the comparison is of something")
-    (is (some #(< 1 (:fill-number %)) fills))
-    (is (= (count without) (count with)))
     (is (= without (mapv #(dissoc % :prescription) with))
         "erase the key and the two logs are one: every dispense, every fill number, every instant")
-    (is (= 40 (count (filter :prescription with))) "and only the orders carry it")
-    (is (some #(< 6 (:fill-number %)) fills) "a chain runs past the 5 refills the order states")))
+    (is (= 40 (count (filter :prescription with))) "and only the orders carry it")))
+
+(deftest a-stated-refill-count-now-bounds-the-chain
+  (let [without (:ground-truth (run/run (visit-config bare-order)))
+        with (:ground-truth (run/run (visit-config (assoc bare-order :prescription a-prescription))))
+        numbers #(map :fill-number (of-kind :medication-dispense %))]
+    (is (some #(< 6 %) (numbers without)) "with no count stated, a chain runs past six fills")
+    (is (= 6 (apply max (numbers with))) "stating five refills stops it at six")
+    (is (every? #(= {:days-supply 30 :quantity 30} (select-keys % [:days-supply :quantity]))
+                (of-kind :medication-dispense with)))))

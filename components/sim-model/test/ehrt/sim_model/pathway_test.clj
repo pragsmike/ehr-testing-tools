@@ -245,3 +245,26 @@
   (is (not (pathway/valid? {:name "t" :steps [{:type :medication-dispense :setting :retail
                                                 :order-citation a-citation}]}))
       "the setting vocabulary is closed"))
+
+;; --- schema 1.15.0: what a prescription supplies -----------------------------
+
+(deftest a-prescriptions-supply-in-days-is-exact-or-absent
+  (is (= 30 (pathway/prescription-supply-days {:duration {:quantity 30 :unit "days"}})))
+  (is (= 14 (pathway/prescription-supply-days {:duration {:quantity 2 :unit "weeks"}})))
+  (is (= 2 (pathway/prescription-supply-days {:duration {:quantity 48 :unit "hours"}})))
+  (is (nil? (pathway/prescription-supply-days {:duration {:quantity 36 :unit "hours"}})))
+  (is (nil? (pathway/prescription-supply-days {:duration {:quantity 1 :unit "months"}})))
+  (is (nil? (pathway/prescription-supply-days {:refills 3})))
+  (is (nil? (pathway/prescription-supply-days nil))))
+
+(deftest a-prescriptions-quantity-is-dose-times-frequency-over-the-days
+  (let [q pathway/prescription-quantity]
+    (is (= 14 (q {:dosage {:amount 1 :frequency 2 :period 1 :unit "days"}} 7)))
+    (is (= 40 (q {:dosage {:amount 1 :frequency 1 :period 6 :unit "hours"}} 10)))
+    (is (= 2 (q {:dosage {:amount 1 :frequency 1 :period 1 :unit "weeks"}} 14)))
+    (is (= 2.5 (q {:dosage {:amount 1 :frequency 1 :period 2 :unit "days"}} 5)))
+    (is (= 15 (q {:dosage {:amount 0.5 :frequency 1 :period 1 :unit "days"}} 30)) "a whole result is an integer")
+    (is (integer? (q {:dosage {:amount 0.5 :frequency 1 :period 1 :unit "days"}} 30)))
+    (is (nil? (q {:dosage {:amount 1 :frequency 1 :period 1 :unit "months"}} 30)))
+    (is (nil? (q {:duration {:quantity 30 :unit "days"}} 30)))
+    (is (nil? (q nil 30)))))

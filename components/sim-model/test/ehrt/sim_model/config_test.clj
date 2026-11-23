@@ -158,3 +158,15 @@
       (is (config/valid-facility? (with :refill-tail-days good)) (pr-str good)))
     (doseq [bad [-1 90.0 "90" [90] nil]]
       (is (not (config/valid-facility? (with :refill-tail-days bad))) (pr-str bad)))))
+
+;; --- schema 1.15.0: the refill offset, and what a prescription supplies ----
+
+(deftest the-refill-offset-is-the-facilitys-own-or-the-default
+  (is (= [-2 5] config/default-refill-offset-days))
+  (is (= [-2 5] (config/refill-offset-days config/default-facility)))
+  (is (= [0 0] (config/refill-offset-days (assoc config/default-facility :refill-offset-days [0 0]))))
+  (let [with (fn [v] (assoc config/default-facility :refill-offset-days v))]
+    (doseq [good [[-2 5] [0 0] [-7 -7] [3 10]]]
+      (is (config/valid-facility? (with good)) (pr-str good)))
+    (doseq [bad [[5 -2] [0] [-2 5 7] [-2.0 5.0] ["-2" "5"] 3 nil]]
+      (is (not (config/valid-facility? (with bad))) (pr-str bad)))))

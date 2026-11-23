@@ -20,6 +20,8 @@
 ;; ADR-0192: a medication order's prescription, shared by the pathway
 ;; IR step, the GMF loader and the `:medication-order` event schema.
 (def Prescription pathway/Prescription)
+(defn prescription-supply-days [prescription] (pathway/prescription-supply-days prescription))
+(defn prescription-quantity [prescription days] (pathway/prescription-quantity prescription days))
 (def ConditionAnnotation pathway/ConditionAnnotation)
 ;; Exported by the event-log contract arc (2026-08-16): a
 ;; `:diagnostic-report` event's own `:observations` children ARE
@@ -108,6 +110,8 @@
 (def default-refill-interval-days config/default-refill-interval-days)
 (def default-refill-continuation config/default-refill-continuation)
 (defn refill-interval-days [facility] (config/refill-interval-days facility))
+(def default-refill-offset-days config/default-refill-offset-days)
+(defn refill-offset-days [facility] (config/refill-offset-days facility))
 (defn refill-continuation [facility] (config/refill-continuation facility))
 (defn refill-tail-days [facility] (config/refill-tail-days facility))
 (def default-provider-templates config/default-provider-templates)

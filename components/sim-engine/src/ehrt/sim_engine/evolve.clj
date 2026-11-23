@@ -477,13 +477,16 @@
                 observations)))
 
 (defmethod evolve :medication-order evolve-medication-order
-  [patient {:keys [t codes citation encounter-id chronic]}]
+  [patient {:keys [t codes citation encounter-id chronic prescription]}]
   (update patient :medication-orders (fnil conj [])
           (cond-> {:codes codes :citation citation :ordered-t t :status :active}
             encounter-id (assoc :encounter-id encounter-id)
             ;; ADR-0191: kept so a community fill can tell whether to
             ;; refill. `true` or absent.
-            chronic (assoc :chronic true))))
+            chronic (assoc :chronic true)
+            ;; ADR-0193: kept whole; a dispense of this order reads its
+            ;; supply, its dose and its refill count here.
+            prescription (assoc :prescription prescription))))
 
 (defmethod evolve :medication-end evolve-medication-end
   ;; Citation-based, position-independent resolution (this project's

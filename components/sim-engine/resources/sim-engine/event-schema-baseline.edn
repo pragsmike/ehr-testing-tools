@@ -10,7 +10,7 @@
 ;;
 ;; Re-freeze ONLY when bumping schema-version, with
 ;; `make event-schema-freeze`.
-{:event-schema-version "1.14.0",
+{:event-schema-version "1.15.0",
  :schema
  [:multi
   {:dispatch :event,
@@ -1042,7 +1042,7 @@
   [:medication-dispense
    [:map
     {:doc
-     "A medication order is dispensed, resolved to its order by CITATION rather than by log position. `:setting` says which dispense this is: `:inpatient`, a pharmacy dispense to the unit during an open encounter, or `:community`, a fill of a prescription outside any encounter. `:fill-number` counts the dispenses of one order, from 1, in log order: several dispenses citing one `:order-event-id` are one prescription filled and refilled. The order's codes are not repeated. Deliberately renders no HL7 message and no FHIR resource yet.",
+     "A medication order is dispensed, resolved to its order by CITATION rather than by log position. `:setting` says which dispense this is: `:inpatient`, a pharmacy dispense to the unit during an open encounter, or `:community`, a fill of a prescription outside any encounter. `:fill-number` counts the dispenses of one order, from 1, in log order: several dispenses citing one `:order-event-id` are one prescription filled and refilled. `:days-supply` and `:quantity` are read off the order's `:prescription` and are absent when it states too little to compute them. The order's codes are not repeated. Deliberately renders no HL7 message and no FHIR resource yet.",
      :transition "No state change; the log itself is the record.",
      :closed true}
     [:event [:= :medication-dispense]]
@@ -1066,6 +1066,8 @@
     [:order-event-id [:maybe :int]]
     [:order-citation [:map [:module :string] [:state :keyword]]]
     [:fill-number [:int {:min 1}]]
+    [:days-supply {:optional true} [:int {:min 1}]]
+    [:quantity {:optional true} [:and number? [:> 0]]]
     [:citation
      {:optional true}
      [:map [:module :string] [:state :keyword]]]]]

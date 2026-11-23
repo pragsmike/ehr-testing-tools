@@ -1828,8 +1828,9 @@
                              ;; (`select-keys` of an absent key is `{}`).
                              ;; ADR-0192 (schema 1.14.0): `:prescription`
                              ;; the same way, the step's own map
-                             ;; untouched. Nothing here or downstream
-                             ;; reads it.
+                             ;; untouched. Nothing HERE reads it; a
+                             ;; dispense of the order does (ADR-0193),
+                             ;; off the order's record in the fold.
                              (select-keys step [:chronic :prescription])
                              {:participants [{:patient-id patient-id :role :subject}]}
                              (citation-fields step))]
@@ -1941,6 +1942,43 @@
   [order-event-id order-citation]
   (or order-event-id order-citation))
 
+(defn- supply-fields
+  "ADR-0193 (schema 1.15.0): `:days-supply` and `:quantity` for a
+  dispense in `setting` of an order whose record holds `prescription`,
+  as a map of the keys that can be computed, possibly empty. Nothing is
+  defaulted: an order that states too little yields no key.
+
+  `:community` -- `:days-supply` is the order's stated duration in days
+  (`sim-model/prescription-supply-days`); `:quantity` is the stated dose
+  over that supply (`sim-model/prescription-quantity`), so it needs
+  both. A dosage with no duration gives neither.
+
+  `:inpatient` -- ONE DAY'S SUPPLY, whatever the order's duration:
+  `:days-supply 1` and one day's doses, both or neither, and only for an
+  order that states a dosage. PROVISIONAL, an assumption and not a
+  measurement: a ward is taken to be supplied a day at a time."
+  [setting prescription]
+  (case setting
+    :inpatient (if-some [quantity (sim-model/prescription-quantity prescription 1)]
+                 {:days-supply 1 :quantity quantity}
+                 {})
+    :community (if-some [days (sim-model/prescription-supply-days prescription)]
+                 (let [quantity (sim-model/prescription-quantity prescription days)]
+                   (cond-> {:days-supply days}
+                     (some? quantity) (assoc :quantity quantity)))
+                 {})))
+
+(defn- latest-order-record
+  "The latest of `owner`'s `:medication-orders` records citing
+  `order-citation`, or nil: the order `last-cited-index` resolves the
+  same citation to."
+  [owner order-citation]
+  (last (filter #(= order-citation (:citation %)) (:medication-orders owner))))
+
+;; ADR-0193 (schema 1.15.0): `:days-supply` and `:quantity`, read off the
+;; order's own record (`supply-fields`) -- the ordering patient's, which
+;; is the absorbed record's when the fill was carried through a merge,
+;; so a carried fill states what an uncarried one would. No draw.
 (defmethod decide :medication-dispense decide-medication-dispense
   [_streams t world patient-id {:keys [setting order-citation order-patient-id prior-fills] :as step}]
   (let [{:keys [ground-truth patients]} world
@@ -1957,6 +1995,7 @@
                       :order-event-id order-event-id :order-citation order-citation
                       :fill-number (inc fills-so-far)
                       :participants [{:patient-id patient-id :role :subject}]}
+                     (supply-fields setting (:prescription (latest-order-record (get patients owner-id) order-citation)))
                      (citation-fields step))]
      :advance 0}))
 
@@ -2044,15 +2083,29 @@
       :else {:events [] :advance 0})))
 
 (defn- refill-followup
-  "ADR-0191: the queue entry for the fill after this one, or nil. Called
-  once a community fill of a CHRONIC order has been emitted, under the
-  `:dispense` key.
+  "ADR-0191 as amended by ADR-0193: the queue entry for the fill after
+  this one, or nil. Called once a community fill of a REFILLABLE order
+  (`order`, its record) has been emitted, under the `:dispense` key.
 
   TWO DRAWS, on the ORDERING patient's `:pharmacy` stream: whether
   another fill follows (`sim-model/refill-continuation`), then how many
-  days later (`sim-model/refill-interval-days`). FIXED CONSUMPTION, both
-  taken for every such fill, the interval's too when the first has said
-  no and when `lo` = `hi`.
+  days later. FIXED CONSUMPTION, both taken for every such fill, the
+  second too when the first has said no, when `lo` = `hi`, and when the
+  bound below stops the chain anyway.
+
+  HOW MANY DAYS LATER (ADR-0193). Where the order states a duration the
+  tree can turn into days (`sim-model/prescription-supply-days`): that
+  many days plus one draw from `sim-model/refill-offset-days`, and never
+  less than one day. Otherwise one draw from
+  `sim-model/refill-interval-days`, as before. ONE draw either way, and
+  at the defaults a 30-day supply draws exactly what the interval range
+  draws: 30 + [-2, 5] is [28, 35] off the same `nextInt(8)`.
+
+  THE BOUND (ADR-0193). Where the order STATES `:refills`, the fill
+  just emitted is followed by another only while its number is below
+  1 + that count: a stated 2 allows fills 1, 2 and 3, and a stated 0
+  allows the first alone. The continuation draw still applies inside
+  the bound. An order that states no count has no bound.
 
   THE TAIL, WHEN THE FACILITY STATES ONE. Nothing is queued for an
   instant later than the world's `:refill-horizon-t`, the last arrival
@@ -2061,7 +2114,7 @@
   nil bounds nothing: the chain then stops on the draw above, or when
   `decide :community-fill` declines its next fill. The test comes AFTER
   both draws, so stating or dropping a tail moves no draw."
-  [{pharmacy-rng :pharmacy} t world patient-id step fill-number]
+  [{pharmacy-rng :pharmacy} t world patient-id step fill-number order]
   (when (nil? pharmacy-rng)
     (throw (ex-info "the :dispense key draws a refill on the :pharmacy stream; this decide was handed none"
                     {:t t :patient-id patient-id})))
@@ -2070,9 +2123,17 @@
                     {:t t :patient-id patient-id})))
   (let [facility (:facility world)
         u (.nextDouble ^Random pharmacy-rng)
-        [lo hi] (sim-model/refill-interval-days facility)
-        next-t (+ t (days->seconds (streams/rand-int-in pharmacy-rng lo hi)))]
+        prescription (:prescription order)
+        supply-days (sim-model/prescription-supply-days prescription)
+        days (if supply-days
+               (let [[lo hi] (sim-model/refill-offset-days facility)]
+                 (max 1 (+ supply-days (streams/rand-int-in pharmacy-rng lo hi))))
+               (let [[lo hi] (sim-model/refill-interval-days facility)]
+                 (streams/rand-int-in pharmacy-rng lo hi)))
+        next-t (+ t (days->seconds days))
+        stated-refills (:refills prescription)]
     (when (and (< u (sim-model/refill-continuation facility))
+               (or (nil? stated-refills) (<= fill-number stated-refills))
                (if-some [horizon-t (:refill-horizon-t world)]
                  (<= next-t horizon-t)
                  true))
@@ -2098,9 +2159,14 @@
 ;; `encounters/stamp-encounter` leaves it unstamped.
 ;;
 ;; ADR-0191: A REFILL IS THIS SAME STEP, queued again by
-;; `refill-followup` when the order is chronic, and declined on the same
-;; three tests: a chain stops when its order ends. No share draw and no
-;; lag on a refill. An authored `:medication-dispense` starts no chain;
+;; `refill-followup`, and declined on the same three tests: a chain
+;; stops when its order ends. No share draw and no lag on a refill.
+;;
+;; ADR-0193, WHAT IS REFILLABLE: an order that is `:chronic`, or whose
+;; prescription states a POSITIVE `:refills`. A chronic order stating 0
+;; is still handed to `refill-followup`, which takes its two draws and
+;; queues nothing, so consumption per fill does not depend on the count.
+;; An order that is neither takes no refill draw, as before. An authored `:medication-dispense` starts no chain;
 ;; only this derived step does.
 ;;
 ;; THROUGH A MERGE, as `decide :pharmacy-dispense` above: the order and
@@ -2112,7 +2178,7 @@
         carried? (and order-patient-id (not= order-patient-id patient-id))
         owner (if carried? (get-in world [:patients order-patient-id]) patient)
         owner-encounter (:encounter owner)
-        latest (last (filter #(= order-citation (:citation %)) (:medication-orders owner)))]
+        latest (latest-order-record owner order-citation)]
     (if (and latest
              (= :active (:status latest))
              (= ordered-t (:ordered-t latest))
@@ -2125,9 +2191,11 @@
                             (cond-> {:type :medication-dispense :setting :community :order-citation order-citation}
                               carried? (assoc :order-patient-id order-patient-id)
                               (:prior-fills step) (assoc :prior-fills (:prior-fills step))))
-            refill (when (and (:chronic latest) (:dispense world))
+            refillable? (or (:chronic latest)
+                            (some-> (:refills (:prescription latest)) pos?))
+            refill (when (and refillable? (:dispense world))
                      (refill-followup streams t world patient-id step
-                                      (:fill-number (first (:events outcome)))))]
+                                      (:fill-number (first (:events outcome))) latest))]
         (cond-> outcome
           refill (assoc :schedule-followup refill)))
       {:events [] :advance 0})))

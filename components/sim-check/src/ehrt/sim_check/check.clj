@@ -1530,6 +1530,32 @@
            {:seen {} :findings []}
            ground-truth)))
 
+(defn medication-dispense-fills-stay-within-the-orders-stated-refills
+  "ADR-0193. Where an order's `:prescription` STATES `:refills`, the
+  order is dispensed at most 1 + that many times: the first fill and
+  each authorised refill. A stated 0 allows the first fill alone. An
+  order that states no count, or no prescription, is not bounded here,
+  and neither is a pre-horizon order, which states nothing in the log.
+
+  COUNTED, not read off `:fill-number` (the numbering invariant above
+  owns that): one finding per dispense past the bound, at that dispense.
+  Every setting counts, an authored dispense included."
+  [ground-truth]
+  (let [log (vec ground-truth)]
+    (:findings
+     (reduce (fn [{:keys [seen] :as acc} event]
+               (if-let [idx (and (= :medication-dispense (:event event)) (:order-event-id event))]
+                 (let [n (inc (get seen idx 0))
+                       stated (:refills (:prescription (get log idx)))]
+                   (cond-> (assoc-in acc [:seen idx] n)
+                     (and stated (> n (inc stated)))
+                     (update :findings conj {:invariant :medication-dispense-fills-stay-within-the-orders-stated-refills
+                                             :patient-id (:patient-id (first (:participants event)))
+                                             :at (:t event)})))
+                 acc))
+             {:seen {} :findings []}
+             log))))
+
 (defn- pre-horizon-care-plan-start-citations-by-patient
   "patient-id -> the set of :citation values riding that patient's own
   :registered event as a :care-plan-start entry in :pre-horizon-facts
@@ -2216,6 +2242,8 @@
    ;; pre-horizon allowance it reads the same way.
    #'medication-dispense-references-existing-order-and-follows-it-in-time
    #'medication-dispense-fill-numbers-count-up-from-one
+   ;; ADR-0193: beside the numbering it counts with.
+   #'medication-dispense-fills-stay-within-the-orders-stated-refills
    ;; ADR-0166: the twin span. Added beside its mirror, not appended at
    ;; the end, because a reader comparing the two should find them
    ;; adjacent -- the reason the catalog is documented as being in

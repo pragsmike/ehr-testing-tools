@@ -525,8 +525,33 @@
   `:medication-order` as a closed map has never seen.
 
   MADE UNDER THE WAIVER, disclosed: no deprecation release was run, and
+  none is owed in any case, since nothing was removed.
+
+  1.15.0 (2026-11-23, ADR-0193) is THE DISPENSE READING IT: two keys.
+  `:days-supply` and `:quantity` on `:medication-dispense`, both
+  OPTIONAL -- the whole days the dispense covers and the stated dose
+  over them, read off the order's `:prescription` and ABSENT when the
+  order states too little: no duration (a community fill), no dosage,
+  or a unit that does not convert exactly to days. An `:inpatient`
+  dispense is one day's supply, an assumption. `:quantity` is exact, an
+  integer when whole and a double otherwise.
+
+  The same ADR changes what a log HOLDS without changing its shape: an
+  order's stated `:refills` now bounds its fills, a non-chronic order
+  stating a positive count is refilled, and a stated duration sets the
+  refill interval. 1.14.0's \"NOTHING READS IT\" above is no longer
+  true.
+
+  THIS BUMP IS ADDITIVE. `classify-change` against the frozen 1.14.0
+  baseline, before the re-freeze, returns
+
+    {:additive? true, :breaking []}
+
+  A 1.14.0-ERA LOG VALIDATES UNCHANGED AGAINST 1.15.0.
+
+  MADE UNDER THE WAIVER, disclosed: no deprecation release was run, and
   none is owed in any case, since nothing was removed."
-  "1.14.0")
+  "1.15.0")
 
 ;; --- shared leaf schemas --------------------------------------------------
 ;;
@@ -1184,7 +1209,7 @@
 
     [:medication-dispense
      (kind :medication-dispense
-           {:doc "A medication order is dispensed, resolved to its order by CITATION rather than by log position. `:setting` says which dispense this is: `:inpatient`, a pharmacy dispense to the unit during an open encounter, or `:community`, a fill of a prescription outside any encounter. `:fill-number` counts the dispenses of one order, from 1, in log order: several dispenses citing one `:order-event-id` are one prescription filled and refilled. The order's codes are not repeated. Deliberately renders no HL7 message and no FHIR resource yet."
+           {:doc "A medication order is dispensed, resolved to its order by CITATION rather than by log position. `:setting` says which dispense this is: `:inpatient`, a pharmacy dispense to the unit during an open encounter, or `:community`, a fill of a prescription outside any encounter. `:fill-number` counts the dispenses of one order, from 1, in log order: several dispenses citing one `:order-event-id` are one prescription filled and refilled. `:days-supply` and `:quantity` are read off the order's `:prescription` and are absent when it states too little to compute them. The order's codes are not repeated. Deliberately renders no HL7 message and no FHIR resource yet."
             :transition "No state change; the log itself is the record."}
            [:active-mrn :string]
            ;; 1.12.0 (ADR-0186): STATED by the step, never inferred from
@@ -1201,6 +1226,16 @@
            ;; from 1. REQUIRED, on authored, inpatient and community
            ;; dispenses alike.
            [:fill-number [:int {:min 1}]]
+           ;; 1.15.0 (ADR-0193): read off the order's `:prescription`,
+           ;; each ABSENT when the order states too little to compute it.
+           ;; `:days-supply` -- whole days this dispense covers: the
+           ;; order's stated duration for a `:community` fill, 1 for an
+           ;; `:inpatient` dispense. `:quantity` -- the stated dose over
+           ;; those days, exact: an integer when whole, a double
+           ;; otherwise, never rounded. In the dose's own unit, which
+           ;; the prescription does not name.
+           [:days-supply {:optional true} [:int {:min 1}]]
+           [:quantity {:optional true} [:and number? [:> 0]]]
            [:citation {:optional true} sim-model/Citation])]
 
     [:care-plan-start

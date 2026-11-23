@@ -1789,6 +1789,31 @@
                       (-> (numbered 7 1) (assoc :order-event-id nil :participants (subject "P2")))]))
         "a pre-horizon order is its subject and its citation")))
 
+(deftest fills-of-an-order-stay-within-its-stated-refills
+  (let [law check/medication-dispense-fills-stay-within-the-orders-stated-refills
+        stating (fn [prescription & more]
+                  (into [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+                          :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
+                         (cond-> {:event :medication-order :t 5 :codes [a-concept] :citation a-citation
+                                  :participants (subject "P1")}
+                           prescription (assoc :prescription prescription))]
+                        more))
+        numbered (fn [t n] (assoc (a-dispense t "P1") :fill-number n))
+        names (fn [log] (mapv (juxt :invariant :at) (law log)))]
+    (is (empty? (law (stating {:refills 2} (numbered 6 1) (numbered 7 2) (numbered 8 3)))) "one fill and two refills")
+    (is (= [[:medication-dispense-fills-stay-within-the-orders-stated-refills 9]]
+           (names (stating {:refills 2} (numbered 6 1) (numbered 7 2) (numbered 8 3) (numbered 9 4))))
+        "a third refill")
+    (is (= [[:medication-dispense-fills-stay-within-the-orders-stated-refills 7]
+            [:medication-dispense-fills-stay-within-the-orders-stated-refills 8]]
+           (names (stating {:refills 0} (numbered 6 1) (numbered 7 2) (numbered 8 3))))
+        "a stated 0 allows the first fill only, and every fill past it is a finding")
+    (is (empty? (law (stating {:as-needed true} (numbered 6 1) (numbered 7 2) (numbered 8 3))))
+        "a prescription that states no count bounds nothing")
+    (is (empty? (law (stating nil (numbered 6 1) (numbered 7 2) (numbered 8 3)))) "nor does an order with none")
+    (is (empty? (law [(assoc (numbered 5 1) :order-event-id nil) (assoc (numbered 6 2) :order-event-id nil)]))
+        "a pre-horizon order states nothing in the log")))
+
 (deftest clinical-content-only-when-admitted-reads-a-dispense-by-its-setting
   (let [after-visit (fn [setting]
                       [{:event :outpatient-visit :t 0 :participants (subject "P1")}

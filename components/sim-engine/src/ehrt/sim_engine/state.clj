@@ -107,7 +107,11 @@
    [:encounter-id {:optional true} :string]
    ;; ADR-0191: a long-term medication, from the order event. `true` or
    ;; absent.
-   [:chronic {:optional true} [:= true]]])
+   [:chronic {:optional true} [:= true]]
+   ;; ADR-0193: the order event's own `:prescription`, kept whole so a
+   ;; dispense can read the supply, the dose and the refill count off
+   ;; the order's record. Absent when the order states none.
+   [:prescription {:optional true} sim-model/Prescription]])
 
 (def CarePlanRecord
   "GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R2(b)): one care

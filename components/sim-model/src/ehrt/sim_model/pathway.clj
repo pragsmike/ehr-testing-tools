@@ -54,8 +54,10 @@
   The unit strings are the author's and are not an enumeration: the 66
   vendored modules use \"hours\", \"days\" and \"weeks\".
 
-  NOTHING IN THE ENGINE READS THIS. A dispense, a fill count and a
-  refill chain are what they would be without it."
+  WHAT READS IT, since ADR-0193: a dispense of the order
+  (`prescription-supply-days`, `prescription-quantity` below, and the
+  engine's refill chain, which `:refills` bounds and whose interval a
+  stated duration sets). The order event still carries it untouched."
   [:and
    [:map {:closed true}
     [:dosage {:optional true}
@@ -75,6 +77,46 @@
    ;; Written as data (no `:fn`) because the event schema that reuses
    ;; this is exported to EDN.
    [:map-of {:min 1} :keyword :any]])
+
+(defn- unit-in-days
+  "How many days one of `unit` is, as an exact number, or nil for a unit
+  this tree does not convert. Three strings, the three the vendored
+  modules use. A month or a year is no fixed number of days, so neither
+  is here."
+  [unit]
+  (case unit
+    "hours" 1/24
+    "days" 1
+    "weeks" 7
+    nil))
+
+(defn prescription-supply-days
+  "ADR-0193: the days a prescription's stated `:duration` runs, as a
+  positive INTEGER, or nil. Nil when it states no duration, when the
+  duration's unit is not one `unit-in-days` converts, and when the
+  result is not a whole number of days (36 hours). Nothing is rounded."
+  [prescription]
+  (when-let [{:keys [quantity unit]} (:duration prescription)]
+    (when-let [per (unit-in-days unit)]
+      (let [days (* quantity per)]
+        (when (integer? days) (long days))))))
+
+(defn prescription-quantity
+  "ADR-0193: how much of the drug a prescription's stated `:dosage`
+  uses over `days` days: amount x frequency x (days / the period in
+  days). Nil when it states no dosage or the period's unit is not one
+  `unit-in-days` converts.
+
+  EXACT, NOT ROUNDED. The arithmetic is rational; a whole result is
+  returned as an integer and any other as a double (one tablet every
+  two days over five days is 2.5). The unit is the dose's own, which
+  the prescription does not name: tablets for a tablet, doses for an
+  injection."
+  [prescription days]
+  (when-let [{:keys [amount frequency period unit]} (:dosage prescription)]
+    (when-let [per (unit-in-days unit)]
+      (let [q (/ (* (rationalize amount) frequency days) (* period per))]
+        (if (integer? q) (long q) (double q))))))
 
 (def ForcePlacement
   "Authoring escape hatch (components/sim/docs/operational-models.md): forces a
