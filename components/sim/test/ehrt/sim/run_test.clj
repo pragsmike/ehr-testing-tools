@@ -1029,10 +1029,15 @@
                      "; the byte gate above carries the diagnostic."))))))))
 
 (def ^:private arc0-invariant-catalog
-  "The 48 invariant names `check-all` reports, in reporting order --
+  "The 49 invariant names `check-all` reports, in reporting order --
   pinned so the findings assertion below is a full-value `=` rather than
   a check of one key. Catalog drift is itself a change in what \"identical
   findings\" means, so it belongs inside the gate, not outside it.
+
+  RE-PINNED AGAIN 2026-11-23, 48 -> 49, by ADR-0193, on the same terms:
+  `medication-dispense-fills-stay-within-the-orders-stated-refills` is
+  an ADDITION, vacuous on all four corpora (none holds a dispense), so
+  no FINDING moved.
 
   RE-PINNED AGAIN 2026-11-21, 47 -> 48, by ADR-0191, on the same terms:
   `medication-dispense-fill-numbers-count-up-from-one` is an ADDITION,
@@ -1168,6 +1173,7 @@
     medication-end-references-existing-order-and-follows-it-in-time
     medication-dispense-references-existing-order-and-follows-it-in-time
     medication-dispense-fill-numbers-count-up-from-one
+    medication-dispense-fills-stay-within-the-orders-stated-refills
     care-plan-end-references-existing-start-and-follows-it-in-time
     expired-patient-retains-location
     non-admitted-patients-hold-no-bed
