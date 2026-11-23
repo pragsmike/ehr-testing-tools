@@ -328,3 +328,8 @@ Commits over `c383c76c`: `310efcd5` (step 1 and the prompt archive),
 49), `ee33ac47` (dense's `:refills 11` and the offset option),
 `db286a87` (figures and docs), `e8cf7244` (ADR-0193), `36697a0e` (this
 record), and this close.
+
+Pushed `c383c76c..97db2b49`; `bin/post-push-verify c383c76c 97db2b49`:
+remote tip matches, every message ASCII. CI run **45216643214**
+concluded `success` at `97db2b49` (`gh run watch --exit-status` 0,
+confirmed by `gh run view`). Closed.
