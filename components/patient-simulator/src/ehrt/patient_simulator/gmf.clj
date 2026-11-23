@@ -1258,6 +1258,10 @@
    ;; like every other concept, and no value touched. A state with no
    ;; block carries no key. A block with a key outside those five, or a
    ;; dosage missing one of its four, fails the load.
+   ;; ADR-0193: the engine now READS it at the dispense -- `refills`
+   ;; bounds the refill chain (the 32 inhaler states' authored 0 means
+   ;; never refilled), `duration` sets the refill interval and the
+   ;; days of supply, `dosage` the quantity. Nothing here changed.
    [:medication-order (with-transitions [:type [:= :medication-order]] [:codes [:vector sim-model/Concept]]
                         [:reason {:optional true} :string] [:assign-to-attribute {:optional true} :string]
                         [:chronic {:optional true} :boolean]

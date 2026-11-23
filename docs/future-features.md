@@ -261,8 +261,10 @@ the patient, the medication's codes, and a citation to the module state
 that wrote it. A `:medication-end` closes it, naming its order by that
 citation. An order may carry its `:prescription` (event schema 1.14.0):
 dose, duration, refills, as-needed and instructions, as the module or
-the pathway author wrote them, and absent when they wrote none. Nothing
-computes a quantity or a days-supply from it, and no dispense reads it.
+the pathway author wrote them, and absent when they wrote none. A
+dispense reads it (event schema 1.15.0): it states `:days-supply` and
+`:quantity` where the order states enough, a stated `:refills` bounds
+the refill chain, and a stated duration sets the gap between fills.
 An order may be marked `:chronic true` (event schema 1.13.0):
 a long-term medication, from a vendored module's own flag or a pathway
 author's; absent means nobody marked it. A `:medication-dispense` names
@@ -276,10 +278,14 @@ wrote and left open is filled `:community` with a stated probability
 (`:community-fill-minutes`, default one hour to seven days after the
 visit closes); both are facility options and both defaults are
 provisional. About one in five is never filled at all, which a
-consumer must not read as an error. A fill of a chronic order is then
-refilled every 28 to 35 days, each fill followed by another with
-chance 0.94, until the patient stops or the order ends
-(`:refill-interval-days`, `:refill-continuation`; both provisional).
+consumer must not read as an error. A fill of an order that is chronic,
+or that states a positive refill count, is then refilled: its stated
+days of supply later, give or take a few days, or every 28 to 35 days
+when it states none; each fill followed by another with chance 0.94,
+until the patient stops, the stated refills run out or the order ends
+(`:refill-offset-days`, `:refill-interval-days`,
+`:refill-continuation`; all provisional). Nothing renews an order
+whose refills have run out.
 A scenario that wants a hard cutoff can state `:refill-tail-days`,
 days after the run's last arrival; by default there is none. So one order may have several dispenses, numbered, and
 the chain ends without an event. A fill pending when its patient's
@@ -293,8 +299,8 @@ never dispensed inpatient, is a discharge prescription and is filled in
 the community under the same share and lag. The key moves no
 other draw, so the same seed with and without it is the same hospital
 plus the dispenses. One shipped scenario sets the key, `dense-7500`,
-whose 7,500-arrival log carries 2,533 inpatient dispenses and 8,343
-community fills, 6,805 of them refills; none authors the step.
+whose 7,500-arrival log carries 2,533 inpatient dispenses and 4,804
+community fills, 3,266 of them refills; none authors the step.
 No event kind for a medication
 administration exists. None of the three kinds renders to any HL7 v2
 message: no pharmacy order, dispense or administration message (RDE,

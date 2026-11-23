@@ -84,18 +84,21 @@ both. At the three measured arrival counts:
 | lag from the visit's close to the first fill, minutes (min / median / max) | 63 / 4,995 / 10,078 | 76 / 5,722 / 10,044 | 63 / 4,983 / 10,078 |
 | marked `:chronic true` | 534 | 60 | 2,262 |
 | of them filled | 424 | 48 | 1,799 |
-| refills (a `:fill-number` above 1) | 6,805 | 647 | 27,638 |
-| refills per filled chronic order (mean / median / max) | 16.05 / 12 / 122 | 13.48 / 12 / 50 | 15.36 / 10 / 123 |
+| stating `:refills 11` | 534 | 60 | 2,262 |
+| refills (a `:fill-number` above 1) | 3,266 | 361 | 13,629 |
+| refills per filled chronic order (mean / median / max) | 7.70 / 11 / 11 | 7.52 / 11 / 11 | 7.58 / 10 / 11 |
+| filled chronic orders that used all eleven refills | 221 | 25 | 891 |
 | filled chronic orders never refilled | 38 | 6 | 127 |
-| day of the last refill | 3,923 | 1,609 | 3,948 |
-| days between one fill and the next (min / median / max) | 28 / 32 / 35 | 28 / 32 / 35 | 28 / 31 / 35 |
+| day of the last refill | 388 | 377 | 424 |
+| days between one fill and the next (min / median / max) | 28 / 32 / 35 | 28 / 31 / 35 | 28 / 31 / 35 |
 | written during an admission | 2,565 | 290 | 10,375 |
 | `:inpatient` dispenses | 2,533 | 288 | 10,334 |
 | discharge prescriptions (active and undispensed at the discharge) | 32 | 2 | 41 |
-| of them filled `:community` | 27 | 0 | 34 |
-| `:community` fills, all | 8,343 | 803 | 33,794 |
-| community fills per inpatient dispense | 3.29 | 2.79 | 3.27 |
-| dispenses whose patient is the survivor of the order's patient | 904 | 94 | 2,731 |
+| of them filled `:community` | 27 | 0 | 33 |
+| `:community` fills, all | 4,804 | 517 | 19,784 |
+| community fills per inpatient dispense | 1.90 | 1.80 | 1.91 |
+| dispenses whose patient is the survivor of the order's patient | 349 | 61 | 1,271 |
+| dispenses carrying `:days-supply` and `:quantity` | 7,271 of 7,337 | 802 of 805 | 30,045 of 30,118 |
 | community fills carrying an `:encounter-id` | 0 | 0 | 0 |
 | first fills landing inside a later visit or stay | 2 | 0 | 20 |
 
@@ -106,26 +109,40 @@ them, and the share was 0.76. At 7,500 the first fills are 1,045 of
 `dense-clinic-acute`'s antibiotic, 424 of `dense-clinic-chronic`'s
 metformin and 42 of the vendored modules' own orders; every refill is
 metformin, since no vendored order that a module marks chronic reaches
-this log. A chain ends on the patient's own draw (419 at 7,500), or
-because the patient returned and was prescribed metformin again, at
-which point the newer order takes over (5). None ends on a
-`:medication-end`, since no clinic pathway here ends its order, and
-none on a death, since nobody in this log dies. A merge ends none
-either: 78 pending fills were carried to a surviving record at 7,500,
-24 of them refills, and each chain ran on there, which is why 904
-dispenses name an order written under another record.
+this log. **The metformin states eleven refills, and that count is what
+stops most chains** (ADR-0193): at 7,500, 221 of the 424 filled orders
+were collected all twelve times and stopped there, and the other 203
+stopped sooner, on the patient's own 0.94 draw or because the patient
+returned and was prescribed metformin again, at which point the newer
+order takes over. None ends on a `:medication-end`, since no clinic
+pathway here ends its order, and none on a death, since nobody in this
+log dies. A merge ends none either: a fill pending when its patient's
+record is absorbed is carried to the surviving record and the chain
+runs on there under the same count, which is why 349 dispenses name an
+order written under another record. Nothing renews an order whose
+refills have run out, so a year or so after the arrivals the refills
+stop.
+**Every dispense states its supply where its order states enough.** At
+7,500: 3,690 metformin fills carry `:days-supply 30` and `:quantity
+30`; 1,045 antibiotic fills 7 and 14; the 1,267 ceftriaxone and 1,266
+acetaminophen inpatient dispenses carry `:days-supply 1`, with
+quantities 1 and 8; three module-written fills carry their module's own
+figures (10 and 20, 14 and 84). The other 66 community fills are of
+module orders that author no duration, and carry neither key.
 The inpatient dispenses are all `dense-inpatient`'s two orders. **The
 discharge prescriptions are all vendored modules'**: `injuries` and the
 submodules it calls prescribe at the instant of an ED discharge, so
 pharmacy never reaches those orders, and since ADR-0190 they are filled
 in the community like a clinic prescription, counted from the
-discharge. Measured 2026-11-22 at `0b8ba8f0`.
+discharge. Measured 2026-11-23 at `ee33ac47`.
 
 **No refill tail, and no chain outruns the log.** Its arrivals span 5.3
 days at 7,500 (0.5 at 750, 19.6 at 28,024), and it runs about twenty
 years past them on `:persons` alone. The last refill lands on day
-3,923 at 7,500 and day 3,948 at 28,024, a little over half way through,
-and the log's last event did not move when the tail went. From
+388 at 7,500 and day 424 at 28,024: twelve fills of a 30-day supply are
+about a year. Until ADR-0193 nothing read the order's count, chains ran
+on the draw alone, and the last refill landed on day 3,923 and day
+3,948. The log's last event has not moved through any of this. From
 2026-11-21 to 2026-11-22 this scenario stated `:refill-tail-days 90`,
 then the default: it stopped 345 of the 424 chains at 7,500 itself and
 left every refill inside the first 110 days, 760 of them.
@@ -395,13 +412,13 @@ calls the same `:ehrt` alias the wrapper does, with `-Xmx8g` in front:
 clojure -J-Xmx8g -M:ehrt sim run --seed 20260824 --patients 28024 --churn --config demos/scenarios/dense-7500/config-28024.edn --format ground-truth > out/scenarios/dense-7500-28024.edn
 ```
 
-It takes minutes, writes about 199 megabytes, and is not run by the
+It takes minutes, writes about 196 megabytes, and is not run by the
 exerciser; its figures are under "What to look for" below, in their own
 table.
 
 ## What to look for
 
-Witnessed 2026-11-22 at `43ca836b`, seed 20260824, `--churn`, on the
+Witnessed 2026-11-23 at `ee33ac47`, seed 20260824, `--churn`, on the
 traffic-scale programme's own reference machine (WSL2, 6c/12t
 i7-10750H, 15 GiB, OpenJDK 21.0.7, JVM defaults as shipped --
 `MaxHeapSize` 3.88 GB, `bin/ehrt` sets no JVM options). One warm-up
@@ -425,13 +442,24 @@ both existed, these cells sat at a measurement taken one commit before
 ADR-0180's site 1 and survived all seven of its sites without one of
 them going red.
 
-**Every log is new bytes since ADR-0192, and no count moved.** On
+**The counts last moved on 2026-11-23, under ADR-0193** (event schema
+1.15.0): a dispense reads its order's prescription, and the metformin
+order states eleven refills. The all-keys cell went from 6,805 refills
+to 3,266, which is **-3,539** events there and at `config-nobed.edn`,
+**-286** at 750, and nothing at `config-bare.edn`, which derives no
+dispense; its log is new bytes because the order event's stated count
+changed. At 7,500 one first fill left and one arrived, on patients
+whose `:pharmacy` stream a shortened chain shifted. No ground-truth
+event but a dispense moved, log indexes aside.
+
+**Before that, every log was new bytes under ADR-0192, and no count
+moved.** On
 2026-11-22 a medication order began to carry its `:prescription`
 (event schema 1.14.0) and three authored drug codes changed (above).
 Every cell holds the events and messages it held before, the bare
 cell included; only medication orders differ.
 
-**The counts last moved on 2026-11-22**, when the refill tail became
+**Before that the counts moved on 2026-11-22**, when the refill tail became
 optional and this scenario stopped stating one (ADR-0191's addendum).
 The all-keys cell went from 760 refills to 6,805, which is **+6,045**
 events there and at `config-nobed.edn`, **+566** at 750, and nothing
@@ -566,20 +594,26 @@ default heap, not as a footprint.
 
 | cell | arrivals | events | messages | msg/event | process wall | peak RSS |
 |---|---|---|---|---|---|---|
-| `config.edn` | 7,500 | **133,594** | **125,947** | **0.9428** | 103.88 s | 1,701 MB |
-| `config-nobed.edn` | 7,500 | **108,077** | **100,467** | **0.9296** | 92.08 s | 1,527 MB |
-| `config-bare.edn` | 7,500 | **67,780** | **40,207** | **0.5932** | 41.22 s | 1,109 MB |
-| `config.edn` | 750 | **30,307** | **31,162** | **1.0282** | 52.88 s | 1,052 MB |
+| `config.edn` | 7,500 | **130,055** | **125,917** | **0.9682** | 104.41 s | 1,706 MB |
+| `config-nobed.edn` | 7,500 | **104,538** | **100,486** | **0.9612** | 93.40 s | 1,505 MB |
+| `config-bare.edn` | 7,500 | **67,780** | **40,207** | **0.5932** | 41.00 s | 1,084 MB |
+| `config.edn` | 750 | **30,021** | **31,152** | **1.0377** | 53.26 s | 1,073 MB |
 
 **The ground-truth-only cell** is a different measurement, in its own
 table because it has no message column to fill: `config-28024.edn`,
-measured 2026-11-22 at `43ca836b` on the same machine, ONE run of the
+measured 2026-11-23 at `ee33ac47` on the same machine, ONE run of the
 `sim run --format ground-truth` command under "The ground-truth-only
 path" above, `-Xmx8g` explicit, `/usr/bin/time -v` around the whole
-process. Its log is 199,000,793 bytes with sha-256
-`83b33fc12054a543...f7ffec9007660277`, and it carries 10,334 `:inpatient`
-and 33,794 `:community` dispenses, 27,638 of the second refills. Events
+process. Its log is 195,875,969 bytes with sha-256
+`1795158ea3362431...c711a501089ecaf4`, and it carries 10,334 `:inpatient`
+and 19,784 `:community` dispenses, 13,629 of the second refills. Events
 and subjects are `ehrt sim describe`'s own counts over it. **The log
+this cell wrote from ADR-0192 until ADR-0193** -- 199,000,793 bytes,
+sha-256 `83b33fc12054a543...f7ffec9007660277`, at `43ca836b`, event
+schema 1.14.0 -- holds 27,638 refills, chains running on the draw
+alone, and no supply or quantity on any dispense; it remains a valid
+artifact of that pin, and `figures.edn` keeps its figures under
+`:pre-adr-0193`. **The log
 this cell wrote from the refill tail's removal until ADR-0192** --
 197,001,464 bytes, sha-256 `37582a56807463e7...8686eca460827b46`, at
 `0b8ba8f0`, event schema 1.13.0 -- holds the same events at the same
@@ -622,7 +656,7 @@ figures under `:pre-rebaseline`.
 
 | cell | arrivals | events | subjects | bytes | process wall | peak RSS |
 |---|---|---|---|---|---|---|
-| `config-28024.edn` | 28,024 | **530,238** | **32,080** | **199,000,793** | 322.70 s | 3,486 MB |
+| `config-28024.edn` | 28,024 | **516,228** | **32,080** | **195,875,969** | 337.51 s | 3,042 MB |
 
 Its wall is NOT comparable with the table above -- a `sim run` that
 emits nothing, against a `corpus generate` that also renders, checks
@@ -644,20 +678,21 @@ window and drops 16% of it outright. **The opt-in that looks like pure
 added volume is also a throttle**, and the bare cell is the one running
 without it.
 
-**The bed cycle is worth a fifth of this corpus.** 133,594 events
-against 108,077 is **25,517 events, 19.1% of the whole log**, and
-25,480 messages with them -- every one of it bed housekeeping, on a
+**The bed cycle is worth a fifth of this corpus.** 130,055 events
+against 104,538 is **25,517 events, 19.6% of the whole log**, and
+25,431 messages with them -- every one of it bed housekeeping, on a
 scenario that actually boards people, against `clinic-decade`'s 300
-where nobody is boarded. Its own 25,517 events carry **0.9985 messages
+where nobody is boarded. Its own 25,517 events carry **0.9966 messages
 each** -- one ADT message per housekeeping event, which is what a
 status change lowered into its own message looks like. (Before the
 ground-truth rebaseline the cycle read as message-RICHER than the log
 it rides on; that was the periodic chatter of reinstated stays that
 never closed, which ran longer on the bed-cycle run.)
 
-**Messages per event no longer climbs at 10^5.** 1.0282 at 750
-arrivals to 0.9428 at 7,500. (Both fell on 2026-11-22: a refill is an
-event that renders no message.) Until the ground-truth rebaseline it rose
+**Messages per event no longer climbs at 10^5.** 1.0377 at 750
+arrivals to 0.9682 at 7,500. (Both fell on 2026-11-22 and rose again
+on 2026-11-23: a refill is an event that renders no message, and the
+log gained thousands of them and then lost half.) Until the ground-truth rebaseline it rose
 (1.2097 to 1.3327): a reinstated stay never closed, so its periodic
 ADT^A08 chatter ran to the end of the run, and the longer run carried
 more of it -- at 7,500 arrivals A08 fell from 52,091 messages to 5,520

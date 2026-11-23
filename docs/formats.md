@@ -340,6 +340,10 @@ log always carries the version of the contract that produced it.
   optional `:chronic` on `:medication-order`. 1.14.0 added one optional
   key and nothing else, `:prescription` on `:medication-order`, and
   `classify-change` calls it additive: a 1.13.0 log validates unchanged.
+  1.15.0 added two optional keys, `:days-supply` and `:quantity` on
+  `:medication-dispense`, also additive: a 1.14.0 log validates
+  unchanged. `:quantity` is typed as a positive number: an integer
+  when the dose arithmetic comes out whole, a double when it does not.
 - **Anything else bumps it** — a key removed, an optional key made
   required, a value schema changed, a kind removed.
 - **A key or kind slated for removal is marked deprecated here for one

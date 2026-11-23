@@ -429,8 +429,9 @@ chronic discharge prescription is refilled as a clinic visit's is. A
 
 - the continuation draw. At 0.94 a filled chronic order is refilled
   15.7 times on average (0.94 / 0.06), about sixteen months of fills.
-  In `dense-7500` half stop within ten to twelve refills, and the
-  longest runs to 123, over ten years;
+  That is an order that states no refill count. `dense-7500`'s chronic
+  order states eleven, so there the count stops most chains instead
+  (the section below);
 - the order's end (a `:medication-end` naming it);
 - a newer order of the same citation, which takes over with a chain
   of its own;
@@ -472,8 +473,10 @@ up to `:arrival-gap` minutes after the one before.
 - **Without a tail a run ends when its chains do.** Refills are events
   like any other and the run carries on until the last one. At the
   default continuation that is a few years for the longest chain in a
-  few thousand: `dense-7500`'s last refill is on day 3,948 at 28,024
-  arrivals, inside a log that runs to day 7,395 on `:persons` anyway.
+  few thousand, when the orders state no refill count: until ADR-0193
+  `dense-7500`'s last refill was on day 3,948 at 28,024 arrivals. Its
+  chronic order now states eleven refills and the last is on day 424,
+  inside a log that runs to day 7,395 on `:persons` anyway.
   A scenario whose other events all fall near its arrivals will grow
   by those years.
 - **State a tail with a continuation of 1.** A chain that always
@@ -505,6 +508,93 @@ no other stay to dispense into.
 the order ended, a newer order replaced it, or a stated tail was
 reached.
 As with a missing first fill, absence is the only record.
+
+## What an order's prescription governs (ADR-0193)
+
+Since ADR-0193 a dispense reads its order's `:prescription`
+(ADR-0192). This amends the section above in four places.
+
+**What is refillable.** An order marked `:chronic true`, or an order
+whose prescription states a positive `:refills`. An order that is
+neither is filled at most once, as before.
+
+**A stated count bounds the chain.** An order stating `:refills N` is
+dispensed at most `N` + 1 times. A stated 0 means the first fill and no
+more, **on a chronic order too**. An order that states no count has no
+bound and runs on `:refill-continuation` alone. Inside the bound the
+continuation draw still applies, so a chain can stop sooner.
+
+That matters for the vendored modules. Of their 37 chronic
+MedicationOrder states, the 32 inhaler states
+(`medications/emergency_inhaler`, `medications/maintenance_inhaler`)
+author `refills: 0`: **a module-written inhaler order is filled once
+and never refilled.** The other five (four in
+`metabolic_syndrome/medications`, one in `osteoporosis`) author no
+prescription and are unbounded. The one positive count in the set,
+hypothyroidism's 6, is on a state that is not marked chronic; it is
+now refillable because of the count.
+
+**A stated duration sets the interval.** One more optional `Facility`
+key:
+
+```clojure
+{:id :metro-general
+ :wards [...]
+ :refill-interval-days [28 35]
+ :refill-offset-days [-2 5]
+ :refill-continuation 0.94}
+```
+
+| key | meaning | default |
+|---|---|---|
+| `:refill-offset-days` | `[lo hi]` days, either sign, uniform, added to the days of supply an order states to give the days to its next fill | `[-2 5]`, two days early to five late |
+
+Where an order states a `:duration` that converts to whole days, the
+next fill is queued that many days later plus the drawn offset, and
+never less than one day later. Where it states none, or states one in
+a unit this tree does not convert, the gap is drawn from
+`:refill-interval-days` as before. The schema refuses an offset that
+is not `lo <= hi` in whole days. The default is provisional and was
+chosen so that a 30-day supply refills 28 to 35 days later, the range
+`:refill-interval-days` already had: a 30-day order draws the same
+number either way.
+
+**The draws do not change in number.** Two per fill of a refillable
+order, on the ordering patient's `:pharmacy` family: whether another
+follows, then the gap. Both are taken even when the stated count has
+already ended the chain. An order that became refillable only by its
+count (not chronic, `:refills` above 0) takes draws it did not take
+before; one patient has one `:pharmacy` stream, so that patient's
+later prescriptions shift.
+
+**Units.** `"days"` is one day, `"weeks"` seven, `"hours"` a
+twenty-fourth. Those are the three the vendored modules use. Any other
+string is not converted, and neither is a duration that is not a whole
+number of days: the value that depends on it is absent, never rounded.
+
+**The two fields on a dispense.** `:days-supply` and `:quantity`, both
+optional on `:medication-dispense`:
+
+| setting | `:days-supply` | `:quantity` |
+|---|---|---|
+| `:community` | the order's stated duration in whole days | amount x frequency x (days of supply / the dosage period in days), when the order states a dosage as well |
+| `:inpatient` | `1`, when the order states a dosage | one day's doses |
+
+`:quantity` is exact: an integer when whole, a double otherwise. It is
+in the dose's own unit, which a prescription does not name.
+
+**The inpatient day is an assumption.** An inpatient dispense is taken
+to be one day's supply whatever the order's duration, because nothing
+in the model says how a ward is stocked. It is provisional, and it is
+not a claim about any pharmacy.
+
+**Through a merge.** A fill carried to a surviving record reads the
+prescription off the absorbed record's order: the same bound, the same
+interval, the same two fields.
+
+**Not modelled: renewal.** When an order's authorised refills run out,
+nothing writes a new order. A chronic prescription that states a count
+stops being filled.
 
 ## Scheduling (arc 3b sweep 3, ADR-0174 section 2(b))
 

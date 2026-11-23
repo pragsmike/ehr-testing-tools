@@ -97,6 +97,11 @@
    ;; `:refill-continuation` and `:refill-tail-days`), and a pharmacy
    ;; step pending when its patient is merged away is carried to the
    ;; survivor.
+   ;; ADR-0193: a dispense reads its order's `:prescription`. A stated
+   ;; `:refills` makes a non-chronic order refillable and bounds any
+   ;; chain; a stated duration sets the refill gap (plus the facility's
+   ;; `:refill-offset-days`); and a dispense carries `:days-supply` and
+   ;; `:quantity` where the order states enough.
    ;; ABSENT ENTIRELY is the byte-identical path, the opt-in law the
    ;; four keys above establish.
    ;;
