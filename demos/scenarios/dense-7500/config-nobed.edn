@@ -102,13 +102,19 @@
             ;; never filled.
             :community-fill-share 0.80
             :community-fill-minutes [60 10080]
-            ;; REFILLS (ADR-0191). A community fill of an order marked
-            ;; `:chronic true` is followed by another this many days
-            ;; later, with this chance each time: 28 to 35 days,
-            ;; uniform, and 0.94. The defaults, written out, and
-            ;; PROVISIONAL like the two above. Several dispenses citing
-            ;; one order are one prescription refilled; `:fill-number`
-            ;; says which.
+            ;; REFILLS (ADR-0191, as amended by ADR-0193). A community
+            ;; fill of a REFILLABLE order -- one marked `:chronic true`,
+            ;; or one whose prescription states a positive `:refills` --
+            ;; is followed by another with this chance each time, 0.94,
+            ;; and never by more than the order's stated `:refills`. HOW
+            ;; MANY DAYS LATER depends on the order: where it states a
+            ;; duration, that many days plus `:refill-offset-days`, two
+            ;; early to five late; where it states none,
+            ;; `:refill-interval-days`, 28 to 35. Both uniform. For a
+            ;; 30-day supply the two are the same range. The defaults,
+            ;; written out, and PROVISIONAL like the two above. Several
+            ;; dispenses citing one order are one prescription
+            ;; refilled; `:fill-number` says which.
             ;;
             ;; NO TAIL (2026-11-22). `:refill-tail-days` is optional and
             ;; this scenario leaves it out, as the default does: a chain
@@ -118,6 +124,7 @@
             ;; ARRIVAL, three weeks in here, and would confine every
             ;; refill to the months just after it.
             :refill-interval-days [28 35]
+            :refill-offset-days [-2 5]
             :refill-continuation 0.94}
  ;; FOUR PROVIDERS, BETWEEN THEM ELIGIBLE FOR ALL FOUR WARDS -- the
  ;; spike's own F5-3 finding, which is that a ward with no eligible
@@ -306,15 +313,18 @@
                                 :codes [{:system :rxnorm :code "860975"
                                          :display "24 HR Metformin hydrochloride 500 MG Extended Release Oral Tablet"}]
                                 :chronic true
-                                ;; ADR-0192, PROVISIONAL: one tablet a day,
-                                ;; a 30-day supply, five refills authorised.
-                                ;; NOTHING READS THIS YET: under `:dispense`
-                                ;; the refill chain still runs on the
-                                ;; facility's interval and continuation, not
-                                ;; on these 30 days or these five refills.
+                                ;; ADR-0192 and ADR-0193, PROVISIONAL: one
+                                ;; tablet a day, a 30-day supply, ELEVEN
+                                ;; refills authorised -- a year at 30 days.
+                                ;; Under `:dispense` each fill states
+                                ;; `:days-supply 30` and `:quantity 30`, the
+                                ;; next comes 28 to 35 days later, and the
+                                ;; chain stops at twelve fills if nothing
+                                ;; stops it sooner. A new order when those
+                                ;; run out (a renewal) is not modelled.
                                 :prescription {:dosage {:amount 1 :frequency 1 :period 1 :unit "days"}
                                                :duration {:quantity 30 :unit "days"}
-                                               :refills 5}
+                                               :refills 11}
                                 :citation {:module "dense-clinic-chronic" :state :chronic-start}}
                                {:type :delay :from 5 :to 20}
                                {:type :outpatient-visit-end}]}

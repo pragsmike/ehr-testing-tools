@@ -177,14 +177,14 @@ the exerciser runs it too:
 
 ```
 $ diff demos/scenarios/dense-7500/config.edn demos/scenarios/dense-7500/config-nobed.edn
-2255d2254
+2265d2264
 <  :bed-cycle true
 ```
 
 The second is the additive claim the 2026-08-29 record made of its own
 three scale points, re-established here: `config-bare.edn` minus its
-own closing brace and newline is byte-identical to the first **163,457
-bytes** of `config.edn`, sha-256 `e2986d4a...` on both sides. The
+own closing brace and newline is byte-identical to the first **164,162
+bytes** of `config.edn`, sha-256 `7de9e9d3...` on both sides. The
 exerciser re-derives that length from the files themselves rather than
 carrying the number as a literal.
 
@@ -204,7 +204,7 @@ that is not one of the 937 module ordinals draws one pathway from
 | `dense-fast` | worked up in the ED and sent home | 35 |
 | `dense-surgical` | ED, then Surgery | 20 |
 | `dense-clinic-acute` | outpatient visit; a seven-day antibiotic (amoxicillin / clavulanate) | 50 |
-| `dense-clinic-chronic` | outpatient visit; a long-term medication (metformin), 30 days with five refills | 20 |
+| `dense-clinic-chronic` | outpatient visit; a long-term medication (metformin), 30 days with eleven refills | 20 |
 | `dense-clinic-review` | outpatient visit; nothing prescribed | 30 |
 
 The outpatient share of pathway arrivals is the last three weights
@@ -252,12 +252,21 @@ event as written:
 | `dense-inpatient` `:antibiotic-start` | ceftriaxone 1000 MG Injection | one dose a day for five days |
 | `dense-inpatient` `:analgesia-start` | Acetaminophen 325 MG Oral Tablet | two tablets, four times a day, as needed |
 | `dense-clinic-acute` `:antibiotic-start` | amoxicillin 875 MG / clavulanate 125 MG Oral Tablet | one tablet twice a day for seven days, no refills |
-| `dense-clinic-chronic` `:chronic-start` | 24 HR Metformin hydrochloride 500 MG Extended Release Oral Tablet | one tablet a day, 30 days, five refills |
+| `dense-clinic-chronic` `:chronic-start` | 24 HR Metformin hydrochloride 500 MG Extended Release Oral Tablet | one tablet a day, 30 days, eleven refills |
 
 The regimens come from general clinical knowledge and no source; no
-clinician wrote them. **Nothing reads them yet**: a dispense carries no
-quantity, and the metformin's refills still run on the facility's
-interval and continuation, past the five the order authorises.
+clinician wrote them. **A dispense reads them** (ADR-0193, 2026-11-23).
+Each dispense states `:days-supply` and `:quantity` where its order
+states enough: 30 and 30 for a metformin fill, 7 and 14 for the clinic
+antibiotic, and for the two stay orders one day's supply, 1 dose of
+ceftriaxone and 8 tablets of acetaminophen. The one-day inpatient
+supply is an assumption. The metformin states eleven refills, a year at
+30 days, so its chain stops at twelve fills if the 0.94 draw has not
+stopped it sooner; the next fill comes 28 to 35 days after the last,
+which is the 30 days of supply plus the facility's
+`:refill-offset-days`. The clinic antibiotic states no refills and is
+filled once. A new order when the refills run out (a renewal) is not
+modelled.
 
 **The drug codes are lifted from the vendored modules.** Every code and
 display is one a module state already carries: the ceftriaxone and the
